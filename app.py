@@ -12,7 +12,7 @@ from matplotlib.patches import FancyBboxPatch
 matplotlib.use('Agg')
 
 # 🚆 將頁面標籤圖示 (Favicon) 改為 700st.png
-st.set_page_config(page_title=" TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
+st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
 
 # 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
@@ -367,24 +367,24 @@ if st.button("立即生成個人班表圖片檔"):
                     bg = C_DO_BG if (is_hol or tr.startswith("DO")) else (C_PAY_BG if tr=="PAY" else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
                     
-                    # 💡 國定假日緊接著日期顯示在左上角，消除空隙
                     if dt in NATIONAL_HOLIDAYS:
                         full_date_str = f"{dt} ({NATIONAL_HOLIDAYS[dt]})"
                         draw_bold_text(ax, x + 0.005, ry + RH - 0.004, full_date_str, ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(9.5))
                     else:
                         draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color="#000000", fontproperties=fp(10))
 
-                    # 💡 疏運顯示在右上角
                     if dt in active_transport:
                         draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(8.5))
 
-                    # 💡 右下角每日工時統計（字體 10.5）
                     if d.get("hours"): 
                         draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(11.5))
                     
                     cx = x + CW / 2
-                    if tr.startswith("DO"): draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
-                    elif tr == "PAY": draw_bold_text(ax, cx, ry + RH * 0.6, "特休", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(12))
+                    if tr.startswith("DO"): 
+                        draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
+                    elif tr == "PAY": 
+                        # 💡 特休顯示為 PAY 且水平垂直置中
+                        draw_bold_text(ax, cx, ry + RH * 0.48, "PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(14))
                     else:
                         draw_bold_text(ax, cx, ry + RH * 0.65, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(13))
                         draw_bold_text(ax, cx, ry + RH * 0.4, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(13))
