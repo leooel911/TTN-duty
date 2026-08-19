@@ -165,9 +165,9 @@ with st.expander("📁 管理員專用：Database"):
             f.write(uploaded_file.getbuffer())
         st.success("✅ 班表已成功上傳並永久保存至伺服器！")
 
-target_input = st.text_input("輸入 員編 或 姓名 (例如: A018896 或 江立夫)", value="A018896")
+target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A0")
 
-if st.button("立即生成個人班表圖片"):
+if st.button("立即打造個人班表圖片"):
     if not os.path.exists(SAVED_FILE_PATH):
         st.error("❌ 目前伺服器中尚無班表資料，請先展開上方「管理員專用」上傳當月班表檔案！")
     else:
