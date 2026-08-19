@@ -302,12 +302,12 @@ C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#
 C_TOWN_TXT = "#000000"
 
 st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
-st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">System Telemetry // 目前系統排班有效週期</div><div class="telemetry-value">{get_system_duty_period()}</div></div>""", unsafe_allow_html=True)
+st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">System Telemetry // 目前系統資料排班週期</div><div class="telemetry-value">{get_system_duty_period()}</div></div>""", unsafe_allow_html=True)
 
 target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300)", value="A")
 access_password = st.text_input("輸入 系統授權碼", type="password", value="")
 
-if st.button("立即配置個人班表圖片檔"):
+if st.button("立即生成個人班表圖片檔"):
     if access_password != CREW_ACCESS_PASSWORD: st.error("系統授權碼錯誤！")
     elif not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料！")
     else:
@@ -380,7 +380,7 @@ if st.button("立即配置個人班表圖片檔"):
 
                     # 💡 右下角每日工時統計（字體 10.5）
                     if d.get("hours"): 
-                        draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(10.5))
+                        draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(11.5))
                     
                     cx = x + CW / 2
                     if tr.startswith("DO"): draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
