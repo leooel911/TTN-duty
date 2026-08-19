@@ -3,7 +3,7 @@ import os
 import re
 import io
 import pandas as pd
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta, datetime, timezone
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
@@ -11,8 +11,8 @@ from matplotlib.patches import FancyBboxPatch
 
 matplotlib.use('Agg')
 
-# 🚆 將頁面標籤圖示 (Favicon) 改為你上傳的 700st.png
-st.set_page_config(page_title=" TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
+# 🚆 將頁面標籤圖示 (Favicon) 改為 700st.png
+st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
 
 # 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
@@ -161,7 +161,9 @@ def get_file_info(path):
     """取得檔案檔名與最後更新日期資訊"""
     if os.path.exists(path):
         mtime = os.path.getmtime(path)
-        time_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+        # 轉換為台灣時間顯示
+        tw_tz = timezone(timedelta(hours=8))
+        time_str = datetime.fromtimestamp(mtime, tw_tz).strftime("%Y-%m-%d %H:%M:%S")
         return path, time_str
     return "尚無檔案", "尚未上傳"
 
@@ -464,8 +466,10 @@ if st.button("立即配置個人班表圖片檔"):
                 ax.add_patch(badge)
                 draw_bold_text(ax, lx + badge_w / 2, legend_y + badge_h / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(7.5))
 
-            # 底部灰色版本與設計版權宣告文字
-            now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+            # 💡 強制轉換為台灣時區 (UTC+8) 顯示生成時間
+            tw_tz = timezone(timedelta(hours=8))
+            now_str = datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M")
+            
             draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // TECHNICAL SHIFT SYSTEM v4.19", ha="left", va="bottom", color="#64748B", fontproperties=fp(7.5))
             draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str} | CONFIDENTIAL", ha="right", va="bottom", color="#64748B", fontproperties=fp(7.5))
 
@@ -493,7 +497,7 @@ with st.expander("管理員專用：Database"):
         st.success("密碼正確，你好歡迎！ＬＥＯ")
         
         # 📊 顯示目前各職位班表的檔名與上傳時間狀態板
-        st.subheader("目前各職位班表狀態")
+        st.subheader("print(status)")
         status_data = []
         for role, path in ROLE_FILES.items():
             fname, mtime = get_file_info(path)
