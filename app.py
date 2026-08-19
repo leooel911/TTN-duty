@@ -194,9 +194,13 @@ if st.button("立即生成個人班表圖片"):
             ty = 1.0 - MT - TH
             ax.add_patch(FancyBboxPatch((ML, ty), TW, TH, boxstyle="square,pad=0", linewidth=0, facecolor=C_HDR))
             
-            # 完整標題資訊：恢復顯示 員編、姓名 與 期間天數
+            # 頂部標題與識別資訊
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(12))
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]} ({len(dates)} DAYS)", ha="left", va="center", color="#CBD5E1", fontproperties=fp(9))
+            
+            # 右上角 C.L.F DESIGNS 標誌
+            ax.plot(0.965, ty + TH * 0.58, marker='o', markersize=4, color="#22C55E")
+            draw_bold_text(ax, 0.985, ty + TH * 0.58, "C.L.F DESIGNS", ha="right", va="center", color="#FFFFFF", fontproperties=fp(8.5))
 
             dlabels = ["SUN 星期日", "MON 星期一", "TUE 星期二", "WED 星期三", "THU 星期四", "FRI 星期五", "SAT 星期六"]
             dy = ty - DH
@@ -266,7 +270,7 @@ if st.button("立即生成個人班表圖片"):
                             draw_bold_text(ax, cx, ry + RH * 0.44, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(11))
                             draw_bold_text(ax, cx, ry + RH * 0.20, tr, ha="center", va="center", color="#000000", fontproperties=fp(10.5))
 
-            legend_y = MB * 0.3
+            legend_y = MB * 0.45
             badge_w, badge_h = CW * 0.90, 0.022
             has_active_transport = any(d in active_transport for d in dates)
             has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
@@ -287,6 +291,11 @@ if st.button("立即生成個人班表圖片"):
                 badge = FancyBboxPatch((lx, legend_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.2, edgecolor=border_clr, facecolor=bg_clr)
                 ax.add_patch(badge)
                 draw_bold_text(ax, lx + badge_w / 2, legend_y + badge_h / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(7.5))
+
+            # 底部灰色版本與設計版權宣告文字
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+            draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // TECHNICAL SHIFT SYSTEM v4.19", ha="left", va="bottom", color="#64748B", fontproperties=fp(7.5))
+            draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str} | CONFIDENTIAL", ha="right", va="bottom", color="#64748B", fontproperties=fp(7.5))
 
             buf = io.BytesIO()
             plt.tight_layout(pad=0)
