@@ -146,14 +146,12 @@ NATIONAL_HOLIDAYS = {
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "//    T r a i n    c r e w    D U TY    C A L E N D A R"
 
-# 三種職位的獨立檔案路徑
 ROLE_FILES = {
     "駕駛": "TD.xlsx",
     "列車長": "TM.xlsx",
     "服勤員": "TA.xlsx"
 }
 
-# 🔐 設定管理員密碼與組員查詢授權密碼
 ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 
@@ -208,7 +206,7 @@ def pad_time(t_str):
     return f"{int(parts[0]):02d}:{parts[1]}" if len(parts) == 2 else str(t_str)
 
 def fmt_hours(h):
-    h_str = str(h)
+    h_str = str(h).strip()
     return h_str.replace(":", "h") + "m" if ":" in h_str and "h" not in h_str else h_str
 
 def parse_cell(raw):
@@ -221,18 +219,19 @@ def parse_cell(raw):
         times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
         return dict(start=pad_time(times[0]) if times else "", train="PAY", end=pad_time(times[1]) if len(times)>1 else "", hours="", note="")
     
-    # 💡 完整抓取時間與工時（支援帶有 h/m 或位於特定行數的工時格式）
+    # 💡 修正工時抓取：直接找包含 h/m 的行，或是符合工時格式的字串
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
     
-    # 尋找包含 h 或 m 的行作為工時
-    hours = next((fmt_hours(l) for l in lines if "h" in l or "m" in l), "")
+    # 尋找含有 h 或 m 的行作為每日工時統計
+    hours_raw = next((l for l in lines if "h" in l.lower() or "m" in l.lower() or re.search(r'\d+h', l)), "")
+    hours = fmt_hours(hours_raw) if hours_raw else ""
     
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     
-    # 車次編號通常是既不是時間、也不是工時、也不是 DO/PAY 的文字
-    train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l and "DO" not in l and "PAY" not in l), "")
-    notes = [l for l in lines if l not in times and l != train_code and "h" not in l and "m" not in l]
+    # 排除時間與工時後，抓取車次編號與備註
+    train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != hours_raw and "h" not in l.lower() and "m" not in l.lower() and "DO" not in l and "PAY" not in l), "")
+    notes = [l for l in lines if l not in times and l != train_code and l != hours_raw]
     
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
 
@@ -321,11 +320,9 @@ if st.button("立即配置個人班表圖片檔"):
             ty = 1.0 - MT - TH
             ax.add_patch(FancyBboxPatch((ML, ty), TW, TH, boxstyle="square,pad=0", linewidth=0, facecolor=C_HDR))
             
-            # 頂部標題與識別資訊
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(16))
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]}", ha="left", va="center", color="#CBD5E1", fontproperties=fp(11))
             
-            # 💡 右上角標籤對齊「SAT 星期六」右界
             badge_w = CW * 0.90
             badge_x = (1.0 - MR) - CW + (CW - badge_w) / 2
             badge_y = ty + TH * 0.42
@@ -364,7 +361,7 @@ if st.button("立即配置個人班表圖片檔"):
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
                     draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_HOLI_TXT if dt in NATIONAL_HOLIDAYS else "#000000", fontproperties=fp(10))
                     
-                    # 💡 畫出右下角每日工時（超時自動顯示紅字）
+                    # 💡 畫出右下角每日工時統計
                     if d.get("hours"): 
                         draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(9))
                     
@@ -376,7 +373,6 @@ if st.button("立即配置個人班表圖片檔"):
                         draw_bold_text(ax, cx, ry + RH * 0.4, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(13))
                         draw_bold_text(ax, cx, ry + RH * 0.15, tr, ha="center", va="center", color="#000000", fontproperties=fp(12))
 
-            # 底部備註膠囊圖例 (Legend)
             legend_y = MB * 0.45
             badge_w_leg, badge_h_leg = CW * 0.90, 0.022
             has_active_transport = any(d in active_transport for d in dates)
@@ -402,7 +398,6 @@ if st.button("立即配置個人班表圖片檔"):
             tw_tz = timezone(timedelta(hours=8))
             now_str = datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M")
             
-            # 底部版權與時間文字
             draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
             draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#0F172A", fontproperties=fp(12))
             
