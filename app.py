@@ -15,7 +15,6 @@ matplotlib.use('Agg')
 # 【每月更新區】請將當月大班表文字貼在下方的引號中間
 # ==========================================
 DUTY_DATA = """
-(請在此貼上當月大班表文字內容)
 Train Crew Allocation List																																				
 Nangang																																	Update Date  2026/08/13			
 Attendant																																	2026/08/02~2026/09/05			
