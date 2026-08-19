@@ -155,7 +155,7 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-st.title("🚆 TTN Duty Engine “)
+st.title("🚆 TTN Duty Engine")
 
 with st.expander("📁 管理員專用：Database"):
     uploaded_file = st.file_uploader("選擇班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
@@ -194,9 +194,9 @@ if st.button("立即生成個人班表圖片"):
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(12))
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]} ({len(dates)} DAYS)", ha="left", va="center", color="#CBD5E1", fontproperties=fp(9))
             
-            # 右上角 C.L.F DESIGNS 標誌（綠點在左側，完美不卡字）
+            # 右上角 Producer | C.L.F 標誌（綠點在左側）
             ax.plot(0.935 - 0.095, ty + TH * 0.58, marker='o', markersize=4, color="#22C55E")
-            draw_bold_text(ax, 0.935, ty + TH * 0.58, " Producer | C.L.F ", ha="right", va="center", color="#FFFFFF", fontproperties=fp(8.5))
+            draw_bold_text(ax, 0.935, ty + TH * 0.58, "Producer | C.L.F", ha="right", va="center", color="#FFFFFF", fontproperties=fp(8.5))
 
             dlabels = ["SUN 星期日", "MON 星期一", "TUE 星期二", "WED 星期三", "THU 星期四", "FRI 星期五", "SAT 星期六"]
             dy = ty - DH
