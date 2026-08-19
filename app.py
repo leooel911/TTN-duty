@@ -145,16 +145,16 @@ NATIONAL_HOLIDAYS = {
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "//    T r a i n    c r e w    D U TY    C A L E N D A R"
 
-# 三種職位的獨立檔案路徑
+# 三種職位的獨立檔案路徑（已更新為 TD.xlsx, TM.xlsx, TA.xlsx）
 ROLE_FILES = {
-    "駕駛": "duty_driver.xlsx",
-    "列車長": "duty_guard.xlsx",
-    "服勤員": "duty_attendant.xlsx"
+    "駕駛": "TD.xlsx",
+    "列車長": "TM.xlsx",
+    "服勤員": "TA.xlsx"
 }
 
 # 🔐 設定管理員密碼與組員查詢授權密碼
 ADMIN_PASSWORD = "Lf0900"
-CREW_ACCESS_PASSWORD = "0900"  # <-- 授權給內部組員查詢的密碼
+CREW_ACCESS_PASSWORD = "0900"
 
 def get_file_info(path):
     """取得檔案檔名與最後更新日期資訊"""
