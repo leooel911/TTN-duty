@@ -13,7 +13,7 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="🚆", layout="centered")
 
-# 📱 專為 99% 手機使用者打造的 Mobile-First 極致優化 CSS
+# 📱 強制按鈕左右滿版置中與手機端優化 CSS
 st.markdown("""
 <style>
     /* 全域頁面背景與手機端邊距優化 */
@@ -49,7 +49,7 @@ st.markdown("""
         font-weight: 700;
         font-family: monospace;
     }
-    /* 手機端輸入框優化（大字體、好點擊、不跳針） */
+    /* 手機端輸入框優化 */
     .stTextInput input {
         font-size: 18px !important;
         padding: 14px 16px !important;
@@ -63,7 +63,12 @@ st.markdown("""
         font-weight: 600 !important;
         color: #E2E8F0 !important;
     }
-    /* 手機端按鈕全面放大，支援拇指好按的滿版設計 */
+    /* 讓按鈕的父容器與按鈕本身強制 100% 左右對齊置中 */
+    div.stButton {
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }
     div.stButton > button {
         font-size: 17px !important;
         font-weight: 600 !important;
@@ -81,7 +86,12 @@ st.markdown("""
         background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100% !important);
         transform: translateY(-1px);
     }
-    /* 下載按鈕同步升級手機友善大小 */
+    /* 下載按鈕同步置中與滿版 */
+    div.stDownloadButton {
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }
     div.stDownloadButton > button {
         font-size: 16px !important;
         font-weight: 600 !important;
@@ -279,7 +289,7 @@ C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN Shift Producer // C.L.F Edition")
 
-# 📊 手機版高適應性系統狀態儀表板卡片
+# 📊 系統狀態儀表板卡片
 current_period = get_system_duty_period()
 st.markdown(f"""
 <div class="telemetry-card">
