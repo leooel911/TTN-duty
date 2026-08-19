@@ -21027,7 +21027,7 @@ def parse_cell(raw):
     
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
 
-def parse_flexible_employees(text, target_name):
+def parse_flexible_employees(text, target_id):
     f = io.StringIO(text.strip())
     rows = list(csv.reader(f, delimiter="\t"))
     start_date_str = next((re.search(r'(\d+/\d+)', r[2]).group(1) for r in rows if any("員工" in c for c in r) and len(r)>2), None)
@@ -21037,16 +21037,18 @@ def parse_flexible_employees(text, target_name):
     start_dt = date(year, start_m, start_d)
     
     employees = []
+    target_clean = target_id.strip().upper()
     for r in rows:
         if not r or len(r) < 2: continue
         if any(k in r[0].strip() for k in ["員工", "編號", "工號"]): continue
-        match = re.search(r'(A\d{6})', r[0].strip())
+        match = re.search(r'(A\d{6})', r[0].strip(), re.IGNORECASE)
         if match:
-            emp_id, emp_name = match.group(1), r[1].strip()
-            if emp_name == target_name.strip():
+            emp_id, emp_name = match.group(1).upper(), r[1].strip()
+            # 改為比對員編 (Emp ID)
+            if emp_id == target_clean:
                 employees.append((emp_id, emp_name, r[2:]))
                 
-    if not employees: raise ValueError(f"找不到同仁「{target_name}」的資料，請確認名字是否正確。")
+    if not employees: raise ValueError(f"找不到員編「{target_id}」的資料，請確認員編是否正確。")
     base_days = len(employees[0][2])
     dates = [f"{(start_dt + timedelta(days=i)).month}/{(start_dt + timedelta(days=i)).day}" for i in range(base_days)]
     return start_dt, dates, employees[0]
@@ -21088,14 +21090,14 @@ C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#
 C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN 勤務班表產生器")
-target_name = st.text_input("輸入你的名字", value="江立夫")
+target_id = st.text_input("輸入員編 (例如: A026047)", value="A026047")
 
 if st.button("立即生成個人班表圖片"):
     if not DUTY_DATA.strip() or "請在此貼上" in DUTY_DATA:
         st.error("管理員尚未設定當月大班表資料，請先至 GitHub 更新 DUTY_DATA！")
     else:
         try:
-            start_dt, dates, emp_data = parse_flexible_employees(DUTY_DATA, target_name)
+            start_dt, dates, emp_data = parse_flexible_employees(DUTY_DATA, target_id)
             emp_id, emp_name, cells = emp_data
             active_transport = parse_transport_periods(TRANSPORT_PERIODS)
             font_prop = setup_font()
