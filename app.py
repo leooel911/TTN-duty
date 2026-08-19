@@ -184,11 +184,10 @@ def setup_font():
             pass
     return None
 
-# 🎨 色彩統一設定：一般文字全數改為高對比純黑色 (#000000)
 C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#475569", "#F1F5F9"
 C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
 C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
-C_TIME, C_TRAIN = "#000000", "#000000"  # 時間與一般班別一律純黑
+C_TIME, C_TRAIN = "#000000", "#000000"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = (
     "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 )
@@ -197,6 +196,12 @@ C_TOWN_TXT = "#000000"
 st.title("🚆 TTN 勤務班表產生器")
 target_name = st.text_input("輸入你的名字", value="江立夫")
 raw_text_input = st.text_area("在此貼上大班表文字內容", height=150)
+
+def draw_bold_text(ax, x, y, text, **kwargs):
+    """強效加粗函數：透過微幅位移重疊繪製，達成強制粗體效果"""
+    ax.text(x, y, text, **kwargs)
+    ax.text(x + 0.0003, y, text, **kwargs)
+    ax.text(x, y + 0.0003, text, **kwargs)
 
 if st.button("立即生成個人班表圖片"):
     if not raw_text_input.strip():
@@ -208,16 +213,10 @@ if st.button("立即生成個人班表圖片"):
             active_transport = parse_transport_periods(TRANSPORT_PERIODS)
             font_prop = setup_font()
 
-            def fp(size=9, bold=True):
+            def fp(size=9):
                 if font_prop:
-                    f = fm.FontProperties(fname=font_prop.get_file(), size=size)
-                    if bold:
-                        try:
-                            f.set_weight('bold')
-                        except:
-                            pass
-                    return f
-                return fm.FontProperties(size=size, weight="bold" if bold else "normal")
+                    return fm.FontProperties(fname=font_prop.get_file(), size=size)
+                return fm.FontProperties(size=size)
 
             weeks = build_weeks(start_dt, dates, cells)
             n_weeks = len(weeks)
@@ -235,15 +234,15 @@ if st.button("立即生成個人班表圖片"):
 
             ty = 1.0 - MT - TH
             ax.add_patch(FancyBboxPatch((ML, ty), TW, TH, boxstyle="square,pad=0", linewidth=0, facecolor=C_HDR))
-            ax.text(ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(12, True))
-            ax.text(ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]} ({len(dates)} DAYS)", ha="left", va="center", color="#CBD5E1", fontproperties=fp(9, True))
+            draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(12))
+            draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]} ({len(dates)} DAYS)", ha="left", va="center", color="#CBD5E1", fontproperties=fp(9))
 
             dlabels = ["SUN 星期日", "MON 星期一", "TUE 星期二", "WED 星期三", "THU 星期四", "FRI 星期五", "SAT 星期六"]
             dy = ty - DH
             for c in range(7):
                 x = ML + c * CW
                 ax.add_patch(FancyBboxPatch((x, dy), CW, DH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#475569", facecolor="#94A3B8"))
-                ax.text(x + CW / 2, dy + DH / 2, dlabels[c], ha="center", va="center", color="#000000", fontproperties=fp(9, True))
+                draw_bold_text(ax, x + CW / 2, dy + DH / 2, dlabels[c], ha="center", va="center", color="#000000", fontproperties=fp(9))
 
             has_emp_do, has_emp_pay, has_emp_ot, has_emp_town = False, False, False, False
             for week in weeks:
@@ -279,35 +278,35 @@ if st.button("立即生成個人班表圖片"):
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
 
                     if is_national_holiday:
-                        ax.text(x + 0.005, ry + RH - 0.004, f"{dt} ({NATIONAL_HOLIDAYS[dt]})", ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(8, True))
+                        draw_bold_text(ax, x + 0.005, ry + RH - 0.004, f"{dt} ({NATIONAL_HOLIDAYS[dt]})", ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(8))
                     else:
-                        ax.text(x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color="#000000", fontproperties=fp(9, True))
+                        draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color="#000000", fontproperties=fp(9))
 
                     if d.get("hours"):
                         ot = is_overtime(d["hours"])
-                        ax.text(x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if ot else "#000000", fontproperties=fp(7.5, True))
+                        draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if ot else "#000000", fontproperties=fp(7.5))
 
                     cx = x + CW / 2
                     if tr.startswith("DO"):
                         if note:
-                            ax.text(cx, ry + RH * 0.62, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(8, True))
-                            ax.text(cx, ry + RH * 0.35, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(10, True))
+                            draw_bold_text(ax, cx, ry + RH * 0.62, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(8))
+                            draw_bold_text(ax, cx, ry + RH * 0.35, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(10))
                         else:
-                            ax.text(cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(11.5, True))
+                            draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(11.5))
                     elif tr == "PAY":
-                        ax.text(cx, ry + RH * 0.62, "特休 PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(10, True))
+                        draw_bold_text(ax, cx, ry + RH * 0.62, "特休 PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(10))
                         if d["start"] and d["end"]:
-                            ax.text(cx, ry + RH * 0.35, f"{d['start']}～{d['end']}", ha="center", va="center", color="#000000", fontproperties=fp(8.5, True))
+                            draw_bold_text(ax, cx, ry + RH * 0.35, f"{d['start']}～{d['end']}", ha="center", va="center", color="#000000", fontproperties=fp(8.5))
                     else:
                         if note:
-                            ax.text(cx, ry + RH * 0.80, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(7.5, True))
-                            ax.text(cx, ry + RH * 0.58, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(10, True))
-                            ax.text(cx, ry + RH * 0.38, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(10, True))
-                            ax.text(cx, ry + RH * 0.18, tr, ha="center", va="center", color="#000000", fontproperties=fp(9.5, True))
+                            draw_bold_text(ax, cx, ry + RH * 0.80, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(7.5))
+                            draw_bold_text(ax, cx, ry + RH * 0.58, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(10))
+                            draw_bold_text(ax, cx, ry + RH * 0.38, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(10))
+                            draw_bold_text(ax, cx, ry + RH * 0.18, tr, ha="center", va="center", color="#000000", fontproperties=fp(9.5))
                         else:
-                            ax.text(cx, ry + RH * 0.68, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(11, True))
-                            ax.text(cx, ry + RH * 0.44, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(11, True))
-                            ax.text(cx, ry + RH * 0.20, tr, ha="center", va="center", color="#000000", fontproperties=fp(10, True))
+                            draw_bold_text(ax, cx, ry + RH * 0.68, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(11))
+                            draw_bold_text(ax, cx, ry + RH * 0.44, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(11))
+                            draw_bold_text(ax, cx, ry + RH * 0.20, tr, ha="center", va="center", color="#000000", fontproperties=fp(10))
 
             legend_y = MB * 0.3
             badge_w, badge_h = CW * 0.90, 0.022
@@ -329,7 +328,7 @@ if st.button("立即生成個人班表圖片"):
                 lx = col_x + (CW - badge_w) / 2
                 badge = FancyBboxPatch((lx, legend_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.2, edgecolor=border_clr, facecolor=bg_clr)
                 ax.add_patch(badge)
-                ax.text(lx + badge_w / 2, legend_y + badge_h / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(7.5, True))
+                draw_bold_text(ax, lx + badge_w / 2, legend_y + badge_h / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(7.5))
 
             buf = io.BytesIO()
             plt.tight_layout(pad=0)
