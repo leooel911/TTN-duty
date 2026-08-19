@@ -158,7 +158,6 @@ ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 
 def get_file_info(path):
-    """取得檔案檔名與最後更新日期資訊"""
     if os.path.exists(path):
         mtime = os.path.getmtime(path)
         tw_tz = timezone(timedelta(hours=8))
@@ -222,14 +221,18 @@ def parse_cell(raw):
         times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
         return dict(start=pad_time(times[0]) if times else "", train="PAY", end=pad_time(times[1]) if len(times)>1 else "", hours="", note="")
     
-    # 💡 修正：完整解析時間、工時、車次與備註
+    # 💡 完整抓取時間與工時（支援帶有 h/m 或位於特定行數的工時格式）
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
-    hours = next((fmt_hours(l) for l in lines if "h" in l or "m" in l or (":" in l and not re.match(r'^\d{1,2}:\d{2}$', l))), "")
+    
+    # 尋找包含 h 或 m 的行作為工時
+    hours = next((fmt_hours(l) for l in lines if "h" in l or "m" in l), "")
     
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
-    train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l and ":" not in l and "DO" not in l and "PAY" not in l), "")
-    notes = [l for l in lines if l not in times and l != train_code and "h" not in l and "m" not in l and not (":" in l and l != start_time and l != end_time)]
+    
+    # 車次編號通常是既不是時間、也不是工時、也不是 DO/PAY 的文字
+    train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l and "DO" not in l and "PAY" not in l), "")
+    notes = [l for l in lines if l not in times and l != train_code and "h" not in l and "m" not in l]
     
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
 
@@ -361,7 +364,7 @@ if st.button("立即配置個人班表圖片檔"):
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
                     draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_HOLI_TXT if dt in NATIONAL_HOLIDAYS else "#000000", fontproperties=fp(10))
                     
-                    # 💡 確保每日工時有抓到時正確畫在格子右下角
+                    # 💡 畫出右下角每日工時（超時自動顯示紅字）
                     if d.get("hours"): 
                         draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(9))
                     
