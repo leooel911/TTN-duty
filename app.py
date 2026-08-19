@@ -175,7 +175,6 @@ def build_weeks(start_dt, dates, cells):
     return weeks
 
 def setup_font():
-    # 支援各種可能上傳的字型檔名
     font_paths = [
         "NotoSansTC.ttf",
         "NotoSansTC-VariableFont_wght.ttf",
@@ -187,19 +186,19 @@ def setup_font():
         if os.path.exists(path):
             try:
                 fm.fontManager.addfont(path)
-                prop = fm.FontProperties(fname=path)
-                return prop
+                return fm.FontProperties(fname=path)
             except Exception:
                 continue
     return None
 
-C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#94A3B8", "#F1F5F9"
+# 🎨 高對比、濃郁色彩規範
+C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#64748B", "#F1F5F9"
 C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
 C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_TIME, C_TRAIN, C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = (
-    "#0F172A", "#020617", "#9F1239", "#C2410C", "#9A3412", "#B91C1C", "#5B21B6"
+    "#000000", "#000000", "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 )
-C_TOWN_TXT = "#1E293B"
+C_TOWN_TXT = "#0F172A"
 
 st.title("🚆 TTN 勤務班表產生器 (手機網頁版)")
 target_name = st.text_input("輸入你的名字", value="江立夫")
@@ -215,7 +214,7 @@ if st.button("立即生成個人班表圖片"):
             active_transport = parse_transport_periods(TRANSPORT_PERIODS)
             font_prop = setup_font()
 
-            def fp(size=9, bold=False):
+            def fp(size=9, bold=True): # 強制預設為粗體以提高清晰度
                 if font_prop:
                     f = fm.FontProperties(fname=font_prop.get_file(), size=size)
                     if bold:
@@ -249,8 +248,8 @@ if st.button("立即生成個人班表圖片"):
             dy = ty - DH
             for c in range(7):
                 x = ML + c * CW
-                ax.add_patch(FancyBboxPatch((x, dy), CW, DH, boxstyle="square,pad=0", linewidth=0.8, edgecolor=C_BORDER, facecolor="#CBD5E1"))
-                ax.text(x + CW / 2, dy + DH / 2, dlabels[c], ha="center", va="center", color="#0F172A", fontproperties=fp(9, True))
+                ax.add_patch(FancyBboxPatch((x, dy), CW, DH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#475569", facecolor="#94A3B8"))
+                ax.text(x + CW / 2, dy + DH / 2, dlabels[c], ha="center", va="center", color="#0F172A", fontproperties=fp(9.5, True))
 
             has_emp_do, has_emp_pay, has_emp_ot, has_emp_town = False, False, False, False
             for week in weeks:
@@ -269,7 +268,7 @@ if st.button("立即生成個人班表圖片"):
                 for ci, cell in enumerate(week):
                     x = ML + ci * CW
                     if cell is None:
-                        ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=0.8, edgecolor=C_BORDER, facecolor=C_EMPTY))
+                        ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=C_EMPTY))
                         continue
 
                     dt, d = cell
@@ -283,38 +282,38 @@ if st.button("立即生成個人班表圖片"):
                     elif ci == 0 or ci == 6: bg = C_WEEKEND_BG
                     else: bg = C_WORK_BG
 
-                    ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=0.8, edgecolor=C_BORDER, facecolor=bg))
+                    ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
 
                     if is_national_holiday:
-                        ax.text(x + 0.005, ry + RH - 0.004, f"{dt} ({NATIONAL_HOLIDAYS[dt]})", ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(8, True))
+                        ax.text(x + 0.005, ry + RH - 0.004, f"{dt} ({NATIONAL_HOLIDAYS[dt]})", ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(8.5, True))
                     else:
-                        ax.text(x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_TIME, fontproperties=fp(9, True))
+                        ax.text(x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_TIME, fontproperties=fp(9.5, True))
 
                     if d.get("hours"):
                         ot = is_overtime(d["hours"])
-                        ax.text(x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if ot else "#334155", fontproperties=fp(7.5, ot))
+                        ax.text(x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if ot else "#0F172A", fontproperties=fp(8, True))
 
                     cx = x + CW / 2
                     if tr.startswith("DO"):
                         if note:
-                            ax.text(cx, ry + RH * 0.62, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(8, True))
-                            ax.text(cx, ry + RH * 0.35, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(10, True))
+                            ax.text(cx, ry + RH * 0.62, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(8.5, True))
+                            ax.text(cx, ry + RH * 0.35, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(10.5, True))
                         else:
-                            ax.text(cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(11.5, True))
+                            ax.text(cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(12, True))
                     elif tr == "PAY":
-                        ax.text(cx, ry + RH * 0.62, "特休 PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(10, True))
+                        ax.text(cx, ry + RH * 0.62, "特休 PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(10.5, True))
                         if d["start"] and d["end"]:
-                            ax.text(cx, ry + RH * 0.35, f"{d['start']}～{d['end']}", ha="center", va="center", color=C_TIME, fontproperties=fp(8.5, True))
+                            ax.text(cx, ry + RH * 0.35, f"{d['start']}～{d['end']}", ha="center", va="center", color=C_TIME, fontproperties=fp(9, True))
                     else:
                         if note:
-                            ax.text(cx, ry + RH * 0.80, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(7.5, True))
-                            ax.text(cx, ry + RH * 0.58, d["start"], ha="center", va="center", color=C_TIME, fontproperties=fp(10.5, True))
-                            ax.text(cx, ry + RH * 0.38, d["end"], ha="center", va="center", color=C_TIME, fontproperties=fp(10.5, True))
-                            ax.text(cx, ry + RH * 0.18, tr, ha="center", va="center", color=C_TRAIN, fontproperties=fp(9.5, True))
+                            ax.text(cx, ry + RH * 0.80, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(8, True))
+                            ax.text(cx, ry + RH * 0.58, d["start"], ha="center", va="center", color=C_TIME, fontproperties=fp(11, True))
+                            ax.text(cx, ry + RH * 0.38, d["end"], ha="center", va="center", color=C_TIME, fontproperties=fp(11, True))
+                            ax.text(cx, ry + RH * 0.18, tr, ha="center", va="center", color=C_TRAIN, fontproperties=fp(10, True))
                         else:
-                            ax.text(cx, ry + RH * 0.68, d["start"], ha="center", va="center", color=C_TIME, fontproperties=fp(11.0, True))
-                            ax.text(cx, ry + RH * 0.44, d["end"], ha="center", va="center", color=C_TIME, fontproperties=fp(11.0, True))
-                            ax.text(cx, ry + RH * 0.20, tr, ha="center", va="center", color=C_TRAIN, fontproperties=fp(10.0, True))
+                            ax.text(cx, ry + RH * 0.68, d["start"], ha="center", va="center", color=C_TIME, fontproperties=fp(11.5, True))
+                            ax.text(cx, ry + RH * 0.44, d["end"], ha="center", va="center", color=C_TIME, fontproperties=fp(11.5, True))
+                            ax.text(cx, ry + RH * 0.20, tr, ha="center", va="center", color=C_TRAIN, fontproperties=fp(10.5, True))
 
             legend_y = MB * 0.3
             badge_w, badge_h = CW * 0.90, 0.022
@@ -322,21 +321,21 @@ if st.button("立即生成個人班表圖片"):
             has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
 
             pill_legends = [
-                (0, "#F1F5F9", "#94A3B8", C_NOTE_TXT, "備註 (Note)"),
-                (1, C_DO_BG if has_emp_do else C_WORK_BG, "#FDA4AF" if has_emp_do else "#CBD5E1", C_DO_TXT if has_emp_do else "#94A3B8", "休假日 (DO)"),
-                (2, C_PAY_BG if has_emp_pay else C_WORK_BG, "#FDBA74" if has_emp_pay else "#CBD5E1", C_PAY_TXT if has_emp_pay else "#94A3B8", "特休 (PAY)"),
-                (3, C_WORK_BG, "#FCA5A5" if has_emp_ot else "#CBD5E1", C_OT_TXT if has_emp_ot else "#94A3B8", "工時 > 8.5h"),
-                (4, "#FFF7ED" if has_active_holiday else C_WORK_BG, "#FED7AA" if has_active_holiday else "#CBD5E1", C_HOLI_TXT if has_active_holiday else "#94A3B8", "國定假日"),
-                (5, "#F3E8FF" if has_active_transport else C_WORK_BG, "#DDD6FE" if has_active_transport else "#CBD5E1", C_NOTE_TXT if has_active_transport else "#94A3B8", "疏運"),
-                (6, C_TOWN_BG if has_emp_town else C_WORK_BG, "#64748B" if has_emp_town else "#CBD5E1", C_TOWN_TXT if has_emp_town else "#94A3B8", "非正線勤務"),
+                (0, "#F1F5F9", "#475569", C_NOTE_TXT, "備註 (Note)"),
+                (1, C_DO_BG if has_emp_do else C_WORK_BG, "#E11D48" if has_emp_do else "#64748B", C_DO_TXT if has_emp_do else "#64748B", "休假日 (DO)"),
+                (2, C_PAY_BG if has_emp_pay else C_WORK_BG, "#EA580C" if has_emp_pay else "#64748B", C_PAY_TXT if has_emp_pay else "#64748B", "特休 (PAY)"),
+                (3, C_WORK_BG, "#DC2626" if has_emp_ot else "#64748B", C_OT_TXT if has_emp_ot else "#64748B", "工時 > 8.5h"),
+                (4, "#FFF7ED" if has_active_holiday else C_WORK_BG, "#C2410C" if has_active_holiday else "#64748B", C_HOLI_TXT if has_active_holiday else "#64748B", "國定假日"),
+                (5, "#F3E8FF" if has_active_transport else C_WORK_BG, "#7C3AED" if has_active_transport else "#64748B", C_NOTE_TXT if has_active_transport else "#64748B", "疏運"),
+                (6, C_TOWN_BG if has_emp_town else C_WORK_BG, "#334155" if has_emp_town else "#64748B", C_TOWN_TXT if has_emp_town else "#64748B", "非正線勤務"),
             ]
 
             for col_idx, bg_clr, border_clr, txt_clr, label in pill_legends:
                 col_x = ML + col_idx * CW
                 lx = col_x + (CW - badge_w) / 2
-                badge = FancyBboxPatch((lx, legend_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.0, edgecolor=border_clr, facecolor=bg_clr)
+                badge = FancyBboxPatch((lx, legend_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.2, edgecolor=border_clr, facecolor=bg_clr)
                 ax.add_patch(badge)
-                ax.text(lx + badge_w / 2, legend_y + badge_h / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(7.0, True))
+                ax.text(lx + badge_w / 2, legend_y + badge_h / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(7.5, True))
 
             buf = io.BytesIO()
             plt.tight_layout(pad=0)
