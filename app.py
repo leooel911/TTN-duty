@@ -35,11 +35,12 @@ ROLE_FILES = {
 ADMIN_PASSWORD = "Lf0900"
 
 def get_file_info(path):
-    """取得檔案更新日期資訊"""
+    """取得檔案檔名與最後更新日期資訊"""
     if os.path.exists(path):
         mtime = os.path.getmtime(path)
-        return datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
-    return "尚未上傳"
+        time_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+        return path, time_str
+    return "尚無檔案", "尚未上傳"
 
 def draw_bold_text(ax, x, y, text, **kwargs):
     """四重疊影加粗函數"""
@@ -331,11 +332,12 @@ with st.expander("📁 管理員專用：Database (更新班表)"):
     if password_input == ADMIN_PASSWORD:
         st.success("🔓 密碼正確，你好！ＬＥＯ")
         
-        # 📊 移至密碼解鎖後才顯示的上傳狀態資訊板
+        # 📊 顯示目前各職位班表的檔名與上傳時間狀態板
         st.subheader("📊 目前各職位班表狀態")
         status_data = []
         for role, path in ROLE_FILES.items():
-            status_data.append({"職位": role, "最後更新時間": get_file_info(path)})
+            fname, mtime = get_file_info(path)
+            status_data.append({"職位": role, "存檔名稱": fname, "最後更新時間": mtime})
         st.table(pd.DataFrame(status_data))
         
         # 選擇要上傳的職位類別
