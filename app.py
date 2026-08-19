@@ -12,7 +12,7 @@ from matplotlib.patches import FancyBboxPatch
 matplotlib.use('Agg')
 
 # 🚆 將頁面標籤圖示 (Favicon) 改為 700st.png
-st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
+st.set_page_config(page_title=" TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
 
 # 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
@@ -39,7 +39,7 @@ st.markdown("""
     /* 主標題：放大至 26px，強制不換行 */
     .main-title {
         color: #F8FAFC !important;
-        font-size: 26px;
+        font-size: 27px;
         font-weight: 800;
         letter-spacing: 0.5px;
         white-space: nowrap;
@@ -48,7 +48,7 @@ st.markdown("""
     /* 右上角極小署名標籤 */
     .edition-badge {
         color: #64748B !important;
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 600;
         letter-spacing: 1px;
         text-transform: uppercase;
@@ -139,7 +139,7 @@ st.markdown("""
 NATIONAL_HOLIDAYS = {
     "1/1": "元旦", "2/16": "除夕", "2/17": "初一", "2/18": "初二", "2/19": "初三", 
     "2/28": "和平紀念日", "4/4": "兒童節", "4/5": "清明節", "5/1": "勞動節",
-    "6/19": "端午節", "9/25": "中秋節", "9/28": "教師節", "10/10": "國慶日",
+    "6/19": "端午節", "8/25": "中秋節", "9/28": "教師節", "10/10": "國慶日",
     "10/25": "台灣光復節", "12/25": "行憲紀念日"
 }
 
