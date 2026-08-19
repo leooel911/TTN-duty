@@ -81,71 +81,46 @@ def parse_cell(raw):
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
 
 def process_file_data(file_source, target_id):
+    # 指定 header=3（對應 Excel 第 4 列作為標題列）
     if isinstance(file_source, str):
-        df = pd.read_excel(file_source)
+        df = pd.read_excel(file_source, header=3)
     else:
-        filename = file_source.name.lower()
-        if filename.endswith(('.xlsx', '.xls')):
-            df = pd.read_excel(file_source)
-        elif filename.endswith('.csv'):
-            df = pd.read_csv(file_source)
-        else:
-            string_data = file_source.getvalue().decode("utf-8")
-            df = pd.read_csv(io.StringIO(string_data), delimiter="\t")
+        df = pd.read_excel(file_source, header=3)
         
+    df.columns = [str(c).strip() for c in df.columns]
+    
     target_clean = target_id.strip().upper()
     matched_row = None
     emp_id, emp_name = "", ""
     
-    # 尋找標題列或員工資料列，同時找出哪一列包含日期
-    date_row_idx = None
     for idx, row in df.iterrows():
-        row_str = " ".join([str(val) for val in row.values])
-        # 尋找日期格式 (例如 8/2 或 2026/8/2)
-        if re.search(r'\d+/\d+', row_str) and date_row_idx is None:
-            date_row_idx = idx
-        
-        match = re.search(r'(A\d{6})', row_str, re.IGNORECASE)
-        if match:
-            found_id = match.group(1).upper()
-            if found_id == target_clean:
-                matched_row = row.values
-                emp_id = found_id
-                emp_name = str(row.values[1]).strip() if len(row.values) > 1 else "未知"
+        found_id = str(row.iloc[0]).strip().upper() # A 欄為員編
+        if found_id == target_clean:
+            matched_row = row
+            emp_id = found_id
+            emp_name = str(row.iloc[1]).strip() # B 欄為姓名
+            break
                 
     if matched_row is None:
         raise ValueError(f"找不到員編「{target_id}」的資料，請確認輸入是否正確。")
         
-    cells = matched_row[2:]
-    
-    # 解析日期：優先從剛才找到的日期列抓取，若無則從欄位名稱抓
+    # 從表頭抓取日期
+    col_names = df.columns[2:]
     dates = []
-    start_dt = date(2026, 8, 2)
+    start_dt = date(2026, 2, 1)
     
-    if date_row_idx is not None:
-        date_vals = df.iloc[date_row_idx].values[2:]
-        for i, val in enumerate(date_vals):
-            val_str = str(val)
-            match_d = re.search(r'(\d+/\d+)', val_str)
-            if match_d:
-                dates.append(match_d.group(1))
-                if i == 0:
-                    m, d = map(int, match_d.group(1).split("/"))
-                    start_dt = date(2026, m, d)
-            else:
-                dates.append(f"Day {i+1}")
-    else:
-        col_names = df.columns[2:]
-        for i, col in enumerate(col_names):
-            col_str = str(col)
-            match_d = re.search(r'(\d+/\d+)', col_str)
-            if match_d:
-                dates.append(match_d.group(1))
-                if i == 0:
-                    m, d = map(int, match_d.group(1).split("/"))
-                    start_dt = date(2026, m, d)
-            else:
-                dates.append(f"Day {i+1}")
+    for i, col in enumerate(col_names):
+        col_str = str(col).strip()
+        match_d = re.search(r'(\d+/\d+)', col_str)
+        if match_d:
+            dates.append(match_d.group(1))
+            if i == 0:
+                m, d = map(int, match_d.group(1).split("/"))
+                start_dt = date(2026, m, d)
+        else:
+            dates.append(col_str)
+            
+    cells = matched_row.iloc[2:].values
             
     return start_dt, dates, (emp_id, emp_name, cells)
 
@@ -193,7 +168,7 @@ with st.expander("📁 管理員專用：上傳當月班表檔案（更新後永
             f.write(uploaded_file.getbuffer())
         st.success("✅ 班表已成功上傳並永久保存至伺服器！")
 
-target_id = st.text_input("輸入員編 (例如: A021987)", value="A021987")
+target_id = st.text_input("輸入員編 (例如: A018896)", value="A018896")
 
 if st.button("立即生成個人班表圖片"):
     if not os.path.exists(SAVED_FILE_PATH):
