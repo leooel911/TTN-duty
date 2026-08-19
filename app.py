@@ -198,7 +198,9 @@ def parse_transport_periods(raw_periods, year=2026):
             cur = date(year, s_m, s_d)
             end_dt = date(year, e_m, e_d)
             while cur <= end_dt:
+                # 同時支援標準格式與可能不帶零的格式比對
                 expanded[f"{cur.month}/{cur.day}"] = v
+                expanded[f"{cur.month}/{cur.day:02d}"] = v
                 cur += timedelta(days=1)
         else: expanded[k.strip()] = v
     return expanded
@@ -360,7 +362,7 @@ if st.button("立即配置個人班表圖片檔"):
                     bg = C_DO_BG if (is_hol or tr.startswith("DO")) else (C_PAY_BG if tr=="PAY" else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
                     
-                    # 💡 檢查是否為國定假日或疏運日，並分別顯示在左上角與右上角備註
+                    # 💡 日期與右上角備註（國定假日優先，其次為疏運）
                     draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_HOLI_TXT if dt in NATIONAL_HOLIDAYS else "#000000", fontproperties=fp(10))
                     
                     if dt in NATIONAL_HOLIDAYS:
