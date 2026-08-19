@@ -13,37 +13,67 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="🚆", layout="centered")
 
-# 🎨 注入自訂 CSS，放大輸入框並賦予按鈕高級質感色
+# 🎨 注入高質感鐵道調度風格 CSS（科技感面板、現代輸入框與漸層按鈕）
 st.markdown("""
 <style>
+    /* 核心背景與字體微調 */
+    .stApp {
+        background-color: #0B0F19;
+    }
+    /* 資訊面板卡片化 (Dashboard Cards) */
+    .telemetry-card {
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+    .telemetry-title {
+        color: #94A3B8;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+    .telemetry-value {
+        color: #F8FAFC;
+        font-size: 20px;
+        font-weight: 700;
+        font-family: monospace;
+    }
     /* 放大輸入框文字與高度 */
     .stTextInput input {
         font-size: 18px !important;
         padding: 12px 16px !important;
         border-radius: 8px !important;
+        background-color: #1E293B !important;
+        color: #F8FAFC !important;
+        border: 1px solid #475569 !important;
     }
-    /* 放大輸入框標籤文字 */
     .stTextInput label {
         font-size: 16px !important;
         font-weight: 600 !important;
+        color: #E2E8F0 !important;
     }
-    /* 升級主查詢按鈕的質感（漸層藍色、放大字體、圓角） */
+    /* 升級主查詢按鈕的質感（漸層藍色、放大字體、圓角、強懸停） */
     div.stButton > button {
         font-size: 16px !important;
         font-weight: 600 !important;
-        padding: 10px 24px !important;
+        padding: 12px 24px !important;
         border-radius: 8px !important;
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100% !important);
+        background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100% !important);
         color: white !important;
         border: none !important;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+        box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4) !important;
         transition: all 0.3s ease !important;
         width: 100% !important;
     }
     div.stButton > button:hover {
-        background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100% !important);
-        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4) !important;
-        transform: translateY(-1px);
+        background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100% !important);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6) !important;
+        transform: translateY(-2px);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -78,7 +108,7 @@ def get_file_info(path):
     return "尚無檔案", "尚未上傳"
 
 def get_system_duty_period():
-    """自動掃描現有檔案，抓出目前資料庫所涵蓋的月份區間"""
+    """自動掃描現有檔案，抓出目前資料庫所涵蓋的日期區間"""
     for role, path in ROLE_FILES.items():
         if os.path.exists(path):
             try:
@@ -90,10 +120,10 @@ def get_system_duty_period():
                     if match_d:
                         dates.append(match_d.group(1))
                 if dates:
-                    return f"{dates[0]} ~ {dates[-1]}"
+                    return f"{dates[0]} 至 {dates[-1]}"
             except:
                 continue
-    return "尚無有效資料"
+    return "尚未載入有效排班資料"
 
 def draw_bold_text(ax, x, y, text, **kwargs):
     """四重疊影加粗函數"""
@@ -158,7 +188,6 @@ def process_file_data(input_str):
     emp_id, emp_name = "", ""
     df_found = None
     
-    # 智慧全域搜尋：依序檢查駕駛、列車長、服勤員的檔案
     for role, path in ROLE_FILES.items():
         if os.path.exists(path):
             df_temp = pd.read_excel(path, header=3)
@@ -232,13 +261,18 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-st.title("🚆 TTN Shift Producer | C.L.F")
+st.title("🚆 TTN Shift Producer // C.L.F Edition")
 
-# 📢 顯示目前系統可抓取的班表月份資訊欄
+# 📊 科技感系統狀態儀表板卡片
 current_period = get_system_duty_period()
-st.info(f"目前系統可抓取班表區間：{current_period}")
+st.markdown(f"""
+<div class="telemetry-card">
+    <div class="telemetry-title">System Telemetry // 目前系統排班有效週期</div>
+    <div class="telemetry-value">{current_period}</div>
+</div>
+""", unsafe_allow_html=True)
 
-# 1️⃣ 一般使用者查詢區塊（已優化放大）
+# 1️⃣ 一般使用者查詢區塊
 target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A")
 
 if st.button("立即配置個人班表圖片檔"):
