@@ -21,6 +21,7 @@ NATIONAL_HOLIDAYS = {
 
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "//    T r a i n    c r e w    D U T Y    C A L E N D A R"
+SAVED_FILE_PATH = "latest_duty.xlsx"
 
 def draw_bold_text(ax, x, y, text, **kwargs):
     """四重疊影加粗函數"""
@@ -79,16 +80,19 @@ def parse_cell(raw):
     
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
 
-def process_file_data(uploaded_file, target_id):
-    filename = uploaded_file.name.lower()
-    if filename.endswith(('.xlsx', '.xls')):
-        df = pd.read_excel(uploaded_file)
-    elif filename.endswith('.csv'):
-        df = pd.read_csv(uploaded_file)
+def process_file_data(file_source, target_id):
+    # 支援上傳物件或已儲存的檔案路徑
+    if isinstance(file_source, str):
+        df = pd.read_excel(file_source)
     else:
-        # 如果是文字檔直接按 Tab 讀取
-        string_data = uploaded_file.getvalue().decode("utf-8")
-        df = pd.read_csv(io.StringIO(string_data), delimiter="\t")
+        filename = file_source.name.lower()
+        if filename.endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(file_source)
+        elif filename.endswith('.csv'):
+            df = pd.read_csv(file_source)
+        else:
+            string_data = file_source.getvalue().decode("utf-8")
+            df = pd.read_csv(io.StringIO(string_data), delimiter="\t")
         
     target_clean = target_id.strip().upper()
     matched_row = None
@@ -163,17 +167,25 @@ C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN 勤務班表產生器")
 
-with st.expander("📁 管理員專用：上傳當月班表檔案"):
+# 管理員專用上傳區（上傳後會自動永久保存到伺服器）
+with st.expander("📁 管理員專用：上傳當月班表檔案（更新後永久保存）"):
     uploaded_file = st.file_uploader("選擇班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
+    if uploaded_file is not None:
+        # 將上傳的檔案直接寫入伺服器端硬碟
+        with open(SAVED_FILE_PATH, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        st.success("✅ 班表已成功上傳並永久保存至伺服器！")
 
 target_id = st.text_input("輸入員編 (例如: A021987)", value="A021987")
 
 if st.button("立即生成個人班表圖片"):
-    if uploaded_file is None:
-        st.error("請先由上方「管理員專用」選單上傳當月的班表檔案！")
+    # 檢查伺服器內是否有儲存好的檔案
+    if not os.path.exists(SAVED_FILE_PATH):
+        st.error("❌ 目前伺服器中尚無班表資料，請先展開上方「管理員專用」上傳當月班表檔案！")
     else:
         try:
-            start_dt, dates, emp_data = process_file_data(uploaded_file, target_id)
+            # 直接讀取伺服器內永久保存的檔案
+            start_dt, dates, emp_data = process_file_data(SAVED_FILE_PATH, target_id)
             emp_id, emp_name, cells = emp_data
             active_transport = parse_transport_periods(TRANSPORT_PERIODS)
             font_prop = setup_font()
