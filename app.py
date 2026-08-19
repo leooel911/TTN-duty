@@ -219,7 +219,7 @@ st.title("🚆 TTN Shift Producer | C.L.F")
 # 1️⃣ 一般使用者查詢區塊（已優化放大）
 target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A")
 
-if st.button("立即打造個人班表圖片"):
+if st.button("立即配置個人班表圖片檔"):
     if not any(os.path.exists(path) for path in ROLE_FILES.values()):
         st.error("❌ 目前伺服器中尚未更新任何班表資料，請聯繫管理員！")
     else:
@@ -352,23 +352,23 @@ if st.button("立即打造個人班表圖片"):
             buf.seek(0)
             plt.close()
 
-            st.success("🎉 個人班表圖片生成成功！")
+            st.success(" 個人班表圖片生成成功！")
             st.image(buf, use_container_width=True)
-            st.download_button("📥 點此下載您的班表圖片", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
+            st.download_button("點此下載您的班表圖片", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
 
         except Exception as e:
             st.error(f"❌ 錯誤：{e}")
 
 # 2️⃣ 管理員專用：Database (更新班表) 移至最下方
 st.markdown("---")
-with st.expander("📁 管理員專用：Database (更新班表)"):
+with st.expander("📁 管理員專用：Database "):
     password_input = st.text_input("請輸入管理員密碼", type="password")
     
     if password_input == ADMIN_PASSWORD:
-        st.success("🔓 密碼正確，你好！ＬＥＯ")
+        st.success("密碼正確，你好歡迎！ＬＥＯ")
         
         # 📊 顯示目前各職位班表的檔名與上傳時間狀態板
-        st.subheader("📊 目前各職位班表狀態")
+        st.subheader("目前各職位班表狀態")
         status_data = []
         for role, path in ROLE_FILES.items():
             fname, mtime = get_file_info(path)
