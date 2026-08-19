@@ -143,7 +143,7 @@ NATIONAL_HOLIDAYS = {
     "10/25": "台灣光復節", "12/25": "行憲紀念日"
 }
 
-TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
+TRANSPORT_PERIODS = {"8/24-8/29": "中秋疏運"}
 TITLE = "//    T r a i n    c r e w    D U T Y    C A L E N D A R"
 
 # 三種職位的獨立檔案路徑
