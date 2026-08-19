@@ -383,7 +383,6 @@ if st.button("立即生成個人班表圖片檔"):
                     if tr.startswith("DO"): 
                         draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
                     elif tr == "PAY": 
-                        # 💡 特休顯示為 PAY 且水平垂直置中
                         draw_bold_text(ax, cx, ry + RH * 0.48, "PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(14))
                     else:
                         draw_bold_text(ax, cx, ry + RH * 0.65, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(13))
