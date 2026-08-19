@@ -275,7 +275,7 @@ def is_overtime(h):
     except: return False
 
 def is_town_shift(tr, note):
-    return any(kw in f"{tr} {note}".upper() for kw in ["TOWN", "STD", "TTN", "DTT", "OGT", "FAC", ""])
+    return any(kw in f"{tr} {note}".upper() for kw in ["TOWN", "STD", "TTN", "DTT", "OGT", "FAC"])
 
 def build_weeks(start_dt, dates, cells):
     first_wd = (start_dt.weekday() + 1) % 7
