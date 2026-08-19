@@ -323,20 +323,20 @@ if st.button("立即打造個人班表圖片"):
         except Exception as e:
             st.error(f"❌ 錯誤：{e}")
 
-# 2️⃣ 管理員專用：Database (更新班表)
+# 2️⃣ 管理員專用：Database (更新班表) 移至最下方
 st.markdown("---")
 with st.expander("📁 管理員專用：Database (更新班表)"):
-    # 新增顯示資訊板
-    st.subheader("📊 目前班表狀態")
-    status_data = []
-    for role, path in ROLE_FILES.items():
-        status_data.append({"職位": role, "最後更新時間": get_file_info(path)})
-    st.table(pd.DataFrame(status_data))
-
     password_input = st.text_input("請輸入管理員密碼", type="password")
     
     if password_input == ADMIN_PASSWORD:
         st.success("🔓 密碼正確，你好！ＬＥＯ")
+        
+        # 📊 移至密碼解鎖後才顯示的上傳狀態資訊板
+        st.subheader("📊 目前各職位班表狀態")
+        status_data = []
+        for role, path in ROLE_FILES.items():
+            status_data.append({"職位": role, "最後更新時間": get_file_info(path)})
+        st.table(pd.DataFrame(status_data))
         
         # 選擇要上傳的職位類別
         selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
