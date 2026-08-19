@@ -12,7 +12,7 @@ from matplotlib.patches import FancyBboxPatch
 matplotlib.use('Agg')
 
 # 🚆 將頁面標籤圖示 (Favicon) 改為 700st.png
-st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
+st.set_page_config(page_title=" TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
 
 # 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
@@ -305,10 +305,10 @@ st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY E
 st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">System Telemetry // 目前系統資料排班週期</div><div class="telemetry-value">{get_system_duty_period()}</div></div>""", unsafe_allow_html=True)
 
 target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300)", value="A")
-access_password = st.text_input("輸入 系統授權碼", type="password", value="")
+access_password = st.text_input("輸入系統授權碼", type="password", value="")
 
 if st.button("立即生成個人班表圖片檔"):
-    if access_password != CREW_ACCESS_PASSWORD: st.error("系統授權碼錯誤！")
+    if access_password != CREW_ACCESS_PASSWORD: st.error("系統授權碼錯誤！請洽管理員")
     elif not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料！")
     else:
         try:
@@ -439,4 +439,4 @@ with st.expander("管理員專用：Database"):
             with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
             st.success("上傳成功！")
     elif password_input:
-        st.error("密碼錯誤，請洽 CLF")
+        st.error("密碼錯誤，非管理員請洽 C.L.F.")
