@@ -314,10 +314,14 @@ if st.button("立即配置個人班表圖片檔"):
             ty = 1.0 - MT - TH
             ax.add_patch(FancyBboxPatch((ML, ty), TW, TH, boxstyle="square,pad=0", linewidth=0, facecolor=C_HDR))
             
-            # 頂部標題與識別資訊（右上角 Producer | C.L.F 座標修正至安全範圍 0.975）
+            # 頂部標題與識別資訊
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(16))
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]}", ha="left", va="center", color="#CBD5E1", fontproperties=fp(11))
-            draw_bold_text(ax, 0.975, ty + TH * 0.58, "Producer | C.L.F", ha="right", va="center", color="#FFFFFF", fontproperties=fp(11))
+            
+            # 💡 右上角 Producer | C.L.F 加上獨立的科技風邊框 (Pill Badge) 往左移至 0.95 座標
+            badge_x, badge_y, badge_w, badge_h = 0.905, ty + TH * 0.42, 0.085, 0.035
+            ax.add_patch(FancyBboxPatch((badge_x, badge_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.01", linewidth=1.0, edgecolor="#334155", facecolor="#1E293B"))
+            draw_bold_text(ax, badge_x + badge_w / 2, badge_y + badge_h / 2, "Producer | C.L.F", ha="center", va="center", color="#38BDF8", fontproperties=fp(10))
             
             dy = ty - DH
             for c in range(7):
@@ -348,9 +352,9 @@ if st.button("立即配置個人班表圖片檔"):
             tw_tz = timezone(timedelta(hours=8))
             now_str = datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M")
             
-            # 💡 底部版權與時間文字放大（字體改為 10.5），顏色調深顯眼（#334155）
-            draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#334155", fontproperties=fp(10.5))
-            draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#334155", fontproperties=fp(10.5))
+            # 💡 底部版權與時間文字再度加大（字體改為 12），顏色改為深黑（#0F172A）超醒目
+            draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
+            draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#0F172A", fontproperties=fp(12))
             
             buf = io.BytesIO()
             plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
