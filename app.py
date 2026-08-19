@@ -13,7 +13,7 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="🚆", layout="centered")
 
-# 📱 強制按鈕左右滿版置中與手機端優化 CSS
+# 📱 頂部標題防換行與手機版排版優化 CSS
 st.markdown("""
 <style>
     /* 全域頁面背景與手機端邊距優化 */
@@ -21,12 +21,37 @@ st.markdown("""
         background-color: #0B0F19;
     }
     .block-container {
-        padding-top: 2rem !important;
+        padding-top: 1.5rem !important;
         padding-bottom: 3rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
-    /* 科技感系統狀態卡片（手機全寬適應） */
+    /* 頂部導航列容器：左右並排，讓 C.L.F Edition 完美靠右 */
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        width: 100%;
+        margin-bottom: 1rem;
+    }
+    /* 主標題：強制不換行、自動依手機螢幕縮放大小 */
+    .main-title {
+        color: #F8FAFC;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+        margin: 0;
+    }
+    /* 右上角極小署名標籤 */
+    .edition-badge {
+        color: #64748B;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+    /* 科技感系統狀態卡片 */
     .telemetry-card {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
         border: 1px solid #334155;
@@ -63,7 +88,7 @@ st.markdown("""
         font-weight: 600 !important;
         color: #E2E8F0 !important;
     }
-    /* 讓按鈕的父容器與按鈕本身強制 100% 左右對齊置中 */
+    /* 按鈕強制 100% 滿版置中 */
     div.stButton {
         display: flex !important;
         justify-content: center !important;
@@ -287,7 +312,13 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-st.title("🚆 TTN Shift Producer // C.L.F Edition")
+# 🎯 頂部標題與右上角小字配置（防換行設計）
+st.markdown("""
+<div class="header-container">
+    <div class="main-title">CREW DUTY ENGINE</div>
+    <div class="edition-badge">C.L.F Edition</div>
+</div>
+""", unsafe_allow_html=True)
 
 # 📊 系統狀態儀表板卡片
 current_period = get_system_duty_period()
