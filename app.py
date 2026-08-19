@@ -161,14 +161,12 @@ def get_file_info(path):
     """取得檔案檔名與最後更新日期資訊"""
     if os.path.exists(path):
         mtime = os.path.getmtime(path)
-        # 轉換為台灣時間顯示
         tw_tz = timezone(timedelta(hours=8))
         time_str = datetime.fromtimestamp(mtime, tw_tz).strftime("%Y-%m-%d %H:%M:%S")
         return path, time_str
     return "尚無檔案", "尚未上傳"
 
 def get_system_duty_period():
-    """自動掃描現有檔案，抓出目前資料庫所涵蓋的日期區間"""
     for role, path in ROLE_FILES.items():
         if os.path.exists(path):
             try:
@@ -177,18 +175,14 @@ def get_system_duty_period():
                 dates = []
                 for col in col_names:
                     match_d = re.search(r'(\d+/\d+)', col)
-                    if match_d:
-                        dates.append(match_d.group(1))
-                if dates:
-                    return f"{dates[0]} 至 {dates[-1]}"
-            except:
-                continue
+                    if match_d: dates.append(match_d.group(1))
+                if dates: return f"{dates[0]} 至 {dates[-1]}"
+            except: continue
     return "尚未載入有效排班資料"
 
 def draw_bold_text(ax, x, y, text, **kwargs):
-    """四重疊影加粗函數"""
     ax.text(x, y, text, **kwargs)
-    offset = 0.00025
+    offset = 0.0002
     ax.text(x + offset, y, text, **kwargs)
     ax.text(x, y + offset, text, **kwargs)
     ax.text(x - offset, y, text, **kwargs)
@@ -206,8 +200,7 @@ def parse_transport_periods(raw_periods, year=2026):
             while cur <= end_dt:
                 expanded[f"{cur.month}/{cur.day}"] = v
                 cur += timedelta(days=1)
-        else:
-            expanded[k.strip()] = v
+        else: expanded[k.strip()] = v
     return expanded
 
 def pad_time(t_str):
@@ -220,71 +213,46 @@ def fmt_hours(h):
     return h_str.replace(":", "h") + "m" if ":" in h_str and "h" not in h_str else h_str
 
 def parse_cell(raw):
-    if pd.isna(raw) or not str(raw).strip():
-        return dict(start="", train="", end="", hours="", note="")
+    if pd.isna(raw) or not str(raw).strip(): return dict(start="", train="", end="", hours="", note="")
     raw_str = str(raw).strip()
     lines = [l.strip() for l in raw_str.split("\n") if l.strip()]
     if not lines: return dict(start="", train="", end="", hours="", note="")
-    
-    if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): 
-        return dict(start="", train=lines[0], end="", hours="", note="")
+    if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): return dict(start="", train=lines[0], end="", hours="", note="")
     if "PAY" in lines:
         times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
         return dict(start=pad_time(times[0]) if times else "", train="PAY", end=pad_time(times[1]) if len(times)>1 else "", hours="", note="")
-    
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
     hours = next((fmt_hours(l) for l in lines if "h" in l or "m" in l), "")
-    
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "DO" not in l and "PAY" not in l), "")
     notes = [l for l in lines if l not in times and l != train_code and "h" not in l]
-    
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
 
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
-    matched_row = None
-    emp_id, emp_name = "", ""
-    df_found = None
-    
+    matched_row, emp_id, emp_name, df_found = None, "", "", None
     for role, path in ROLE_FILES.items():
         if os.path.exists(path):
             df_temp = pd.read_excel(path, header=3)
             df_temp.columns = [str(c).strip() for c in df_temp.columns]
             for idx, row in df_temp.iterrows():
-                found_id = str(row.iloc[0]).strip().upper()
-                found_name = str(row.iloc[1]).strip().upper()
-                if found_id == input_clean or found_name == input_clean:
-                    matched_row = row
-                    emp_id = found_id
-                    emp_name = str(row.iloc[1]).strip()
-                    df_found = df_temp
+                if str(row.iloc[0]).strip().upper() == input_clean or str(row.iloc[1]).strip().upper() == input_clean:
+                    matched_row, emp_id, emp_name, df_found = row, str(row.iloc[0]).strip(), str(row.iloc[1]).strip(), df_temp
                     break
-        if matched_row is not None:
-            break
-                
-    if matched_row is None:
-        raise ValueError(f"在所有職位資料庫中均找不到員編或姓名為「{input_str}」的資料，請確認輸入是否正確。")
-        
+        if matched_row is not None: break
+    if matched_row is None: raise ValueError(f"找不到員編或姓名為「{input_str}」的資料。")
     col_names = df_found.columns[2:]
     dates = []
     start_dt = date(2026, 2, 1)
-    
     for i, col in enumerate(col_names):
         col_str = str(col).strip()
         match_d = re.search(r'(\d+/\d+)', col_str)
         if match_d:
             dates.append(match_d.group(1))
-            if i == 0:
-                m, d = map(int, match_d.group(1).split("/"))
-                start_dt = date(2026, m, d)
-        else:
-            dates.append(col_str)
-            
-    cells = matched_row.iloc[2:].values
-            
-    return start_dt, dates, emp_id, emp_name, cells
+            if i == 0: m, d = map(int, match_d.group(1).split("/")); start_dt = date(2026, m, d)
+        else: dates.append(col_str)
+    return start_dt, dates, emp_id, emp_name, matched_row.iloc[2:].values
 
 def is_overtime(h):
     if not h: return False
@@ -294,8 +262,7 @@ def is_overtime(h):
     except: return False
 
 def is_town_shift(tr, note):
-    combined = f"{tr} {note}".upper()
-    return any(kw in combined for kw in ["TOWN", "STD", "TTN", "DTT", "OGT", "回廠", "訓練"])
+    return any(kw in f"{tr} {note}".upper() for kw in ["TOWN", "STD", "TTN", "DTT", "OGT", "回廠", "訓練"])
 
 def build_weeks(start_dt, dates, cells):
     first_wd = (start_dt.weekday() + 1) % 7
@@ -321,32 +288,15 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# 🎯 頂部標題與右上角小字配置（防換行設計）
-st.markdown("""
-<div class="header-container">
-    <div class="main-title">CREW DUTY ENGINE</div>
-    <div class="edition-badge">C.L.F Edition</div>
-</div>
-""", unsafe_allow_html=True)
+st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
+st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">System Telemetry // 目前系統排班有效週期</div><div class="telemetry-value">{get_system_duty_period()}</div></div>""", unsafe_allow_html=True)
 
-# 📊 系統狀態儀表板卡片
-current_period = get_system_duty_period()
-st.markdown(f"""
-<div class="telemetry-card">
-    <div class="telemetry-title">System Telemetry // 目前系統排班有效週期</div>
-    <div class="telemetry-value">{current_period}</div>
-</div>
-""", unsafe_allow_html=True)
-
-# 1️⃣ 一般使用者查詢區塊（增加授權密碼保護）
-target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A")
+target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300)", value="A")
 access_password = st.text_input("輸入 系統授權碼", type="password", value="")
 
 if st.button("立即配置個人班表圖片檔"):
-    if access_password != CREW_ACCESS_PASSWORD:
-        st.error("系統授權碼錯誤，請聯繫管理員C.L.F！")
-    elif not any(os.path.exists(path) for path in ROLE_FILES.values()):
-        st.error("目前伺服器中尚未更新任何班表資料，請聯繫管理員C.L.F！")
+    if access_password != CREW_ACCESS_PASSWORD: st.error("系統授權碼錯誤！")
+    elif not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料！")
     else:
         try:
             start_dt, dates, emp_id, emp_name, cells = process_file_data(target_input)
@@ -355,164 +305,64 @@ if st.button("立即配置個人班表圖片檔"):
             def fp(size=9): return fm.FontProperties(fname=font_prop.get_file(), size=size) if font_prop else fm.FontProperties(size=size)
             
             weeks = build_weeks(start_dt, dates, cells)
-            n_weeks = len(weeks)
-
-            fig, ax = plt.subplots(figsize=(11.69, 8.27))
+            fig, ax = plt.subplots(figsize=(16, 11), dpi=300)
             ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
             fig.patch.set_facecolor("white")
-
             ML, MR, MT, MB, TH, DH = 0.015, 0.015, 0.015, 0.08, 0.09, 0.055
-            TW = 1.0 - ML - MR; CW = TW / 7
-            RH = (1.0 - MT - MB - TH - DH) / n_weeks
-
+            TW, CW = 1.0 - ML - MR, (1.0 - ML - MR) / 7
+            RH = (1.0 - MT - MB - TH - DH) / len(weeks)
             ty = 1.0 - MT - TH
             ax.add_patch(FancyBboxPatch((ML, ty), TW, TH, boxstyle="square,pad=0", linewidth=0, facecolor=C_HDR))
-            
-            # 頂部標題與識別資訊
-            draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(12))
-            draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]} ({len(dates)} DAYS)", ha="left", va="center", color="#CBD5E1", fontproperties=fp(9))
-            
-            # 右上角 Producer | C.L.F 標誌
-            ax.plot(0.935 - 0.095, ty + TH * 0.58, marker='o', markersize=4, color="#22C55E")
-            draw_bold_text(ax, 0.935, ty + TH * 0.58, "Producer | C.L.F", ha="right", va="center", color="#FFFFFF", fontproperties=fp(8.5))
-
-            dlabels = ["SUN 星期日", "MON 星期一", "TUE 星期二", "WED 星期三", "THU 星期四", "FRI 星期五", "SAT 星期六"]
+            draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(16))
+            draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]}", ha="left", va="center", color="#CBD5E1", fontproperties=fp(11))
+            draw_bold_text(ax, 0.985, ty + TH * 0.58, "Producer | C.L.F", ha="right", va="center", color="#FFFFFF", fontproperties=fp(10))
             dy = ty - DH
             for c in range(7):
                 x = ML + c * CW
                 ax.add_patch(FancyBboxPatch((x, dy), CW, DH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#475569", facecolor="#94A3B8"))
-                draw_bold_text(ax, x + CW / 2, dy + DH / 2, dlabels[c], ha="center", va="center", color="#000000", fontproperties=fp(9.5))
-
-            has_emp_do, has_emp_pay, has_emp_ot, has_emp_town = False, False, False, False
-            for week in weeks:
-                for cell in week:
-                    if cell is not None:
-                        _, d = cell
-                        tr, note, hours = d["train"], d.get("note", ""), d.get("hours", "")
-                        is_hol = "D2W" in tr or "DO2W" in tr or "D2W" in note or "DO2W" in note
-                        if is_hol or tr.startswith("DO"): has_emp_do = True
-                        elif tr == "PAY": has_emp_pay = True
-                        elif is_town_shift(tr, note): has_emp_town = True
-                        if is_overtime(hours): has_emp_ot = True
+                draw_bold_text(ax, x + CW / 2, dy + DH / 2, ["SUN 星期日", "MON 星期一", "TUE 星期二", "WED 星期三", "THU 星期四", "FRI 星期五", "SAT 星期六"][c], ha="center", va="center", color="#000000", fontproperties=fp(11))
 
             for ri, week in enumerate(weeks):
                 ry = dy - (ri + 1) * RH
                 for ci, cell in enumerate(week):
                     x = ML + ci * CW
-                    if cell is None:
-                        ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=C_EMPTY))
-                        continue
-
+                    if cell is None: ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=C_EMPTY)); continue
                     dt, d = cell
                     tr, note = d["train"], d.get("note", "")
-                    is_nt_hol = dt in NATIONAL_HOLIDAYS
                     is_hol = "D2W" in tr or "DO2W" in tr or "D2W" in note or "DO2W" in note
-
-                    if is_hol or tr.startswith("DO"): bg = C_DO_BG
-                    elif tr == "PAY": bg = C_PAY_BG
-                    elif is_town_shift(tr, note): bg = C_TOWN_BG
-                    elif ci == 0 or ci == 6: bg = C_WEEKEND_BG
-                    else: bg = C_WORK_BG
-
+                    bg = C_DO_BG if (is_hol or tr.startswith("DO")) else (C_PAY_BG if tr=="PAY" else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
-
-                    draw_bold_text(ax, x + 0.005, ry + RH - 0.004, f"{dt} ({NATIONAL_HOLIDAYS[dt]})" if is_nt_hol else dt, ha="left", va="top", color=C_HOLI_TXT if is_nt_hol else "#000000", fontproperties=fp(8.5))
-
-                    if d.get("hours"):
-                        ot = is_overtime(d["hours"])
-                        draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if ot else "#000000", fontproperties=fp(8))
-
+                    draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_HOLI_TXT if dt in NATIONAL_HOLIDAYS else "#000000", fontproperties=fp(10))
+                    if d.get("hours"): draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(9))
                     cx = x + CW / 2
-                    if tr.startswith("DO"):
-                        if note:
-                            draw_bold_text(ax, cx, ry + RH * 0.62, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(8))
-                            draw_bold_text(ax, cx, ry + RH * 0.35, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(10))
-                        else:
-                            draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(11.5))
-                    elif tr == "PAY":
-                        draw_bold_text(ax, cx, ry + RH * 0.62, "特休 PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(10))
-                        if d["start"] and d["end"]:
-                            draw_bold_text(ax, cx, ry + RH * 0.35, f"{d['start']}～{d['end']}", ha="center", va="center", color="#000000", fontproperties=fp(8.5))
+                    if tr.startswith("DO"): draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
+                    elif tr == "PAY": draw_bold_text(ax, cx, ry + RH * 0.6, "特休", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(12))
                     else:
-                        if note:
-                            draw_bold_text(ax, cx, ry + RH * 0.80, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(8))
-                            draw_bold_text(ax, cx, ry + RH * 0.58, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(10))
-                            draw_bold_text(ax, cx, ry + RH * 0.38, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(10))
-                            draw_bold_text(ax, cx, ry + RH * 0.18, tr, ha="center", va="center", color="#000000", fontproperties=fp(9.5))
-                        else:
-                            draw_bold_text(ax, cx, ry + RH * 0.68, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(11))
-                            draw_bold_text(ax, cx, ry + RH * 0.44, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(11))
-                            draw_bold_text(ax, cx, ry + RH * 0.20, tr, ha="center", va="center", color="#000000", fontproperties=fp(10.5))
+                        draw_bold_text(ax, cx, ry + RH * 0.65, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(13))
+                        draw_bold_text(ax, cx, ry + RH * 0.4, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(13))
+                        draw_bold_text(ax, cx, ry + RH * 0.15, tr, ha="center", va="center", color="#000000", fontproperties=fp(12))
 
-            legend_y = MB * 0.45
-            badge_w, badge_h = CW * 0.90, 0.022
-            has_active_transport = any(d in active_transport for d in dates)
-            has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
-
-            pill_legends = [
-                (0, "#F1F5F9", "#475569", C_NOTE_TXT, "備註 (Note)"),
-                (1, C_DO_BG if has_emp_do else C_WORK_BG, "#E11D48" if has_emp_do else "#64748B", C_DO_TXT if has_emp_do else "#64748B", "休假日 (DO)"),
-                (2, C_PAY_BG if has_emp_pay else C_WORK_BG, "#EA580C" if has_emp_pay else "#64748B", C_PAY_TXT if has_emp_pay else "#64748B", "特休 (PAY)"),
-                (3, C_WORK_BG, "#DC2626" if has_emp_ot else "#64748B", C_OT_TXT if has_emp_ot else "#64748B", "工時 > 8.5h"),
-                (4, "#FFF7ED" if has_active_holiday else C_WORK_BG, "#C2410C" if has_active_holiday else "#64748B", C_HOLI_TXT if has_active_holiday else "#64748B", "國定假日"),
-                (5, "#F3E8FF" if has_active_transport else C_WORK_BG, "#7C3AED" if has_active_transport else "#64748B", C_NOTE_TXT if has_active_transport else "#64748B", "疏運"),
-                (6, C_TOWN_BG if has_emp_town else C_WORK_BG, "#334155" if has_emp_town else "#64748B", C_TOWN_TXT if has_emp_town else "#64748B", "非正線勤務"),
-            ]
-
-            for col_idx, bg_clr, border_clr, txt_clr, label in pill_legends:
-                col_x = ML + col_idx * CW
-                lx = col_x + (CW - badge_w) / 2
-                badge = FancyBboxPatch((lx, legend_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.2, edgecolor=border_clr, facecolor=bg_clr)
-                ax.add_patch(badge)
-                draw_bold_text(ax, lx + badge_w / 2, legend_y + badge_h / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(7.5))
-
-            # 💡 強制轉換為台灣時區 (UTC+8) 顯示生成時間
             tw_tz = timezone(timedelta(hours=8))
             now_str = datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M")
-            
-            draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // TECHNICAL SHIFT SYSTEM v4.19", ha="left", va="bottom", color="#64748B", fontproperties=fp(7.5))
-            draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str} | CONFIDENTIAL", ha="right", va="bottom", color="#64748B", fontproperties=fp(7.5))
-
+            draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#64748B", fontproperties=fp(9))
+            draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#64748B", fontproperties=fp(9))
             buf = io.BytesIO()
-            plt.tight_layout(pad=0)
-            plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white")
-            buf.seek(0)
-            plt.close()
-
+            plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
             st.success("個人班表圖片生成成功！")
             st.image(buf, use_container_width=True)
-            # 💡 增加貼心提示：手機直接長按圖片即可存入相簿
             st.info(" 💡 **提醒**：「**長按上方的班表圖片**」即可一鍵存入手機相簿！")
-            st.download_button("點此下載您的班表圖片檔案", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
+            st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
+        except Exception as e: st.error(f"錯誤：{e}")
 
-        except Exception as e:
-            st.error(f"錯誤：{e}")
-
-# 2️⃣ 管理員專用：Database (更新班表) 移至最下方
 st.markdown("---")
 with st.expander("管理員專用：Database"):
     password_input = st.text_input("請輸入管理員密碼", type="password")
-    
     if password_input == ADMIN_PASSWORD:
-        st.success("密碼正確，你好歡迎！ＬＥＯ")
-        
-        # 📊 顯示目前各職位班表的檔名與上傳時間狀態板
-        st.subheader("print(status)")
-        status_data = []
-        for role, path in ROLE_FILES.items():
-            fname, mtime = get_file_info(path)
-            status_data.append({"職位": role, "存檔名稱": fname, "最後更新時間": mtime})
+        st.subheader("目前各職位班表狀態")
+        status_data = [{"職位": role, "存檔名稱": get_file_info(path)[0], "最後更新時間": get_file_info(path)[1]} for role, path in ROLE_FILES.items()]
         st.table(pd.DataFrame(status_data))
-        
-        # 選擇要上傳的職位類別
         selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
-        uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
-        
-        if uploaded_file is not None:
-            target_path = ROLE_FILES[selected_role]
-            with open(target_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            st.success(f"【{selected_role}】班表已成功上傳並保存至伺服器 ({target_path})！")
-            
-    elif password_input != "":
-        st.error("密碼錯誤，請洽C.L.F。")
+        uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
+        if uploaded_file:
+            with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
+            st.success("上傳成功！")
