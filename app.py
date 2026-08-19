@@ -12,7 +12,7 @@ from matplotlib.patches import FancyBboxPatch
 matplotlib.use('Agg')
 
 # 🚆 將頁面標籤圖示 (Favicon) 改為 700st.png
-st.set_page_config(page_title=" TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
+st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
 
 # 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
@@ -39,7 +39,7 @@ st.markdown("""
     /* 主標題：放大至 26px，強制不換行 */
     .main-title {
         color: #F8FAFC !important;
-        font-size: 27px;
+        font-size: 26px;
         font-weight: 800;
         letter-spacing: 0.5px;
         white-space: nowrap;
@@ -48,7 +48,7 @@ st.markdown("""
     /* 右上角極小署名標籤 */
     .edition-badge {
         color: #64748B !important;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 600;
         letter-spacing: 1px;
         text-transform: uppercase;
@@ -139,7 +139,7 @@ st.markdown("""
 NATIONAL_HOLIDAYS = {
     "1/1": "元旦", "2/16": "除夕", "2/17": "初一", "2/18": "初二", "2/19": "初三", 
     "2/28": "和平紀念日", "4/4": "兒童節", "4/5": "清明節", "5/1": "勞動節",
-    "6/19": "端午節", "8/25": "中秋節", "9/28": "教師節", "10/10": "國慶日",
+    "6/19": "端午節", "9/25": "中秋節", "9/28": "教師節", "10/10": "國慶日",
     "10/25": "台灣光復節", "12/25": "行憲紀念日"
 }
 
@@ -198,7 +198,6 @@ def parse_transport_periods(raw_periods, year=2026):
             cur = date(year, s_m, s_d)
             end_dt = date(year, e_m, e_d)
             while cur <= end_dt:
-                # 同時支援標準格式與可能不帶零的格式比對
                 expanded[f"{cur.month}/{cur.day}"] = v
                 expanded[f"{cur.month}/{cur.day:02d}"] = v
                 cur += timedelta(days=1)
@@ -362,12 +361,11 @@ if st.button("立即配置個人班表圖片檔"):
                     bg = C_DO_BG if (is_hol or tr.startswith("DO")) else (C_PAY_BG if tr=="PAY" else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
                     
-                    # 💡 日期與右上角備註（國定假日優先，其次為疏運）
-                    draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_HOLI_TXT if dt in NATIONAL_HOLIDAYS else "#000000", fontproperties=fp(10))
+                    # 💡 國定假日顯示在左上角日期旁；疏運顯示在右上角
+                    date_display = f"{dt} ({NATIONAL_HOLIDAYS[dt]})" if dt in NATIONAL_HOLIDAYS else dt
+                    draw_bold_text(ax, x + 0.005, ry + RH - 0.004, date_display, ha="left", va="top", color=C_HOLI_TXT if dt in NATIONAL_HOLIDAYS else "#000000", fontproperties=fp(9 if dt in NATIONAL_HOLIDAYS else 10))
                     
-                    if dt in NATIONAL_HOLIDAYS:
-                        draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, NATIONAL_HOLIDAYS[dt], ha="right", va="top", color=C_HOLI_TXT, fontproperties=fp(9))
-                    elif dt in active_transport:
+                    if dt in active_transport:
                         draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(9))
 
                     if d.get("hours"): 
