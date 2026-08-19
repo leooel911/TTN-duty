@@ -198,9 +198,9 @@ if st.button("立即生成個人班表圖片"):
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(12))
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]} ({len(dates)} DAYS)", ha="left", va="center", color="#CBD5E1", fontproperties=fp(9))
             
-            # 右上角 C.L.F DESIGNS 標誌
-            ax.plot(0.965, ty + TH * 0.58, marker='o', markersize=4, color="#22C55E")
-            draw_bold_text(ax, 0.985, ty + TH * 0.58, "C.L.F DESIGNS", ha="right", va="center", color="#FFFFFF", fontproperties=fp(8.5))
+            # 右上角 C.L.F DESIGNS 標誌（向左微調，與表格右邊框完美對齊不貼邊）
+            ax.plot(0.945, ty + TH * 0.58, marker='o', markersize=4, color="#22C55E")
+            draw_bold_text(ax, 0.965, ty + TH * 0.58, "C.L.F DESIGNS", ha="right", va="center", color="#FFFFFF", fontproperties=fp(8.5))
 
             dlabels = ["SUN 星期日", "MON 星期一", "TUE 星期二", "WED 星期三", "THU 星期四", "FRI 星期五", "SAT 星期六"]
             dy = ty - DH
