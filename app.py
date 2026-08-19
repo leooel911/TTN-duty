@@ -168,7 +168,7 @@ def is_overtime(h):
         return False
 
 def is_town_shift(tr, note):
-    target_keywords = ["TOWN", "STD", "TTN", "DTT", "工廠", "回廠", "訓練"]
+    target_keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "FAC"]
     combined = f"{tr} {note}".upper()
     return any(kw in combined for kw in target_keywords)
 
@@ -243,7 +243,7 @@ if submit_btn:
             ax.axis("off")
             fig.patch.set_facecolor("white")
 
-            ML, MR, MT, MB, TH, DH = 0.015, 0.015, 0.015, 0.065, 0.09, 0.055
+            ML, MR, MT, MB, TH, DH = 0.015, 0.015, 0.015, 0.10, 0.09, 0.055
             TW = 1.0 - ML - MR
             CW = TW / 7
             RH = (1.0 - MT - MB - TH - DH) / n_weeks
