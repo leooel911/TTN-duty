@@ -230,7 +230,7 @@ def parse_cell(raw):
     if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): return dict(start="", train=lines[0], end="", hours="", note="")
     if "PAY" in lines:
         times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
-        return dict(start=pad_time(times[0]) if times else "", train="PAY特休", end=pad_time(times[1]) if len(times)>1 else "", hours="", note="")
+        return dict(start=pad_time(times[0]) if times else "", train="PAY", end=pad_time(times[1]) if len(times)>1 else "", hours="", note="")
     
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
     start_time = pad_time(times[0]) if times else ""
