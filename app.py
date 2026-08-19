@@ -144,7 +144,7 @@ NATIONAL_HOLIDAYS = {
 }
 
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
-TITLE = "//    T r a i n    c r e w    D U TY    C A L E N D A R"
+TITLE = "//    T r a i n    c r e w    D U T Y    C A L E N D A R"
 
 # 三種職位的獨立檔案路徑
 ROLE_FILES = {
@@ -295,8 +295,10 @@ target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300)", value
 access_password = st.text_input("輸入 系統授權碼", type="password", value="")
 
 if st.button("立即配置個人班表圖片檔"):
-    if access_password != CREW_ACCESS_PASSWORD: st.error("系統授權碼錯誤！")
-    elif not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料！")
+    if access_password != CREW_ACCESS_PASSWORD: 
+        st.error("系統授權碼錯誤！")
+    elif not any(os.path.exists(path) for path in ROLE_FILES.values()): 
+        st.error("無班表資料！")
     else:
         try:
             start_dt, dates, emp_id, emp_name, cells = process_file_data(target_input)
@@ -318,10 +320,10 @@ if st.button("立即配置個人班表圖片檔"):
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(16))
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]}", ha="left", va="center", color="#CBD5E1", fontproperties=fp(11))
             
-            # 💡 將右上角標籤寬度與位置直接對齊「SAT 星期六」這一欄的寬度與右界
+            # 💡 精準對齊 SAT 星期六欄寬的右上角標籤設定
             badge_w = CW * 0.90
             badge_x = (1.0 - MR) - CW + (CW - badge_w) / 2
-            badge_y = ty + TH * 0.42
+            badge_y = ty + TH * 0.35
             badge_h = 0.035
             
             ax.add_patch(FancyBboxPatch((badge_x, badge_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.01", linewidth=1.0, edgecolor="#334155", facecolor="#1E293B"))
@@ -349,17 +351,22 @@ if st.button("立即配置個人班表圖片檔"):
                 ry = dy - (ri + 1) * RH
                 for ci, cell in enumerate(week):
                     x = ML + ci * CW
-                    if cell is None: ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=C_EMPTY)); continue
+                    if cell is None: 
+                        ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=C_EMPTY))
+                        continue
                     dt, d = cell
                     tr, note = d["train"], d.get("note", "")
                     is_hol = "D2W" in tr or "DO2W" in tr or "D2W" in note or "DO2W" in note
                     bg = C_DO_BG if (is_hol or tr.startswith("DO")) else (C_PAY_BG if tr=="PAY" else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
                     draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_HOLI_TXT if dt in NATIONAL_HOLIDAYS else "#000000", fontproperties=fp(10))
-                    if d.get("hours"): draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(9))
+                    if d.get("hours"): 
+                        draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(9))
                     cx = x + CW / 2
-                    if tr.startswith("DO"): draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
-                    elif tr == "PAY": draw_bold_text(ax, cx, ry + RH * 0.6, "特休", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(12))
+                    if tr.startswith("DO"): 
+                        draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
+                    elif tr == "PAY": 
+                        draw_bold_text(ax, cx, ry + RH * 0.6, "特休", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(12))
                     else:
                         draw_bold_text(ax, cx, ry + RH * 0.65, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(13))
                         draw_bold_text(ax, cx, ry + RH * 0.4, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(13))
@@ -401,7 +408,8 @@ if st.button("立即配置個人班表圖片檔"):
             st.image(buf, use_container_width=True)
             st.info(" 💡 **提醒**：「**長按上方的班表圖片**」即可一鍵存入手機相簿！")
             st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
-        except Exception as e: st.error(f"錯誤：{e}")
+        except Exception as e: 
+            st.error(f"錯誤：{e}")
 
 st.markdown("---")
 with st.expander("管理員專用：Database"):
@@ -413,5 +421,6 @@ with st.expander("管理員專用：Database"):
         selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
         uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
         if uploaded_file:
-            with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
+            with open(ROLE_FILES[selected_role], "wb") as f: 
+                f.write(uploaded_file.getbuffer())
             st.success("上傳成功！")
