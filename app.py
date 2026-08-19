@@ -26,7 +26,7 @@ TITLE = "//    T r a i n    c r e w    D U T Y    C A L E N D A R"
 SAVED_FILE_PATH = "latest_duty.xlsx"
 
 # 🔐 設定管理員密碼（可自行修改）
-ADMIN_PASSWORD = "clf888"
+ADMIN_PASSWORD = "Lf0988"
 
 def draw_bold_text(ax, x, y, text, **kwargs):
     """四重疊影加粗函數"""
