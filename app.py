@@ -221,12 +221,16 @@ def parse_cell(raw):
     if "PAY" in lines:
         times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
         return dict(start=pad_time(times[0]) if times else "", train="PAY", end=pad_time(times[1]) if len(times)>1 else "", hours="", note="")
+    
+    # 💡 修正：完整解析時間、工時、車次與備註
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
-    hours = next((fmt_hours(l) for l in lines if "h" in l or "m" in l), "")
+    hours = next((fmt_hours(l) for l in lines if "h" in l or "m" in l or (":" in l and not re.match(r'^\d{1,2}:\d{2}$', l))), "")
+    
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
-    train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "DO" not in l and "PAY" not in l), "")
-    notes = [l for l in lines if l not in times and l != train_code and "h" not in l]
+    train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l and ":" not in l and "DO" not in l and "PAY" not in l), "")
+    notes = [l for l in lines if l not in times and l != train_code and "h" not in l and "m" not in l and not (":" in l and l != start_time and l != end_time)]
+    
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
 
 def process_file_data(input_str):
@@ -318,7 +322,7 @@ if st.button("立即配置個人班表圖片檔"):
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(16))
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]}", ha="left", va="center", color="#CBD5E1", fontproperties=fp(11))
             
-            # 💡 將右上角標籤寬度與位置直接對齊「SAT 星期六」這一欄的寬度與右界
+            # 💡 右上角標籤對齊「SAT 星期六」右界
             badge_w = CW * 0.90
             badge_x = (1.0 - MR) - CW + (CW - badge_w) / 2
             badge_y = ty + TH * 0.42
@@ -356,7 +360,11 @@ if st.button("立即配置個人班表圖片檔"):
                     bg = C_DO_BG if (is_hol or tr.startswith("DO")) else (C_PAY_BG if tr=="PAY" else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
                     draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_HOLI_TXT if dt in NATIONAL_HOLIDAYS else "#000000", fontproperties=fp(10))
-                    if d.get("hours"): draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(9))
+                    
+                    # 💡 確保每日工時有抓到時正確畫在格子右下角
+                    if d.get("hours"): 
+                        draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(9))
+                    
                     cx = x + CW / 2
                     if tr.startswith("DO"): draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
                     elif tr == "PAY": draw_bold_text(ax, cx, ry + RH * 0.6, "特休", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(12))
