@@ -145,7 +145,7 @@ NATIONAL_HOLIDAYS = {
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "//    T r a i n    c r e w    D U TY    C A L E N D A R"
 
-# 三種職位的獨立檔案路徑（已更新為 TD.xlsx, TM.xlsx, TA.xlsx）
+# 三種職位的獨立檔案路徑
 ROLE_FILES = {
     "駕駛": "TD.xlsx",
     "列車長": "TM.xlsx",
@@ -476,7 +476,9 @@ if st.button("立即配置個人班表圖片檔"):
 
             st.success("個人班表圖片生成成功！")
             st.image(buf, use_container_width=True)
-            st.download_button("點此下載您的班表圖片", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
+            # 💡 增加貼心提示：手機直接長按圖片即可存入相簿
+            st.info("💡 **貼心提示**：手機直接「**長按上方的班表圖片**」即可一鍵存入手機相簿！")
+            st.download_button("點此下載您的班表圖片檔案", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
 
         except Exception as e:
             st.error(f"錯誤：{e}")
