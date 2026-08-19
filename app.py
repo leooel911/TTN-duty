@@ -79,16 +79,20 @@ def parse_cell(raw):
     
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
 
-def process_excel_data(uploaded_file, target_id):
-    df = pd.read_excel(uploaded_file)
-    # 尋找包含日期或員工的標題列
-    # 假設 Excel 格式：第0欄是員編，第1欄是姓名，後面是各天日期
-    # 簡單起見，尋找包含員工編號格式 (A開頭6位數字) 的列
+def process_file_data(uploaded_file, target_id):
+    filename = uploaded_file.name.lower()
+    if filename.endswith(('.xlsx', '.xls')):
+        df = pd.read_excel(uploaded_file)
+    elif filename.endswith('.csv'):
+        df = pd.read_csv(uploaded_file)
+    else:
+        # 如果是文字檔直接按 Tab 讀取
+        string_data = uploaded_file.getvalue().decode("utf-8")
+        df = pd.read_csv(io.StringIO(string_data), delimiter="\t")
+        
     target_clean = target_id.strip().upper()
-    
     matched_row = None
     emp_id, emp_name = "", ""
-    date_cols = []
     
     for idx, row in df.iterrows():
         row_str = " ".join([str(val) for val in row.values])
@@ -98,21 +102,16 @@ def process_excel_data(uploaded_file, target_id):
             if found_id == target_clean:
                 matched_row = row.values
                 emp_id = found_id
-                # 假設姓名通常在第二欄 (index 1)
                 emp_name = str(row.values[1]).strip() if len(row.values) > 1 else "未知"
                 break
                 
     if matched_row is None:
         raise ValueError(f"找不到員編「{target_id}」的資料，請確認輸入是否正確。")
         
-    # 抓取日期表頭（通常在第一列或第二列，這裡假設從欄位名稱或表格上方抓取）
-    # 簡化處理：抓取該行從第3欄開始的所有格子作為每日班表
     cells = matched_row[2:]
-    
-    # 試著從 Excel 欄位名稱找出日期 (例如 8/2, 8/3...)
     col_names = df.columns[2:]
     dates = []
-    start_dt = date(2026, 8, 2) # 預設起始日，可依實際 Excel 標題動態解析
+    start_dt = date(2026, 8, 2)
     
     for i, col in enumerate(col_names):
         col_str = str(col)
@@ -164,18 +163,17 @@ C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN 勤務班表產生器")
 
-# 隱藏式/管理員專用上傳區（你可以自己上傳當月 Excel）
-with st.expander("📁 管理員專用：上傳當月班表 Excel 檔"):
-    uploaded_file = st.file_uploader("選擇 Excel 檔案 (.xlsx)", type=["xlsx", "xls"])
+with st.expander("📁 管理員專用：上傳當月班表檔案"):
+    uploaded_file = st.file_uploader("選擇班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
 
 target_id = st.text_input("輸入員編 (例如: A021987)", value="A021987")
 
 if st.button("立即生成個人班表圖片"):
     if uploaded_file is None:
-        st.error("請先由上方「管理員專用」選單上傳當月的班表 Excel 檔案！")
+        st.error("請先由上方「管理員專用」選單上傳當月的班表檔案！")
     else:
         try:
-            start_dt, dates, emp_data = process_excel_data(uploaded_file, target_id)
+            start_dt, dates, emp_data = process_file_data(uploaded_file, target_id)
             emp_id, emp_name, cells = emp_data
             active_transport = parse_transport_periods(TRANSPORT_PERIODS)
             font_prop = setup_font()
@@ -264,6 +262,28 @@ if st.button("立即生成個人班表圖片"):
                             draw_bold_text(ax, cx, ry + RH * 0.68, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(11))
                             draw_bold_text(ax, cx, ry + RH * 0.44, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(11))
                             draw_bold_text(ax, cx, ry + RH * 0.20, tr, ha="center", va="center", color="#000000", fontproperties=fp(10.5))
+
+            legend_y = MB * 0.3
+            badge_w, badge_h = CW * 0.90, 0.022
+            has_active_transport = any(d in active_transport for d in dates)
+            has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
+
+            pill_legends = [
+                (0, "#F1F5F9", "#475569", C_NOTE_TXT, "備註 (Note)"),
+                (1, C_DO_BG if has_emp_do else C_WORK_BG, "#E11D48" if has_emp_do else "#64748B", C_DO_TXT if has_emp_do else "#64748B", "休假日 (DO)"),
+                (2, C_PAY_BG if has_emp_pay else C_WORK_BG, "#EA580C" if has_emp_pay else "#64748B", C_PAY_TXT if has_emp_pay else "#64748B", "特休 (PAY)"),
+                (3, C_WORK_BG, "#DC2626" if has_emp_ot else "#64748B", C_OT_TXT if has_emp_ot else "#64748B", "工時 > 8.5h"),
+                (4, "#FFF7ED" if has_active_holiday else C_WORK_BG, "#C2410C" if has_active_holiday else "#64748B", C_HOLI_TXT if has_active_holiday else "#64748B", "國定假日"),
+                (5, "#F3E8FF" if has_active_transport else C_WORK_BG, "#7C3AED" if has_active_transport else "#64748B", C_NOTE_TXT if has_active_transport else "#64748B", "疏運"),
+                (6, C_TOWN_BG if has_emp_town else C_WORK_BG, "#334155" if has_emp_town else "#64748B", C_TOWN_TXT if has_emp_town else "#64748B", "非正線勤務"),
+            ]
+
+            for col_idx, bg_clr, border_clr, txt_clr, label in pill_legends:
+                col_x = ML + col_idx * CW
+                lx = col_x + (CW - badge_w) / 2
+                badge = FancyBboxPatch((lx, legend_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.2, edgecolor=border_clr, facecolor=bg_clr)
+                ax.add_patch(badge)
+                draw_bold_text(ax, lx + badge_w / 2, legend_y + badge_h / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(7.5))
 
             buf = io.BytesIO()
             plt.tight_layout(pad=0)
