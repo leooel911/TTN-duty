@@ -144,7 +144,7 @@ NATIONAL_HOLIDAYS = {
 }
 
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
-TITLE = "//    T r a i n    c r e w    D U TY    C A L E N D A R"
+TITLE = "//    T r a i n    c r e w    D U T Y    C A L E N D A R"
 
 # 三種職位的獨立檔案路徑
 ROLE_FILES = {
@@ -313,9 +313,12 @@ if st.button("立即配置個人班表圖片檔"):
             RH = (1.0 - MT - MB - TH - DH) / len(weeks)
             ty = 1.0 - MT - TH
             ax.add_patch(FancyBboxPatch((ML, ty), TW, TH, boxstyle="square,pad=0", linewidth=0, facecolor=C_HDR))
+            
+            # 頂部標題與識別資訊（右上角 Producer | C.L.F 座標修正至安全範圍 0.975）
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(16))
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]}", ha="left", va="center", color="#CBD5E1", fontproperties=fp(11))
-            draw_bold_text(ax, 0.985, ty + TH * 0.58, "Producer | C.L.F", ha="right", va="center", color="#FFFFFF", fontproperties=fp(10))
+            draw_bold_text(ax, 0.975, ty + TH * 0.58, "Producer | C.L.F", ha="right", va="center", color="#FFFFFF", fontproperties=fp(11))
+            
             dy = ty - DH
             for c in range(7):
                 x = ML + c * CW
@@ -344,8 +347,11 @@ if st.button("立即配置個人班表圖片檔"):
 
             tw_tz = timezone(timedelta(hours=8))
             now_str = datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M")
-            draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#64748B", fontproperties=fp(9))
-            draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#64748B", fontproperties=fp(9))
+            
+            # 💡 底部版權與時間文字放大（字體改為 10.5），顏色調深顯眼（#334155）
+            draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#334155", fontproperties=fp(10.5))
+            draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#334155", fontproperties=fp(10.5))
+            
             buf = io.BytesIO()
             plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
             st.success("個人班表圖片生成成功！")
