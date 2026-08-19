@@ -135,7 +135,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2026 全年完整國定假日與紀念日對照表
+# 💡 測試用國定假日與疏運設定
 NATIONAL_HOLIDAYS = {
     "1/1": "元旦", "2/16": "除夕", "2/17": "初一", "2/18": "初二", "2/19": "初三", 
     "2/28": "和平紀念日", "4/4": "兒童節", "4/5": "清明節", "5/1": "勞動節",
@@ -206,20 +206,15 @@ def pad_time(t_str):
     return f"{int(parts[0]):02d}:{parts[1]}" if len(parts) == 2 else str(t_str)
 
 def calculate_hours(start_str, end_str):
-    """💡 透過上下班時間字串自動計算工時，格式化為 Xh Ym"""
     if not start_str or not end_str or ":" not in start_str or ":" not in end_str:
         return ""
     try:
         sh, sm = map(int, start_str.split(":"))
         eh, em = map(int, end_str.split(":"))
-        
         start_mins = sh * 60 + sm
         end_mins = eh * 60 + em
-        
-        # 跨日處理 (例如 23:41 到 07:11 或 24:30)
         if end_mins <= start_mins:
             end_mins += 24 * 60
-            
         diff_mins = end_mins - start_mins
         h = diff_mins // 60
         m = diff_mins % 60
@@ -240,8 +235,6 @@ def parse_cell(raw):
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
-    
-    # 💡 自動透過上下班時間計算工時
     hours = calculate_hours(start_time, end_time)
     
     train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "DO" not in l and "PAY" not in l and "h" not in l and "m" not in l), "")
@@ -373,9 +366,19 @@ if st.button("立即配置個人班表圖片檔"):
                     is_hol = "D2W" in tr or "DO2W" in tr or "D2W" in note or "DO2W" in note
                     bg = C_DO_BG if (is_hol or tr.startswith("DO")) else (C_PAY_BG if tr=="PAY" else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
-                    draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_HOLI_TXT if dt in NATIONAL_HOLIDAYS else "#000000", fontproperties=fp(10))
                     
-                    # 💡 繪製自動計算出來的每日工時統計（字體已放大至 10.5）
+                    # 💡 1. 國定假日顯示在左上角日期旁
+                    if dt in NATIONAL_HOLIDAYS:
+                        draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(10))
+                        draw_bold_text(ax, x + 0.045, ry + RH - 0.004, f"({NATIONAL_HOLIDAYS[dt]})", ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(8.5))
+                    else:
+                        draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color="#000000", fontproperties=fp(10))
+
+                    # 💡 2. 疏運顯示在右上角
+                    if dt in active_transport:
+                        draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(8.5))
+
+                    # 💡 3. 右下角每日工時統計（字體 10.5）
                     if d.get("hours"): 
                         draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(10.5))
                     
