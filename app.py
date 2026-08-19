@@ -13,6 +13,41 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="🚆", layout="centered")
 
+# 🎨 注入自訂 CSS，放大輸入框並賦予按鈕高級質感色
+st.markdown("""
+<style>
+    /* 放大輸入框文字與高度 */
+    .stTextInput input {
+        font-size: 18px !important;
+        padding: 12px 16px !important;
+        border-radius: 8px !important;
+    }
+    /* 放大輸入框標籤文字 */
+    .stTextInput label {
+        font-size: 16px !important;
+        font-weight: 600 !important;
+    }
+    /* 升級主查詢按鈕的質感（漸層藍色、放大字體、圓角） */
+    div.stButton > button {
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        padding: 10px 24px !important;
+        border-radius: 8px !important;
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100% !important);
+        color: white !important;
+        border: none !important;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+        transition: all 0.3s ease !important;
+        width: 100% !important;
+    }
+    div.stButton > button:hover {
+        background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100% !important);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4) !important;
+        transform: translateY(-1px);
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # 2026 全年完整國定假日與紀念日對照表
 NATIONAL_HOLIDAYS = {
     "1/1": "元旦", "2/16": "除夕", "2/17": "初一", "2/18": "初二", "2/19": "初三", 
@@ -179,9 +214,9 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-st.title("🚆 TTN Duty Engine // C.L.F Edition")
+st.title("🚆 TTN Shift Producer | C.L.F")
 
-# 1️⃣ 一般使用者查詢區塊
+# 1️⃣ 一般使用者查詢區塊（已優化放大）
 target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A")
 
 if st.button("立即打造個人班表圖片"):
