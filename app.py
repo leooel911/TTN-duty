@@ -23,9 +23,15 @@ NATIONAL_HOLIDAYS = {
 
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "//    T r a i n    c r e w    D U T Y    C A L E N D A R"
-SAVED_FILE_PATH = "latest_duty.xlsx"
 
-# 🔐 設定管理員密碼（可自行修改）
+# 三種職位的獨立檔案路徑
+ROLE_FILES = {
+    "駕駛": "duty_driver.xlsx",
+    "列車長": "duty_guard.xlsx",
+    "服勤員": "duty_attendant.xlsx"
+}
+
+# 🔐 設定管理員密碼
 ADMIN_PASSWORD = "Lf0900"
 
 def draw_bold_text(ax, x, y, text, **kwargs):
@@ -85,27 +91,33 @@ def parse_cell(raw):
     
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
 
-def process_file_data(file_source, input_str):
-    df = pd.read_excel(file_source, header=3)
-    df.columns = [str(c).strip() for c in df.columns]
-    
+def process_file_data(input_str):
     input_clean = input_str.strip().upper()
     matched_row = None
     emp_id, emp_name = "", ""
+    df_found = None
     
-    for idx, row in df.iterrows():
-        found_id = str(row.iloc[0]).strip().upper()
-        found_name = str(row.iloc[1]).strip().upper()
-        if found_id == input_clean or found_name == input_clean:
-            matched_row = row
-            emp_id = found_id
-            emp_name = str(row.iloc[1]).strip()
+    # 智慧全域搜尋：依序檢查所有職位的檔案
+    for role, path in ROLE_FILES.items():
+        if os.path.exists(path):
+            df_temp = pd.read_excel(path, header=3)
+            df_temp.columns = [str(c).strip() for c in df_temp.columns]
+            for idx, row in df_temp.iterrows():
+                found_id = str(row.iloc[0]).strip().upper()
+                found_name = str(row.iloc[1]).strip().upper()
+                if found_id == input_clean or found_name == input_clean:
+                    matched_row = row
+                    emp_id = found_id
+                    emp_name = str(row.iloc[1]).strip()
+                    df_found = df_temp
+                    break
+        if matched_row is not None:
             break
                 
     if matched_row is None:
-        raise ValueError(f"找不到員編或姓名為「{input_str}」的資料，請確認輸入是否正確。")
+        raise ValueError(f"在所有職位資料庫中均找不到員編或姓名為「{input_str}」的資料，請確認輸入是否正確。")
         
-    col_names = df.columns[2:]
+    col_names = df_found.columns[2:]
     dates = []
     start_dt = date(2026, 2, 1)
     
@@ -161,28 +173,35 @@ C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN Duty Engine // C.L.F Edition")
 
-# 🔒 管理員專用：具備密碼保護的 Database 上傳區塊
-with st.expander("📁 管理員專用：Database "):
+# 🔒 管理員專用：支援三種職位的密碼保護上傳區塊
+with st.expander("📁 管理員專用：多職位 Database 管理"):
     password_input = st.text_input("請輸入管理員密碼", type="password")
     
     if password_input == ADMIN_PASSWORD:
         st.success("🔓 密碼正確，你好！ＬＥＯ")
-        uploaded_file = st.file_uploader("選擇班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
+        
+        # 選擇要上傳的職位類別
+        selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
+        uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
+        
         if uploaded_file is not None:
-            with open(SAVED_FILE_PATH, "wb") as f:
+            target_path = ROLE_FILES[selected_role]
+            with open(target_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
-            st.success("✅ 班表已成功上傳並永久保存至伺服器！")
+            st.success(f"✅ 【{selected_role}】班表已成功上傳並保存至伺服器 ({target_path})！")
+            
     elif password_input != "":
         st.error("❌ 密碼錯誤，請洽C.L.F。")
 
-target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A0")
+target_input = st.text_input("輸入 員編 或 姓名 (例如: A018896 或 江立夫)", value="A018896")
 
 if st.button("立即打造個人班表圖片"):
-    if not os.path.exists(SAVED_FILE_PATH):
-        st.error("❌ 目前伺服器中尚未更新班表資料，請聯繫管理員！")
+    # 檢查是否至少有一個職位檔案存在
+    if not any(os.path.exists(path) for path in ROLE_FILES.values()):
+        st.error("❌ 目前伺服器中尚無任何班表資料庫，請先聯繫管理員上傳！")
     else:
         try:
-            start_dt, dates, emp_id, emp_name, cells = process_file_data(SAVED_FILE_PATH, target_input)
+            start_dt, dates, emp_id, emp_name, cells = process_file_data(target_input)
             active_transport = parse_transport_periods(TRANSPORT_PERIODS)
             font_prop = setup_font()
             def fp(size=9): return fm.FontProperties(fname=font_prop.get_file(), size=size) if font_prop else fm.FontProperties(size=size)
