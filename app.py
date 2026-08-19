@@ -77,6 +77,24 @@ def get_file_info(path):
         return path, time_str
     return "尚無檔案", "尚未上傳"
 
+def get_system_duty_period():
+    """自動掃描現有檔案，抓出目前資料庫所涵蓋的月份區間"""
+    for role, path in ROLE_FILES.items():
+        if os.path.exists(path):
+            try:
+                df_temp = pd.read_excel(path, header=3)
+                col_names = [str(c).strip() for c in df_temp.columns[2:]]
+                dates = []
+                for col in col_names:
+                    match_d = re.search(r'(\d+/\d+)', col)
+                    if match_d:
+                        dates.append(match_d.group(1))
+                if dates:
+                    return f"{dates[0]} ~ {dates[-1]}"
+            except:
+                continue
+    return "尚無有效資料"
+
 def draw_bold_text(ax, x, y, text, **kwargs):
     """四重疊影加粗函數"""
     ax.text(x, y, text, **kwargs)
@@ -216,12 +234,16 @@ C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN Shift Producer | C.L.F")
 
+# 📢 顯示目前系統可抓取的班表月份資訊欄
+current_period = get_system_duty_period()
+st.info(f"目前系統可抓取班表區間：{current_period}")
+
 # 1️⃣ 一般使用者查詢區塊（已優化放大）
 target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A")
 
 if st.button("立即配置個人班表圖片檔"):
     if not any(os.path.exists(path) for path in ROLE_FILES.values()):
-        st.error("❌ 目前伺服器中尚未更新任何班表資料，請聯繫管理員！")
+        st.error("目前伺服器中尚未更新任何班表資料，請聯繫管理員！")
     else:
         try:
             start_dt, dates, emp_id, emp_name, cells = process_file_data(target_input)
@@ -352,16 +374,16 @@ if st.button("立即配置個人班表圖片檔"):
             buf.seek(0)
             plt.close()
 
-            st.success(" 個人班表圖片生成成功！")
+            st.success("個人班表圖片生成成功！")
             st.image(buf, use_container_width=True)
             st.download_button("點此下載您的班表圖片", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
 
         except Exception as e:
-            st.error(f"❌ 錯誤：{e}")
+            st.error(f"錯誤：{e}")
 
 # 2️⃣ 管理員專用：Database (更新班表) 移至最下方
 st.markdown("---")
-with st.expander("📁 管理員專用：Database "):
+with st.expander("管理員專用：Database"):
     password_input = st.text_input("請輸入管理員密碼", type="password")
     
     if password_input == ADMIN_PASSWORD:
@@ -383,7 +405,7 @@ with st.expander("📁 管理員專用：Database "):
             target_path = ROLE_FILES[selected_role]
             with open(target_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
-            st.success(f"✅ 【{selected_role}】班表已成功上傳並保存至伺服器 ({target_path})！")
+            st.success(f"【{selected_role}】班表已成功上傳並保存至伺服器 ({target_path})！")
             
     elif password_input != "":
-        st.error("❌ 密碼錯誤，請洽C.L.F。")
+        st.error("密碼錯誤，請洽C.L.F。")
