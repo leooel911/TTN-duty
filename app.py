@@ -304,7 +304,7 @@ C_TOWN_TXT = "#000000"
 st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
 st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">System Telemetry // 目前系統資料排班週期</div><div class="telemetry-value">{get_system_duty_period()}</div></div>""", unsafe_allow_html=True)
 
-target_input = st.text_input("輸入 員編 或 姓名 (target_input = st.text_input(例如: A023300 or 波莉)", value="A")
+target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A")
 access_password = st.text_input("輸入系統授權碼", type="password", value="")
 
 if st.button("立即生成個人班表圖片檔"):
