@@ -22,6 +22,15 @@ NATIONAL_HOLIDAYS = {
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "//    T r a i n    c r e w    D U T Y    C A L E N D A R"
 
+def draw_bold_text(ax, x, y, text, **kwargs):
+    """四重疊影加粗函數：透過微幅偏移疊印，強制達成粗體效果"""
+    ax.text(x, y, text, **kwargs)
+    offset = 0.00025
+    ax.text(x + offset, y, text, **kwargs)
+    ax.text(x, y + offset, text, **kwargs)
+    ax.text(x - offset, y, text, **kwargs)
+    ax.text(x, y - offset, text, **kwargs)
+
 def parse_transport_periods(raw_periods, year=2026):
     expanded = {}
     for k, v in raw_periods.items():
@@ -187,21 +196,14 @@ def setup_font():
 C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#475569", "#F1F5F9"
 C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
 C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
-C_TIME, C_TRAIN = "#000000", "#000000"
+# 特殊色定義
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = (
     "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 )
-C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN 勤務班表產生器")
 target_name = st.text_input("輸入你的名字", value="江立夫")
 raw_text_input = st.text_area("在此貼上大班表文字內容", height=150)
-
-def draw_bold_text(ax, x, y, text, **kwargs):
-    """強效加粗函數：透過微幅位移重疊繪製，達成強制粗體效果"""
-    ax.text(x, y, text, **kwargs)
-    ax.text(x + 0.0003, y, text, **kwargs)
-    ax.text(x, y + 0.0003, text, **kwargs)
 
 if st.button("立即生成個人班表圖片"):
     if not raw_text_input.strip():
@@ -214,9 +216,7 @@ if st.button("立即生成個人班表圖片"):
             font_prop = setup_font()
 
             def fp(size=9):
-                if font_prop:
-                    return fm.FontProperties(fname=font_prop.get_file(), size=size)
-                return fm.FontProperties(size=size)
+                return fm.FontProperties(fname=font_prop.get_file(), size=size) if font_prop else fm.FontProperties(size=size)
 
             weeks = build_weeks(start_dt, dates, cells)
             n_weeks = len(weeks)
@@ -242,19 +242,7 @@ if st.button("立即生成個人班表圖片"):
             for c in range(7):
                 x = ML + c * CW
                 ax.add_patch(FancyBboxPatch((x, dy), CW, DH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#475569", facecolor="#94A3B8"))
-                draw_bold_text(ax, x + CW / 2, dy + DH / 2, dlabels[c], ha="center", va="center", color="#000000", fontproperties=fp(9))
-
-            has_emp_do, has_emp_pay, has_emp_ot, has_emp_town = False, False, False, False
-            for week in weeks:
-                for cell in week:
-                    if cell is not None:
-                        dt, d = cell
-                        tr, note, hours = d["train"], d.get("note", ""), d.get("hours", "")
-                        is_holiday = "D2W" in tr or "DO2W" in tr or "D2W" in note or "DO2W" in note
-                        if is_holiday or tr.startswith("DO"): has_emp_do = True
-                        elif tr == "PAY": has_emp_pay = True
-                        elif is_town_shift(tr, note): has_emp_town = True
-                        if is_overtime(hours): has_emp_ot = True
+                draw_bold_text(ax, x + CW / 2, dy + DH / 2, dlabels[c], ha="center", va="center", color="#000000", fontproperties=fp(9.5))
 
             for ri, week in enumerate(weeks):
                 ry = dy - (ri + 1) * RH
@@ -266,7 +254,6 @@ if st.button("立即生成個人班表圖片"):
 
                     dt, d = cell
                     tr, note = d["train"], d.get("note", "")
-                    is_national_holiday = dt in NATIONAL_HOLIDAYS
                     is_holiday = "D2W" in tr or "DO2W" in tr or "D2W" in note or "DO2W" in note
 
                     if is_holiday or tr.startswith("DO"): bg = C_DO_BG
@@ -276,59 +263,32 @@ if st.button("立即生成個人班表圖片"):
                     else: bg = C_WORK_BG
 
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
-
-                    if is_national_holiday:
-                        draw_bold_text(ax, x + 0.005, ry + RH - 0.004, f"{dt} ({NATIONAL_HOLIDAYS[dt]})", ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(8))
-                    else:
-                        draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color="#000000", fontproperties=fp(9))
-
+                    
+                    # 黑色文字處理
+                    is_nt_hol = dt in NATIONAL_HOLIDAYS
+                    draw_bold_text(ax, x + 0.005, ry + RH - 0.004, f"{dt} ({NATIONAL_HOLIDAYS[dt]})" if is_nt_hol else dt, ha="left", va="top", color=C_HOLI_TXT if is_nt_hol else "#000000", fontproperties=fp(9))
+                    
                     if d.get("hours"):
                         ot = is_overtime(d["hours"])
-                        draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if ot else "#000000", fontproperties=fp(7.5))
+                        draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if ot else "#000000", fontproperties=fp(8))
 
                     cx = x + CW / 2
                     if tr.startswith("DO"):
-                        if note:
-                            draw_bold_text(ax, cx, ry + RH * 0.62, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(8))
-                            draw_bold_text(ax, cx, ry + RH * 0.35, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(10))
-                        else:
-                            draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(11.5))
+                        draw_bold_text(ax, cx, ry + RH * (0.48 if not note else 0.35), tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(11))
+                        if note: draw_bold_text(ax, cx, ry + RH * 0.62, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(8))
                     elif tr == "PAY":
                         draw_bold_text(ax, cx, ry + RH * 0.62, "特休 PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(10))
-                        if d["start"] and d["end"]:
-                            draw_bold_text(ax, cx, ry + RH * 0.35, f"{d['start']}～{d['end']}", ha="center", va="center", color="#000000", fontproperties=fp(8.5))
+                        if d["start"]: draw_bold_text(ax, cx, ry + RH * 0.35, f"{d['start']}～{d['end']}", ha="center", va="center", color="#000000", fontproperties=fp(8.5))
                     else:
                         if note:
-                            draw_bold_text(ax, cx, ry + RH * 0.80, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(7.5))
+                            draw_bold_text(ax, cx, ry + RH * 0.80, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(8))
                             draw_bold_text(ax, cx, ry + RH * 0.58, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(10))
                             draw_bold_text(ax, cx, ry + RH * 0.38, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(10))
-                            draw_bold_text(ax, cx, ry + RH * 0.18, tr, ha="center", va="center", color="#000000", fontproperties=fp(9.5))
+                            draw_bold_text(ax, cx, ry + RH * 0.18, tr, ha="center", va="center", color="#000000", fontproperties=fp(10))
                         else:
                             draw_bold_text(ax, cx, ry + RH * 0.68, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(11))
                             draw_bold_text(ax, cx, ry + RH * 0.44, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(11))
-                            draw_bold_text(ax, cx, ry + RH * 0.20, tr, ha="center", va="center", color="#000000", fontproperties=fp(10))
-
-            legend_y = MB * 0.3
-            badge_w, badge_h = CW * 0.90, 0.022
-            has_active_transport = any(d in active_transport for d in dates)
-            has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
-
-            pill_legends = [
-                (0, "#F1F5F9", "#475569", C_NOTE_TXT, "備註 (Note)"),
-                (1, C_DO_BG if has_emp_do else C_WORK_BG, "#E11D48" if has_emp_do else "#64748B", C_DO_TXT if has_emp_do else "#64748B", "休假日 (DO)"),
-                (2, C_PAY_BG if has_emp_pay else C_WORK_BG, "#EA580C" if has_emp_pay else "#64748B", C_PAY_TXT if has_emp_pay else "#64748B", "特休 (PAY)"),
-                (3, C_WORK_BG, "#DC2626" if has_emp_ot else "#64748B", C_OT_TXT if has_emp_ot else "#64748B", "工時 > 8.5h"),
-                (4, "#FFF7ED" if has_active_holiday else C_WORK_BG, "#C2410C" if has_active_holiday else "#64748B", C_HOLI_TXT if has_active_holiday else "#64748B", "國定假日"),
-                (5, "#F3E8FF" if has_active_transport else C_WORK_BG, "#7C3AED" if has_active_transport else "#64748B", C_NOTE_TXT if has_active_transport else "#64748B", "疏運"),
-                (6, C_TOWN_BG if has_emp_town else C_WORK_BG, "#334155" if has_emp_town else "#64748B", C_TOWN_TXT if has_emp_town else "#64748B", "非正線勤務"),
-            ]
-
-            for col_idx, bg_clr, border_clr, txt_clr, label in pill_legends:
-                col_x = ML + col_idx * CW
-                lx = col_x + (CW - badge_w) / 2
-                badge = FancyBboxPatch((lx, legend_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.2, edgecolor=border_clr, facecolor=bg_clr)
-                ax.add_patch(badge)
-                draw_bold_text(ax, lx + badge_w / 2, legend_y + badge_h / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(7.5))
+                            draw_bold_text(ax, cx, ry + RH * 0.20, tr, ha="center", va="center", color="#000000", fontproperties=fp(10.5))
 
             buf = io.BytesIO()
             plt.tight_layout(pad=0)
