@@ -15,21 +15,10 @@ st.set_page_config(page_title="🚆 TTN 勤務班表產生器", page_icon="🚆"
 
 # 2026 全年完整國定假日與紀念日對照表
 NATIONAL_HOLIDAYS = {
-    "1/1": "元旦",
-    "2/16": "除夕",
-    "2/17": "初一",
-    "2/18": "初二",
-    "2/19": "初三",
-    "2/28": "和平紀念日",
-    "4/4": "兒童節",
-    "4/5": "清明節",
-    "5/1": "勞動節",
-    "6/19": "端午節",
-    "9/25": "中秋節",
-    "9/28": "教師節",
-    "10/10": "國慶日",
-    "10/25": "台灣光復節",
-    "12/25": "行憲紀念日"
+    "1/1": "元旦", "2/16": "除夕", "2/17": "初一", "2/18": "初二", "2/19": "初三", 
+    "2/28": "和平紀念日", "4/4": "兒童節", "4/5": "清明節", "5/1": "勞動節",
+    "6/19": "端午節", "9/25": "中秋節", "9/28": "教師節", "10/10": "國慶日",
+    "10/25": "台灣光復節", "12/25": "行憲紀念日"
 }
 
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
@@ -133,7 +122,7 @@ def process_file_data(file_source, target_id):
             
     cells = matched_row.iloc[2:].values
             
-    return start_dt, dates, (emp_id, emp_name, cells)
+    return start_dt, dates, emp_id, emp_name, cells
 
 def is_overtime(h):
     if not h: return False
@@ -186,8 +175,7 @@ if st.button("立即生成個人班表圖片"):
         st.error("❌ 目前伺服器中尚無班表資料，請先展開上方「管理員專用」上傳當月班表檔案！")
     else:
         try:
-            start_dt, dates, emp_data = process_file_data(SAVED_FILE_PATH, target_id)
-            emp_id, emp_name, cells = emp_data
+            start_dt, dates, emp_id, emp_name, cells = process_file_data(SAVED_FILE_PATH, target_id)
             active_transport = parse_transport_periods(TRANSPORT_PERIODS)
             font_prop = setup_font()
             def fp(size=9): return fm.FontProperties(fname=font_prop.get_file(), size=size) if font_prop else fm.FontProperties(size=size)
@@ -205,6 +193,8 @@ if st.button("立即生成個人班表圖片"):
 
             ty = 1.0 - MT - TH
             ax.add_patch(FancyBboxPatch((ML, ty), TW, TH, boxstyle="square,pad=0", linewidth=0, facecolor=C_HDR))
+            
+            # 完整標題資訊：恢復顯示 員編、姓名 與 期間天數
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(12))
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]} ({len(dates)} DAYS)", ha="left", va="center", color="#CBD5E1", fontproperties=fp(9))
 
