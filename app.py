@@ -13,67 +13,83 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="🚆", layout="centered")
 
-# 🎨 注入高質感鐵道調度風格 CSS（科技感面板、現代輸入框與漸層按鈕）
+# 📱 專為 99% 手機使用者打造的 Mobile-First 極致優化 CSS
 st.markdown("""
 <style>
-    /* 核心背景與字體微調 */
+    /* 全域頁面背景與手機端邊距優化 */
     .stApp {
         background-color: #0B0F19;
     }
-    /* 資訊面板卡片化 (Dashboard Cards) */
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 3rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    /* 科技感系統狀態卡片（手機全寬適應） */
     .telemetry-card {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
         border: 1px solid #334155;
         border-radius: 12px;
-        padding: 16px 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        padding: 14px 18px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
     }
     .telemetry-title {
         color: #94A3B8;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 600;
-        letter-spacing: 1px;
+        letter-spacing: 0.5px;
         text-transform: uppercase;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
     }
     .telemetry-value {
         color: #F8FAFC;
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 700;
         font-family: monospace;
     }
-    /* 放大輸入框文字與高度 */
+    /* 手機端輸入框優化（大字體、好點擊、不跳針） */
     .stTextInput input {
         font-size: 18px !important;
-        padding: 12px 16px !important;
-        border-radius: 8px !important;
+        padding: 14px 16px !important;
+        border-radius: 10px !important;
         background-color: #1E293B !important;
         color: #F8FAFC !important;
         border: 1px solid #475569 !important;
     }
     .stTextInput label {
-        font-size: 16px !important;
+        font-size: 15px !important;
         font-weight: 600 !important;
         color: #E2E8F0 !important;
     }
-    /* 升級主查詢按鈕的質感（漸層藍色、放大字體、圓角、強懸停） */
+    /* 手機端按鈕全面放大，支援拇指好按的滿版設計 */
     div.stButton > button {
-        font-size: 16px !important;
+        font-size: 17px !important;
         font-weight: 600 !important;
-        padding: 12px 24px !important;
-        border-radius: 8px !important;
+        padding: 14px 20px !important;
+        border-radius: 10px !important;
         background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100% !important);
         color: white !important;
         border: none !important;
         box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4) !important;
         transition: all 0.3s ease !important;
         width: 100% !important;
+        margin-top: 8px;
     }
     div.stButton > button:hover {
         background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100% !important);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6) !important;
-        transform: translateY(-2px);
+        transform: translateY(-1px);
+    }
+    /* 下載按鈕同步升級手機友善大小 */
+    div.stDownloadButton > button {
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        padding: 12px 20px !important;
+        border-radius: 10px !important;
+        background: linear-gradient(135deg, #059669 0%, #047857 100% !important);
+        color: white !important;
+        width: 100% !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -263,7 +279,7 @@ C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN Shift Producer // C.L.F Edition")
 
-# 📊 科技感系統狀態儀表板卡片
+# 📊 手機版高適應性系統狀態儀表板卡片
 current_period = get_system_duty_period()
 st.markdown(f"""
 <div class="telemetry-card">
