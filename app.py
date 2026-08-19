@@ -21080,17 +21080,19 @@ def setup_font():
         return fm.FontProperties(fname=font_path)
     return None
 
+# 🎨 色彩與樣式定義
 C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#475569", "#F1F5F9"
 C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
 C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
+C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN 勤務班表產生器")
 target_name = st.text_input("輸入你的名字", value="江立夫")
 
 if st.button("立即生成個人班表圖片"):
     if not DUTY_DATA.strip() or "請在此貼上" in DUTY_DATA:
-        st.error("管理員尚未設定當月大班表資料，請先至後台更新！")
+        st.error("管理員尚未設定當月大班表資料，請先至 GitHub 更新 DUTY_DATA！")
     else:
         try:
             start_dt, dates, emp_data = parse_flexible_employees(DUTY_DATA, target_name)
@@ -21181,7 +21183,7 @@ if st.button("立即生成個人班表圖片"):
                         else:
                             draw_bold_text(ax, cx, ry + RH * 0.68, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(11))
                             draw_bold_text(ax, cx, ry + RH * 0.44, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(11))
-                            draw_bold_text(ax, cx, ry + RH * 0.20, tr, ha="center", va="center", color="#000000", fontproperties=fp(10))
+                            draw_bold_text(ax, cx, ry + RH * 0.20, tr, ha="center", va="center", color="#000000", fontproperties=fp(10.5))
 
             legend_y = MB * 0.3
             badge_w, badge_h = CW * 0.90, 0.022
