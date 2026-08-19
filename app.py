@@ -13,15 +13,15 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="🚆", layout="centered")
 
-# 📱 增加頂部 padding，讓整個網頁內容往下移至畫面舒適的位置
+# 📱 升級啟動按鈕的視覺顯眼度（高亮漸層色、強陰影與互動特效）
 st.markdown("""
 <style>
-    /* 全域頁面背景與上下邊距優化（增加 padding-top 讓畫面往下沉） */
+    /* 全域頁面背景與上下邊距優化 */
     .stApp {
         background-color: #0B0F19;
     }
     .block-container {
-        padding-top: 4rem !important;
+        padding-top: 3.5rem !important;
         padding-bottom: 3rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
@@ -88,30 +88,32 @@ st.markdown("""
         font-weight: 600 !important;
         color: #E2E8F0 !important;
     }
-    /* 按鈕強制 100% 滿版置中 */
+    /* 🚀 升級主啟動按鈕：超顯眼亮藍漸層、強烈立體陰影與滿版置中 */
     div.stButton {
         display: flex !important;
         justify-content: center !important;
         width: 100% !important;
     }
     div.stButton > button {
-        font-size: 17px !important;
-        font-weight: 600 !important;
-        padding: 14px 20px !important;
-        border-radius: 10px !important;
-        background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100% !important);
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        padding: 16px 24px !important;
+        border-radius: 12px !important;
+        background: linear-gradient(135deg, #3B82F6 0%, #2563EB 50%, #1D4ED8 100% !important);
         color: white !important;
-        border: none !important;
-        box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5) !important;
         transition: all 0.3s ease !important;
         width: 100% !important;
-        margin-top: 8px;
+        margin-top: 10px;
+        letter-spacing: 0.5px;
     }
     div.stButton > button:hover {
-        background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100% !important);
-        transform: translateY(-1px);
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 50%, #1E40AF 100% !important);
+        box-shadow: 0 8px 25px rgba(37, 99, 235, 0.7) !important;
+        transform: translateY(-2px);
     }
-    /* 下載按鈕同步置中與滿版 */
+    /* 下載按鈕同步置中與滿版高質感 */
     div.stDownloadButton {
         display: flex !important;
         justify-content: center !important;
@@ -120,11 +122,12 @@ st.markdown("""
     div.stDownloadButton > button {
         font-size: 16px !important;
         font-weight: 600 !important;
-        padding: 12px 20px !important;
+        padding: 14px 20px !important;
         border-radius: 10px !important;
         background: linear-gradient(135deg, #059669 0%, #047857 100% !important);
         color: white !important;
         width: 100% !important;
+        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4) !important;
     }
 </style>
 """, unsafe_allow_html=True)
