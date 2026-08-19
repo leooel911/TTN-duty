@@ -81,7 +81,6 @@ def parse_cell(raw):
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
 
 def process_file_data(file_source, target_id):
-    # 支援上傳物件或已儲存的檔案路徑
     if isinstance(file_source, str):
         df = pd.read_excel(file_source)
     else:
@@ -98,8 +97,14 @@ def process_file_data(file_source, target_id):
     matched_row = None
     emp_id, emp_name = "", ""
     
+    # 尋找標題列或員工資料列，同時找出哪一列包含日期
+    date_row_idx = None
     for idx, row in df.iterrows():
         row_str = " ".join([str(val) for val in row.values])
+        # 尋找日期格式 (例如 8/2 或 2026/8/2)
+        if re.search(r'\d+/\d+', row_str) and date_row_idx is None:
+            date_row_idx = idx
+        
         match = re.search(r'(A\d{6})', row_str, re.IGNORECASE)
         if match:
             found_id = match.group(1).upper()
@@ -107,26 +112,40 @@ def process_file_data(file_source, target_id):
                 matched_row = row.values
                 emp_id = found_id
                 emp_name = str(row.values[1]).strip() if len(row.values) > 1 else "未知"
-                break
                 
     if matched_row is None:
         raise ValueError(f"找不到員編「{target_id}」的資料，請確認輸入是否正確。")
         
     cells = matched_row[2:]
-    col_names = df.columns[2:]
+    
+    # 解析日期：優先從剛才找到的日期列抓取，若無則從欄位名稱抓
     dates = []
     start_dt = date(2026, 8, 2)
     
-    for i, col in enumerate(col_names):
-        col_str = str(col)
-        match_d = re.search(r'(\d+/\d+)', col_str)
-        if match_d:
-            dates.append(match_d.group(1))
-            if i == 0:
-                m, d = map(int, match_d.group(1).split("/"))
-                start_dt = date(2026, m, d)
-        else:
-            dates.append(f"Day {i+1}")
+    if date_row_idx is not None:
+        date_vals = df.iloc[date_row_idx].values[2:]
+        for i, val in enumerate(date_vals):
+            val_str = str(val)
+            match_d = re.search(r'(\d+/\d+)', val_str)
+            if match_d:
+                dates.append(match_d.group(1))
+                if i == 0:
+                    m, d = map(int, match_d.group(1).split("/"))
+                    start_dt = date(2026, m, d)
+            else:
+                dates.append(f"Day {i+1}")
+    else:
+        col_names = df.columns[2:]
+        for i, col in enumerate(col_names):
+            col_str = str(col)
+            match_d = re.search(r'(\d+/\d+)', col_str)
+            if match_d:
+                dates.append(match_d.group(1))
+                if i == 0:
+                    m, d = map(int, match_d.group(1).split("/"))
+                    start_dt = date(2026, m, d)
+            else:
+                dates.append(f"Day {i+1}")
             
     return start_dt, dates, (emp_id, emp_name, cells)
 
@@ -167,11 +186,9 @@ C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN 勤務班表產生器")
 
-# 管理員專用上傳區（上傳後會自動永久保存到伺服器）
 with st.expander("📁 管理員專用：上傳當月班表檔案（更新後永久保存）"):
     uploaded_file = st.file_uploader("選擇班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
     if uploaded_file is not None:
-        # 將上傳的檔案直接寫入伺服器端硬碟
         with open(SAVED_FILE_PATH, "wb") as f:
             f.write(uploaded_file.getbuffer())
         st.success("✅ 班表已成功上傳並永久保存至伺服器！")
@@ -179,12 +196,10 @@ with st.expander("📁 管理員專用：上傳當月班表檔案（更新後永
 target_id = st.text_input("輸入員編 (例如: A021987)", value="A021987")
 
 if st.button("立即生成個人班表圖片"):
-    # 檢查伺服器內是否有儲存好的檔案
     if not os.path.exists(SAVED_FILE_PATH):
         st.error("❌ 目前伺服器中尚無班表資料，請先展開上方「管理員專用」上傳當月班表檔案！")
     else:
         try:
-            # 直接讀取伺服器內永久保存的檔案
             start_dt, dates, emp_data = process_file_data(SAVED_FILE_PATH, target_id)
             emp_id, emp_name, cells = emp_data
             active_transport = parse_transport_periods(TRANSPORT_PERIODS)
