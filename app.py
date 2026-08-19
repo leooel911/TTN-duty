@@ -143,7 +143,7 @@ NATIONAL_HOLIDAYS = {
 }
 
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
-TITLE = "//    T r a i n    c r e w    D U T Y    C A L E N D A R"
+TITLE = "//    T r a i n    c r e w    D U TY    C A L E N D A R"
 
 # 三種職位的獨立檔案路徑
 ROLE_FILES = {
@@ -154,7 +154,7 @@ ROLE_FILES = {
 
 # 🔐 設定管理員密碼與組員查詢授權密碼
 ADMIN_PASSWORD = "Lf0900"
-CREW_ACCESS_PASSWORD = "TTN2026"  # <-- 你可以自行更改這組授權給組員查詢的密碼
+CREW_ACCESS_PASSWORD = "TTN2026"  # <-- 授權給內部組員查詢的密碼
 
 def get_file_info(path):
     """取得檔案檔名與最後更新日期資訊"""
@@ -501,7 +501,7 @@ with st.expander("管理員專用：Database"):
         selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
         uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
         
-        , if uploaded_file is not None:
+        if uploaded_file is not None:
             target_path = ROLE_FILES[selected_role]
             with open(target_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
