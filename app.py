@@ -318,16 +318,28 @@ if st.button("立即配置個人班表圖片檔"):
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(16))
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]}", ha="left", va="center", color="#CBD5E1", fontproperties=fp(11))
             
-            # 💡 右上角 Producer | C.L.F 加上獨立的科技風邊框 (Pill Badge) 往左移至 0.95 座標
-            badge_x, badge_y, badge_w, badge_h = 0.905, ty + TH * 0.42, 0.085, 0.035
+            # 💡 右上角獨立科技風邊框標籤 (badge_x 設為 0.865 完美置於標題框內)
+            badge_x, badge_y, badge_w, badge_h = 0.865, ty + TH * 0.42, 0.115, 0.035
             ax.add_patch(FancyBboxPatch((badge_x, badge_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.01", linewidth=1.0, edgecolor="#334155", facecolor="#1E293B"))
-            draw_bold_text(ax, badge_x + badge_w / 2, badge_y + badge_h / 2, "Producer | C.L.F", ha="center", va="center", color="#38BDF8", fontproperties=fp(10))
+            draw_bold_text(ax, badge_x + badge_w / 2, badge_y + badge_h / 2, "Producer | C.L.F", ha="center", va="center", color="#38BDF8", fontproperties=fp(10.5))
             
             dy = ty - DH
             for c in range(7):
                 x = ML + c * CW
                 ax.add_patch(FancyBboxPatch((x, dy), CW, DH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#475569", facecolor="#94A3B8"))
                 draw_bold_text(ax, x + CW / 2, dy + DH / 2, ["SUN 星期日", "MON 星期一", "TUE 星期二", "WED 星期三", "THU 星期四", "FRI 星期五", "SAT 星期六"][c], ha="center", va="center", color="#000000", fontproperties=fp(11))
+
+            has_emp_do, has_emp_pay, has_emp_ot, has_emp_town = False, False, False, False
+            for week in weeks:
+                for cell in week:
+                    if cell is not None:
+                        _, d = cell
+                        tr, note, hours = d["train"], d.get("note", ""), d.get("hours", "")
+                        is_hol = "D2W" in tr or "DO2W" in tr or "D2W" in note or "DO2W" in note
+                        if is_hol or tr.startswith("DO"): has_emp_do = True
+                        elif tr == "PAY": has_emp_pay = True
+                        elif is_town_shift(tr, note): has_emp_town = True
+                        if is_overtime(hours): has_emp_ot = True
 
             for ri, week in enumerate(weeks):
                 ry = dy - (ri + 1) * RH
@@ -349,10 +361,33 @@ if st.button("立即配置個人班表圖片檔"):
                         draw_bold_text(ax, cx, ry + RH * 0.4, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(13))
                         draw_bold_text(ax, cx, ry + RH * 0.15, tr, ha="center", va="center", color="#000000", fontproperties=fp(12))
 
+            # 💡 底部備註膠囊圖例 (Legend)
+            legend_y = MB * 0.45
+            badge_w, badge_h = CW * 0.90, 0.022
+            has_active_transport = any(d in active_transport for d in dates)
+            has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
+
+            pill_legends = [
+                (0, "#F1F5F9", "#475569", C_NOTE_TXT, "備註 (Note)"),
+                (1, C_DO_BG if has_emp_do else C_WORK_BG, "#E11D48" if has_emp_do else "#64748B", C_DO_TXT if has_emp_do else "#64748B", "休假日 (DO)"),
+                (2, C_PAY_BG if has_emp_pay else C_WORK_BG, "#EA580C" if has_emp_pay else "#64748B", C_PAY_TXT if has_emp_pay else "#64748B", "特休 (PAY)"),
+                (3, C_WORK_BG, "#DC2626" if has_emp_ot else "#64748B", C_OT_TXT if has_emp_ot else "#64748B", "工時 > 8.5h"),
+                (4, "#FFF7ED" if has_active_holiday else C_WORK_BG, "#C2410C" if has_active_holiday else "#64748B", C_HOLI_TXT if has_active_holiday else "#64748B", "國定假日"),
+                (5, "#F3E8FF" if has_active_transport else C_WORK_BG, "#7C3AED" if has_active_transport else "#64748B", C_NOTE_TXT if has_active_transport else "#64748B", "疏運"),
+                (6, C_TOWN_BG if has_emp_town else C_WORK_BG, "#334155" if has_emp_town else "#64748B", C_TOWN_TXT if has_emp_town else "#64748B", "非正線勤務"),
+            ]
+
+            for col_idx, bg_clr, border_clr, txt_clr, label in pill_legends:
+                col_x = ML + col_idx * CW
+                lx = col_x + (CW - badge_w) / 2
+                badge = FancyBboxPatch((lx, legend_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.2, edgecolor=border_clr, facecolor=bg_clr)
+                ax.add_patch(badge)
+                draw_bold_text(ax, lx + badge_w / 2, legend_y + badge_h / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(9))
+
             tw_tz = timezone(timedelta(hours=8))
             now_str = datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M")
             
-            # 💡 底部版權與時間文字再度加大（字體改為 12），顏色改為深黑（#0F172A）超醒目
+            # 💡 底部版權與時間文字（字體 12，深黑超顯眼）
             draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
             draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#0F172A", fontproperties=fp(12))
             
