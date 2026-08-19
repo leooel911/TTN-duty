@@ -21,12 +21,12 @@ NATIONAL_HOLIDAYS = {
     "10/25": "台灣光復節", "12/25": "行憲紀念日"
 }
 
-TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
+TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運","春節疏運"}
 TITLE = "//    T r a i n    c r e w    D U T Y    C A L E N D A R"
 SAVED_FILE_PATH = "latest_duty.xlsx"
 
 # 🔐 設定管理員密碼（可自行修改）
-ADMIN_PASSWORD = "Lf0988"
+ADMIN_PASSWORD = "Lf0900"
 
 def draw_bold_text(ax, x, y, text, **kwargs):
     """四重疊影加粗函數"""
@@ -162,24 +162,24 @@ C_TOWN_TXT = "#000000"
 st.title("🚆 TTN Duty Engine // C.L.F Edition")
 
 # 🔒 管理員專用：具備密碼保護的 Database 上傳區塊
-with st.expander("📁 管理員專用：Database (需密碼解鎖)"):
+with st.expander("📁 管理員專用：Database "):
     password_input = st.text_input("請輸入管理員密碼", type="password")
     
     if password_input == ADMIN_PASSWORD:
-        st.success("🔓 密碼正確，管理員權限已解鎖！")
+        st.success("🔓 密碼正確，你好！ＬＥＯ")
         uploaded_file = st.file_uploader("選擇班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
         if uploaded_file is not None:
             with open(SAVED_FILE_PATH, "wb") as f:
                 f.write(uploaded_file.getbuffer())
             st.success("✅ 班表已成功上傳並永久保存至伺服器！")
     elif password_input != "":
-        st.error("❌ 密碼錯誤，無法存取上傳功能。")
+        st.error("❌ 密碼錯誤，請洽C.L.F。")
 
-target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 江立夫)", value="A018896")
+target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A018896")
 
 if st.button("立即打造個人班表圖片"):
     if not os.path.exists(SAVED_FILE_PATH):
-        st.error("❌ 目前伺服器中尚無班表資料，請先請管理員上傳當月班表檔案！")
+        st.error("❌ 目前伺服器中尚未更新班表資料，請聯繫管理員！")
     else:
         try:
             start_dt, dates, emp_id, emp_name, cells = process_file_data(SAVED_FILE_PATH, target_input)
@@ -312,7 +312,7 @@ if st.button("立即打造個人班表圖片"):
 
             st.success("🎉 個人班表圖片生成成功！")
             st.image(buf, use_container_width=True)
-            st.download_button("📥 點此下載高解析班表圖片", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
+            st.download_button("📥 點此下載您的班表圖片", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
 
         except Exception as e:
             st.error(f"❌ 錯誤：{e}")
