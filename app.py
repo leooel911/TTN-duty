@@ -220,14 +220,15 @@ def parse_cell(raw):
     if not lines: return dict(start="", train="", end="", hours="", note="")
     if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): return dict(start="", train=lines[0], end="", hours="", note="")
     
-    hours = next((fmt_hours(l) for l in lines if "h" in l or "m" in l or re.match(r'^\d{1,2}:\d{2}$', l) and len(lines) > 2), "")
-    
     if "PAY" in lines:
         times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
         return dict(start=pad_time(times[0]) if times else "", train="PAY", end=pad_time(times[1]) if len(times)>1 else "", hours="", note="")
     
+    # 萃取所有符合時間格式的字串 (HH:MM)
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
     
+    # 萃取工時
+    hours = ""
     for l in lines:
         if ("h" in l.lower() or "m" in l.lower()) or (re.match(r'^\d{1,2}:\d{2}$', l) and l not in times[:2]):
             hours = fmt_hours(l)
@@ -235,7 +236,22 @@ def parse_cell(raw):
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     
-    train_code = next((l for l in lines if l not in times and not ("h" in l.lower() or "m" in l.lower()) and "DO" not in l and "PAY" not in l), "")
+    # 智慧過濾車次代號：排除時間、工時、休假字眼，並支援英數字混合代號（如 MG0012, NF0012 等）
+    train_code = ""
+    for l in lines:
+        if l not in times and not ("h" in l.lower() or "m" in l.lower()) and "DO" not in l and "PAY" not in l:
+            # 如果這行含有英文字母且長度合理，極高機率就是車次/班別代號
+            if any(c.isalpha() for c in l):
+                train_code = l
+                break
+    
+    # 如果上面沒抓到，抓取第一個非時間、非工時的字串
+    if not train_code:
+        for l in lines:
+            if l not in times and not ("h" in l.lower() or "m" in l.lower()) and "DO" not in l and "PAY" not in l:
+                train_code = l
+                break
+
     notes = [l for l in lines if l not in times and l != train_code and not ("h" in l.lower() or "m" in l.lower())]
     
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
@@ -379,7 +395,7 @@ if st.button("立即配置個人班表圖片檔"):
                     if dt in active_transport:
                         draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(9))
 
-                    # 💡 右下角：調整為完美的 9 號字，大小適中且清晰不擁擠
+                    # 💡 右下角：每日工時
                     if d.get("hours"): 
                         draw_bold_text(ax, x + CW - 0.004, ry + 0.005, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(9))
                     
