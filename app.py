@@ -34,6 +34,13 @@ ROLE_FILES = {
 # 🔐 設定管理員密碼
 ADMIN_PASSWORD = "Lf0900"
 
+def get_file_info(path):
+    """取得檔案更新日期資訊"""
+    if os.path.exists(path):
+        mtime = os.path.getmtime(path)
+        return datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+    return "尚未上傳"
+
 def draw_bold_text(ax, x, y, text, **kwargs):
     """四重疊影加粗函數"""
     ax.text(x, y, text, **kwargs)
@@ -173,7 +180,7 @@ C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN Duty Engine // C.L.F Edition")
 
-# 1️⃣ 一般使用者查詢區塊移到最上方
+# 1️⃣ 一般使用者查詢區塊
 target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A")
 
 if st.button("立即打造個人班表圖片"):
@@ -316,9 +323,16 @@ if st.button("立即打造個人班表圖片"):
         except Exception as e:
             st.error(f"❌ 錯誤：{e}")
 
-# 2️⃣ 管理員專用：支援三種職位的密碼保護上傳區塊移到最下方
+# 2️⃣ 管理員專用：Database (更新班表)
 st.markdown("---")
 with st.expander("📁 管理員專用：Database (更新班表)"):
+    # 新增顯示資訊板
+    st.subheader("📊 目前班表狀態")
+    status_data = []
+    for role, path in ROLE_FILES.items():
+        status_data.append({"職位": role, "最後更新時間": get_file_info(path)})
+    st.table(pd.DataFrame(status_data))
+
     password_input = st.text_input("請輸入管理員密碼", type="password")
     
     if password_input == ADMIN_PASSWORD:
