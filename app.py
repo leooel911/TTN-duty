@@ -369,9 +369,9 @@ if st.button("立即配置個人班表圖片檔"):
                     if dt in active_transport:
                         draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(9))
 
-                    # 💡 右下角：每日工時（超時自動變紅）
+                    # 💡 右下角：每日工時（修正座標確保不被覆蓋）
                     if d.get("hours"): 
-                        draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(9))
+                        draw_bold_text(ax, x + CW - 0.004, ry + 0.006, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(8.5))
                     
                     cx = x + CW / 2
                     if tr.startswith("DO"): 
