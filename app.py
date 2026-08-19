@@ -13,15 +13,15 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="🚆", layout="centered")
 
-# 📱 頂部標題防換行與手機版排版優化 CSS
+# 📱 增加頂部 padding，讓整個網頁內容往下移至畫面舒適的位置
 st.markdown("""
 <style>
-    /* 全域頁面背景與手機端邊距優化 */
+    /* 全域頁面背景與上下邊距優化（增加 padding-top 讓畫面往下沉） */
     .stApp {
         background-color: #0B0F19;
     }
     .block-container {
-        padding-top: 1.5rem !important;
+        padding-top: 4rem !important;
         padding-bottom: 3rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
