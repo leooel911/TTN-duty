@@ -429,6 +429,7 @@ st.markdown("---")
 with st.expander("管理員專用：Database"):
     password_input = st.text_input("請輸入管理員密碼", type="password")
     if password_input == ADMIN_PASSWORD:
+        st.success("歡迎 LEO！")
         st.subheader("目前各職位班表狀態")
         status_data = [{"職位": role, "存檔名稱": get_file_info(path)[0], "最後更新時間": get_file_info(path)[1]} for role, path in ROLE_FILES.items()]
         st.table(pd.DataFrame(status_data))
@@ -437,3 +438,5 @@ with st.expander("管理員專用：Database"):
         if uploaded_file:
             with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
             st.success("上傳成功！")
+    elif password_input:
+        st.error("密碼錯誤，請洽 CLF")
