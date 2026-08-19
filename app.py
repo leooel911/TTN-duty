@@ -205,9 +205,27 @@ def pad_time(t_str):
     parts = str(t_str).split(":")
     return f"{int(parts[0]):02d}:{parts[1]}" if len(parts) == 2 else str(t_str)
 
-def fmt_hours(h):
-    h_str = str(h).strip()
-    return h_str.replace(":", "h") + "m" if ":" in h_str and "h" not in h_str else h_str
+def calculate_hours(start_str, end_str):
+    """💡 透過上下班時間字串自動計算工時，格式化為 Xh Ym"""
+    if not start_str or not end_str or ":" not in start_str or ":" not in end_str:
+        return ""
+    try:
+        sh, sm = map(int, start_str.split(":"))
+        eh, em = map(int, end_str.split(":"))
+        
+        start_mins = sh * 60 + sm
+        end_mins = eh * 60 + em
+        
+        # 跨日處理 (例如 23:41 到 07:11 或 24:30)
+        if end_mins <= start_mins:
+            end_mins += 24 * 60
+            
+        diff_mins = end_mins - start_mins
+        h = diff_mins // 60
+        m = diff_mins % 60
+        return f"{h}h{m:02d}m"
+    except:
+        return ""
 
 def parse_cell(raw):
     if pd.isna(raw) or not str(raw).strip(): return dict(start="", train="", end="", hours="", note="")
@@ -219,19 +237,15 @@ def parse_cell(raw):
         times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
         return dict(start=pad_time(times[0]) if times else "", train="PAY", end=pad_time(times[1]) if len(times)>1 else "", hours="", note="")
     
-    # 💡 修正工時抓取：直接找包含 h/m 的行，或是符合工時格式的字串
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
-    
-    # 尋找含有 h 或 m 的行作為每日工時統計
-    hours_raw = next((l for l in lines if "h" in l.lower() or "m" in l.lower() or re.search(r'\d+h', l)), "")
-    hours = fmt_hours(hours_raw) if hours_raw else ""
-    
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     
-    # 排除時間與工時後，抓取車次編號與備註
-    train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != hours_raw and "h" not in l.lower() and "m" not in l.lower() and "DO" not in l and "PAY" not in l), "")
-    notes = [l for l in lines if l not in times and l != train_code and l != hours_raw]
+    # 💡 自動透過上下班時間計算工時
+    hours = calculate_hours(start_time, end_time)
+    
+    train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "DO" not in l and "PAY" not in l and "h" not in l and "m" not in l), "")
+    notes = [l for l in lines if l not in times and l != train_code]
     
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
 
@@ -361,7 +375,7 @@ if st.button("立即配置個人班表圖片檔"):
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
                     draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_HOLI_TXT if dt in NATIONAL_HOLIDAYS else "#000000", fontproperties=fp(10))
                     
-                    # 💡 畫出右下角每日工時統計
+                    # 💡 繪製自動計算出來的每日工時統計
                     if d.get("hours"): 
                         draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(9))
                     
