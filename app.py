@@ -154,7 +154,7 @@ ROLE_FILES = {
 
 # 🔐 設定管理員密碼與組員查詢授權密碼
 ADMIN_PASSWORD = "Lf0900"
-CREW_ACCESS_PASSWORD = "TTN2026"  # <-- 授權給內部組員查詢的密碼
+CREW_ACCESS_PASSWORD = "0900"  # <-- 授權給內部組員查詢的密碼
 
 def get_file_info(path):
     """取得檔案檔名與最後更新日期資訊"""
@@ -292,7 +292,7 @@ def is_overtime(h):
 
 def is_town_shift(tr, note):
     combined = f"{tr} {note}".upper()
-    return any(kw in combined for kw in ["TOWN", "STD", "TTN", "DTT", "工廠", "回廠", "訓練"])
+    return any(kw in combined for kw in ["TOWN", "STD", "TTN", "DTT", "OGT", "回廠", "訓練"])
 
 def build_weeks(start_dt, dates, cells):
     first_wd = (start_dt.weekday() + 1) % 7
@@ -336,14 +336,14 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # 1️⃣ 一般使用者查詢區塊（增加授權密碼保護）
-target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="")
-access_password = st.text_input("輸入 系統授權密碼", type="password", value="")
+target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A")
+access_password = st.text_input("輸入 系統授權碼", type="password", value="")
 
 if st.button("立即配置個人班表圖片檔"):
     if access_password != CREW_ACCESS_PASSWORD:
-        st.error("系統授權密碼錯誤，請輸入正確的內部查詢密碼！")
+        st.error("系統授權碼錯誤，請聯繫管理員C.L.F！")
     elif not any(os.path.exists(path) for path in ROLE_FILES.values()):
-        st.error("目前伺服器中尚未更新任何班表資料，請聯繫管理員！")
+        st.error("目前伺服器中尚未更新任何班表資料，請聯繫管理員C.L.F！")
     else:
         try:
             start_dt, dates, emp_id, emp_name, cells = process_file_data(target_input)
