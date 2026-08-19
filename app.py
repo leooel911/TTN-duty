@@ -144,7 +144,7 @@ NATIONAL_HOLIDAYS = {
 }
 
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
-TITLE = "//    T r a i n    c r e w    D U T Y    C A L E N D A R"
+TITLE = "//    T r a i n    c r e w    D U TY    C A L E N D A R"
 
 # 三種職位的獨立檔案路徑
 ROLE_FILES = {
@@ -318,8 +318,12 @@ if st.button("立即配置個人班表圖片檔"):
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(16))
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]}", ha="left", va="center", color="#CBD5E1", fontproperties=fp(11))
             
-            # 💡 右上角獨立科技風邊框標籤 (badge_x 設為 0.865 完美置於標題框內)
-            badge_x, badge_y, badge_w, badge_h = 0.865, ty + TH * 0.42, 0.115, 0.035
+            # 💡 將右上角標籤寬度與位置直接對齊「SAT 星期六」這一欄的寬度與右界
+            badge_w = CW * 0.90
+            badge_x = (1.0 - MR) - CW + (CW - badge_w) / 2
+            badge_y = ty + TH * 0.42
+            badge_h = 0.035
+            
             ax.add_patch(FancyBboxPatch((badge_x, badge_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.01", linewidth=1.0, edgecolor="#334155", facecolor="#1E293B"))
             draw_bold_text(ax, badge_x + badge_w / 2, badge_y + badge_h / 2, "Producer | C.L.F", ha="center", va="center", color="#38BDF8", fontproperties=fp(10.5))
             
@@ -361,9 +365,9 @@ if st.button("立即配置個人班表圖片檔"):
                         draw_bold_text(ax, cx, ry + RH * 0.4, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(13))
                         draw_bold_text(ax, cx, ry + RH * 0.15, tr, ha="center", va="center", color="#000000", fontproperties=fp(12))
 
-            # 💡 底部備註膠囊圖例 (Legend)
+            # 底部備註膠囊圖例 (Legend)
             legend_y = MB * 0.45
-            badge_w, badge_h = CW * 0.90, 0.022
+            badge_w_leg, badge_h_leg = CW * 0.90, 0.022
             has_active_transport = any(d in active_transport for d in dates)
             has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
 
@@ -379,15 +383,15 @@ if st.button("立即配置個人班表圖片檔"):
 
             for col_idx, bg_clr, border_clr, txt_clr, label in pill_legends:
                 col_x = ML + col_idx * CW
-                lx = col_x + (CW - badge_w) / 2
-                badge = FancyBboxPatch((lx, legend_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.2, edgecolor=border_clr, facecolor=bg_clr)
+                lx = col_x + (CW - badge_w_leg) / 2
+                badge = FancyBboxPatch((lx, legend_y), badge_w_leg, badge_h_leg, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.2, edgecolor=border_clr, facecolor=bg_clr)
                 ax.add_patch(badge)
-                draw_bold_text(ax, lx + badge_w / 2, legend_y + badge_h / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(9))
+                draw_bold_text(ax, lx + badge_w_leg / 2, legend_y + badge_h_leg / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(9))
 
             tw_tz = timezone(timedelta(hours=8))
             now_str = datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M")
             
-            # 💡 底部版權與時間文字（字體 12，深黑超顯眼）
+            # 底部版權與時間文字
             draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
             draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#0F172A", fontproperties=fp(12))
             
