@@ -13,23 +13,13 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="TTN 勤務班表產生器", page_icon="🚆", layout="centered")
 
-# 🚀 2026 台灣國定假日設定
 NATIONAL_HOLIDAYS = {
-    "1/1": "元旦",
-    "2/16": "除夕", "2/17": "春節", "2/18": "初二", "2/19": "初三", "2/20": "初四",
-    "2/28": "和平紀念日",
-    "4/3": "兒童節", "4/4": "清明節",
-    "5/1": "勞動節",
-    "6/19": "端午節",
-    "9/25": "中秋節",
-    "9/28": "教師節",
-    "10/10": "國慶日"
+    "1/1": "元旦", "2/16": "除夕", "2/17": "春節", "2/18": "初二", "2/19": "初三", "2/20": "初四",
+    "2/28": "和平紀念日", "4/3": "兒童節", "4/4": "清明節", "5/1": "勞動節",
+    "6/19": "端午節", "9/25": "中秋節", "9/28": "教師節", "10/10": "國慶日"
 }
 
-TRANSPORT_PERIODS = {
-    "9/24-9/29": "中秋疏運",
-}
-
+TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "//    T r a i n    c r e w    D U T Y    C A L E N D A R"
 
 def parse_transport_periods(raw_periods, year=2026):
@@ -83,9 +73,7 @@ def parse_cell(raw):
         return dict(start=start_t, train="PAY", end=end_t, hours=hours, note="")
 
     time_match_pattern = re.compile(r'^(\d{1,2}:\d{2})$')
-    times = []
-    other_lines = []
-    hours = ""
+    times, other_lines, hours = [], [], ""
     for l in lines:
         if time_match_pattern.match(l):
             times.append(l)
@@ -100,8 +88,7 @@ def parse_cell(raw):
     start_time = pad_time(times[0]) if len(times) >= 1 else ""
     end_time = pad_time(times[1]) if len(times) >= 2 else ""
 
-    train_code = ""
-    notes = []
+    train_code, notes = "", []
     for item in other_lines:
         if item.startswith("DO") or item.startswith("D2W"):
             notes.append(item)
@@ -168,7 +155,7 @@ def is_overtime(h):
         return False
 
 def is_town_shift(tr, note):
-    target_keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "FAC"]
+    target_keywords = ["TOWN", "STD", "TTN", "DTT", "工廠", "回廠", "訓練"]
     combined = f"{tr} {note}".upper()
     return any(kw in combined for kw in target_keywords)
 
@@ -188,10 +175,12 @@ def build_weeks(start_dt, dates, cells):
     return weeks
 
 def setup_font():
+    # 自動尋找專案資料夾裡的字型檔
     font_paths = [
+        "NotoSansTC-Regular.ttf",
+        "msjh.ttc",
         "/System/Library/Fonts/PingFang.ttc",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "C:\\Windows\\Fonts\\msjh.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
     ]
     for path in font_paths:
         if os.path.exists(path):
@@ -202,7 +191,6 @@ def setup_font():
                 continue
     return None
 
-# 色彩設定
 C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#94A3B8", "#F1F5F9"
 C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
 C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
@@ -212,16 +200,12 @@ C_TIME, C_TRAIN, C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = (
 C_TOWN_TXT = "#1E293B"
 
 st.title("🚆 TTN 勤務班表產生器 (手機網頁版)")
-st.write("請在下方貼上從信箱複製的大班表原始文字，並輸入你的名字即可即時生成！")
+target_name = st.text_input("輸入你的名字", value="江立夫")
+raw_text_input = st.text_area("在此貼上大班表文字內容", height=150)
 
-with st.form("shift_form"):
-    target_name = st.text_input("輸入你的名字", value="江立夫")
-    raw_text_input = st.text_area("在此貼上大班表文字內容", height=200, placeholder="請將信件中的整段表格文字貼在這裡...")
-    submit_btn = st.form_submit_button("立即生成個人班表圖片")
-
-if submit_btn:
+if st.button("立即生成個人班表圖片"):
     if not raw_text_input.strip():
-        st.error("請先貼上大班表文字內容！")
+        st.error("請先貼上大班表文字！")
     else:
         try:
             start_dt, dates, emp_data, file_date_str = parse_flexible_employees(raw_text_input, target_name)
@@ -243,7 +227,8 @@ if submit_btn:
             ax.axis("off")
             fig.patch.set_facecolor("white")
 
-            ML, MR, MT, MB, TH, DH = 0.015, 0.015, 0.015, 0.10, 0.09, 0.055
+            # 調整邊距讓底部膠囊圖例完整顯示
+            ML, MR, MT, MB, TH, DH = 0.015, 0.015, 0.015, 0.08, 0.09, 0.055
             TW = 1.0 - ML - MR
             CW = TW / 7
             RH = (1.0 - MT - MB - TH - DH) / n_weeks
@@ -260,6 +245,18 @@ if submit_btn:
                 ax.add_patch(FancyBboxPatch((x, dy), CW, DH, boxstyle="square,pad=0", linewidth=0.8, edgecolor=C_BORDER, facecolor="#CBD5E1"))
                 ax.text(x + CW / 2, dy + DH / 2, dlabels[c], ha="center", va="center", color="#0F172A", fontproperties=fp(9, True))
 
+            has_emp_do, has_emp_pay, has_emp_ot, has_emp_town = False, False, False, False
+            for week in weeks:
+                for cell in week:
+                    if cell is not None:
+                        dt, d = cell
+                        tr, note, hours = d["train"], d.get("note", ""), d.get("hours", "")
+                        is_holiday = "D2W" in tr or "DO2W" in tr or "D2W" in note or "DO2W" in note
+                        if is_holiday or tr.startswith("DO"): has_emp_do = True
+                        elif tr == "PAY": has_emp_pay = True
+                        elif is_town_shift(tr, note): has_emp_town = True
+                        if is_overtime(hours): has_emp_ot = True
+
             for ri, week in enumerate(weeks):
                 ry = dy - (ri + 1) * RH
                 for ci, cell in enumerate(week):
@@ -269,21 +266,15 @@ if submit_btn:
                         continue
 
                     dt, d = cell
-                    tr = d["train"]
-                    note = d.get("note", "")
+                    tr, note = d["train"], d.get("note", "")
                     is_national_holiday = dt in NATIONAL_HOLIDAYS
                     is_holiday = "D2W" in tr or "DO2W" in tr or "D2W" in note or "DO2W" in note
 
-                    if is_holiday or tr.startswith("DO"):
-                        bg = C_DO_BG
-                    elif tr == "PAY":
-                        bg = C_PAY_BG
-                    elif is_town_shift(tr, note):
-                        bg = C_TOWN_BG
-                    elif ci == 0 or ci == 6:
-                        bg = C_WEEKEND_BG
-                    else:
-                        bg = C_WORK_BG
+                    if is_holiday or tr.startswith("DO"): bg = C_DO_BG
+                    elif tr == "PAY": bg = C_PAY_BG
+                    elif is_town_shift(tr, note): bg = C_TOWN_BG
+                    elif ci == 0 or ci == 6: bg = C_WEEKEND_BG
+                    else: bg = C_WORK_BG
 
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=0.8, edgecolor=C_BORDER, facecolor=bg))
 
@@ -318,6 +309,29 @@ if submit_btn:
                             ax.text(cx, ry + RH * 0.44, d["end"], ha="center", va="center", color=C_TIME, fontproperties=fp(11.0, True))
                             ax.text(cx, ry + RH * 0.20, tr, ha="center", va="center", color=C_TRAIN, fontproperties=fp(10.0, True))
 
+            # 繪製底部膠囊圖例
+            legend_y = MB * 0.3
+            badge_w, badge_h = CW * 0.90, 0.022
+            has_active_transport = any(d in active_transport for d in dates)
+            has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
+
+            pill_legends = [
+                (0, "#F1F5F9", "#94A3B8", C_NOTE_TXT, "備註 (Note)"),
+                (1, C_DO_BG if has_emp_do else C_WORK_BG, "#FDA4AF" if has_emp_do else "#CBD5E1", C_DO_TXT if has_emp_do else "#94A3B8", "休假日 (DO)"),
+                (2, C_PAY_BG if has_emp_pay else C_WORK_BG, "#FDBA74" if has_emp_pay else "#CBD5E1", C_PAY_TXT if has_emp_pay else "#94A3B8", "特休 (PAY)"),
+                (3, C_WORK_BG, "#FCA5A5" if has_emp_ot else "#CBD5E1", C_OT_TXT if has_emp_ot else "#94A3B8", "工時 > 8.5h"),
+                (4, "#FFF7ED" if has_active_holiday else C_WORK_BG, "#FED7AA" if has_active_holiday else "#CBD5E1", C_HOLI_TXT if has_active_holiday else "#94A3B8", "國定假日"),
+                (5, "#F3E8FF" if has_active_transport else C_WORK_BG, "#DDD6FE" if has_active_transport else "#CBD5E1", C_NOTE_TXT if has_active_transport else "#94A3B8", "疏運"),
+                (6, C_TOWN_BG if has_emp_town else C_WORK_BG, "#64748B" if has_emp_town else "#CBD5E1", C_TOWN_TXT if has_emp_town else "#94A3B8", "非正線勤務"),
+            ]
+
+            for col_idx, bg_clr, border_clr, txt_clr, label in pill_legends:
+                col_x = ML + col_idx * CW
+                lx = col_x + (CW - badge_w) / 2
+                badge = FancyBboxPatch((lx, legend_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.0, edgecolor=border_clr, facecolor=bg_clr)
+                ax.add_patch(badge)
+                ax.text(lx + badge_w / 2, legend_y + badge_h / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(7.0, True))
+
             buf = io.BytesIO()
             plt.tight_layout(pad=0)
             plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white")
@@ -325,14 +339,8 @@ if submit_btn:
             plt.close()
 
             st.success("🎉 個人班表圖片生成成功！")
-            st.image(buf, caption=f"{emp_name} 的個人班表", use_container_width=True)
-            
-            st.download_button(
-                label="📥 點此下載高解析班表圖片",
-                data=buf,
-                file_name=f"TTN班表_{emp_name}_{file_date_str.replace('/', '-')}.png",
-                mime="image/png"
-            )
+            st.image(buf, use_container_width=True)
+            st.download_button("📥 點此下載高解析班表圖片", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
 
         except Exception as e:
-            st.error(f"❌ 解析發生錯誤，請確認貼上的文字格式是否正確：{e}")
+            st.error(f"❌ 錯誤：{e}")
