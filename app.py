@@ -13,10 +13,23 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="🚆 TTN 勤務班表產生器", page_icon="🚆", layout="centered")
 
+# 2026 全年完整國定假日與紀念日對照表
 NATIONAL_HOLIDAYS = {
-    "1/1": "元旦", "2/16": "除夕", "2/17": "春節", "2/18": "初二", "2/19": "初三", "2/20": "初四",
-    "2/28": "和平紀念日", "4/3": "兒童節", "4/4": "清明節", "5/1": "勞動節",
-    "6/19": "端午節", "9/25": "中秋節", "9/28": "教師節", "10/10": "國慶日"
+    "1/1": "元旦",
+    "2/16": "除夕",
+    "2/17": "初一",
+    "2/18": "初二",
+    "2/19": "初三",
+    "2/28": "和平紀念日",
+    "4/4": "兒童節",
+    "4/5": "清明節",
+    "5/1": "勞動節",
+    "6/19": "端午節",
+    "9/25": "中秋節",
+    "9/28": "教師節",
+    "10/10": "國慶日",
+    "10/25": "台灣光復節",
+    "12/25": "行憲紀念日"
 }
 
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
@@ -81,7 +94,6 @@ def parse_cell(raw):
     return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
 
 def process_file_data(file_source, target_id):
-    # 指定 header=3（對應 Excel 第 4 列作為標題列）
     if isinstance(file_source, str):
         df = pd.read_excel(file_source, header=3)
     else:
@@ -94,17 +106,16 @@ def process_file_data(file_source, target_id):
     emp_id, emp_name = "", ""
     
     for idx, row in df.iterrows():
-        found_id = str(row.iloc[0]).strip().upper() # A 欄為員編
+        found_id = str(row.iloc[0]).strip().upper()
         if found_id == target_clean:
             matched_row = row
             emp_id = found_id
-            emp_name = str(row.iloc[1]).strip() # B 欄為姓名
+            emp_name = str(row.iloc[1]).strip()
             break
                 
     if matched_row is None:
         raise ValueError(f"找不到員編「{target_id}」的資料，請確認輸入是否正確。")
         
-    # 從表頭抓取日期
     col_names = df.columns[2:]
     dates = []
     start_dt = date(2026, 2, 1)
