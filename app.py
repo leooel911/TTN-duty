@@ -175,7 +175,7 @@ with st.expander("📁 管理員專用：Database "):
     elif password_input != "":
         st.error("❌ 密碼錯誤，請洽C.L.F。")
 
-target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A018896")
+target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A0")
 
 if st.button("立即打造個人班表圖片"):
     if not os.path.exists(SAVED_FILE_PATH):
