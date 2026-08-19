@@ -158,7 +158,7 @@ C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN Duty Engine // C.L.F Edition")
 
-with st.expander("📁 管理員專用：上傳當月班表檔案（更新後永久保存）"):
+with st.expander("📁 管理員專用：Database"):
     uploaded_file = st.file_uploader("選擇班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
     if uploaded_file is not None:
         with open(SAVED_FILE_PATH, "wb") as f:
