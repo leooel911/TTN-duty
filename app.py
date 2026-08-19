@@ -173,26 +173,7 @@ C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN Duty Engine // C.L.F Edition")
 
-# 🔒 管理員專用：支援三種職位的密碼保護上傳區塊
-with st.expander("📁 管理員專用：Database "):
-    password_input = st.text_input("請輸入管理員密碼", type="password")
-    
-    if password_input == ADMIN_PASSWORD:
-        st.success("🔓 密碼正確，你好！ＬＥＯ")
-        
-        # 選擇要上傳的職位類別
-        selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
-        uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
-        
-        if uploaded_file is not None:
-            target_path = ROLE_FILES[selected_role]
-            with open(target_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            st.success(f"✅ 【{selected_role}】班表已成功上傳並保存至伺服器 ({target_path})！")
-            
-    elif password_input != "":
-        st.error("❌ 密碼錯誤，請洽C.L.F。")
-
+# 1️⃣ 一般使用者查詢區塊移到最上方
 target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A")
 
 if st.button("立即打造個人班表圖片"):
@@ -334,3 +315,24 @@ if st.button("立即打造個人班表圖片"):
 
         except Exception as e:
             st.error(f"❌ 錯誤：{e}")
+
+# 2️⃣ 管理員專用：支援三種職位的密碼保護上傳區塊移到最下方
+st.markdown("---")
+with st.expander("📁 管理員專用：Database (更新班表)"):
+    password_input = st.text_input("請輸入管理員密碼", type="password")
+    
+    if password_input == ADMIN_PASSWORD:
+        st.success("🔓 密碼正確，你好！ＬＥＯ")
+        
+        # 選擇要上傳的職位類別
+        selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
+        uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
+        
+        if uploaded_file is not None:
+            target_path = ROLE_FILES[selected_role]
+            with open(target_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            st.success(f"✅ 【{selected_role}】班表已成功上傳並保存至伺服器 ({target_path})！")
+            
+    elif password_input != "":
+        st.error("❌ 密碼錯誤，請洽C.L.F。")
