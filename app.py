@@ -11,7 +11,7 @@ from matplotlib.patches import FancyBboxPatch
 
 matplotlib.use('Agg')
 
-st.set_page_config(page_title="🚆 TTN 勤務班表產生器", page_icon="🚆", layout="centered")
+st.set_page_config(page_title="🚆 TTN 個人班表出圖系統", page_icon="🚆", layout="centered")
 
 # 2026 全年完整國定假日與紀念日對照表
 NATIONAL_HOLIDAYS = {
@@ -195,9 +195,10 @@ if st.button("立即生成個人班表圖片"):
             draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]} ({len(dates)} DAYS)", ha="left", va="center", color="#CBD5E1", fontproperties=fp(9))
             
             # 右上角 C.L.F DESIGNS 標誌（微調向左，完美不貼邊）
-            ax.plot(0.915, ty + TH * 0.58, marker='o', markersize=4, color="#22C55E")
+            # 綠點位置（讓它在文字左側約 0.11 的距離）
+            ax.plot(0.935 - 0.11, ty + TH * 0.58, marker='o', markersize=4, color="#22C55E")
+            # 文字維持靠右對齊 (ha="right")
             draw_bold_text(ax, 0.935, ty + TH * 0.58, "C.L.F DESIGNS", ha="right", va="center", color="#FFFFFF", fontproperties=fp(8.5))
-
             dlabels = ["SUN 星期日", "MON 星期一", "TUE 星期二", "WED 星期三", "THU 星期四", "FRI 星期五", "SAT 星期六"]
             dy = ty - DH
             for c in range(7):
