@@ -13,7 +13,7 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="🚆", layout="centered")
 
-# 📱 升級啟動按鈕的視覺顯眼度（高亮漸層色、強陰影與互動特效）
+# 📱 放大主標題並確保絕對不跳行
 st.markdown("""
 <style>
     /* 全域頁面背景與上下邊距優化 */
@@ -34,10 +34,10 @@ st.markdown("""
         width: 100%;
         margin-bottom: 1rem;
     }
-    /* 主標題：強制不換行、自動依手機螢幕縮放大小 */
+    /* 主標題：放大至 26px，強制不換行 */
     .main-title {
         color: #F8FAFC;
-        font-size: 22px;
+        font-size: 26px;
         font-weight: 800;
         letter-spacing: 0.5px;
         white-space: nowrap;
@@ -315,7 +315,7 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# 🎯 頂部標題與右上角小字配置（防換行設計）
+# 🎯 放大後的頂部標題與右上角小字配置（防換行設計）
 st.markdown("""
 <div class="header-container">
     <div class="main-title">CREW DUTY ENGINE</div>
