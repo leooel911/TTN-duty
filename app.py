@@ -13,12 +13,13 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="🚆", layout="centered")
 
-# 📱 放大主標題並確保絕對不跳行
+# 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
 <style>
     /* 全域頁面背景與上下邊距優化 */
     .stApp {
-        background-color: #0B0F19;
+        background-color: #0B0F19 !important;
+        color: #F8FAFC !important;
     }
     .block-container {
         padding-top: 3.5rem !important;
@@ -36,7 +37,7 @@ st.markdown("""
     }
     /* 主標題：放大至 26px，強制不換行 */
     .main-title {
-        color: #F8FAFC;
+        color: #F8FAFC !important;
         font-size: 26px;
         font-weight: 800;
         letter-spacing: 0.5px;
@@ -45,7 +46,7 @@ st.markdown("""
     }
     /* 右上角極小署名標籤 */
     .edition-badge {
-        color: #64748B;
+        color: #64748B !important;
         font-size: 11px;
         font-weight: 600;
         letter-spacing: 1px;
@@ -53,15 +54,15 @@ st.markdown("""
     }
     /* 科技感系統狀態卡片 */
     .telemetry-card {
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        border: 1px solid #334155;
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important;
+        border: 1px solid #334155 !important;
         border-radius: 12px;
         padding: 14px 18px;
         margin-bottom: 16px;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
     }
     .telemetry-title {
-        color: #94A3B8;
+        color: #94A3B8 !important;
         font-size: 12px;
         font-weight: 600;
         letter-spacing: 0.5px;
@@ -69,7 +70,7 @@ st.markdown("""
         margin-bottom: 4px;
     }
     .telemetry-value {
-        color: #F8FAFC;
+        color: #F8FAFC !important;
         font-size: 18px;
         font-weight: 700;
         font-family: monospace;
@@ -88,7 +89,7 @@ st.markdown("""
         font-weight: 600 !important;
         color: #E2E8F0 !important;
     }
-    /* 🚀 升級主啟動按鈕：超顯眼亮藍漸層、強烈立體陰影與滿版置中 */
+    /* 🚀 強制保護主啟動按鈕 */
     div.stButton {
         display: flex !important;
         justify-content: center !important;
@@ -99,8 +100,8 @@ st.markdown("""
         font-weight: 700 !important;
         padding: 16px 24px !important;
         border-radius: 12px !important;
-        background: linear-gradient(135deg, #3B82F6 0%, #2563EB 50%, #1D4ED8 100% !important);
-        color: white !important;
+        background: linear-gradient(135deg, #3B82F6 0%, #2563EB 50%, #1D4ED8 100%) !important;
+        color: #ffffff !important;
         border: 1px solid rgba(255, 255, 255, 0.2) !important;
         box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5) !important;
         transition: all 0.3s ease !important;
@@ -109,11 +110,12 @@ st.markdown("""
         letter-spacing: 0.5px;
     }
     div.stButton > button:hover {
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 50%, #1E40AF 100% !important);
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 50%, #1E40AF 100%) !important;
+        color: #ffffff !important;
         box-shadow: 0 8px 25px rgba(37, 99, 235, 0.7) !important;
         transform: translateY(-2px);
     }
-    /* 下載按鈕同步置中與滿版高質感 */
+    /* 下載按鈕同步強制保護 */
     div.stDownloadButton {
         display: flex !important;
         justify-content: center !important;
@@ -124,8 +126,8 @@ st.markdown("""
         font-weight: 600 !important;
         padding: 14px 20px !important;
         border-radius: 10px !important;
-        background: linear-gradient(135deg, #059669 0%, #047857 100% !important);
-        color: white !important;
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+        color: #ffffff !important;
         width: 100% !important;
         box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4) !important;
     }
@@ -150,8 +152,9 @@ ROLE_FILES = {
     "服勤員": "duty_attendant.xlsx"
 }
 
-# 🔐 設定管理員密碼
+# 🔐 設定管理員密碼與組員查詢授權密碼
 ADMIN_PASSWORD = "Lf0900"
+CREW_ACCESS_PASSWORD = "TTN2026"  # <-- 你可以自行更改這組授權給組員查詢的密碼
 
 def get_file_info(path):
     """取得檔案檔名與最後更新日期資訊"""
@@ -315,7 +318,7 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# 🎯 放大後的頂部標題與右上角小字配置（防換行設計）
+# 🎯 頂部標題與右上角小字配置（防換行設計）
 st.markdown("""
 <div class="header-container">
     <div class="main-title">CREW DUTY ENGINE</div>
@@ -332,11 +335,14 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 1️⃣ 一般使用者查詢區塊
-target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A")
+# 1️⃣ 一般使用者查詢區塊（增加授權密碼保護）
+target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="")
+access_password = st.text_input("輸入 系統授權密碼", type="password", value="")
 
 if st.button("立即配置個人班表圖片檔"):
-    if not any(os.path.exists(path) for path in ROLE_FILES.values()):
+    if access_password != CREW_ACCESS_PASSWORD:
+        st.error("系統授權密碼錯誤，請輸入正確的內部查詢密碼！")
+    elif not any(os.path.exists(path) for path in ROLE_FILES.values()):
         st.error("目前伺服器中尚未更新任何班表資料，請聯繫管理員！")
     else:
         try:
@@ -495,7 +501,7 @@ with st.expander("管理員專用：Database"):
         selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
         uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案 (.xlsx, .xls, .csv, .txt)", type=["xlsx", "xls", "csv", "txt"])
         
-        if uploaded_file is not None:
+        , if uploaded_file is not None:
             target_path = ROLE_FILES[selected_role]
             with open(target_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
