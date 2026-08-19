@@ -97,7 +97,7 @@ def process_file_data(input_str):
     emp_id, emp_name = "", ""
     df_found = None
     
-    # 智慧全域搜尋：依序檢查所有職位的檔案
+    # 智慧全域搜尋：依序檢查駕駛、列車長、服勤員的檔案
     for role, path in ROLE_FILES.items():
         if os.path.exists(path):
             df_temp = pd.read_excel(path, header=3)
@@ -174,7 +174,7 @@ C_TOWN_TXT = "#000000"
 st.title("🚆 TTN Duty Engine // C.L.F Edition")
 
 # 🔒 管理員專用：支援三種職位的密碼保護上傳區塊
-with st.expander("📁 管理員專用：多職位 Database 管理"):
+with st.expander("📁 管理員專用：Database "):
     password_input = st.text_input("請輸入管理員密碼", type="password")
     
     if password_input == ADMIN_PASSWORD:
@@ -193,12 +193,11 @@ with st.expander("📁 管理員專用：多職位 Database 管理"):
     elif password_input != "":
         st.error("❌ 密碼錯誤，請洽C.L.F。")
 
-target_input = st.text_input("輸入 員編 或 姓名 (例如: A018896 或 江立夫)", value="A018896")
+target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 或 台積電)", value="A018896")
 
 if st.button("立即打造個人班表圖片"):
-    # 檢查是否至少有一個職位檔案存在
     if not any(os.path.exists(path) for path in ROLE_FILES.values()):
-        st.error("❌ 目前伺服器中尚無任何班表資料庫，請先聯繫管理員上傳！")
+        st.error("❌ 目前伺服器中尚未更新任何班表資料，請聯繫管理員！")
     else:
         try:
             start_dt, dates, emp_id, emp_name, cells = process_file_data(target_input)
