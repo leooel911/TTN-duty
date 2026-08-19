@@ -184,13 +184,15 @@ def setup_font():
             pass
     return None
 
+# 🎨 色彩統一設定：一般文字全數改為高對比純黑色 (#000000)
 C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#475569", "#F1F5F9"
 C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
 C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
-C_TIME, C_TRAIN, C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = (
-    "#000000", "#000000", "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
+C_TIME, C_TRAIN = "#000000", "#000000"  # 時間與一般班別一律純黑
+C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = (
+    "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 )
-C_TOWN_TXT = "#0F172A"
+C_TOWN_TXT = "#000000"
 
 st.title("🚆 TTN 勤務班表產生器")
 target_name = st.text_input("輸入你的名字", value="江立夫")
@@ -208,7 +210,6 @@ if st.button("立即生成個人班表圖片"):
 
             def fp(size=9, bold=True):
                 if font_prop:
-                    # 直接複製一份 font_prop 避免屬性衝突
                     f = fm.FontProperties(fname=font_prop.get_file(), size=size)
                     if bold:
                         try:
@@ -242,7 +243,7 @@ if st.button("立即生成個人班表圖片"):
             for c in range(7):
                 x = ML + c * CW
                 ax.add_patch(FancyBboxPatch((x, dy), CW, DH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#475569", facecolor="#94A3B8"))
-                ax.text(x + CW / 2, dy + DH / 2, dlabels[c], ha="center", va="center", color="#0F172A", fontproperties=fp(9, True))
+                ax.text(x + CW / 2, dy + DH / 2, dlabels[c], ha="center", va="center", color="#000000", fontproperties=fp(9, True))
 
             has_emp_do, has_emp_pay, has_emp_ot, has_emp_town = False, False, False, False
             for week in weeks:
@@ -280,11 +281,11 @@ if st.button("立即生成個人班表圖片"):
                     if is_national_holiday:
                         ax.text(x + 0.005, ry + RH - 0.004, f"{dt} ({NATIONAL_HOLIDAYS[dt]})", ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(8, True))
                     else:
-                        ax.text(x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_TIME, fontproperties=fp(9, True))
+                        ax.text(x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color="#000000", fontproperties=fp(9, True))
 
                     if d.get("hours"):
                         ot = is_overtime(d["hours"])
-                        ax.text(x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if ot else "#0F172A", fontproperties=fp(7.5, True))
+                        ax.text(x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if ot else "#000000", fontproperties=fp(7.5, True))
 
                     cx = x + CW / 2
                     if tr.startswith("DO"):
@@ -296,17 +297,17 @@ if st.button("立即生成個人班表圖片"):
                     elif tr == "PAY":
                         ax.text(cx, ry + RH * 0.62, "特休 PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(10, True))
                         if d["start"] and d["end"]:
-                            ax.text(cx, ry + RH * 0.35, f"{d['start']}～{d['end']}", ha="center", va="center", color=C_TIME, fontproperties=fp(8.5, True))
+                            ax.text(cx, ry + RH * 0.35, f"{d['start']}～{d['end']}", ha="center", va="center", color="#000000", fontproperties=fp(8.5, True))
                     else:
                         if note:
                             ax.text(cx, ry + RH * 0.80, note, ha="center", va="center", color=C_NOTE_TXT, fontproperties=fp(7.5, True))
-                            ax.text(cx, ry + RH * 0.58, d["start"], ha="center", va="center", color=C體 if "d" in locals() else C_TIME, fontproperties=fp(10, True))
-                            ax.text(cx, ry + RH * 0.38, d["end"], ha="center", va="center", color=C_TIME, fontproperties=fp(10, True))
-                            ax.text(cx, ry + RH * 0.18, tr, ha="center", va="center", color=C_TRAIN, fontproperties=fp(9.5, True))
+                            ax.text(cx, ry + RH * 0.58, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(10, True))
+                            ax.text(cx, ry + RH * 0.38, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(10, True))
+                            ax.text(cx, ry + RH * 0.18, tr, ha="center", va="center", color="#000000", fontproperties=fp(9.5, True))
                         else:
-                            ax.text(cx, ry + RH * 0.68, d["start"], ha="center", va="center", color=C_TIME, fontproperties=fp(11, True))
-                            ax.text(cx, ry + RH * 0.44, d["end"], ha="center", va="center", color=C_TIME, fontproperties=fp(11, True))
-                            ax.text(cx, ry + RH * 0.20, tr, ha="center", va="center", color=C_TRAIN, fontproperties=fp(10, True))
+                            ax.text(cx, ry + RH * 0.68, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(11, True))
+                            ax.text(cx, ry + RH * 0.44, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(11, True))
+                            ax.text(cx, ry + RH * 0.20, tr, ha="center", va="center", color="#000000", fontproperties=fp(10, True))
 
             legend_y = MB * 0.3
             badge_w, badge_h = CW * 0.90, 0.022
