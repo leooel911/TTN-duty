@@ -175,9 +175,10 @@ def build_weeks(start_dt, dates, cells):
     return weeks
 
 def setup_font():
-    # 自動尋找專案資料夾裡的字型檔
+    # 支援各種可能上傳的字型檔名
     font_paths = [
-        "NotoSansTC-Regular.ttf",
+        "NotoSansTC.ttf",
+        "NotoSansTC-VariableFont_wght.ttf",
         "msjh.ttc",
         "/System/Library/Fonts/PingFang.ttc",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
@@ -186,7 +187,8 @@ def setup_font():
         if os.path.exists(path):
             try:
                 fm.fontManager.addfont(path)
-                return fm.FontProperties(fname=path)
+                prop = fm.FontProperties(fname=path)
+                return prop
             except Exception:
                 continue
     return None
@@ -215,7 +217,13 @@ if st.button("立即生成個人班表圖片"):
 
             def fp(size=9, bold=False):
                 if font_prop:
-                    return fm.FontProperties(fname=font_prop.get_file(), size=size, weight="bold" if bold else "normal")
+                    f = fm.FontProperties(fname=font_prop.get_file(), size=size)
+                    if bold:
+                        try:
+                            f.set_weight('bold')
+                        except:
+                            pass
+                    return f
                 return fm.FontProperties(size=size, weight="bold" if bold else "normal")
 
             weeks = build_weeks(start_dt, dates, cells)
@@ -227,7 +235,6 @@ if st.button("立即生成個人班表圖片"):
             ax.axis("off")
             fig.patch.set_facecolor("white")
 
-            # 調整邊距讓底部膠囊圖例完整顯示
             ML, MR, MT, MB, TH, DH = 0.015, 0.015, 0.015, 0.08, 0.09, 0.055
             TW = 1.0 - ML - MR
             CW = TW / 7
@@ -309,7 +316,6 @@ if st.button("立即生成個人班表圖片"):
                             ax.text(cx, ry + RH * 0.44, d["end"], ha="center", va="center", color=C_TIME, fontproperties=fp(11.0, True))
                             ax.text(cx, ry + RH * 0.20, tr, ha="center", va="center", color=C_TRAIN, fontproperties=fp(10.0, True))
 
-            # 繪製底部膠囊圖例
             legend_y = MB * 0.3
             badge_w, badge_h = CW * 0.90, 0.022
             has_active_transport = any(d in active_transport for d in dates)
