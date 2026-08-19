@@ -359,7 +359,15 @@ if st.button("立即配置個人班表圖片檔"):
                     is_hol = "D2W" in tr or "DO2W" in tr or "D2W" in note or "DO2W" in note
                     bg = C_DO_BG if (is_hol or tr.startswith("DO")) else (C_PAY_BG if tr=="PAY" else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
+                    
+                    # 💡 檢查是否為國定假日或疏運日，並分別顯示在左上角與右上角備註
                     draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color=C_HOLI_TXT if dt in NATIONAL_HOLIDAYS else "#000000", fontproperties=fp(10))
+                    
+                    if dt in NATIONAL_HOLIDAYS:
+                        draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, NATIONAL_HOLIDAYS[dt], ha="right", va="top", color=C_HOLI_TXT, fontproperties=fp(9))
+                    elif dt in active_transport:
+                        draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(9))
+
                     if d.get("hours"): 
                         draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(9))
                     cx = x + CW / 2
