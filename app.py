@@ -11,7 +11,8 @@ from matplotlib.patches import FancyBboxPatch
 
 matplotlib.use('Agg')
 
-st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="🚆", layout="centered")
+# 🚆 將頁面標籤圖示 (Favicon) 改為你上傳的 700st.png
+st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
 
 # 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
@@ -477,7 +478,7 @@ if st.button("立即配置個人班表圖片檔"):
             st.success("個人班表圖片生成成功！")
             st.image(buf, use_container_width=True)
             # 💡 增加貼心提示：手機直接長按圖片即可存入相簿
-            st.info(" **提醒**：「**長按上方的班表圖片**」即可一鍵存入手機相簿！")
+            st.info(" 💡 **提醒**：「**長按上方的班表圖片**」即可一鍵存入手機相簿！")
             st.download_button("點此下載您的班表圖片檔案", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
 
         except Exception as e:
