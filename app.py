@@ -12,7 +12,7 @@ from matplotlib.patches import FancyBboxPatch
 matplotlib.use('Agg')
 
 # 🚆 將頁面標籤圖示 (Favicon) 改為你上傳的 700st.png
-st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
+st.set_page_config(page_title=" TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
 
 # 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
