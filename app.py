@@ -28,7 +28,6 @@ st.markdown("""
     
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
-    /* 讓「●長」標籤與「非正線」風格完全一致 */
     .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; color: #F8FAFC; }
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
@@ -88,11 +87,17 @@ def get_schedule_range():
 
 def generate_time_options():
     options = []
-    for h in range(24):
+    for h in range(19): # 限制最晚到 18:00
         for m in [0, 30]:
             options.append(f"{h:02d}:{m:02d}")
-    options.extend(["04:00", "04:30", "05:00", "05:15", "05:26", "05:30", "06:00"])
-    return sorted(list(set(options)))
+    options.extend(["04:00", "04:30", "05:00", "05:15", "05:26", "05:30", "06:00", "18:00"])
+    
+    # 過濾掉大於 18:00 的時間
+    filtered = []
+    for t in sorted(list(set(options))):
+        if t <= "18:00":
+            filtered.append(t)
+    return filtered
 
 TIME_OPTIONS = generate_time_options()
 
@@ -465,7 +470,6 @@ else:
                         pass
 
                 default_min_idx = TIME_OPTIONS.index(earliest_time_found) if earliest_time_found in TIME_OPTIONS else 0
-                default_max_idx = TIME_OPTIONS.index("09:00") if "09:00" in TIME_OPTIONS else len(TIME_OPTIONS)-1
 
                 c1, c2 = st.columns(2)
                 with c1: start_date = st.selectbox("起始日期", date_cols, index=0)
@@ -473,9 +477,36 @@ else:
                 start_date_idx = date_cols.index(start_date) if start_date in date_cols else 0
                 with c2: end_date = st.selectbox("結束日期", date_cols, index=start_date_idx)
 
+                # 動態計算「到」的預設 +1 小時邏輯
+                if 'last_min_time_selected' not in st.session_state:
+                    st.session_state.last_min_time_selected = TIME_OPTIONS[default_min_idx]
+
                 c3, c4 = st.columns(2)
-                with c3: min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx)
-                with c4: max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx)
+                with c3: 
+                    min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
+                
+                # 當「從」的時間改變時，自動計算 +1 小時作為「到」的預設選項
+                if min_time != st.session_state.last_min_time_selected:
+                    st.session_state.last_min_time_selected = min_time
+                    try:
+                        h, m = map(int, min_time.split(":"))
+                        target_mins = h * 60 + m + 60
+                        target_h = (target_mins // 60) % 24
+                        target_m = target_mins % 60
+                        suggested_end = f"{target_h:02d}:{target_m:02d}"
+                        if suggested_end > "18:00": suggested_end = "18:00"
+                        if suggested_end in TIME_OPTIONS:
+                            st.session_state.end_time_default_idx = TIME_OPTIONS.index(suggested_end)
+                        else:
+                            st.session_state.end_time_default_idx = len(TIME_OPTIONS) - 1
+                    except:
+                        st.session_state.end_time_default_idx = min(default_min_idx + 2, len(TIME_OPTIONS) - 1)
+
+                if 'end_time_default_idx' not in st.session_state:
+                    st.session_state.end_time_default_idx = min(default_min_idx + 2, len(TIME_OPTIONS) - 1)
+
+                with c4: 
+                    max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=st.session_state.end_time_default_idx)
 
                 filter_col1, filter_col2 = st.columns(2)
                 with filter_col1:
@@ -559,7 +590,6 @@ else:
                                     c_col1, c_col2 = st.columns(2)
                                     col_idx = 0 
                                 
-                                # 讓長班標籤跟非正線標籤完全同一個模組化外觀，整齊排列在右上角
                                 badges_html = '<div class="badge-group">'
                                 if r['長班']:
                                     badges_html += '<span class="long-badge">●長班</span>'
