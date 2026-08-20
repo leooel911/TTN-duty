@@ -12,7 +12,7 @@ from matplotlib.patches import FancyBboxPatch
 matplotlib.use('Agg')
 
 # 🚆 將頁面標籤圖示 (Favicon) 改為 700st.png
-st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
+st.set_page_config(page_title="TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
 
 # 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
@@ -330,7 +330,7 @@ st.markdown(f"""
     <div class="telemetry-title">System Telemetry // 目前系統排班週期</div>
     <div class="telemetry-value">{get_system_duty_period()}</div>
     <div class="telemetry-sub">
-        📌 <b>更新進度</b> ｜ 駕駛：{td_time} ｜ 列車長：{tm_time} ｜ 服勤員：{ta_time}
+         <b>更新時間</b>｜駕駛：{td_time}｜列車長：{tm_time}｜服勤員：{ta_time}
     </div>
 </div>
 """, unsafe_allow_html=True)
