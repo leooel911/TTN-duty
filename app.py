@@ -390,8 +390,13 @@ if st.button("立即生成個人班表圖片檔"):
                     if dt in active_transport:
                         draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(8.5))
 
+                    # 處理右下角的工時與其上方的假別代碼 (例如 DO2W)
                     if d.get("hours"): 
                         draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(11.5))
+                        
+                        do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "PAY" in l), "")
+                        if do_match:
+                            draw_bold_text(ax, x + CW - 0.004, ry + 0.026, do_match, ha="right", va="bottom", color=C_DO_TXT, fontproperties=fp(10.5))
                     
                     cx = x + CW / 2
                     if is_pure_hol: 
@@ -400,16 +405,10 @@ if st.button("立即生成個人班表圖片檔"):
                     elif tr == "PAY" and not d["start"]: 
                         draw_bold_text(ax, cx, ry + RH * 0.48, "PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(14))
                     else:
-                        draw_bold_text(ax, cx, ry + RH * 0.70, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(12))
-                        
-                        do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l), "")
-                        if do_match:
-                            draw_bold_text(ax, cx, ry + RH * 0.50, do_match, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(11))
-                            draw_bold_text(ax, cx, ry + RH * 0.32, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(12))
-                            draw_bold_text(ax, cx, ry + RH * 0.12, tr, ha="center", va="center", color="#000000", fontproperties=fp(11))
-                        else:
-                            draw_bold_text(ax, cx, ry + RH * 0.45, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(12))
-                            draw_bold_text(ax, cx, ry + RH * 0.18, tr, ha="center", va="center", color="#000000", fontproperties=fp(11))
+                        # 上班日或休假出勤 (中間保持乾淨的起訖時間與車次)
+                        draw_bold_text(ax, cx, ry + RH * 0.65, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(13))
+                        draw_bold_text(ax, cx, ry + RH * 0.40, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(13))
+                        draw_bold_text(ax, cx, ry + RH * 0.15, tr, ha="center", va="center", color="#000000", fontproperties=fp(12))
 
             legend_y = MB * 0.45
             badge_w_leg, badge_h_leg = CW * 0.90, 0.022
