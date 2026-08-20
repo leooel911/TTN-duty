@@ -529,7 +529,8 @@ else:
             if not date_cols:
                 st.error("表中未偵測到有效日期欄位")
             else:
-                if selected_role == "服勤員":
+                # 服勤員與列車長預設 05:26
+                if selected_role in ["服勤員", "列車長"]:
                     default_min_idx = TIME_OPTIONS.index("05:26") if "05:26" in TIME_OPTIONS else 0
                 else:
                     default_min_idx = 0
@@ -539,8 +540,12 @@ else:
                 c1, c2 = st.columns(2)
                 with c1:
                     start_date = st.selectbox("起始日期", date_cols, index=0)
+                
+                # 自動根據起始日期連動結束日期預設值
+                start_date_idx = date_cols.index(start_date) if start_date in date_cols else 0
+
                 with c2:
-                    end_date = st.selectbox("結束日期", date_cols, index=len(date_cols)-1)
+                    end_date = st.selectbox("結束日期", date_cols, index=start_date_idx)
 
                 c3, c4 = st.columns(2)
                 with c3:
