@@ -518,8 +518,8 @@ else:
                 except Exception as e: st.error(f"錯誤：{e}")
 
     elif app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測試版）":
-        st.subheader("乘務時段區間與報到時間快篩工具")
-        st.write("您可以設定日期區間與報到時間區間，精準找出符合條件的同事")
+        st.subheader("乘務時段區間與 Sign-In Time 快篩工具")
+        st.write("您可以設定日期區間與 Sign-In Time 區間，精準找出符合條件的同事")
 
         selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2)
         target_path = ROLE_FILES[selected_role]
@@ -545,7 +545,8 @@ else:
                 else:
                     default_min_idx = 0
 
-                default_max_idx = TIME_OPTIONS.index("18:00") if "18:00" in TIME_OPTIONS else len(TIME_OPTIONS)-1
+                # Sign-In Time 結束欄位預設 09:00
+                default_max_idx = TIME_OPTIONS.index("09:00") if "09:00" in TIME_OPTIONS else len(TIME_OPTIONS)-1
 
                 c1, c2 = st.columns(2)
                 with c1:
@@ -558,9 +559,9 @@ else:
 
                 c3, c4 = st.columns(2)
                 with c3:
-                    min_time = st.selectbox("報到時間區間：從", options=TIME_OPTIONS, index=default_min_idx)
+                    min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx)
                 with c4:
-                    max_time = st.selectbox("報到時間區間：到", options=TIME_OPTIONS, index=default_max_idx)
+                    max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx)
 
                 if st.button("開始區間檢索符合條件人員"):
                     try:
@@ -599,24 +600,24 @@ else:
                                             "日期": d_str,
                                             "員編": emp_id,
                                             "姓名": emp_name,
-                                            "報到時間": start_t,
+                                            "Sign-In": start_t,
                                             "收工時間": parsed["end"],
                                             "車次": parsed["train"]
                                         })
 
-                        st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ 報到時間 {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
+                        st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ Sign-In {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
                         
                         if search_results:
                             for r in search_results:
                                 st.markdown(f"""
                                 <div class="result-card">
                                     日期：{r['日期']} ｜ 姓名：{r['姓名']} ({r['員編']})<br>
-                                    上班：{r['報到時間']} 下班：{r['收工時間']}<br>
+                                    Sign-In：{r['Sign-In']} 下班：{r['收工時間']}<br>
                                     當日班別：{r['車次'] if r['車次'] else '無車次記錄'}
                                 </div>
                                 """, unsafe_allow_html=True)
                         else:
-                            st.info("在指定的日期與時間區間內，沒有找到符合條件的人員")
+                            st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 st.markdown("---")
 with st.expander("管理員專用：Database"):
