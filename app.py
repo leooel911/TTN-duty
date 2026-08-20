@@ -543,8 +543,16 @@ else:
                                             "非正線": is_non_line
                                         })
 
-                        # 排序邏輯：日期 ➔ 報到時間 (Sign-In) ➔ 收工時間 ➔ 員編
-                        search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 0, x["Sign-In"], x["收工時間"], x["員編"]))
+                        # 🔒 嚴格修正排序：日期 ➔ 報到時間(Sign-In) ➔ 收工時間 ➔ 員編
+                        search_results = sorted(
+                            search_results, 
+                            key=lambda x: (
+                                date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, 
+                                str(x["Sign-In"]), 
+                                str(x["收工時間"]), 
+                                str(x["員編"])
+                            )
+                        )
 
                         st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ 區間 {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
                         
