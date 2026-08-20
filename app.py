@@ -126,9 +126,11 @@ def is_town_shift(tr, note):
     tr_upper = str(tr).strip().upper()
     if is_valid_train_code(tr_upper):
         return False
+    if tr_upper in ["PAY", "FAC"]:  # 確保假別不被當成非正線勤務灰色底
+        return False
     if not tr or tr_upper in ["", "無", "NAN"]:
         return True
-    keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "OGC", "FAC", "DS", "H9", "WRSL", "PAY"]
+    keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "OGC", "FAC", "DS", "H9", "WRSL"]
     return any(kw in f"{tr_upper} {str(note).upper()}" for kw in keywords)
 
 def parse_cell(raw):
@@ -295,7 +297,7 @@ else:
                                 is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d["start"]
                                 
                                 if is_pure_hol or tr.startswith("DO"): has_emp_do = True
-                                elif tr == "PAY": has_emp_pay = True
+                                elif tr in ["PAY", "FAC"] or "PAY" in raw_cell_str or "FAC" in raw_cell_str: has_emp_pay = True
                                 elif is_town_shift(tr, note): has_emp_town = True
                                 if is_overtime(hours, tr, note): has_emp_ot = True
 
@@ -310,8 +312,9 @@ else:
                             tr, note = d["train"], d.get("note", "")
                             
                             is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d["start"]
+                            is_pay_shift = (tr in ["PAY", "FAC"]) or ("PAY" in raw_cell_str) or ("FAC" in raw_cell_str)
                             
-                            bg = C_DO_BG if is_pure_hol else (C_PAY_BG if tr=="PAY" and not d["start"] else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
+                            bg = C_DO_BG if is_pure_hol else (C_PAY_BG if is_pay_shift else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
                             ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
                             
                             if dt in NATIONAL_HOLIDAYS:
@@ -334,12 +337,12 @@ else:
                             if is_pure_hol: 
                                 do_code = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l), "DO")
                                 draw_bold_text(ax, cx, ry + RH * 0.48, do_code, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
-                            elif tr in ["PAY", "FAC"] and not d["start"]: 
+                            elif is_pay_shift and not d["start"]: 
                                 draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(14))
                             else:
                                 draw_bold_text(ax, cx, ry + RH * 0.65, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(13))
                                 draw_bold_text(ax, cx, ry + RH * 0.40, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(13))
-                                draw_bold_text(ax, cx, ry + RH * 0.15, tr, ha="center", va="center", color="#000000", fontproperties=fp(12))
+                                draw_bold_text(ax, cx, ry + RH * 0.15, tr, ha="center", va="center", color=C_PAY_TXT if is_pay_shift else "#000000", fontproperties=fp(12))
 
                     legend_y = MB * 0.45
                     badge_w_leg, badge_h_leg = CW * 0.90, 0.022
@@ -396,7 +399,6 @@ else:
             if not date_cols:
                 st.error("表中未偵測到有效日期欄位")
             else:
-                # 只有選「駕駛」時才動態抓取最早報到時間；列車長與服勤員固定預設為 05:26
                 earliest_time_found = "05:26"
                 if selected_role == "駕駛":
                     try:
