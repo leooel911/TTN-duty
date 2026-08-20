@@ -354,7 +354,7 @@ else:
         <div class="telemetry-title">System Telemetry // 目前系統排班週期</div>
         <div class="telemetry-value">{get_system_duty_period()}</div>
         <div class="telemetry-sub">
-            📌 <b>各職位更新時間：</b><br>
+             <b>各職位更新時間：</b><br>
             &nbsp;&nbsp;• 駕駛：{td_time}<br>
             &nbsp;&nbsp;• 列車長：{tm_time}<br>
             &nbsp;&nbsp;• 服勤員：{ta_time}
