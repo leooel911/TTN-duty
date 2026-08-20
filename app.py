@@ -177,6 +177,16 @@ ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
 
+# 產生 00:00 到 23:30 的半小時區間選單清單
+def generate_time_options():
+    options = []
+    for h in range(24):
+        for m in [0, 30]:
+            options.append(f"{h:02d}:{m:02d}")
+    return options
+
+TIME_OPTIONS = generate_time_options()
+
 def set_maintenance_mode(is_maintenance):
     if is_maintenance:
         with open(MAINTENANCE_FLAG_FILE, "w") as f: f.write("ON")
@@ -531,19 +541,13 @@ else:
             if not date_cols:
                 st.error("表中未偵測到有效日期欄位。")
             else:
-                # 智慧預設報到時間：若選服勤員直接預設 05:26，其餘動態計算
+                # 智慧預設報到時間下拉預設值
                 if selected_role == "服勤員":
-                    default_min_time = "05:26"
+                    default_min_idx = TIME_OPTIONS.index("05:26") if "05:26" in TIME_OPTIONS else 0
                 else:
-                    default_min_time = "23:59"
-                    for _, row in df_search.iterrows():
-                        for col_idx in range(2, len(row)):
-                            parsed = parse_cell(row.iloc[col_idx])
-                            st_t = parsed["start"]
-                            if st_t and st_t < default_min_time:
-                                default_min_time = st_t
-                    if default_min_time == "23:59":
-                        default_min_time = "00:00"
+                    default_min_idx = 0
+
+                default_max_idx = TIME_OPTIONS.index("12:00") if "12:00" in TIME_OPTIONS else len(TIME_OPTIONS)-1
 
                 c1, c2 = st.columns(2)
                 with c1:
@@ -553,9 +557,9 @@ else:
 
                 c3, c4 = st.columns(2)
                 with c3:
-                    min_time = st.text_input("報到時間區間：從", value=default_min_time)
+                    min_time = st.selectbox("報到時間區間：從", options=TIME_OPTIONS, index=default_min_idx)
                 with c4:
-                    max_time = st.text_input("報到時間區間：到", value="12:00")
+                    max_time = st.selectbox("報到時間區間：到", options=TIME_OPTIONS, index=default_max_idx)
 
                 if st.button("開始區間檢索符合條件人員"):
                     try:
