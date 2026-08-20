@@ -24,9 +24,8 @@ st.markdown("""
     .telemetry-title { color: #94A3B8 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
     .telemetry-value { color: #F8FAFC !important; font-size: 18px; font-weight: 700; font-family: monospace; }
     
-    /* 專業級無符號日期區隔標題 */
-    .date-section-header { font-size: 15px; font-weight: 700; color: #38BDF8; margin-top: 28px; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; gap: 12px; }
-    .date-section-header::after { content: ""; flex: 1; height: 1px; background: #334155; }
+    /* 升級版日期專屬膠囊看板：超醒目、快速滑動絕不會漏看 */
+    .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 16px; font-weight: 800; padding: 10px 16px; border-radius: 8px; margin-top: 28px; margin-bottom: 14px; letter-spacing: 1.5px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
     .result-card { background: #1E293B; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; }
     .time-row { font-size: 19px; font-weight: 700; color: #60A5FA; margin-bottom: 6px; font-family: monospace; }
@@ -452,7 +451,7 @@ else:
                             for r in search_results:
                                 if r["日期"] != current_date_group:
                                     current_date_group = r["日期"]
-                                    st.markdown(f'<div class="date-section-header">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
+                                    st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
 
                                 long_shift_badge = '<span style="color:#F87171; font-size:14px; margin-left:8px;">● 長班</span>' if r['長班'] else ''
                                 non_line_badge = '<span style="background:#4C1D95; color:#C4B5FD; font-size:11px; padding:2px 6px; border-radius:4px; margin-left:8px; font-weight:600;">非正線勤務</span>' if r['非正線'] else ''
