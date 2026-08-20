@@ -227,20 +227,36 @@ def parse_cell(raw):
     raw_str = str(raw).strip()
     lines = [l.strip() for l in raw_str.split("\n") if l.strip()]
     if not lines: return dict(start="", train="", end="", hours="", note="")
-    if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): return dict(start="", train=lines[0], end="", hours="", note="")
-    if "PAY" in lines:
-        times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
-        return dict(start=pad_time(times[0]) if times else "", train="PAY", end=pad_time(times[1]) if len(times)>1 else "", hours="", note="")
     
+    # 判斷是否為純休假 (只有 DO 或 D2W 等且沒有時間)
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
+    if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): 
+        return dict(start="", train=lines[0], end="", hours="", note="")
+    
+    if "PAY" in lines and not times:
+        return dict(start="", train="PAY", end="", hours="", note="")
+
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     hours = calculate_hours(start_time, end_time)
     
-    train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "DO" not in l and "PAY" not in l and "h" not in l and "m" not in l), "")
+    # 尋找車次或類別代碼 (排除時間、工時格式)
+    train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l), "")
+    
+    # 檢查有沒有包含 DO / PAY / 其它備註
     notes = [l for l in lines if l not in times and l != train_code]
     
-    return dict(start=start_time, end=end_time, train=train_code, hours=hours, note=" ".join(notes))
+    # 如果同時有時間與 DO 相關字串 (代表國定假日出勤)
+    do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l), "")
+    real_train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != do_str and "h" not in l and "m" not in l), "")
+
+    return dict(
+        start=start_time, 
+        end=end_time, 
+        train=real_train, 
+        hours=hours, 
+        note=" ".join(notes)
+    )
 
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
@@ -349,9 +365,11 @@ if st.button("立即生成個人班表圖片檔"):
                 for cell in week:
                     if cell is not None:
                         _, d = cell
+                        raw_cell_str = str(cells[dates.index(dt)]) if dt in dates else "" # 檢查原始資料
                         tr, note, hours = d["train"], d.get("note", ""), d.get("hours", "")
-                        is_hol = "D2W" in tr or "DO2W" in tr or "D2W" in note or "DO2W" in note
-                        if is_hol or tr.startswith("DO"): has_emp_do = True
+                        is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d["start"]
+                        
+                        if is_pure_hol or tr.startswith("DO"): has_emp_do = True
                         elif tr == "PAY": has_emp_pay = True
                         elif is_town_shift(tr, note): has_emp_town = True
                         if is_overtime(hours): has_emp_ot = True
@@ -362,9 +380,14 @@ if st.button("立即生成個人班表圖片檔"):
                     x = ML + ci * CW
                     if cell is None: ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=C_EMPTY)); continue
                     dt, d = cell
+                    raw_cell_str = str(cells[dates.index(dt)]) if dt in dates else ""
                     tr, note = d["train"], d.get("note", "")
-                    is_hol = "D2W" in tr or "DO2W" in tr or "D2W" in note or "DO2W" in note
-                    bg = C_DO_BG if (is_hol or tr.startswith("DO")) else (C_PAY_BG if tr=="PAY" else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
+                    
+                    # 判斷是否為「純休假」（無上下班時間）
+                    is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d["start"]
+                    
+                    # 背景色邏輯：若有上下班時間，則視為上班日背景，不套用 DO 粉紅背景
+                    bg = C_DO_BG if is_pure_hol else (C_PAY_BG if tr=="PAY" and not d["start"] else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
                     
                     if dt in NATIONAL_HOLIDAYS:
@@ -380,14 +403,25 @@ if st.button("立即生成個人班表圖片檔"):
                         draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(11.5))
                     
                     cx = x + CW / 2
-                    if tr.startswith("DO"): 
-                        draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
-                    elif tr == "PAY": 
+                    if is_pure_hol: 
+                        # 純休假顯示休假代碼
+                        do_code = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l), "DO")
+                        draw_bold_text(ax, cx, ry + RH * 0.48, do_code, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
+                    elif tr == "PAY" and not d["start"]: 
                         draw_bold_text(ax, cx, ry + RH * 0.48, "PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(14))
                     else:
-                        draw_bold_text(ax, cx, ry + RH * 0.65, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(13))
-                        draw_bold_text(ax, cx, ry + RH * 0.4, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(13))
-                        draw_bold_text(ax, cx, ry + RH * 0.15, tr, ha="center", va="center", color="#000000", fontproperties=fp(12))
+                        # 上班日或休假出勤 (有上下班時間)
+                        draw_bold_text(ax, cx, ry + RH * 0.70, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(12))
+                        
+                        # 若原始資料包含 DO2W 等字串，在中間印出該標記
+                        do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l), "")
+                        if do_match:
+                            draw_bold_text(ax, cx, ry + RH * 0.50, do_match, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(11))
+                            draw_bold_text(ax, cx, ry + RH * 0.32, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(12))
+                            draw_bold_text(ax, cx, ry + RH * 0.12, tr, ha="center", va="center", color="#000000", fontproperties=fp(11))
+                        else:
+                            draw_bold_text(ax, cx, ry + RH * 0.45, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(12))
+                            draw_bold_text(ax, cx, ry + RH * 0.18, tr, ha="center", va="center", color="#000000", fontproperties=fp(11))
 
             legend_y = MB * 0.45
             badge_w_leg, badge_h_leg = CW * 0.90, 0.022
@@ -439,4 +473,4 @@ with st.expander("管理員專用：Database"):
             with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
             st.success("上傳成功！")
     elif password_input:
-        st.error("密碼錯誤，請洽 C.L.F")
+        st.error("密碼錯誤，請洽 CLF")
