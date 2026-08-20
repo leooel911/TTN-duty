@@ -120,6 +120,10 @@ def is_overtime(h):
     except: return False
 
 def is_town_shift(tr, note):
+    # 如果車次是 PAY，不屬於非正線勤務
+    if tr and "PAY" in str(tr).upper():
+        return False
+    # 如果車次為空或「無」，判定為非正線勤務
     if not tr or str(tr).strip() in ["", "無", "nan"]:
         return True
     keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "FAC", "DS", "H9", "OGC", "WRSL"]
@@ -135,7 +139,12 @@ def parse_cell(raw):
     if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): 
         return dict(start="", train=lines[0], end="", hours="", note="")
     
-    if "PAY" in lines and not times: return dict(start="", train="PAY", end="", hours="", note="")
+    # 修正：精準捕捉 PAY
+    if "PAY" in [l.upper() for l in lines] or "PAY" in raw_str.upper():
+        start_time = pad_time(times[0]) if times else ""
+        end_time = pad_time(times[1]) if len(times) > 1 else ""
+        hours = calculate_hours(start_time, end_time)
+        return dict(start=start_time, end=end_time, train="PAY", hours=hours, note="PAY")
 
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
@@ -221,7 +230,6 @@ C_TOWN_TXT = "#000000"
 
 st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
 
-# 🔒 維護模式防護攔截：若開啟維護模式，直接顯示公告並不執行後續查詢
 if is_maintenance_mode():
     st.markdown("""
     <div class="telemetry-card" style="border: 1px solid #EF4444; background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);">
@@ -440,7 +448,6 @@ else:
                                             elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
                                         
                                         is_long = is_overtime(parsed["hours"])
-                                        # 包含車次為空或「無」也會被判定為非正線勤務
                                         is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                         
                                         search_results.append({
