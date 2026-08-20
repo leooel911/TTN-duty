@@ -26,12 +26,13 @@ st.markdown("""
     .telemetry-sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid #334155; font-size: 13px; color: #94A3B8; }
     .maint-sub { border-top: 1px solid #991B1B !important; color: #FECACA !important; }
     
-    .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 16px; font-weight: 800; padding: 10px 16px; border-radius: 8px; margin-top: 28px; margin-bottom: 14px; letter-spacing: 1.5px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+    .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
-    .result-card { background: #1E293B; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; }
-    .time-row { font-size: 19px; font-weight: 700; color: #60A5FA; margin-bottom: 6px; font-family: monospace; }
-    .name-row { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #E2E8F0; }
-    .sub-info-row { font-size: 13px; color: #94A3B8; font-family: monospace; display: flex; gap: 16px; flex-wrap: wrap; }
+    /* 手機優化雙欄緊湊卡片樣式 */
+    .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; color: #F8FAFC; }
+    .compact-time { font-size: 16px; font-weight: 700; color: #60A5FA; font-family: monospace; }
+    .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
+    .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
     
     .stRadio > div { background-color: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 12px 16px; }
     .stRadio label { font-size: 15px !important; font-weight: 600 !important; color: #F8FAFC !important; }
@@ -471,6 +472,9 @@ else:
                 with c3: min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx)
                 with c4: max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx)
 
+                # 新增：僅顯示正線勤務快速開關
+                only_main_line = st.checkbox("僅顯示正線勤務（自動過濾非正線與休假）", value=False)
+
                 if st.button("開始區間檢索符合條件人員"):
                     try:
                         s_idx = date_cols.index(start_date)
@@ -503,6 +507,12 @@ else:
                                     start_t = parsed["start"]
                                     
                                     if start_t and min_time <= start_t <= max_time:
+                                        is_non_line = is_town_shift(parsed["train"], parsed["note"])
+                                        
+                                        # 如果勾選了僅顯示正線勤務，且當前為非正線，則跳過
+                                        if only_main_line and is_non_line:
+                                            continue
+
                                         next_day_sign_in = "無記錄"
                                         if actual_col_pos + 1 < len(all_cols_list):
                                             next_cell_raw = row.iloc[target_col_idx + 1]
@@ -511,7 +521,6 @@ else:
                                             elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
                                         
                                         is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
-                                        is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                         
                                         search_results.append({
                                             "日期": d_str,
@@ -536,19 +545,26 @@ else:
                                     current_date_group = r["日期"]
                                     st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
 
-                                long_shift_badge = '<span style="color:#F87171; font-size:14px; margin-left:8px;">● 長班</span>' if r['長班'] else ''
-                                non_line_badge = '<span style="background:#4C1D95; color:#C4B5FD; font-size:11px; padding:2px 6px; border-radius:4px; margin-left:8px; font-weight:600;">非正線勤務</span>' if r['非正線'] else ''
+                                # 行動裝置緊湊化雙欄排版
+                                c_col1, c_col2 = st.columns(2)
                                 
-                                st.markdown(f"""
-                                <div class="result-card">
-                                    <div class="time-row">{r['Sign-In']} ➔ {r['收工時間']} {long_shift_badge} {non_line_badge}</div>
-                                    <div class="name-row">{r['姓名']} <span style="color:#94A3B8; font-size:14px;">({r['員編']})</span></div>
-                                    <div class="sub-info-row">
-                                        <span>班別：{r['車次']}</span>
-                                        <span>隔日 Sign-In：{r['隔日Sign-In']}</span>
-                                    </div>
+                                long_shift_badge = '<span style="color:#F87171; font-size:12px; margin-left:4px;">●長</span>' if r['長班'] else ''
+                                non_line_badge = '<span style="background:#4C1D95; color:#C4B5FD; font-size:10px; padding:1px 4px; border-radius:3px; margin-left:4px;">非正線</span>' if r['非正線'] else ''
+                                
+                                card_html = f"""
+                                <div class="compact-card">
+                                    <div class="compact-time">{r['Sign-In']} ➔ {r['收工時間']} {long_shift_badge} {non_line_badge}</div>
+                                    <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
+                                    <div class="compact-sub">班別: {r['車次']}</div>
+                                    <div class="compact-sub">隔日: {r['隔日Sign-In']}</div>
                                 </div>
-                                """, unsafe_allow_html=True)
+                                """
+                                
+                                # 透過交錯放入兩欄中，大幅減少手機上下滑動距離
+                                if r == search_results[0] or search_results.index(r) % 2 == 0:
+                                    with c_col1: st.markdown(card_html, unsafe_allow_html=True)
+                                else:
+                                    with c_col2: st.markdown(card_html, unsafe_allow_html=True)
                         else:
                             st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
