@@ -89,7 +89,6 @@ st.markdown("""
         font-size: 15px;
         line-height: 1.6;
     }
-    /* 手機端模式選單與輸入框優化：加大點擊區間與字型 */
     .stRadio > div {
         background-color: #1E293B;
         border: 1px solid #334155;
@@ -114,7 +113,6 @@ st.markdown("""
         font-weight: 600 !important;
         color: #E2E8F0 !important;
     }
-    /* 🔒 你最愛的藍色按鈕樣式：絕對不變動！ */
     div.stButton {
         display: flex !important;
         justify-content: center !important;
@@ -523,7 +521,7 @@ else:
         st.subheader("乘務時段區間與報到時間快篩工具")
         st.write("您可以設定日期區間與報到時間區間，精準找出符合條件的同事")
 
-        selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"])
+        selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2)
         target_path = ROLE_FILES[selected_role]
 
         if not os.path.exists(target_path):
@@ -547,7 +545,7 @@ else:
                 else:
                     default_min_idx = 0
 
-                default_max_idx = TIME_OPTIONS.index("12:00") if "12:00" in TIME_OPTIONS else len(TIME_OPTIONS)-1
+                default_max_idx = TIME_OPTIONS.index("18:00") if "18:00" in TIME_OPTIONS else len(TIME_OPTIONS)-1
 
                 c1, c2 = st.columns(2)
                 with c1:
