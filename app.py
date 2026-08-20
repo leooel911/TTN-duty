@@ -23,10 +23,14 @@ st.markdown("""
     .telemetry-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); }
     .telemetry-title { color: #94A3B8 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
     .telemetry-value { color: #F8FAFC !important; font-size: 18px; font-weight: 700; font-family: monospace; }
+    
+    /* 結果卡片樣式：加入日期標籤區隔 */
     .result-card { background: #1E293B; border-left: 4px solid #3B82F6; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; }
+    .date-badge { display: inline-block; background: #334155; color: #38BDF8; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-bottom: 6px; }
     .time-row { font-size: 19px; font-weight: 700; color: #60A5FA; margin-bottom: 6px; font-family: monospace; }
     .name-row { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #E2E8F0; }
     .sub-info-row { font-size: 13px; color: #94A3B8; font-family: monospace; display: flex; gap: 16px; flex-wrap: wrap; }
+    
     .stRadio > div { background-color: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 12px 16px; }
     .stRadio label { font-size: 15px !important; font-weight: 600 !important; color: #F8FAFC !important; }
     .stTextInput input { font-size: 18px !important; padding: 14px 16px !important; border-radius: 10px !important; background-color: #1E293B !important; color: #F8FAFC !important; border: 1px solid #475569 !important; }
@@ -120,10 +124,8 @@ def is_overtime(h):
     except: return False
 
 def is_town_shift(tr, note):
-    # 如果車次是 PAY，不屬於非正線勤務
     if tr and "PAY" in str(tr).upper():
         return False
-    # 如果車次為空或「無」，判定為非正線勤務
     if not tr or str(tr).strip() in ["", "無", "nan"]:
         return True
     keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "FAC", "DS", "H9", "OGC", "WRSL"]
@@ -139,7 +141,6 @@ def parse_cell(raw):
     if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): 
         return dict(start="", train=lines[0], end="", hours="", note="")
     
-    # 修正：精準捕捉 PAY
     if "PAY" in [l.upper() for l in lines] or "PAY" in raw_str.upper():
         start_time = pad_time(times[0]) if times else ""
         end_time = pad_time(times[1]) if len(times) > 1 else ""
@@ -462,7 +463,7 @@ else:
                                             "非正線": is_non_line
                                         })
 
-                        search_results = sorted(search_results, key=lambda x: x["Sign-In"])
+                        search_results = sorted(search_results, key=lambda x: (x["日期"], x["Sign-In"]))
 
                         st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ Sign-In {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
                         
@@ -473,6 +474,7 @@ else:
                                 
                                 st.markdown(f"""
                                 <div class="result-card">
+                                    <div class="date-badge">📅 檢索日期：{r['日期']}</div>
                                     <div class="time-row">{r['Sign-In']} ➔ {r['收工時間']} {long_shift_badge} {non_line_badge}</div>
                                     <div class="name-row">{r['姓名']} <span style="color:#94A3B8; font-size:14px;">({r['員編']})</span></div>
                                     <div class="sub-info-row">
