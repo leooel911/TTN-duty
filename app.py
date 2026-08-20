@@ -24,6 +24,9 @@ st.markdown("""
     .telemetry-title { color: #94A3B8 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
     .telemetry-value { color: #F8FAFC !important; font-size: 18px; font-weight: 700; font-family: monospace; }
     
+    /* 維護公告專屬精緻分隔線與微調樣式 */
+    .telemetry-sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid #991B1B; font-size: 13px; color: #FECACA; }
+    
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 16px; font-weight: 800; padding: 10px 16px; border-radius: 8px; margin-top: 28px; margin-bottom: 14px; letter-spacing: 1.5px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
     .result-card { background: #1E293B; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; }
@@ -126,7 +129,7 @@ def is_town_shift(tr, note):
     tr_upper = str(tr).strip().upper()
     if is_valid_train_code(tr_upper):
         return False
-    if tr_upper in ["PAY", "FAC"]:  # 確保假別不被當成非正線勤務灰色底
+    if tr_upper in ["PAY", "FAC"]:
         return False
     if not tr or tr_upper in ["", "無", "NAN"]:
         return True
@@ -238,7 +241,7 @@ if is_maintenance_mode():
     <div class="telemetry-card" style="border: 1px solid #EF4444; background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);">
         <div class="telemetry-title" style="color: #FCA5A5;">系統維護公告</div>
         <div class="telemetry-value" style="color: #FEE2E2; font-size: 20px;">系統目前暫停開放維護中</div>
-        <div class="telemetry-sub" style="border-color: #991B1B; color: #FECACA;">
+        <div class="telemetry-sub">
             管理員正在更新排班資料或進行系統維護，請稍後再試。
         </div>
     </div>
