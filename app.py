@@ -153,7 +153,7 @@ ROLE_FILES = {
 }
 
 ADMIN_PASSWORD = "Lf0900"
-CREW_ACCESS_PASSWORD = "0900"
+CREW_ACCESS_PASSWORD = "0000"
 
 def get_file_info(path):
     if os.path.exists(path):
