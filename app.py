@@ -531,16 +531,19 @@ else:
             if not date_cols:
                 st.error("表中未偵測到有效日期欄位。")
             else:
-                # 智慧動態計算該職位整張表的最早報到時間作為預設起點
-                global_earliest = "23:59"
-                for _, row in df_search.iterrows():
-                    for col_idx in range(2, len(row)):
-                        parsed = parse_cell(row.iloc[col_idx])
-                        st_t = parsed["start"]
-                        if st_t and st_t < global_earliest:
-                            global_earliest = st_t
-                if global_earliest == "23:59":
-                    global_earliest = "00:00"
+                # 智慧預設報到時間：若選服勤員直接預設 05:26，其餘動態計算
+                if selected_role == "服勤員":
+                    default_min_time = "05:26"
+                else:
+                    default_min_time = "23:59"
+                    for _, row in df_search.iterrows():
+                        for col_idx in range(2, len(row)):
+                            parsed = parse_cell(row.iloc[col_idx])
+                            st_t = parsed["start"]
+                            if st_t and st_t < default_min_time:
+                                default_min_time = st_t
+                    if default_min_time == "23:59":
+                        default_min_time = "00:00"
 
                 c1, c2 = st.columns(2)
                 with c1:
@@ -550,7 +553,7 @@ else:
 
                 c3, c4 = st.columns(2)
                 with c3:
-                    min_time = st.text_input("報到時間區間：從", value=global_earliest)
+                    min_time = st.text_input("報到時間區間：從", value=default_min_time)
                 with c4:
                     max_time = st.text_input("報到時間區間：到", value="12:00")
 
