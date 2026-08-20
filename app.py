@@ -350,7 +350,7 @@ ta_time = get_file_info(ROLE_FILES["服勤員"])[1]
 if is_maintenance_mode():
     st.markdown("""
     <div class="telemetry-card" style="border: 1px solid #EF4444; background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);">
-        <div class="telemetry-title" style="color: #FCA5A5;">SYSTEM STATUS // 系統維護公告</div>
+        <div class="telemetry-title" style="color: #FCA5A5;">系統維護公告</div>
         <div class="telemetry-value" style="color: #FEE2E2; font-size: 20px;">系統目前暫停開放維護中</div>
         <div class="telemetry-sub" style="border-color: #991B1B; color: #FECACA;">
             管理員正在更新排班資料或進行系統維護，請稍後再試。
@@ -360,7 +360,7 @@ if is_maintenance_mode():
 else:
     st.markdown(f"""
     <div class="telemetry-card">
-        <div class="telemetry-title">System Telemetry // 目前系統排班週期</div>
+        <div class="telemetry-title">目前系統排班週期</div>
         <div class="telemetry-value">{get_system_duty_period()}</div>
         <div class="telemetry-sub">
             各職位更新時間：<br>
@@ -371,7 +371,7 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    app_mode = st.radio("選擇功能模式", ["生產個人班表圖片檔", "依時段篩選執勤組員（是用尋找換班對象）本系統測試中"], horizontal=True)
+    app_mode = st.radio("選擇功能模式", ["生產個人班表圖片檔", "組員動態時段篩選（尋找換班協調專用・Beta測試版）"], horizontal=True)
     st.markdown("---")
 
     if app_mode == "生產個人班表圖片檔":
@@ -506,7 +506,7 @@ else:
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-    elif app_mode == "依時段篩選執勤組員（是用尋找換班對象）本系統測試中":
+    elif app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測試版）":
         st.subheader("乘務時段區間與報到時間快篩工具")
         st.write("您可以設定日期區間與報到時間區間，精準找出符合條件的同事")
 
