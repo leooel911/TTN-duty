@@ -23,10 +23,13 @@ st.markdown("""
     .telemetry-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); }
     .telemetry-title { color: #94A3B8 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
     .telemetry-value { color: #F8FAFC !important; font-size: 18px; font-weight: 700; font-family: monospace; }
-    .result-card { background: #1E293B; border-left: 4px solid #3B82F6; border-radius: 8px; padding: 16px; margin-bottom: 12px; color: #F8FAFC; }
-    .time-row { font-size: 18px; font-weight: 700; color: #60A5FA; margin-bottom: 8px; font-family: monospace; }
-    .name-row { font-size: 16px; font-weight: 600; margin-bottom: 8px; color: #E2E8F0; }
-    .train-row { display: inline-block; background: #0F172A; padding: 4px 12px; border-radius: 6px; font-weight: 700; color: #38BDF8; border: 1px solid #334155; }
+    
+    /* 優化後的精鍊卡片樣式：去除了突兀方框，強調時間與隔日資訊 */
+    .result-card { background: #1E293B; border-left: 4px solid #3B82F6; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; }
+    .time-row { font-size: 19px; font-weight: 700; color: #60A5FA; margin-bottom: 6px; font-family: monospace; }
+    .name-row { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #E2E8F0; }
+    .sub-info-row { font-size: 13px; color: #94A3B8; font-family: monospace; display: flex; gap: 16px; }
+    
     .stRadio > div { background-color: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 12px 16px; }
     .stRadio label { font-size: 15px !important; font-weight: 600 !important; color: #F8FAFC !important; }
     .stTextInput input { font-size: 18px !important; padding: 14px 16px !important; border-radius: 10px !important; background-color: #1E293B !important; color: #F8FAFC !important; border: 1px solid #475569 !important; }
@@ -34,22 +37,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-NATIONAL_HOLIDAYS = {
-    "1/1": "元旦", "2/16": "除夕", "2/17": "初一", "2/18": "初二", "2/19": "初三", 
-    "2/28": "和平紀念日", "4/4": "兒童節", "4/5": "清明節", "5/1": "勞動節",
-    "6/19": "端午節", "9/25": "中秋節", "9/28": "教師節", "10/10": "國慶日",
-    "10/25": "台灣光復節", "12/25": "行憲紀念日"
-}
-
-TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
-TITLE = "TRAIN CREW DUTY CALENDAR"
-
-ROLE_FILES = {
-    "駕駛": "TD.xlsx",
-    "列車長": "TM.xlsx",
-    "服勤員": "TA.xlsx"
-}
-
+ROLE_FILES = {"駕駛": "TD.xlsx", "列車長": "TM.xlsx", "服勤員": "TA.xlsx"}
 ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
@@ -59,8 +47,7 @@ def generate_time_options():
     for h in range(24):
         for m in [0, 30]:
             t_str = f"{h:02d}:{m:02d}"
-            if t_str not in options:
-                options.append(t_str)
+            if t_str not in options: options.append(t_str)
     return sorted(list(set(options)))
 
 TIME_OPTIONS = generate_time_options()
@@ -71,8 +58,7 @@ def pad_time(t_str):
     return f"{int(parts[0]):02d}:{parts[1]}" if len(parts) == 2 else str(t_str)
 
 def calculate_hours(start_str, end_str):
-    if not start_str or not end_str or ":" not in start_str or ":" not in end_str:
-        return ""
+    if not start_str or not end_str or ":" not in start_str or ":" not in end_str: return ""
     try:
         sh, sm = map(int, start_str.split(":"))
         eh, em = map(int, end_str.split(":"))
@@ -81,8 +67,7 @@ def calculate_hours(start_str, end_str):
         if end_mins <= start_mins: end_mins += 24 * 60
         diff_mins = end_mins - start_mins
         return f"{diff_mins // 60}h{diff_mins % 60:02d}m"
-    except:
-        return ""
+    except: return ""
 
 def parse_cell(raw):
     if pd.isna(raw) or not str(raw).strip(): return dict(start="", train="", end="", hours="", note="")
@@ -94,8 +79,7 @@ def parse_cell(raw):
     if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): 
         return dict(start="", train=lines[0], end="", hours="", note="")
     
-    if "PAY" in lines and not times:
-        return dict(start="", train="PAY", end="", hours="", note="")
+    if "PAY" in lines and not times: return dict(start="", train="PAY", end="", hours="", note="")
 
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
@@ -114,8 +98,7 @@ st.markdown("---")
 
 if app_mode == "生產個人班表圖片檔":
     target_input = st.text_input("輸入 員編 或 姓名", value="A")
-    if st.button("立即生成個人班表圖片檔"):
-        st.info("請切換至對應模式或參考原圖表生成功能。")
+    if st.button("立即生成個人班表圖片檔"): st.info("請切換至對應模式。")
 
 elif app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測試版）":
     st.subheader("乘務時段區間與 Sign-In Time 快篩工具")
@@ -123,7 +106,7 @@ elif app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測�
     target_path = ROLE_FILES[selected_role]
 
     if not os.path.exists(target_path):
-        st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請先至管理員後台上傳")
+        st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})")
     else:
         df_search = pd.read_excel(target_path, header=3)
         df_search.columns = [str(c).strip() for c in df_search.columns]
@@ -154,22 +137,25 @@ elif app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測�
                     s_idx = date_cols.index(start_date)
                     e_idx = date_cols.index(end_date)
                     target_dates = date_cols[s_idx:e_idx+1] if s_idx <= e_idx else []
-                except:
-                    target_dates = []
+                except: target_dates = []
 
                 if not target_dates:
                     st.warning("起始日期不可大於結束日期")
                 else:
                     search_results = []
+                    all_cols_list = list(df_search.columns[2:])
+
                     for _, row in df_search.iterrows():
                         emp_id = str(row.iloc[0]).strip()
                         emp_name = str(row.iloc[1]).strip()
                         
                         for d_str in target_dates:
                             target_col_idx = -1
-                            for idx, col in enumerate(df_search.columns[2:]):
+                            actual_col_pos = -1
+                            for idx, col in enumerate(all_cols_list):
                                 if d_str in str(col):
                                     target_col_idx = idx + 2
+                                    actual_col_pos = idx
                                     break
                             
                             if target_col_idx != -1:
@@ -178,14 +164,28 @@ elif app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測�
                                 start_t = parsed["start"]
                                 
                                 if start_t and min_time <= start_t <= max_time:
+                                    # 尋找隔日 Sign-In 時間
+                                    next_day_sign_in = "無記錄"
+                                    if actual_col_pos + 1 < len(all_cols_list):
+                                        next_cell_raw = row.iloc[target_col_idx + 1]
+                                        next_parsed = parse_cell(next_cell_raw)
+                                        if next_parsed["start"]:
+                                            next_day_sign_in = next_parsed["start"]
+                                        elif next_parsed["train"]:
+                                            next_day_sign_in = next_parsed["train"] # 如果是 DO 或 PAY 等代號
+                                    
                                     search_results.append({
                                         "日期": d_str,
                                         "員編": emp_id,
                                         "姓名": emp_name,
                                         "Sign-In": start_t,
                                         "收工時間": parsed["end"],
-                                        "車次": parsed["train"]
+                                        "車次": parsed["train"] if parsed["train"] else "無",
+                                        "隔日Sign-In": next_day_sign_in
                                     })
+
+                    # 依照 Sign-In 時間由早到晚排序
+                    search_results = sorted(search_results, key=lambda x: x["Sign-In"])
 
                     st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ Sign-In {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
                     
@@ -195,7 +195,10 @@ elif app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測�
                             <div class="result-card">
                                 <div class="time-row">{r['Sign-In']} ➔ {r['收工時間']}</div>
                                 <div class="name-row">{r['姓名']} <span style="color:#94A3B8; font-size:14px;">({r['員編']})</span></div>
-                                <div class="train-row">班別：{r['車次'] if r['車次'] else '無記錄'}</div>
+                                <div class="sub-info-row">
+                                    <span>班別：{r['车次'] if '车次' in r else r['車次']}</span>
+                                    <span>隔日 Sign-In：{r['隔日Sign-In']}</span>
+                                </div>
                             </div>
                             """, unsafe_allow_html=True)
                     else:
