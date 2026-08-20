@@ -228,7 +228,6 @@ def parse_cell(raw):
     lines = [l.strip() for l in raw_str.split("\n") if l.strip()]
     if not lines: return dict(start="", train="", end="", hours="", note="")
     
-    # 判斷是否為純休假 (只有 DO 或 D2W 等且沒有時間)
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
     if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): 
         return dict(start="", train=lines[0], end="", hours="", note="")
@@ -240,15 +239,9 @@ def parse_cell(raw):
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     hours = calculate_hours(start_time, end_time)
     
-    # 尋找車次或類別代碼 (排除時間、工時格式)
-    train_code = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l), "")
-    
-    # 檢查有沒有包含 DO / PAY / 其它備註
-    notes = [l for l in lines if l not in times and l != train_code]
-    
-    # 如果同時有時間與 DO 相關字串 (代表國定假日出勤)
     do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l), "")
     real_train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != do_str and "h" not in l and "m" not in l), "")
+    notes = [l for l in lines if l not in times and l != real_train]
 
     return dict(
         start=start_time, 
@@ -297,7 +290,7 @@ def build_weeks(start_dt, dates, cells):
     first_wd = (start_dt.weekday() + 1) % 7
     weeks, week = [], [None] * first_wd
     for dt, raw in zip(dates, cells):
-        week.append((dt, parse_cell(raw)))
+        week.append((dt, parse_cell(raw), str(raw) if not pd.isna(raw) else ""))
         if len(week) == 7: weeks.append(week); week = []
     if week:
         while len(week) < 7: week.append(None)
@@ -362,10 +355,9 @@ if st.button("立即生成個人班表圖片檔"):
 
             has_emp_do, has_emp_pay, has_emp_ot, has_emp_town = False, False, False, False
             for week in weeks:
-                for cell in week:
-                    if cell is not None:
-                        _, d = cell
-                        raw_cell_str = str(cells[dates.index(dt)]) if dt in dates else "" # 檢查原始資料
+                for item in week:
+                    if item is not None:
+                        dt, d, raw_cell_str = item
                         tr, note, hours = d["train"], d.get("note", ""), d.get("hours", "")
                         is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d["start"]
                         
@@ -376,17 +368,16 @@ if st.button("立即生成個人班表圖片檔"):
 
             for ri, week in enumerate(weeks):
                 ry = dy - (ri + 1) * RH
-                for ci, cell in enumerate(week):
+                for ci, item in enumerate(week):
                     x = ML + ci * CW
-                    if cell is None: ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=C_EMPTY)); continue
-                    dt, d = cell
-                    raw_cell_str = str(cells[dates.index(dt)]) if dt in dates else ""
+                    if item is None: 
+                        ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=C_EMPTY))
+                        continue
+                    dt, d, raw_cell_str = item
                     tr, note = d["train"], d.get("note", "")
                     
-                    # 判斷是否為「純休假」（無上下班時間）
                     is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d["start"]
                     
-                    # 背景色邏輯：若有上下班時間，則視為上班日背景，不套用 DO 粉紅背景
                     bg = C_DO_BG if is_pure_hol else (C_PAY_BG if tr=="PAY" and not d["start"] else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
                     ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
                     
@@ -404,16 +395,13 @@ if st.button("立即生成個人班表圖片檔"):
                     
                     cx = x + CW / 2
                     if is_pure_hol: 
-                        # 純休假顯示休假代碼
                         do_code = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l), "DO")
                         draw_bold_text(ax, cx, ry + RH * 0.48, do_code, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
                     elif tr == "PAY" and not d["start"]: 
                         draw_bold_text(ax, cx, ry + RH * 0.48, "PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(14))
                     else:
-                        # 上班日或休假出勤 (有上下班時間)
                         draw_bold_text(ax, cx, ry + RH * 0.70, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(12))
                         
-                        # 若原始資料包含 DO2W 等字串，在中間印出該標記
                         do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l), "")
                         if do_match:
                             draw_bold_text(ax, cx, ry + RH * 0.50, do_match, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(11))
