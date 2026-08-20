@@ -342,9 +342,9 @@ if is_maintenance_mode():
     st.markdown("""
     <div class="telemetry-card" style="border: 1px solid #EF4444; background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);">
         <div class="telemetry-title" style="color: #FCA5A5;">SYSTEM STATUS // 系統維護公告</div>
-        <div class="telemetry-value" style="color: #FEE2E2; font-size: 20px;">🚧 系統目前暫停開放維護中</div>
+        <div class="telemetry-value" style="color: #FEE2E2; font-size: 20px;">🚧 系統目前暫停開放｜維護中 </div>
         <div class="telemetry-sub" style="border-color: #991B1B; color: #FECACA;">
-            管理員正在更新排班資料或進行系統維護，請稍後再試。
+            管理員正在進行系統維護，請稍後再試，或請洽管理員。
         </div>
     </div>
     """, unsafe_allow_html=True)
