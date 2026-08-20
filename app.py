@@ -85,21 +85,6 @@ def get_schedule_range():
                 pass
     return "尚無資料"
 
-def generate_time_options():
-    options = []
-    for h in range(19): # 限制最晚到 18:00
-        for m in [0, 30]:
-            options.append(f"{h:02d}:{m:02d}")
-    options.extend(["04:00", "04:30", "05:00", "05:15", "05:26", "05:30", "06:00", "18:00"])
-    
-    filtered = []
-    for t in sorted(list(set(options))):
-        if t <= "18:00":
-            filtered.append(t)
-    return filtered
-
-TIME_OPTIONS = generate_time_options()
-
 def set_maintenance_mode(is_maintenance):
     if is_maintenance:
         with open(MAINTENANCE_FLAG_FILE, "w") as f:
@@ -451,24 +436,22 @@ else:
             if not date_cols:
                 st.error("表中未偵測到有效日期欄位")
             else:
-                earliest_time_found = "05:26"
-                if selected_role == "駕駛":
-                    try:
-                        all_found_times = []
-                        for _, r_row in df_search.iterrows():
-                            for cell_val in r_row.iloc[2:]:
-                                p_temp = parse_cell(cell_val)
-                                if p_temp["start"]:
-                                    all_found_times.append(p_temp["start"])
-                        if all_found_times:
-                            earliest_time_found = min(all_found_times)
-                            if earliest_time_found not in TIME_OPTIONS:
-                                TIME_OPTIONS.append(earliest_time_found)
-                                TIME_OPTIONS.sort()
-                    except:
-                        pass
+                # 🔄 徹底優化：100% 自動掃描整張班表，將「所有出現過的分鐘數時間」全部收集並精準排序
+                dynamic_time_set = set()
+                for _, r_row in df_search.iterrows():
+                    for cell_val in r_row.iloc[2:]:
+                        p_temp = parse_cell(cell_val)
+                        if p_temp["start"] and re.match(r'^\d{1,2}:\d{2}$', p_temp["start"]):
+                            dynamic_time_set.add(p_temp["start"])
+                
+                # 若班表內有任何奇特的報到時間（如 06:31），全部納入選項
+                TIME_OPTIONS = sorted(list(dynamic_time_set))
+                if not TIME_OPTIONS:
+                    TIME_OPTIONS = ["04:00", "05:00", "06:00", "07:00"]
 
-                default_min_idx = TIME_OPTIONS.index(earliest_time_found) if earliest_time_found in TIME_OPTIONS else 0
+                earliest_time_found = TIME_OPTIONS[0] if TIME_OPTIONS else "05:00"
+                default_min_idx = 0
+                default_max_idx = len(TIME_OPTIONS) - 1
 
                 c1, c2 = st.columns(2)
                 with c1: start_date = st.selectbox("起始日期", date_cols, index=0)
@@ -476,34 +459,11 @@ else:
                 start_date_idx = date_cols.index(start_date) if start_date in date_cols else 0
                 with c2: end_date = st.selectbox("結束日期", date_cols, index=start_date_idx)
 
-                if 'last_min_time_selected' not in st.session_state:
-                    st.session_state.last_min_time_selected = TIME_OPTIONS[default_min_idx]
-
                 c3, c4 = st.columns(2)
                 with c3: 
                     min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
-                
-                if min_time != st.session_state.last_min_time_selected:
-                    st.session_state.last_min_time_selected = min_time
-                    try:
-                        h, m = map(int, min_time.split(":"))
-                        target_mins = h * 60 + m + 60
-                        target_h = (target_mins // 60) % 24
-                        target_m = target_mins % 60
-                        suggested_end = f"{target_h:02d}:{target_m:02d}"
-                        if suggested_end > "18:00": suggested_end = "18:00"
-                        if suggested_end in TIME_OPTIONS:
-                            st.session_state.end_time_default_idx = TIME_OPTIONS.index(suggested_end)
-                        else:
-                            st.session_state.end_time_default_idx = len(TIME_OPTIONS) - 1
-                    except:
-                        st.session_state.end_time_default_idx = min(default_min_idx + 2, len(TIME_OPTIONS) - 1)
-
-                if 'end_time_default_idx' not in st.session_state:
-                    st.session_state.end_time_default_idx = min(default_min_idx + 2, len(TIME_OPTIONS) - 1)
-
                 with c4: 
-                    max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=st.session_state.end_time_default_idx)
+                    max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx, key="max_time_selectbox")
 
                 filter_col1, filter_col2 = st.columns(2)
                 with filter_col1:
@@ -542,6 +502,7 @@ else:
                                     parsed = parse_cell(cell_raw)
                                     start_t = parsed["start"]
                                     
+                                    # 嚴格以字串區間比對（包含所有分鐘如 06:31）
                                     if start_t and min_time <= start_t <= max_time:
                                         is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                         is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
@@ -571,7 +532,7 @@ else:
                                             "非正線": is_non_line
                                         })
 
-                        # 🔄 排序優化：先按「日期」、再按「Sign-In (報到時間)」、再按「收工時間」、最後按「員編」排序
+                        # 🔄 排序：日期 ➔ Sign-In (報到時間) ➔ 收工時間 ➔ 員編
                         search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 0, x["Sign-In"], x["收工時間"], x["員編"]))
 
                         st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ Sign-In {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
