@@ -49,6 +49,12 @@ TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "TRAIN CREW DUTY CALENDAR"
 
 ROLE_FILES = {
+    "驾驶": "TD.xlsx",
+    "列車長": "TM.xlsx",
+    "服勤員": "TA.xlsx"
+}
+# 修正字典鍵值 (避免簡繁差異)
+ROLE_FILES = {
     "駕駛": "TD.xlsx",
     "列車長": "TM.xlsx",
     "服勤員": "TA.xlsx"
@@ -94,11 +100,19 @@ def calculate_hours(start_str, end_str):
         return f"{diff_mins // 60}h{diff_mins % 60:02d}m"
     except: return ""
 
-def is_overtime(h, tr, note):
-    # 如果是假別或非正線代號，絕對不顯示長班
+def is_valid_train_code(tr):
+    # 檢查是否為標準正線執勤班別格式（例如：英文字母開頭加上數字，如 NF0020, NH0001 等）
+    if not tr: return False
+    tr_clean = str(tr).strip().upper()
+    # 如果是純假別代碼或中文，直接回傳 False
     leave_codes = ["PAY", "FAC", "DO", "D2W", "AL", "SL", "CL", "ML"]
-    combined_str = f"{tr} {note}".upper()
-    if any(code in combined_str for code in leave_codes):
+    if tr_clean in leave_codes: return False
+    # 正規表達式：字母開頭且帶有數字的車次代號
+    return bool(re.match(r'^[A-Z]+\d+', tr_clean))
+
+def is_overtime(h, tr, note):
+    # 如果不是標準正線執勤班別（例如是 PAY, FAC 等假別），絕對不顯示長班
+    if not is_valid_train_code(tr):
         return False
     if not h: return False
     try:
@@ -108,22 +122,25 @@ def is_overtime(h, tr, note):
 
 def translate_train_code(tr):
     if not tr: return "無"
+    tr_upper = str(tr).strip().upper()
     mapping = {
         "PAY": "特休 (PAY)",
-        "FAC": "公假 / 訓練 (FAC)",
+        "FAC": "家庭照顧假 (FAC)",
         "AL": "年假 (AL)",
         "SL": "病假 (SL)",
         "CL": "事假 (CL)"
     }
-    return mapping.get(tr.upper(), tr)
+    return mapping.get(tr_upper, tr)
 
 def is_town_shift(tr, note):
-    if tr and "PAY" in str(tr).upper():
+    tr_upper = str(tr).strip().upper()
+    # 若是明確的正線執勤班別，絕非非正線
+    if is_valid_train_code(tr_upper):
         return False
-    if not tr or str(tr).strip() in ["", "無", "nan"]:
+    if not tr or tr_upper in ["", "無", "NAN"]:
         return True
-    keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "FAC", "DS", "H9", "OGC", "WRSL"]
-    return any(kw in f"{tr} {note}".upper() for kw in keywords)
+    keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "FAC", "DS", "H9", "OGC", "WRSL", "PAY"]
+    return any(kw in f"{tr_upper} {str(note).upper()}" for kw in keywords)
 
 def parse_cell(raw):
     if pd.isna(raw) or not str(raw).strip(): return dict(start="", train="", end="", hours="", note="")
@@ -135,17 +152,20 @@ def parse_cell(raw):
     if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): 
         return dict(start="", train=lines[0], end="", hours="", note="")
     
-    if "PAY" in [l.upper() for l in lines] or "PAY" in raw_str.upper():
-        start_time = pad_time(times[0]) if times else ""
-        end_time = pad_time(times[1]) if len(times) > 1 else ""
-        hours = calculate_hours(start_time, end_time)
-        return dict(start=start_time, end=end_time, train="PAY", hours=hours, note="PAY")
+    # 檢查是否有假別代碼
+    upper_lines = [l.upper() for l in lines]
+    for code in ["PAY", "FAC", "AL", "SL", "CL"]:
+        if code in upper_lines or any(code in l for l in upper_lines):
+            start_time = pad_time(times[0]) if times else ""
+            end_time = pad_time(times[1]) if len(times) > 1 else ""
+            hours = calculate_hours(start_time, end_time)
+            return dict(start=start_time, end=end_time, train=code, hours=hours, note=code)
 
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     hours = calculate_hours(start_time, end_time)
     
-    do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l), "")
+    do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l), "")
     real_train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != do_str and "h" not in l and "m" not in l), "")
     notes = [l for l in lines if l not in times and l != real_train]
 
@@ -320,7 +340,7 @@ else:
                             if d.get("hours"): 
                                 draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"], tr, note) else "#000000", fontproperties=fp(11.5))
                                 
-                                do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "PAY" in l), "")
+                                do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l), "")
                                 if do_match:
                                     draw_bold_text(ax, x + CW - 0.004, ry + 0.026, do_match, ha="right", va="bottom", color=C_DO_TXT, fontproperties=fp(10.5))
                             
@@ -328,8 +348,8 @@ else:
                             if is_pure_hol: 
                                 do_code = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l), "DO")
                                 draw_bold_text(ax, cx, ry + RH * 0.48, do_code, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
-                            elif tr == "PAY" and not d["start"]: 
-                                draw_bold_text(ax, cx, ry + RH * 0.48, "PAY", ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(14))
+                            elif tr in ["PAY", "FAC"] and not d["start"]: 
+                                draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(14))
                             else:
                                 draw_bold_text(ax, cx, ry + RH * 0.65, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(13))
                                 draw_bold_text(ax, cx, ry + RH * 0.40, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(13))
