@@ -24,7 +24,6 @@ st.markdown("""
     .telemetry-title { color: #94A3B8 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
     .telemetry-value { color: #F8FAFC !important; font-size: 18px; font-weight: 700; font-family: monospace; }
     
-    /* 升級版日期專屬膠囊看板：超醒目、快速滑動絕不會漏看 */
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 16px; font-weight: 800; padding: 10px 16px; border-radius: 8px; margin-top: 28px; margin-bottom: 14px; letter-spacing: 1.5px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
     .result-card { background: #1E293B; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; }
@@ -95,12 +94,28 @@ def calculate_hours(start_str, end_str):
         return f"{diff_mins // 60}h{diff_mins % 60:02d}m"
     except: return ""
 
-def is_overtime(h):
+def is_overtime(h, tr, note):
+    # 如果是假別或非正線代號，絕對不顯示長班
+    leave_codes = ["PAY", "FAC", "DO", "D2W", "AL", "SL", "CL", "ML"]
+    combined_str = f"{tr} {note}".upper()
+    if any(code in combined_str for code in leave_codes):
+        return False
     if not h: return False
     try:
         p = str(h).replace("h", ":").replace("m", "").split(":")
         return (int(p[0]) * 60 + int(p[1])) > 510
     except: return False
+
+def translate_train_code(tr):
+    if not tr: return "無"
+    mapping = {
+        "PAY": "特休 (PAY)",
+        "FAC": "公假 / 訓練 (FAC)",
+        "AL": "年假 (AL)",
+        "SL": "病假 (SL)",
+        "CL": "事假 (CL)"
+    }
+    return mapping.get(tr.upper(), tr)
 
 def is_town_shift(tr, note):
     if tr and "PAY" in str(tr).upper():
@@ -276,7 +291,7 @@ else:
                                 if is_pure_hol or tr.startswith("DO"): has_emp_do = True
                                 elif tr == "PAY": has_emp_pay = True
                                 elif is_town_shift(tr, note): has_emp_town = True
-                                if is_overtime(hours): has_emp_ot = True
+                                if is_overtime(hours, tr, note): has_emp_ot = True
 
                     for ri, week in enumerate(weeks):
                         ry = dy - (ri + 1) * RH
@@ -303,7 +318,7 @@ else:
                                 draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(8.5))
 
                             if d.get("hours"): 
-                                draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"]) else "#000000", fontproperties=fp(11.5))
+                                draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"], tr, note) else "#000000", fontproperties=fp(11.5))
                                 
                                 do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "PAY" in l), "")
                                 if do_match:
@@ -427,7 +442,7 @@ else:
                                             if next_parsed["start"]: next_day_sign_in = next_parsed["start"]
                                             elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
                                         
-                                        is_long = is_overtime(parsed["hours"])
+                                        is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
                                         is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                         
                                         search_results.append({
@@ -436,7 +451,7 @@ else:
                                             "姓名": emp_name,
                                             "Sign-In": start_t,
                                             "收工時間": parsed["end"],
-                                            "車次": parsed["train"] if parsed["train"] else "無",
+                                            "車次": translate_train_code(parsed["train"]),
                                             "隔日Sign-In": next_day_sign_in,
                                             "長班": is_long,
                                             "非正線": is_non_line
