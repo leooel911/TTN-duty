@@ -396,21 +396,23 @@ else:
             if not date_cols:
                 st.error("表中未偵測到有效日期欄位")
             else:
+                # 只有選「駕駛」時才動態抓取最早報到時間；列車長與服勤員固定預設為 05:26
                 earliest_time_found = "05:26"
-                try:
-                    all_found_times = []
-                    for _, r_row in df_search.iterrows():
-                        for cell_val in r_row.iloc[2:]:
-                            p_temp = parse_cell(cell_val)
-                            if p_temp["start"]:
-                                all_found_times.append(p_temp["start"])
-                    if all_found_times:
-                        earliest_time_found = min(all_found_times)
-                        if earliest_time_found not in TIME_OPTIONS:
-                            TIME_OPTIONS.append(earliest_time_found)
-                            TIME_OPTIONS.sort()
-                except:
-                    pass
+                if selected_role == "駕駛":
+                    try:
+                        all_found_times = []
+                        for _, r_row in df_search.iterrows():
+                            for cell_val in r_row.iloc[2:]:
+                                p_temp = parse_cell(cell_val)
+                                if p_temp["start"]:
+                                    all_found_times.append(p_temp["start"])
+                        if all_found_times:
+                            earliest_time_found = min(all_found_times)
+                            if earliest_time_found not in TIME_OPTIONS:
+                                TIME_OPTIONS.append(earliest_time_found)
+                                TIME_OPTIONS.sort()
+                    except:
+                        pass
 
                 default_min_idx = TIME_OPTIONS.index(earliest_time_found) if earliest_time_found in TIME_OPTIONS else 0
                 default_max_idx = TIME_OPTIONS.index("09:00") if "09:00" in TIME_OPTIONS else len(TIME_OPTIONS)-1
