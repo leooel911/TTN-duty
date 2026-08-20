@@ -34,8 +34,22 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 資料設定 ---
-ROLE_FILES = {"駕駛": "TD.xlsx", "列車長": "TM.xlsx", "服勤員": "TA.xlsx"}
+NATIONAL_HOLIDAYS = {
+    "1/1": "元旦", "2/16": "除夕", "2/17": "初一", "2/18": "初二", "2/19": "初三", 
+    "2/28": "和平紀念日", "4/4": "兒童節", "4/5": "清明節", "5/1": "勞動節",
+    "6/19": "端午節", "9/25": "中秋節", "9/28": "教師節", "10/10": "國慶日",
+    "10/25": "台灣光復節", "12/25": "行憲紀念日"
+}
+
+TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
+TITLE = "TRAIN CREW DUTY CALENDAR"
+
+ROLE_FILES = {
+    "駕駛": "TD.xlsx",
+    "列車長": "TM.xlsx",
+    "服勤員": "TA.xlsx"
+}
+
 ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
@@ -44,22 +58,55 @@ def generate_time_options():
     options = ["05:26"]
     for h in range(24):
         for m in [0, 30]:
-            t = f"{h:02d}:{m:02d}"
-            if t not in options: options.append(t)
+            t_str = f"{h:02d}:{m:02d}"
+            if t_str not in options:
+                options.append(t_str)
     return sorted(list(set(options)))
 
 TIME_OPTIONS = generate_time_options()
 
+def pad_time(t_str):
+    if not t_str or ":" not in t_str: return t_str
+    parts = str(t_str).split(":")
+    return f"{int(parts[0]):02d}:{parts[1]}" if len(parts) == 2 else str(t_str)
+
+def calculate_hours(start_str, end_str):
+    if not start_str or not end_str or ":" not in start_str or ":" not in end_str:
+        return ""
+    try:
+        sh, sm = map(int, start_str.split(":"))
+        eh, em = map(int, end_str.split(":"))
+        start_mins = sh * 60 + sm
+        end_mins = eh * 60 + em
+        if end_mins <= start_mins: end_mins += 24 * 60
+        diff_mins = end_mins - start_mins
+        return f"{diff_mins // 60}h{diff_mins % 60:02d}m"
+    except:
+        return ""
+
 def parse_cell(raw):
     if pd.isna(raw) or not str(raw).strip(): return dict(start="", train="", end="", hours="", note="")
-    lines = [l.strip() for l in str(raw).split("\n") if l.strip()]
+    raw_str = str(raw).strip()
+    lines = [l.strip() for l in raw_str.split("\n") if l.strip()]
+    if not lines: return dict(start="", train="", end="", hours="", note="")
+    
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
-    start_t = times[0] if times else ""
-    end_t = times[1] if len(times) > 1 else ""
-    train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "DO" not in l and "PAY" not in l and "h" not in l), "")
-    return dict(start=start_t, end=end_t, train=train)
+    if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): 
+        return dict(start="", train=lines[0], end="", hours="", note="")
+    
+    if "PAY" in lines and not times:
+        return dict(start="", train="PAY", end="", hours="", note="")
 
-# --- 主程式流程 ---
+    start_time = pad_time(times[0]) if times else ""
+    end_time = pad_time(times[1]) if len(times) > 1 else ""
+    hours = calculate_hours(start_time, end_time)
+    
+    do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l), "")
+    real_train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != do_str and "h" not in l and "m" not in l), "")
+    notes = [l for l in lines if l not in times and l != real_train]
+
+    return dict(start=start_time, end=end_time, train=real_train, hours=hours, note=" ".join(notes))
+
 st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
 
 app_mode = st.radio("選擇功能模式", ["生產個人班表圖片檔", "組員動態時段篩選（尋找換班協調專用・Beta測試版）"], horizontal=True)
@@ -68,7 +115,7 @@ st.markdown("---")
 if app_mode == "生產個人班表圖片檔":
     target_input = st.text_input("輸入 員編 或 姓名", value="A")
     if st.button("立即生成個人班表圖片檔"):
-        st.info("功能運作中...")
+        st.info("請切換至對應模式或參考原圖表生成功能。")
 
 elif app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測試版）":
     st.subheader("乘務時段區間與 Sign-In Time 快篩工具")
@@ -76,37 +123,80 @@ elif app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測�
     target_path = ROLE_FILES[selected_role]
 
     if not os.path.exists(target_path):
-        st.error(f"檔案 {target_path} 不存在")
+        st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請先至管理員後台上傳")
     else:
-        df = pd.read_excel(target_path, header=3)
-        df.columns = [str(c).strip() for c in df.columns]
-        date_cols = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in df.columns[2:] if re.search(r'(\d+/\d+)', str(c))]
+        df_search = pd.read_excel(target_path, header=3)
+        df_search.columns = [str(c).strip() for c in df_search.columns]
         
-        c1, c2 = st.columns(2)
-        start_date = c1.selectbox("起始日期", date_cols, index=0)
-        end_date = c2.selectbox("結束日期", date_cols, index=date_cols.index(start_date))
+        date_cols = []
+        for col in df_search.columns[2:]:
+            match_d = re.search(r'(\d+/\d+)', str(col))
+            if match_d: date_cols.append(match_d.group(1))
 
-        c3, c4 = st.columns(2)
-        min_time = c3.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=TIME_OPTIONS.index("05:26") if "05:26" in TIME_OPTIONS else 0)
-        max_time = c4.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=TIME_OPTIONS.index("09:00") if "09:00" in TIME_OPTIONS else len(TIME_OPTIONS)-1)
+        if not date_cols:
+            st.error("表中未偵測到有效日期欄位")
+        else:
+            default_min_idx = TIME_OPTIONS.index("05:26") if "05:26" in TIME_OPTIONS else 0
+            default_max_idx = TIME_OPTIONS.index("09:00") if "09:00" in TIME_OPTIONS else len(TIME_OPTIONS)-1
 
-        if st.button("開始區間檢索符合條件人員"):
-            results = []
-            target_dates = date_cols[date_cols.index(start_date):date_cols.index(end_date)+1]
-            for _, row in df.iterrows():
-                for d in target_dates:
-                    col_idx = [i for i, c in enumerate(df.columns) if d in str(c)]
-                    if col_idx:
-                        parsed = parse_cell(row.iloc[col_idx[0]])
-                        if parsed["start"] and min_time <= parsed["start"] <= max_time:
-                            results.append({"日期": d, "姓名": row.iloc[1], "員編": row.iloc[0], "Sign-In": parsed["start"], "下班": parsed["end"], "班別": parsed["train"]})
+            c1, c2 = st.columns(2)
+            with c1: start_date = st.selectbox("起始日期", date_cols, index=0)
             
-            st.markdown(f"### 檢索結果 (共 {len(results)} 筆)")
-            for r in results:
-                st.markdown(f"""
-                <div class="result-card">
-                    <div class="time-row">{r['Sign-In']} ➔ {r['下班']}</div>
-                    <div class="name-row">{r['姓名']} <span style="color:#94A3B8; font-size:14px;">({r['員編']})</span></div>
-                    <div class="train-row">班別：{r['班別'] if r['班別'] else '無記錄'}</div>
-                </div>
-                """, unsafe_allow_html=True)
+            start_date_idx = date_cols.index(start_date) if start_date in date_cols else 0
+            with c2: end_date = st.selectbox("結束日期", date_cols, index=start_date_idx)
+
+            c3, c4 = st.columns(2)
+            with c3: min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx)
+            with c4: max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx)
+
+            if st.button("開始區間檢索符合條件人員"):
+                try:
+                    s_idx = date_cols.index(start_date)
+                    e_idx = date_cols.index(end_date)
+                    target_dates = date_cols[s_idx:e_idx+1] if s_idx <= e_idx else []
+                except:
+                    target_dates = []
+
+                if not target_dates:
+                    st.warning("起始日期不可大於結束日期")
+                else:
+                    search_results = []
+                    for _, row in df_search.iterrows():
+                        emp_id = str(row.iloc[0]).strip()
+                        emp_name = str(row.iloc[1]).strip()
+                        
+                        for d_str in target_dates:
+                            target_col_idx = -1
+                            for idx, col in enumerate(df_search.columns[2:]):
+                                if d_str in str(col):
+                                    target_col_idx = idx + 2
+                                    break
+                            
+                            if target_col_idx != -1:
+                                cell_raw = row.iloc[target_col_idx]
+                                parsed = parse_cell(cell_raw)
+                                start_t = parsed["start"]
+                                
+                                if start_t and min_time <= start_t <= max_time:
+                                    search_results.append({
+                                        "日期": d_str,
+                                        "員編": emp_id,
+                                        "姓名": emp_name,
+                                        "Sign-In": start_t,
+                                        "收工時間": parsed["end"],
+                                        "車次": parsed["train"]
+                                    })
+
+                    st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ Sign-In {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
+                    
+                    if search_results:
+                        for r in search_results:
+                            st.markdown(f"""
+                            <div class="result-card">
+                                <div class="time-row">{r['Sign-In']} ➔ {r['收工時間']}</div>
+                                <div class="name-row">{r['姓名']} <span style="color:#94A3B8; font-size:14px;">({r['員編']})</span></div>
+                                <div class="train-row">班別：{r['車次'] if r['車次'] else '無記錄'}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
