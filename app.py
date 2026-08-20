@@ -153,7 +153,7 @@ ROLE_FILES = {
 }
 
 ADMIN_PASSWORD = "Lf0900"
-CREW_ACCESS_PASSWORD = "0000"
+CREW_ACCESS_PASSWORD = "0900"
 
 def get_file_info(path):
     if os.path.exists(path):
@@ -439,4 +439,4 @@ with st.expander("管理員專用：Database"):
             with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
             st.success("上傳成功！")
     elif password_input:
-        st.error("密碼錯誤，請洽 CLF")
+        st.error("密碼錯誤，請洽 C.L.F")
