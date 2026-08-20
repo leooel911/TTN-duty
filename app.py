@@ -59,11 +59,11 @@ CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
 
 def generate_time_options():
-    options = ["05:26"]
+    options = []
     for h in range(24):
         for m in [0, 30]:
-            t_str = f"{h:02d}:{m:02d}"
-            if t_str not in options: options.append(t_str)
+            options.append(f"{h:02d}:{m:02d}")
+    options.extend(["04:00", "04:30", "05:00", "05:15", "05:26", "05:30", "06:00"])
     return sorted(list(set(options)))
 
 TIME_OPTIONS = generate_time_options()
@@ -145,11 +145,9 @@ def parse_cell(raw):
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     hours = calculate_hours(start_time, end_time)
     
-    # 找出非時間、非工時的文字作為車次/代號
     do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l), "")
     real_train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != do_str and "h" not in l and "m" not in l), "")
     
-    # 如果找不到明確的 real_train，但有其他代號，則取第一個非時間的代號
     if not real_train:
         non_time_lines = [l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l]
         if non_time_lines:
@@ -398,7 +396,23 @@ else:
             if not date_cols:
                 st.error("表中未偵測到有效日期欄位")
             else:
-                default_min_idx = TIME_OPTIONS.index("05:26") if "05:26" in TIME_OPTIONS else 0
+                earliest_time_found = "05:26"
+                try:
+                    all_found_times = []
+                    for _, r_row in df_search.iterrows():
+                        for cell_val in r_row.iloc[2:]:
+                            p_temp = parse_cell(cell_val)
+                            if p_temp["start"]:
+                                all_found_times.append(p_temp["start"])
+                    if all_found_times:
+                        earliest_time_found = min(all_found_times)
+                        if earliest_time_found not in TIME_OPTIONS:
+                            TIME_OPTIONS.append(earliest_time_found)
+                            TIME_OPTIONS.sort()
+                except:
+                    pass
+
+                default_min_idx = TIME_OPTIONS.index(earliest_time_found) if earliest_time_found in TIME_OPTIONS else 0
                 default_max_idx = TIME_OPTIONS.index("09:00") if "09:00" in TIME_OPTIONS else len(TIME_OPTIONS)-1
 
                 c1, c2 = st.columns(2)
