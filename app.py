@@ -24,9 +24,11 @@ st.markdown("""
     .telemetry-title { color: #94A3B8 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
     .telemetry-value { color: #F8FAFC !important; font-size: 18px; font-weight: 700; font-family: monospace; }
     
-    /* 結果卡片樣式：加入日期標籤區隔 */
-    .result-card { background: #1E293B; border-left: 4px solid #3B82F6; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; }
-    .date-badge { display: inline-block; background: #334155; color: #38BDF8; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-bottom: 6px; }
+    /* 專業級無符號日期區隔標題 */
+    .date-section-header { font-size: 15px; font-weight: 700; color: #38BDF8; margin-top: 28px; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; gap: 12px; }
+    .date-section-header::after { content: ""; flex: 1; height: 1px; background: #334155; }
+
+    .result-card { background: #1E293B; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; }
     .time-row { font-size: 19px; font-weight: 700; color: #60A5FA; margin-bottom: 6px; font-family: monospace; }
     .name-row { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #E2E8F0; }
     .sub-info-row { font-size: 13px; color: #94A3B8; font-family: monospace; display: flex; gap: 16px; flex-wrap: wrap; }
@@ -76,28 +78,6 @@ def set_maintenance_mode(is_maintenance):
 
 def is_maintenance_mode():
     return os.path.exists(MAINTENANCE_FLAG_FILE)
-
-def get_file_info(path):
-    if os.path.exists(path):
-        mtime = os.path.getmtime(path)
-        tw_tz = timezone(timedelta(hours=8))
-        time_str = datetime.fromtimestamp(mtime, tw_tz).strftime("%Y-%m-%d %H:%M:%S")
-        return path, time_str
-    return "尚無檔案", "尚未上傳"
-
-def get_system_duty_period():
-    for role, path in ROLE_FILES.items():
-        if os.path.exists(path):
-            try:
-                df_temp = pd.read_excel(path, header=3)
-                col_names = [str(c).strip() for c in df_temp.columns[2:]]
-                dates = []
-                for col in col_names:
-                    match_d = re.search(r'(\d+/\d+)', col)
-                    if match_d: dates.append(match_d.group(1))
-                if dates: return f"{dates[0]} 至 {dates[-1]}"
-            except: continue
-    return "尚未載入有效排班資料"
 
 def pad_time(t_str):
     if not t_str or ":" not in t_str: return t_str
@@ -468,13 +448,17 @@ else:
                         st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ Sign-In {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
                         
                         if search_results:
+                            current_date_group = None
                             for r in search_results:
+                                if r["日期"] != current_date_group:
+                                    current_date_group = r["日期"]
+                                    st.markdown(f'<div class="date-section-header">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
+
                                 long_shift_badge = '<span style="color:#F87171; font-size:14px; margin-left:8px;">● 長班</span>' if r['長班'] else ''
                                 non_line_badge = '<span style="background:#4C1D95; color:#C4B5FD; font-size:11px; padding:2px 6px; border-radius:4px; margin-left:8px; font-weight:600;">非正線勤務</span>' if r['非正線'] else ''
                                 
                                 st.markdown(f"""
                                 <div class="result-card">
-                                    <div class="date-badge">📅 檢索日期：{r['日期']}</div>
                                     <div class="time-row">{r['Sign-In']} ➔ {r['收工時間']} {long_shift_badge} {non_line_badge}</div>
                                     <div class="name-row">{r['姓名']} <span style="color:#94A3B8; font-size:14px;">({r['員編']})</span></div>
                                     <div class="sub-info-row">
