@@ -64,6 +64,37 @@ def generate_time_options():
 
 TIME_OPTIONS = generate_time_options()
 
+def set_maintenance_mode(is_maintenance):
+    if is_maintenance:
+        with open(MAINTENANCE_FLAG_FILE, "w") as f: f.write("ON")
+    else:
+        if os.path.exists(MAINTENANCE_FLAG_FILE): os.remove(MAINTENANCE_FLAG_FILE)
+
+def is_maintenance_mode():
+    return os.path.exists(MAINTENANCE_FLAG_FILE)
+
+def get_file_info(path):
+    if os.path.exists(path):
+        mtime = os.path.getmtime(path)
+        tw_tz = timezone(timedelta(hours=8))
+        time_str = datetime.fromtimestamp(mtime, tw_tz).strftime("%Y-%m-%d %H:%M:%S")
+        return path, time_str
+    return "尚無檔案", "尚未上傳"
+
+def get_system_duty_period():
+    for role, path in ROLE_FILES.items():
+        if os.path.exists(path):
+            try:
+                df_temp = pd.read_excel(path, header=3)
+                col_names = [str(c).strip() for c in df_temp.columns[2:]]
+                dates = []
+                for col in col_names:
+                    match_d = re.search(r'(\d+/\d+)', col)
+                    if match_d: dates.append(match_d.group(1))
+                if dates: return f"{dates[0]} 至 {dates[-1]}"
+            except: continue
+    return "尚未載入有效排班資料"
+
 def pad_time(t_str):
     if not t_str or ":" not in t_str: return t_str
     parts = str(t_str).split(":")
@@ -89,6 +120,9 @@ def is_overtime(h):
     except: return False
 
 def is_town_shift(tr, note):
+    # 若車次為空或「無」，直接判定為非正線勤務；或是符合關鍵字
+    if not tr or tr.strip() in ["", "無"]:
+        return True
     keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "FAC", "DS", "H9", "OGC", "WRSL"]
     return any(kw in f"{tr} {note}".upper() for kw in keywords)
 
@@ -430,3 +464,27 @@ elif app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測�
                             """, unsafe_allow_html=True)
                     else:
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
+
+# --- 管理員專用：Database 區塊完美回歸 ---
+st.markdown("---")
+with st.expander("管理員專用：Database"):
+    password_input = st.text_input("請輸入管理員密碼", type="password")
+    if password_input == ADMIN_PASSWORD:
+        st.success("歡迎 LEO")
+        
+        st.subheader("系統維護控制台")
+        current_maint = is_maintenance_mode()
+        maint_toggle = st.checkbox("暫停開放系統服務 (維護模式)", value=current_maint)
+        if maint_toggle != current_maint:
+            set_maintenance_mode(maint_toggle)
+            st.rerun()
+
+        st.markdown("---")
+        st.subheader("管理員檔案上傳區")
+        selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
+        uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
+        if uploaded_file:
+            with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
+            st.success("上傳成功")
+    elif password_input:
+        st.error("密碼錯誤，請洽 CLF")
