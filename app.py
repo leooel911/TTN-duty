@@ -20,7 +20,7 @@ st.markdown("""
         color: #F8FAFC !important;
     }
     .block-container {
-        padding-top: 3.5rem !important;
+        padding-top: 3rem !important;
         padding-bottom: 3rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
@@ -89,6 +89,18 @@ st.markdown("""
         font-size: 15px;
         line-height: 1.6;
     }
+    /* 手機端模式選單與輸入框優化：加大點擊區間與字型 */
+    .stRadio > div {
+        background-color: #1E293B;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 12px 16px;
+    }
+    .stRadio label {
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        color: #F8FAFC !important;
+    }
     .stTextInput input {
         font-size: 18px !important;
         padding: 14px 16px !important;
@@ -102,6 +114,7 @@ st.markdown("""
         font-weight: 600 !important;
         color: #E2E8F0 !important;
     }
+    /* 🔒 你最愛的藍色按鈕樣式：絕對不變動！ */
     div.stButton {
         display: flex !important;
         justify-content: center !important;
@@ -529,7 +542,6 @@ else:
             if not date_cols:
                 st.error("表中未偵測到有效日期欄位")
             else:
-                # 服勤員與列車長預設 05:26
                 if selected_role in ["服勤員", "列車長"]:
                     default_min_idx = TIME_OPTIONS.index("05:26") if "05:26" in TIME_OPTIONS else 0
                 else:
@@ -541,7 +553,6 @@ else:
                 with c1:
                     start_date = st.selectbox("起始日期", date_cols, index=0)
                 
-                # 自動根據起始日期連動結束日期預設值
                 start_date_idx = date_cols.index(start_date) if start_date in date_cols else 0
 
                 with c2:
