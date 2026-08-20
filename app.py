@@ -370,7 +370,7 @@ else:
     """, unsafe_allow_html=True)
 
     # 🔀 內建功能模式切換選單
-    app_mode = st.radio("選擇功能模式", ["📅 個人班表圖片產生器", "🔍 乘務時段快篩與換班協尋"], horizontal=True)
+    app_mode = st.radio("選擇功能模式", ["📅 個人班表圖片產生器", "🔍 乘務時段區間快篩與換班協尋"], horizontal=True)
     st.markdown("---")
 
     if app_mode == "📅 個人班表圖片產生器":
@@ -505,9 +505,9 @@ else:
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-    elif app_mode == "🔍 乘務時段快篩與換班協尋":
-        st.subheader("🛡️ 乘務時段與報到時間快篩工具")
-        st.write("透過此工具，您可以快速找出某一天在特定時間前報到的同事，方便進行換班協調。")
+    elif app_mode == "🔍 乘務時段區間快篩與換班協尋":
+        st.subheader("🛡️ 乘務時段區間與報到時間快篩工具")
+        st.write("您可以設定「日期區間」與「報到時間區間」，精準找出符合條件的同事！")
 
         selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"])
         target_path = ROLE_FILES[selected_role]
@@ -525,56 +525,80 @@ else:
                 if match_d:
                     date_cols.append(match_d.group(1))
 
-            c1, c2 = st.columns(2)
-            with c1:
-                chosen_date = st.selectbox("選擇查詢日期", date_cols if date_cols else ["無日期"])
-            with c2:
-                max_start_time = st.text_input("篩選：報到時間早於或等於 (例如 09:00)", value="09:00")
+            if not date_cols:
+                st.error("表中未偵測到有效日期欄位。")
+            else:
+                c1, c2 = st.columns(2)
+                with c1:
+                    start_date = st.selectbox("起始日期", date_cols, index=0)
+                with c2:
+                    end_date = st.selectbox("結束日期", date_cols, index=len(date_cols)-1)
 
-            if st.button("開始檢索符合條件人員"):
-                if not chosen_date or chosen_date == "無日期":
-                    st.warning("請選擇有效的日期！")
-                else:
-                    target_col_idx = -1
-                    for idx, col in enumerate(df_search.columns[2:]):
-                        if chosen_date in str(col):
-                            target_col_idx = idx + 2
-                            break
-                    
-                    if target_col_idx == -1:
-                        st.error("在表中找不到對應的日期欄位。")
+                c3, c4 = st.columns(2)
+                with c3:
+                    min_time = st.text_input("報到時間區間：從 (例如 00:00)", value="00:00")
+                with c4:
+                    max_time = st.text_input("報到時間區間：到 (例如 12:00)", value="12:00")
+
+                if st.button("開始區間檢索符合條件人員"):
+                    # 找出日期區間的索引
+                    try:
+                        s_idx = date_cols.index(start_date)
+                        e_idx = date_cols.index(end_date)
+                        if s_idx > e_idx:
+                            st.warning("起始日期不可大於結束日期！")
+                            target_dates = []
+                        else:
+                            target_dates = date_cols[s_idx:e_idx+1]
+                    except:
+                        target_dates = []
+
+                    if not target_dates:
+                        st.warning("請選擇有效的日期區間！")
                     else:
                         search_results = []
+                        # 收集所有符合條件的紀錄
                         for _, row in df_search.iterrows():
                             emp_id = str(row.iloc[0]).strip()
                             emp_name = str(row.iloc[1]).strip()
-                            cell_raw = row.iloc[target_col_idx]
                             
-                            parsed = parse_cell(cell_raw)
-                            start_t = parsed["start"]
-                            
-                            if start_t and start_t <= max_start_time:
-                                search_results.append({
-                                    "員編": emp_id,
-                                    "姓名": emp_name,
-                                    "報到時間": start_t,
-                                    "收工時間": parsed["end"],
-                                    "車次": parsed["train"]
-                                })
-                        
-                        st.markdown(f"### 📋 檢索結果：{chosen_date} 於 {max_start_time} 前報到之{selected_role}（共 {len(search_results)} 人）")
+                            for d_str in target_dates:
+                                # 找出該日期在 df 中的欄位 index
+                                target_col_idx = -1
+                                for idx, col in enumerate(df_search.columns[2:]):
+                                    if d_str in str(col):
+                                        target_col_idx = idx + 2
+                                        break
+                                
+                                if target_col_idx != -1:
+                                    cell_raw = row.iloc[target_col_idx]
+                                    parsed = parse_cell(cell_raw)
+                                    start_t = parsed["start"]
+                                    
+                                    # 檢查報到時間是否落在設定的區間內 (min_time <= start_t <= max_time)
+                                    if start_t and min_time <= start_t <= max_time:
+                                        search_results.append({
+                                            "日期": d_str,
+                                            "員編": emp_id,
+                                            "姓名": emp_name,
+                                            "報到時間": start_t,
+                                            "收工時間": parsed["end"],
+                                            "車次": parsed["train"]
+                                        })
+
+                        st.markdown(f"### 📋 檢索結果：{start_date} 至 {end_date} ｜ 報到時間 {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
                         
                         if search_results:
                             for r in search_results:
                                 st.markdown(f"""
                                 <div class="result-card">
-                                    <b>👤 {r['姓名']}</b> ({r['員編']})<br>
+                                    📅 <b>日期：{r['日期']}</b> ｜ 👤 <b>{r['姓名']}</b> ({r['員編']})<br>
                                     🕒 報到：<b>{r['報到時間']}</b> ➔ 收工：{r['收工時間']}<br>
                                     🚆 當日車次：<code>{r['車次'] if r['車次'] else '無車次記錄'}</code>
                                 </div>
                                 """, unsafe_allow_html=True)
                         else:
-                            st.info("沒有找到符合該條件的人員。")
+                            st.info("在指定的日期與時間區間內，沒有找到符合條件的人員。")
 
 st.markdown("---")
 with st.expander("管理員專用：Database"):
