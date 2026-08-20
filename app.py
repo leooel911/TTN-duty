@@ -28,7 +28,6 @@ st.markdown("""
     
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
-    /* 手機優化雙欄緊湊卡片樣式 */
     .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; color: #F8FAFC; }
     .compact-time { font-size: 16px; font-weight: 700; color: #60A5FA; font-family: monospace; }
     .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
@@ -472,8 +471,12 @@ else:
                 with c3: min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx)
                 with c4: max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx)
 
-                # 新增：僅顯示正線勤務快速開關
-                only_main_line = st.checkbox("僅顯示正線勤務（自動過濾非正線與休假）", value=False)
+                # 新增快速篩選開關並排顯示
+                filter_col1, filter_col2 = st.columns(2)
+                with filter_col1:
+                    only_main_line = st.checkbox("僅顯示正線勤務", value=False)
+                with filter_col2:
+                    only_long_shift = st.checkbox("僅顯示長班 (>8.5h)", value=False)
 
                 if st.button("開始區間檢索符合條件人員"):
                     try:
@@ -508,9 +511,14 @@ else:
                                     
                                     if start_t and min_time <= start_t <= max_time:
                                         is_non_line = is_town_shift(parsed["train"], parsed["note"])
+                                        is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
                                         
-                                        # 如果勾選了僅顯示正線勤務，且當前為非正線，則跳過
+                                        # 過濾條件：僅顯示正線勤務
                                         if only_main_line and is_non_line:
+                                            continue
+                                        
+                                        # 過濾條件：僅顯示長班
+                                        if only_long_shift and not is_long:
                                             continue
 
                                         next_day_sign_in = "無記錄"
@@ -519,8 +527,6 @@ else:
                                             next_parsed = parse_cell(next_cell_raw)
                                             if next_parsed["start"]: next_day_sign_in = next_parsed["start"]
                                             elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
-                                        
-                                        is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
                                         
                                         search_results.append({
                                             "日期": d_str,
@@ -545,7 +551,6 @@ else:
                                     current_date_group = r["日期"]
                                     st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
 
-                                # 行動裝置緊湊化雙欄排版
                                 c_col1, c_col2 = st.columns(2)
                                 
                                 long_shift_badge = '<span style="color:#F87171; font-size:12px; margin-left:4px;">●長</span>' if r['長班'] else ''
@@ -560,7 +565,6 @@ else:
                                 </div>
                                 """
                                 
-                                # 透過交錯放入兩欄中，大幅減少手機上下滑動距離
                                 if r == search_results[0] or search_results.index(r) % 2 == 0:
                                     with c_col1: st.markdown(card_html, unsafe_allow_html=True)
                                 else:
