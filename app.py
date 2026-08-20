@@ -439,4 +439,4 @@ with st.expander("管理員專用：Database"):
             with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
             st.success("上傳成功！")
     elif password_input:
-        st.error("密碼錯誤，非管理員請洽 C.L.F.")
+        st.error("密碼錯誤，請洽 CLF")
