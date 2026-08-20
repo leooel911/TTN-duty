@@ -12,7 +12,7 @@ from matplotlib.patches import FancyBboxPatch
 matplotlib.use('Agg')
 
 # 🚆 將頁面標籤圖示 (Favicon) 改為 700st.png
-st.set_page_config(page_title=" TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
+st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
 
 # 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
@@ -451,7 +451,7 @@ with st.expander("管理員專用：Database"):
     password_input = st.text_input("請輸入管理員密碼", type="password")
     if password_input == ADMIN_PASSWORD:
         st.success("歡迎 LEO！")
-        st.subheader("目前各職位班表狀態")
+        st.subheader("目前各職位班表更新狀態")
         status_data = [{"職位": role, "存檔名稱": get_file_info(path)[0], "最後更新時間": get_file_info(path)[1]} for role, path in ROLE_FILES.items()]
         st.table(pd.DataFrame(status_data))
         selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
