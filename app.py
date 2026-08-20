@@ -141,23 +141,23 @@ def parse_cell(raw):
     if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): 
         return dict(start="", train=lines[0], end="", hours="", note="")
     
-    upper_lines = [l.upper() for l in lines]
-    for code in ["PAY", "FAC", "AL", "SL", "CL"]:
-        if code in upper_lines or any(code in l for l in upper_lines):
-            start_time = pad_time(times[0]) if times else ""
-            end_time = pad_time(times[1]) if len(times) > 1 else ""
-            hours = calculate_hours(start_time, end_time)
-            return dict(start=start_time, end=end_time, train=code, hours=hours, note=code)
-
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     hours = calculate_hours(start_time, end_time)
     
-    do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l or "OGC" in l), "")
+    # 找出非時間、非工時的文字作為車次/代號
+    do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l), "")
     real_train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != do_str and "h" not in l and "m" not in l), "")
+    
+    # 如果找不到明確的 real_train，但有其他代號，則取第一個非時間的代號
+    if not real_train:
+        non_time_lines = [l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l]
+        if non_time_lines:
+            real_train = non_time_lines[0]
+
     notes = [l for l in lines if l not in times and l != real_train]
 
-    return dict(start=start_time, end=end_time, train=real_train, hours=hours, note=" ".join(notes))
+    return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
