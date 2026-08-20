@@ -28,13 +28,13 @@ st.markdown("""
     
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
-    /* 優化卡片內部排版，完美容納長班標籤 */
+    /* 讓「●長」標籤與「非正線」風格完全一致 */
     .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; color: #F8FAFC; }
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
     .badge-group { display: flex; gap: 4px; align-items: center; }
-    .long-badge { background: #7F1D1D; color: #FCA5A5; font-size: 10px; padding: 1px 5px; border-radius: 4px; font-weight: 700; }
-    .non-line-badge { background: #4C1D95; color: #C4B5FD; font-size: 10px; padding: 1px 5px; border-radius: 4px; font-weight: 700; }
+    .long-badge { background: #991B1B; color: #FEE2E2; font-size: 10px; padding: 1px 5px; border-radius: 4px; font-weight: 600; }
+    .non-line-badge { background: #4C1D95; color: #C4B5FD; font-size: 10px; padding: 1px 5px; border-radius: 4px; font-weight: 600; }
     
     .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
     .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
@@ -559,10 +559,10 @@ else:
                                     c_col1, c_col2 = st.columns(2)
                                     col_idx = 0 
                                 
-                                # 使用彈性盒模型標籤，徹底解決被切掉的問題
+                                # 讓長班標籤跟非正線標籤完全同一個模組化外觀，整齊排列在右上角
                                 badges_html = '<div class="badge-group">'
                                 if r['長班']:
-                                    badges_html += '<span class="long-badge">●長</span>'
+                                    badges_html += '<span class="long-badge">●長班</span>'
                                 if r['非正線']:
                                     badges_html += '<span class="non-line-badge">非正線</span>'
                                 badges_html += '</div>'
