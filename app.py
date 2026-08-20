@@ -161,7 +161,7 @@ ROLE_FILES = {
 }
 
 ADMIN_PASSWORD = "Lf0900"
-CREW_ACCESS_PASSWORD = "0900"
+CREW_ACCESS_PASSWORD = "Lf0900"
 
 def get_file_info(path):
     if os.path.exists(path):
@@ -336,7 +336,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A")
-access_password = st.text_input("輸入系統授權碼", type="password", value="")
+access_password = st.text_input("系統維護中，請洽管理員", type="password", value="")
 
 if st.button("立即生成個人班表圖片檔"):
     if access_password != CREW_ACCESS_PASSWORD: st.error("系統授權碼錯誤！請洽管理員")
