@@ -90,9 +90,12 @@ st.markdown("""
         background: #1E293B;
         border: 1px solid #334155;
         border-radius: 10px;
-        padding: 15px;
-        margin-bottom: 12px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
         color: #F8FAFC;
+        font-family: monospace;
+        font-size: 15px;
+        line-height: 1.6;
     }
     /* 手機端輸入框優化 */
     .stTextInput input {
@@ -528,6 +531,17 @@ else:
             if not date_cols:
                 st.error("表中未偵測到有效日期欄位。")
             else:
+                # 智慧動態計算該職位整張表的最早報到時間作為預設起點
+                global_earliest = "23:59"
+                for _, row in df_search.iterrows():
+                    for col_idx in range(2, len(row)):
+                        parsed = parse_cell(row.iloc[col_idx])
+                        st_t = parsed["start"]
+                        if st_t and st_t < global_earliest:
+                            global_earliest = st_t
+                if global_earliest == "23:59":
+                    global_earliest = "00:00"
+
                 c1, c2 = st.columns(2)
                 with c1:
                     start_date = st.selectbox("起始日期", date_cols, index=0)
@@ -536,12 +550,11 @@ else:
 
                 c3, c4 = st.columns(2)
                 with c3:
-                    min_time = st.text_input("報到時間區間：從 (例如 00:00)", value="00:00")
+                    min_time = st.text_input("報到時間區間：從", value=global_earliest)
                 with c4:
-                    max_time = st.text_input("報到時間區間：到 (例如 12:00)", value="12:00")
+                    max_time = st.text_input("報到時間區間：到", value="12:00")
 
                 if st.button("開始區間檢索符合條件人員"):
-                    # 找出日期區間的索引
                     try:
                         s_idx = date_cols.index(start_date)
                         e_idx = date_cols.index(end_date)
@@ -557,13 +570,11 @@ else:
                         st.warning("請選擇有效的日期區間！")
                     else:
                         search_results = []
-                        # 收集所有符合條件的紀錄
                         for _, row in df_search.iterrows():
                             emp_id = str(row.iloc[0]).strip()
                             emp_name = str(row.iloc[1]).strip()
                             
                             for d_str in target_dates:
-                                # 找出該日期在 df 中的欄位 index
                                 target_col_idx = -1
                                 for idx, col in enumerate(df_search.columns[2:]):
                                     if d_str in str(col):
@@ -575,7 +586,6 @@ else:
                                     parsed = parse_cell(cell_raw)
                                     start_t = parsed["start"]
                                     
-                                    # 檢查報到時間是否落在設定的區間內 (min_time <= start_t <= max_time)
                                     if start_t and min_time <= start_t <= max_time:
                                         search_results.append({
                                             "日期": d_str,
@@ -592,9 +602,9 @@ else:
                             for r in search_results:
                                 st.markdown(f"""
                                 <div class="result-card">
-                                    📅 <b>日期：{r['日期']}</b> ｜ 👤 <b>{r['姓名']}</b> ({r['員編']})<br>
-                                    🕒 報到：<b>{r['報到時間']}</b> ➔ 收工：{r['收工時間']}<br>
-                                    🚆 當日車次：<code>{r['車次'] if r['車次'] else '無車次記錄'}</code>
+                                    日期：{r['日期']} ｜ 姓名：{r['姓名']} ({r['員編']})<br>
+                                    上班：{r['報到時間']} 下班：{r['收工時間']}<br>
+                                    當日班別：{r['車次'] if r['車次'] else '無車次記錄'}
                                 </div>
                                 """, unsafe_allow_html=True)
                         else:
