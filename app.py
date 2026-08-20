@@ -12,7 +12,7 @@ from matplotlib.patches import FancyBboxPatch
 matplotlib.use('Agg')
 
 # 🚆 將頁面標籤圖示 (Favicon) 改為 700st.png
-st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
+st.set_page_config(page_title="TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
 
 # 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
@@ -314,7 +314,7 @@ st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY E
 st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">System Telemetry // 目前系統資料排班週期</div><div class="telemetry-value">{get_system_duty_period()}</div></div>""", unsafe_allow_html=True)
 
 # 🌐 公開顯示各職位班表更新進度狀態
-st.subheader("📢 各職位班表更新狀態")
+st.subheader("各職位班表更新狀態")
 status_data = [{"職位": role, "最後更新時間": get_file_info(path)[1]} for role, path in ROLE_FILES.items()]
 st.table(pd.DataFrame(status_data))
 
