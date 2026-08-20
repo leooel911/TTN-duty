@@ -576,7 +576,6 @@ else:
                                 badges_html += '</div>'
                                 
                                 card_html = f"""
-                                .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; color: #F8FAFC; }
                                 <div class="compact-card">
                                     <div class="time-header-row">
                                         <span class="compact-time">{r['Sign-In']} ➔ {r['收工時間']}</span>
