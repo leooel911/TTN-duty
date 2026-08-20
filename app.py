@@ -28,17 +28,15 @@ st.markdown("""
     
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
-    /* 電腦雙欄、手機自動變單欄堆疊 */
-    .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; color: #F8FAFC; width: 100%; box-sizing: border-box; }
+    .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; color: #F8FAFC; }
+    .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
+    .badge-group { display: flex; gap: 4px; align-items: center; }
+    .long-badge { background: #991B1B; color: #FEE2E2; font-size: 10px; padding: 1px 5px; border-radius: 4px; font-weight: 600; }
+    .non-line-badge { background: #4C1D95; color: #C4B5FD; font-size: 10px; padding: 1px 5px; border-radius: 4px; font-weight: 600; }
     
-    .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-    .compact-time { font-size: 16px; font-weight: 700; color: #60A5FA; font-family: monospace; }
-    .badge-group { display: flex; gap: 6px; align-items: center; }
-    .long-badge { background: #991B1B; color: #FEE2E2; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
-    .non-line-badge { background: #4C1D95; color: #C4B5FD; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
-    
-    .compact-name { font-size: 16px; font-weight: 600; color: #E2E8F0; margin-bottom: 4px; }
-    .compact-sub { font-size: 13px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
+    .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
+    .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
     
     .stRadio > div { background-color: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 12px 16px; }
     .stRadio label { font-size: 15px !important; font-weight: 600 !important; color: #F8FAFC !important; }
@@ -89,7 +87,7 @@ def get_schedule_range():
 
 def generate_time_options():
     options = []
-    for h in range(19):
+    for h in range(19): # 限制最晚到 18:00
         for m in [0, 30]:
             options.append(f"{h:02d}:{m:02d}")
     options.extend(["04:00", "04:30", "05:00", "05:15", "05:26", "05:30", "06:00", "18:00"])
@@ -573,18 +571,22 @@ else:
                                             "非正線": is_non_line
                                         })
 
-                        # 嚴格依照日期與 Sign-In 時間排序（由早到晚）
-                        search_results = sorted(search_results, key=lambda x: (x["日期"], x["Sign-In"]))
+                        # 🔄 排序優化：先按「日期」、再按「Sign-In 時間」由早到晚、最後按「員編」排序
+                        search_results = sorted(search_results, key=lambda x: (x["日期"], x["Sign-In"], x["員編"]))
 
                         st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ Sign-In {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
                         
                         if search_results:
                             current_date_group = None
+                            c_col1, c_col2 = None, None
+                            col_idx = 0 
                             
                             for r in search_results:
                                 if r["日期"] != current_date_group:
                                     current_date_group = r["日期"]
                                     st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
+                                    c_col1, c_col2 = st.columns(2)
+                                    col_idx = 0 
                                 
                                 badges_html = '<div class="badge-group">'
                                 if r['長班']:
@@ -599,13 +601,17 @@ else:
                                         <span class="compact-time">{r['Sign-In']} ➔ {r['收工時間']}</span>
                                         {badges_html}
                                     </div>
-                                    <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:13px;">({r['員編']})</span></div>
+                                    <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
                                     <div class="compact-sub">班別: {r['車次']}</div>
                                     <div class="compact-sub">隔日: {r['隔日Sign-In']}</div>
                                 </div>
                                 """
-                                # 改用 st.markdown(..., unsafe_allow_html=True) 逐張卡片渲染，確保在手機與電腦上都能完美顯示
-                                st.markdown(card_html, unsafe_allow_html=True)
+                                
+                                if col_idx % 2 == 0:
+                                    with c_col1: st.markdown(card_html, unsafe_allow_html=True)
+                                else:
+                                    with c_col2: st.markdown(card_html, unsafe_allow_html=True)
+                                col_idx += 1
                         else:
                             st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
