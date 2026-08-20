@@ -28,8 +28,9 @@ st.markdown("""
     
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
+    /* 調整字體大小與不折行，確保長班標籤完整顯示 */
     .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; color: #F8FAFC; }
-    .compact-time { font-size: 16px; font-weight: 700; color: #60A5FA; font-family: monospace; }
+    .compact-time { font-size: 14.5px; font-weight: 700; color: #60A5FA; font-family: monospace; white-space: nowrap; }
     .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
     .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
     
@@ -550,12 +551,11 @@ else:
                                 if r["日期"] != current_date_group:
                                     current_date_group = r["日期"]
                                     st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
-                                    # 每次遇到新日期，才建立一次新的雙欄容器，避免變成階梯狀
                                     c_col1, c_col2 = st.columns(2)
                                     col_idx = 0 
                                 
-                                long_shift_badge = '<span style="color:#F87171; font-size:12px; margin-left:4px;">●長</span>' if r['長班'] else ''
-                                non_line_badge = '<span style="background:#4C1D95; color:#C4B5FD; font-size:10px; padding:1px 4px; border-radius:3px; margin-left:4px;">非正線</span>' if r['非正線'] else ''
+                                long_shift_badge = '<span style="color:#F87171; font-size:11px; margin-left:2px;">●長</span>' if r['長班'] else ''
+                                non_line_badge = '<span style="background:#4C1D95; color:#C4B5FD; font-size:9px; padding:1px 3px; border-radius:3px; margin-left:2px;">非正線</span>' if r['非正線'] else ''
                                 
                                 card_html = f"""
                                 <div class="compact-card">
@@ -566,7 +566,6 @@ else:
                                 </div>
                                 """
                                 
-                                # 依序放入左右兩欄
                                 if col_idx % 2 == 0:
                                     with c_col1: st.markdown(card_html, unsafe_allow_html=True)
                                 else:
