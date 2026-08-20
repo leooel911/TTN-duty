@@ -436,7 +436,6 @@ else:
             if not date_cols:
                 st.error("表中未偵測到有效日期欄位")
             else:
-                # 🔄 100% 動態掃描整張班表，抓出所有實際出現過的分鐘數時間
                 dynamic_time_set = set()
                 for _, r_row in df_search.iterrows():
                     for cell_val in r_row.iloc[2:]:
@@ -448,7 +447,6 @@ else:
                 if not TIME_OPTIONS:
                     TIME_OPTIONS = ["04:00", "05:00", "06:00", "07:00"]
 
-                # 🎯 智慧預設值：除駕駛外預設 05:26，往後 +2 小時
                 if selected_role == "駕駛":
                     earliest_default = TIME_OPTIONS[0]
                 else:
@@ -459,7 +457,7 @@ else:
 
                 try:
                     h, m = map(int, earliest_default.split(":"))
-                    target_mins = h * 60 + m + 120  # +2小時
+                    target_mins = h * 60 + m + 120
                     target_h = (target_mins // 60) % 24
                     target_m = target_mins % 60
                     suggested_end = f"{target_h:02d}:{target_m:02d}"
@@ -475,9 +473,9 @@ else:
 
                 c3, c4 = st.columns(2)
                 with c3: 
-                    min_time = st.selectbox("Sign-In Time 區間：從 (支援全部分鐘精準比對)", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
+                    min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
                 with c4: 
-                    max_time = st.selectbox("Sign-In Time 區間：到 (支援全部分鐘精準比對)", options=TIME_OPTIONS, index=default_max_idx, key="max_time_selectbox")
+                    max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx, key="max_time_selectbox")
 
                 filter_col1, filter_col2 = st.columns(2)
                 with filter_col1:
@@ -497,7 +495,6 @@ else:
                     else:
                         search_results = []
                         all_cols_list = list(df_search.columns[2:])
-                        scanned_times_in_range = set()
 
                         for _, row in df_search.iterrows():
                             emp_id = str(row.iloc[0]).strip()
@@ -517,9 +514,7 @@ else:
                                     parsed = parse_cell(cell_raw)
                                     start_t = parsed["start"]
                                     
-                                    # 🔒 100% 安全字串區間比對（包含所有以分鐘計的時間點）
                                     if start_t and min_time <= start_t <= max_time:
-                                        scanned_times_in_range.add(start_t)
                                         is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                         is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
                                         
@@ -548,13 +543,10 @@ else:
                                             "非正線": is_non_line
                                         })
 
-                        # 🔄 排序優化：日期 ➔ Sign-In ➔ 收工時間 ➔ 員編
+                        # 排序邏輯：日期 ➔ 報到時間 (Sign-In) ➔ 收工時間 ➔ 員編
                         search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 0, x["Sign-In"], x["收工時間"], x["員編"]))
 
-                        # 🛡️ 安全提示：顯示實際涵蓋的報到時間點，確保無疏漏
-                        time_points_str = "、".join(sorted(list(scanned_times_in_range))) if scanned_times_in_range else "無"
                         st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ 區間 {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
-                        st.info(f"🛡️ **安全掃描確認**：此區間內實際抓取到的報到時間點包含：`{time_points_str}`（絕無遺漏）")
                         
                         if search_results:
                             current_date_group = None
