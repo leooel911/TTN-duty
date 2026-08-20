@@ -313,6 +313,13 @@ C_TOWN_TXT = "#000000"
 st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
 st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">System Telemetry // 目前系統資料排班週期</div><div class="telemetry-value">{get_system_duty_period()}</div></div>""", unsafe_allow_html=True)
 
+# 🌐 公開顯示各職位班表更新進度狀態
+st.subheader("📢 各職位班表更新狀態")
+status_data = [{"職位": role, "最後更新時間": get_file_info(path)[1]} for role, path in ROLE_FILES.items()]
+st.table(pd.DataFrame(status_data))
+
+st.markdown("---")
+
 target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A")
 access_password = st.text_input("輸入系統授權碼", type="password", value="")
 
@@ -451,9 +458,7 @@ with st.expander("管理員專用：Database"):
     password_input = st.text_input("請輸入管理員密碼", type="password")
     if password_input == ADMIN_PASSWORD:
         st.success("歡迎 LEO！")
-        st.subheader("目前各職位班表更新狀態")
-        status_data = [{"職位": role, "存檔名稱": get_file_info(path)[0], "最後更新時間": get_file_info(path)[1]} for role, path in ROLE_FILES.items()]
-        st.table(pd.DataFrame(status_data))
+        st.subheader("管理員檔案上傳區")
         selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
         uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
         if uploaded_file:
