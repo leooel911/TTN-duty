@@ -7,7 +7,7 @@ from datetime import date, timedelta, datetime, timezone
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
-from matplotlib.patches import FancyBasePatch, FancyBboxPatch
+from matplotlib.patches import FancyBboxPatch
 
 matplotlib.use('Agg')
 
