@@ -28,7 +28,10 @@ st.markdown("""
     
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
-    .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; color: #F8FAFC; }
+    /* 手機與電腦通用的 CSS 雙欄網格容器 */
+    .card-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+    .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 10px 12px; margin-bottom: 4px; color: #F8FAFC; flex: 1 1 calc(50% - 6px); box-sizing: border-box; min-width: 240px; }
+    
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
     .badge-group { display: flex; gap: 4px; align-items: center; }
@@ -87,12 +90,11 @@ def get_schedule_range():
 
 def generate_time_options():
     options = []
-    for h in range(19): # 限制最晚到 18:00
+    for h in range(19):
         for m in [0, 30]:
             options.append(f"{h:02d}:{m:02d}")
     options.extend(["04:00", "04:30", "05:00", "05:15", "05:26", "05:30", "06:00", "18:00"])
     
-    # 過濾掉大於 18:00 的時間
     filtered = []
     for t in sorted(list(set(options))):
         if t <= "18:00":
@@ -477,7 +479,6 @@ else:
                 start_date_idx = date_cols.index(start_date) if start_date in date_cols else 0
                 with c2: end_date = st.selectbox("結束日期", date_cols, index=start_date_idx)
 
-                # 動態計算「到」的預設 +1 小時邏輯
                 if 'last_min_time_selected' not in st.session_state:
                     st.session_state.last_min_time_selected = TIME_OPTIONS[default_min_idx]
 
@@ -485,7 +486,6 @@ else:
                 with c3: 
                     min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
                 
-                # 當「從」的時間改變時，自動計算 +1 小時作為「到」的預設選項
                 if min_time != st.session_state.last_min_time_selected:
                     st.session_state.last_min_time_selected = min_time
                     try:
@@ -580,15 +580,15 @@ else:
                         
                         if search_results:
                             current_date_group = None
-                            c_col1, c_col2 = None, None
-                            col_idx = 0
+                            grid_html = ""
                             
                             for r in search_results:
                                 if r["日期"] != current_date_group:
+                                    if grid_html:
+                                        st.markdown(f'<div class="card-grid">{grid_html}</div>', unsafe_allow_html=True)
+                                        grid_html = ""
                                     current_date_group = r["日期"]
                                     st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
-                                    c_col1, c_col2 = st.columns(2)
-                                    col_idx = 0 
                                 
                                 badges_html = '<div class="badge-group">'
                                 if r['長班']:
@@ -597,7 +597,7 @@ else:
                                     badges_html += '<span class="non-line-badge">非正線</span>'
                                 badges_html += '</div>'
                                 
-                                card_html = f"""
+                                grid_html += f"""
                                 <div class="compact-card">
                                     <div class="time-header-row">
                                         <span class="compact-time">{r['Sign-In']} ➔ {r['收工時間']}</span>
@@ -608,12 +608,9 @@ else:
                                     <div class="compact-sub">隔日: {r['隔日Sign-In']}</div>
                                 </div>
                                 """
-                                
-                                if col_idx % 2 == 0:
-                                    with c_col1: st.markdown(card_html, unsafe_allow_html=True)
-                                else:
-                                    with c_col2: st.markdown(card_html, unsafe_allow_html=True)
-                                col_idx += 1
+                            
+                            if grid_html:
+                                st.markdown(f'<div class="card-grid">{grid_html}</div>', unsafe_allow_html=True)
                         else:
                             st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
