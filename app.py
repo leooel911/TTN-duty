@@ -28,8 +28,14 @@ st.markdown("""
     
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
-    /* 手機完美垂直單欄流暢卡片樣式 */
-    .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px; color: #F8FAFC; width: 100%; box-sizing: border-box; }
+    /* 電腦維持雙欄，手機自動變為單欄並依照時間排序 */
+    .card-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+    .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 12px 16px; margin-bottom: 4px; color: #F8FAFC; flex: 1 1 calc(50% - 6px); box-sizing: border-box; min-width: 280px; }
+    
+    @media (max-width: 768px) {
+        .compact-card { flex: 1 1 100% !important; }
+    }
+
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
     .compact-time { font-size: 16px; font-weight: 700; color: #60A5FA; font-family: monospace; }
     .badge-group { display: flex; gap: 6px; align-items: center; }
@@ -579,9 +585,13 @@ else:
                         
                         if search_results:
                             current_date_group = None
+                            grid_html = ""
                             
                             for r in search_results:
                                 if r["日期"] != current_date_group:
+                                    if grid_html:
+                                        st.markdown(f'<div class="card-grid">{grid_html}</div>', unsafe_allow_html=True)
+                                        grid_html = ""
                                     current_date_group = r["日期"]
                                     st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
                                 
@@ -592,8 +602,7 @@ else:
                                     badges_html += '<span class="non-line-badge">非正線</span>'
                                 badges_html += '</div>'
                                 
-                                # 手機專用垂直單欄流暢卡片
-                                card_html = f"""
+                                grid_html += f"""
                                 <div class="compact-card">
                                     <div class="time-header-row">
                                         <span class="compact-time">{r['Sign-In']} ➔ {r['收工時間']}</span>
@@ -604,11 +613,13 @@ else:
                                     <div class="compact-sub">隔日: {r['隔日Sign-In']}</div>
                                 </div>
                                 """
-                                st.markdown(card_html, unsafe_allow_html=True)
+                            
+                            if grid_html:
+                                st.markdown(f'<div class="card-grid">{grid_html}</div>', unsafe_allow_html=True)
                         else:
                             st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
-# --- 管理員專用 : Database 區塊 ---
+# --- 管理員專用：Database 區塊 ---
 st.markdown("---")
 with st.expander("管理員專用：Database"):
     password_input = st.text_input("請輸入管理員密碼", type="password")
