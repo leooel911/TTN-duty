@@ -436,7 +436,7 @@ else:
             if not date_cols:
                 st.error("表中未偵測到有效日期欄位")
             else:
-                # 🔄 徹底優化：100% 自動掃描整張班表，將「所有出現過的分鐘數時間」全部收集並精準排序
+                # 🔄 自動動態掃描整張班表，100% 收集所有實際出現過的分鐘數時間
                 dynamic_time_set = set()
                 for _, r_row in df_search.iterrows():
                     for cell_val in r_row.iloc[2:]:
@@ -444,14 +444,39 @@ else:
                         if p_temp["start"] and re.match(r'^\d{1,2}:\d{2}$', p_temp["start"]):
                             dynamic_time_set.add(p_temp["start"])
                 
-                # 若班表內有任何奇特的報到時間（如 06:31），全部納入選項
                 TIME_OPTIONS = sorted(list(dynamic_time_set))
                 if not TIME_OPTIONS:
                     TIME_OPTIONS = ["04:00", "05:00", "06:00", "07:00"]
 
-                earliest_time_found = TIME_OPTIONS[0] if TIME_OPTIONS else "05:00"
-                default_min_idx = 0
-                default_max_idx = len(TIME_OPTIONS) - 1
+                # 🎯 智慧預設值判定邏輯：
+                # 1. 若為「駕駛」，預設抓最早出現的報到時間
+                # 2. 若為「列車長」或「服勤員」，預設強制為 "05:26"（若表中無剛好 05:26，則找最接近的）
+                if selected_role == "駕駛":
+                    earliest_default = TIME_OPTIONS[0]
+                else:
+                    target_default = "05:26"
+                    if target_default in TIME_OPTIONS:
+                        earliest_default = target_default
+                    else:
+                        # 找最接近 05:26 的時間
+                        earliest_default = min(TIME_OPTIONS, key=lambda x: abs(datetime.strptime(x, "%H:%M") - datetime.strptime("05:26", "%H:%M")))
+
+                default_min_idx = TIME_OPTIONS.index(earliest_default) if earliest_default in TIME_OPTIONS else 0
+
+                # 計算 +2 小時作為「到」的預設選項
+                try:
+                    h, m = map(int, earliest_default.split(":"))
+                    target_mins = h * 60 + m + 120  # +2小時 (120分鐘)
+                    target_h = (target_mins // 60) % 24
+                    target_m = target_mins % 60
+                    suggested_end = f"{target_h:02d}:{target_m:02d}"
+                    if suggested_end in TIME_OPTIONS:
+                        default_max_idx = TIME_OPTIONS.index(suggested_end)
+                    else:
+                        # 找最接近的結束時間
+                        default_max_idx = min(range(len(TIME_OPTIONS)), key=lambda i: abs(datetime.strptime(TIME_OPTIONS[i], "%H:%M") - datetime.strptime(suggested_end, "%H:%M")))
+                except:
+                    default_max_idx = min(default_min_idx + 4, len(TIME_OPTIONS) - 1)
 
                 c1, c2 = st.columns(2)
                 with c1: start_date = st.selectbox("起始日期", date_cols, index=0)
@@ -502,7 +527,6 @@ else:
                                     parsed = parse_cell(cell_raw)
                                     start_t = parsed["start"]
                                     
-                                    # 嚴格以字串區間比對（包含所有分鐘如 06:31）
                                     if start_t and min_time <= start_t <= max_time:
                                         is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                         is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
