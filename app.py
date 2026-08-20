@@ -26,7 +26,7 @@ st.markdown("""
     .result-card { background: #1E293B; border-left: 4px solid #3B82F6; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; }
     .time-row { font-size: 19px; font-weight: 700; color: #60A5FA; margin-bottom: 6px; font-family: monospace; }
     .name-row { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #E2E8F0; }
-    .sub-info-row { font-size: 13px; color: #94A3B8; font-family: monospace; display: flex; gap: 16px; }
+    .sub-info-row { font-size: 13px; color: #94A3B8; font-family: monospace; display: flex; gap: 16px; flex-wrap: wrap; }
     .stRadio > div { background-color: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 12px 16px; }
     .stRadio label { font-size: 15px !important; font-weight: 600 !important; color: #F8FAFC !important; }
     .stTextInput input { font-size: 18px !important; padding: 14px 16px !important; border-radius: 10px !important; background-color: #1E293B !important; color: #F8FAFC !important; border: 1px solid #475569 !important; }
@@ -74,14 +74,32 @@ def is_overtime(h):
         return (int(p[0]) * 60 + int(p[1])) > 510
     except: return False
 
+def is_town_shift(tr, note):
+    # 擴充非正線勤務與特殊班別關鍵字（包含 WRSL, TTN 等）
+    keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "FAC", "DS", "H9", "OGC", "WRSL"]
+    return any(kw in f"{tr} {note}".upper() for kw in keywords)
+
 def parse_cell(raw):
     if pd.isna(raw) or not str(raw).strip(): return dict(start="", train="", end="", hours="", note="")
-    lines = [l.strip() for l in str(raw).split("\n") if l.strip()]
+    raw_str = str(raw).strip()
+    lines = [l.strip() for l in raw_str.split("\n") if l.strip()]
+    if not lines: return dict(start="", train="", end="", hours="", note="")
+    
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
-    start_t = pad_time(times[0]) if times else ""
-    end_t = pad_time(times[1]) if len(times) > 1 else ""
-    train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "DO" not in l and "PAY" not in l and "h" not in l), "")
-    return dict(start=start_t, end=end_t, train=train, hours=calculate_hours(start_t, end_t))
+    if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): 
+        return dict(start="", train=lines[0], end="", hours="", note="")
+    
+    if "PAY" in lines and not times: return dict(start="", train="PAY", end="", hours="", note="")
+
+    start_time = pad_time(times[0]) if times else ""
+    end_time = pad_time(times[1]) if len(times) > 1 else ""
+    hours = calculate_hours(start_time, end_time)
+    
+    do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l), "")
+    real_train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != do_str and "h" not in l and "m" not in l), "")
+    notes = [l for l in lines if l not in times and l != real_train]
+
+    return dict(start=start_time, end=end_time, train=real_train, hours=hours, note=" ".join(notes))
 
 # --- 主體 ---
 st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
@@ -115,7 +133,8 @@ if app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測試
                 for d in target_dates:
                     col_idx = next((i for i, c in enumerate(all_cols) if d in str(c)), -1)
                     if col_idx != -1:
-                        parsed = parse_cell(row.iloc[col_idx + 2])
+                        cell_raw = row.iloc[col_idx + 2]
+                        parsed = parse_cell(cell_raw)
                         if parsed["start"] and min_time <= parsed["start"] <= max_time:
                             # 找隔日
                             next_day_val = "無記錄"
@@ -123,18 +142,25 @@ if app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測試
                                 next_p = parse_cell(row.iloc[col_idx + 3])
                                 next_day_val = next_p["start"] if next_p["start"] else (next_p["train"] if next_p["train"] else "無記錄")
                             
+                            # 判斷是否為非正線勤務
+                            is_non_line = is_town_shift(parsed["train"], parsed["note"])
+
                             results.append({
                                 "Sign-In": parsed["start"], "下班": parsed["end"], "姓名": row.iloc[1], 
                                 "員編": row.iloc[0], "車次": parsed["train"], "隔日": next_day_val,
-                                "長班": is_overtime(parsed["hours"])
+                                "長班": is_overtime(parsed["hours"]), "非正線": is_non_line
                             })
             
             results.sort(key=lambda x: x["Sign-In"])
             st.markdown(f"### 檢索結果 (共 {len(results)} 筆)")
             for r in results:
+                # 長班標記與非正線標記
+                long_shift_badge = '<span style="color:#F87171; font-size:14px; margin-left:8px;">● 長班</span>' if r['長班'] else ''
+                non_line_badge = '<span style="background:#4C1D95; color:#C4B5FD; font-size:11px; padding:2px 6px; border-radius:4px; margin-left:8px; font-weight:600;">非正線勤務</span>' if r['非正線'] else ''
+                
                 st.markdown(f"""
                 <div class="result-card">
-                    <div class="time-row">{r['Sign-In']} ➔ {r['下班']} {'<span style="color:#F87171; font-size:14px; margin-left:8px;">● 長班</span>' if r['長班'] else ''}</div>
+                    <div class="time-row">{r['Sign-In']} ➔ {r['下班']} {long_shift_badge} {non_line_badge}</div>
                     <div class="name-row">{r['姓名']} <span style="color:#94A3B8; font-size:14px;">({r['員編']})</span></div>
                     <div class="sub-info-row">
                         <span>班別：{r['車次'] if r['車次'] else '無'}</span>
