@@ -11,13 +11,10 @@ from matplotlib.patches import FancyBboxPatch
 
 matplotlib.use('Agg')
 
-# 🚆 將頁面標籤圖示 (Favicon) 改為 700st.png
-st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
+st.set_page_config(page_title="TTN Shift Producer", page_icon="700st.png", layout="centered")
 
-# 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
 <style>
-    /* 全域頁面背景與上下邊距優化 */
     .stApp {
         background-color: #0B0F19 !important;
         color: #F8FAFC !important;
@@ -28,7 +25,6 @@ st.markdown("""
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
-    /* 頂部導航列容器：左右並排，讓 C.L.F Edition 完美靠右 */
     .header-container {
         display: flex;
         justify-content: space-between;
@@ -36,7 +32,6 @@ st.markdown("""
         width: 100%;
         margin-bottom: 1rem;
     }
-    /* 主標題：放大至 26px，強制不換行 */
     .main-title {
         color: #F8FAFC !important;
         font-size: 26px;
@@ -45,7 +40,6 @@ st.markdown("""
         white-space: nowrap;
         margin: 0;
     }
-    /* 右上角極小署名標籤 */
     .edition-badge {
         color: #64748B !important;
         font-size: 11px;
@@ -53,7 +47,6 @@ st.markdown("""
         letter-spacing: 1px;
         text-transform: uppercase;
     }
-    /* 科技感系統狀態卡片 */
     .telemetry-card {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important;
         border: 1px solid #334155 !important;
@@ -85,7 +78,6 @@ st.markdown("""
         padding-top: 8px;
         line-height: 1.6;
     }
-    /* 查詢結果卡片樣式 */
     .result-card {
         background: #1E293B;
         border: 1px solid #334155;
@@ -97,7 +89,6 @@ st.markdown("""
         font-size: 15px;
         line-height: 1.6;
     }
-    /* 手機端輸入框優化 */
     .stTextInput input {
         font-size: 18px !important;
         padding: 14px 16px !important;
@@ -111,7 +102,6 @@ st.markdown("""
         font-weight: 600 !important;
         color: #E2E8F0 !important;
     }
-    /* 🚀 強制保護主啟動按鈕 */
     div.stButton {
         display: flex !important;
         justify-content: center !important;
@@ -137,7 +127,6 @@ st.markdown("""
         box-shadow: 0 8px 25px rgba(37, 99, 235, 0.7) !important;
         transform: translateY(-2px);
     }
-    /* 下載按鈕同步強制保護 */
     div.stDownloadButton {
         display: flex !important;
         justify-content: center !important;
@@ -156,7 +145,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2026 全年完整國定假日與紀念日對照表
 NATIONAL_HOLIDAYS = {
     "1/1": "元旦", "2/16": "除夕", "2/17": "初一", "2/18": "初二", "2/19": "初三", 
     "2/28": "和平紀念日", "4/4": "兒童節", "4/5": "清明節", "5/1": "勞動節",
@@ -165,7 +153,7 @@ NATIONAL_HOLIDAYS = {
 }
 
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
-TITLE = "//    T r a i n    c r e w    D U TY    C A L E N D A R"
+TITLE = "TRAIN CREW DUTY CALENDAR"
 
 ROLE_FILES = {
     "駕駛": "TD.xlsx",
@@ -177,7 +165,6 @@ ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
 
-# 產生時間選單清單（包含 05:26 特殊選項）
 def generate_time_options():
     options = ["05:26"]
     for h in range(24):
@@ -185,7 +172,6 @@ def generate_time_options():
             t_str = f"{h:02d}:{m:02d}"
             if t_str not in options:
                 options.append(t_str)
-    # 按時間排序
     options = sorted(list(set(options)))
     return options
 
@@ -357,7 +343,6 @@ C_TOWN_TXT = "#000000"
 
 st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
 
-# 🌐 系統狀態顯示
 td_time = get_file_info(ROLE_FILES["駕駛"])[1]
 tm_time = get_file_info(ROLE_FILES["列車長"])[1]
 ta_time = get_file_info(ROLE_FILES["服勤員"])[1]
@@ -366,7 +351,7 @@ if is_maintenance_mode():
     st.markdown("""
     <div class="telemetry-card" style="border: 1px solid #EF4444; background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);">
         <div class="telemetry-title" style="color: #FCA5A5;">SYSTEM STATUS // 系統維護公告</div>
-        <div class="telemetry-value" style="color: #FEE2E2; font-size: 20px;">🚧 系統目前暫停開放維護中</div>
+        <div class="telemetry-value" style="color: #FEE2E2; font-size: 20px;">系統目前暫停開放維護中</div>
         <div class="telemetry-sub" style="border-color: #991B1B; color: #FECACA;">
             管理員正在更新排班資料或進行系統維護，請稍後再試。
         </div>
@@ -378,25 +363,24 @@ else:
         <div class="telemetry-title">System Telemetry // 目前系統排班週期</div>
         <div class="telemetry-value">{get_system_duty_period()}</div>
         <div class="telemetry-sub">
-            📌 <b>各職位更新時間：</b><br>
-            &nbsp;&nbsp;• 駕駛：{td_time}<br>
-            &nbsp;&nbsp;• 列車長：{tm_time}<br>
-            &nbsp;&nbsp;• 服勤員：{ta_time}
+            各職位更新時間：<br>
+            &nbsp;&nbsp;- 駕駛：{td_time}<br>
+            &nbsp;&nbsp;- 列車長：{tm_time}<br>
+            &nbsp;&nbsp;- 服勤員：{ta_time}
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # 🔀 內建功能模式切換選單
-    app_mode = st.radio("選擇功能模式", ["📅 個人班表圖片產生器", "🔍 乘務時段區間快篩與換班協尋"], horizontal=True)
+    app_mode = st.radio("選擇功能模式", ["個人班表圖片產生器", "乘務時段區間快篩與換班協尋"], horizontal=True)
     st.markdown("---")
 
-    if app_mode == "📅 個人班表圖片產生器":
+    if app_mode == "個人班表圖片產生器":
         target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A")
         access_password = st.text_input("輸入系統授權碼", type="password", value="")
 
         if st.button("立即生成個人班表圖片檔"):
-            if access_password != CREW_ACCESS_PASSWORD: st.error("系統授權碼錯誤！請洽管理員")
-            elif not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料！")
+            if access_password != CREW_ACCESS_PASSWORD: st.error("系統授權碼錯誤，請洽管理員")
+            elif not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料")
             else:
                 try:
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(target_input)
@@ -492,9 +476,9 @@ else:
                     has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
 
                     pill_legends = [
-                        (0, "#F1F5F9", "#475569", C_NOTE_TXT, "備註 (Note)"),
-                        (1, C_DO_BG if has_emp_do else C_WORK_BG, "#E11D48" if has_emp_do else "#64748B", C_DO_TXT if has_emp_do else "#64748B", "休假日 (DO)"),
-                        (2, C_PAY_BG if has_emp_pay else C_WORK_BG, "#EA580C" if has_emp_pay else "#64748B", C_PAY_TXT if has_emp_pay else "#64748B", "特休 (PAY)"),
+                        (0, "#F1F5F9", "#475569", C_NOTE_TXT, "備註"),
+                        (1, C_DO_BG if has_emp_do else C_WORK_BG, "#E11D48" if has_emp_do else "#64748B", C_DO_TXT if has_emp_do else "#64748B", "休假日"),
+                        (2, C_PAY_BG if has_emp_pay else C_WORK_BG, "#EA580C" if has_emp_pay else "#64748B", C_PAY_TXT if has_emp_pay else "#64748B", "特休"),
                         (3, C_WORK_BG, "#DC2626" if has_emp_ot else "#64748B", C_OT_TXT if has_emp_ot else "#64748B", "工時 > 8.5h"),
                         (4, "#FFF7ED" if has_active_holiday else C_WORK_BG, "#C2410C" if has_active_holiday else "#64748B", C_HOLI_TXT if has_active_holiday else "#64748B", "國定假日"),
                         (5, "#F3E8FF" if has_active_transport else C_WORK_BG, "#7C3AED" if has_active_transport else "#64748B", C_NOTE_TXT if has_active_transport else "#64748B", "疏運"),
@@ -516,21 +500,21 @@ else:
                     
                     buf = io.BytesIO()
                     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
-                    st.success("個人班表圖片生成成功！")
+                    st.success("個人班表圖片生成成功")
                     st.image(buf, use_container_width=True)
-                    st.info(" 💡 **提醒**：「**長按上方的班表圖片**」即可一鍵存入手機相簿！")
+                    st.info("提醒：長按上方的班表圖片即可一鍵存入手機相簿")
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-    elif app_mode == "🔍 乘務時段區間快篩與換班協尋":
-        st.subheader("🛡️ 乘務時段區間與報到時間快篩工具")
-        st.write("您可以設定「日期區間」與「報到時間區間」，精準找出符合條件的同事！")
+    elif app_mode == "乘務時段區間快篩與換班協尋":
+        st.subheader("乘務時段區間與報到時間快篩工具")
+        st.write("您可以設定日期區間與報到時間區間，精準找出符合條件的同事")
 
         selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"])
         target_path = ROLE_FILES[selected_role]
 
         if not os.path.exists(target_path):
-            st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請先至管理員後台上傳。")
+            st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請先至管理員後台上傳")
         else:
             df_search = pd.read_excel(target_path, header=3)
             df_search.columns = [str(c).strip() for c in df_search.columns]
@@ -543,9 +527,8 @@ else:
                     date_cols.append(match_d.group(1))
 
             if not date_cols:
-                st.error("表中未偵測到有效日期欄位。")
+                st.error("表中未偵測到有效日期欄位")
             else:
-                # 智慧預設報到時間下拉預設值：服勤員預設 05:26
                 if selected_role == "服勤員":
                     default_min_idx = TIME_OPTIONS.index("05:26") if "05:26" in TIME_OPTIONS else 0
                 else:
@@ -570,7 +553,7 @@ else:
                         s_idx = date_cols.index(start_date)
                         e_idx = date_cols.index(end_date)
                         if s_idx > e_idx:
-                            st.warning("起始日期不可大於結束日期！")
+                            st.warning("起始日期不可大於結束日期")
                             target_dates = []
                         else:
                             target_dates = date_cols[s_idx:e_idx+1]
@@ -578,7 +561,7 @@ else:
                         target_dates = []
 
                     if not target_dates:
-                        st.warning("請選擇有效的日期區間！")
+                        st.warning("請選擇有效的日期區間")
                     else:
                         search_results = []
                         for _, row in df_search.iterrows():
@@ -607,7 +590,7 @@ else:
                                             "車次": parsed["train"]
                                         })
 
-                        st.markdown(f"### 📋 檢索結果：{start_date} 至 {end_date} ｜ 報到時間 {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
+                        st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ 報到時間 {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
                         
                         if search_results:
                             for r in search_results:
@@ -619,15 +602,15 @@ else:
                                 </div>
                                 """, unsafe_allow_html=True)
                         else:
-                            st.info("在指定的日期與時間區間內，沒有找到符合條件的人員。")
+                            st.info("在指定的日期與時間區間內，沒有找到符合條件的人員")
 
 st.markdown("---")
 with st.expander("管理員專用：Database"):
     password_input = st.text_input("請輸入管理員密碼", type="password")
     if password_input == ADMIN_PASSWORD:
-        st.success("歡迎 LEO！")
+        st.success("歡迎 LEO")
         
-        st.subheader("🛠️ 系統維護控制台")
+        st.subheader("系統維護控制台")
         current_maint = is_maintenance_mode()
         maint_toggle = st.checkbox("暫停開放系統服務 (維護模式)", value=current_maint)
         if maint_toggle != current_maint:
@@ -635,11 +618,11 @@ with st.expander("管理員專用：Database"):
             st.rerun()
 
         st.markdown("---")
-        st.subheader("📁 管理員檔案上傳區")
+        st.subheader("管理員檔案上傳區")
         selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
         uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
         if uploaded_file:
             with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
-            st.success("上傳成功！")
+            st.success("上傳成功")
     elif password_input:
         st.error("密碼錯誤，請洽 CLF")
