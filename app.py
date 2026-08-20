@@ -371,10 +371,10 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    app_mode = st.radio("選擇功能模式", ["個人班表圖片產生器", "乘務時段區間快篩與換班協尋"], horizontal=True)
+    app_mode = st.radio("選擇功能模式", ["生產個人班表圖片檔", "依時段篩選執勤組員（是用尋找換班對象）本系統測試中"], horizontal=True)
     st.markdown("---")
 
-    if app_mode == "個人班表圖片產生器":
+    if app_mode == "生產個人班表圖片檔":
         target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A")
         access_password = st.text_input("輸入系統授權碼", type="password", value="")
 
@@ -506,7 +506,7 @@ else:
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-    elif app_mode == "乘務時段區間快篩與換班協尋":
+    elif app_mode == "依時段篩選執勤組員（是用尋找換班對象）本系統測試中":
         st.subheader("乘務時段區間與報到時間快篩工具")
         st.write("您可以設定日期區間與報到時間區間，精準找出符合條件的同事")
 
