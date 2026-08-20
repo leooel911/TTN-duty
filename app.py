@@ -177,12 +177,16 @@ ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
 
-# 產生 00:00 到 23:30 的半小時區間選單清單
+# 產生時間選單清單（包含 05:26 特殊選項）
 def generate_time_options():
-    options = []
+    options = ["05:26"]
     for h in range(24):
         for m in [0, 30]:
-            options.append(f"{h:02d}:{m:02d}")
+            t_str = f"{h:02d}:{m:02d}"
+            if t_str not in options:
+                options.append(t_str)
+    # 按時間排序
+    options = sorted(list(set(options)))
     return options
 
 TIME_OPTIONS = generate_time_options()
@@ -541,7 +545,7 @@ else:
             if not date_cols:
                 st.error("表中未偵測到有效日期欄位。")
             else:
-                # 智慧預設報到時間下拉預設值
+                # 智慧預設報到時間下拉預設值：服勤員預設 05:26
                 if selected_role == "服勤員":
                     default_min_idx = TIME_OPTIONS.index("05:26") if "05:26" in TIME_OPTIONS else 0
                 else:
