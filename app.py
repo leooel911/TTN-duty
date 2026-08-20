@@ -12,7 +12,7 @@ from matplotlib.patches import FancyBboxPatch
 matplotlib.use('Agg')
 
 # 🚆 將頁面標籤圖示 (Favicon) 改為 700st.png
-st.set_page_config(page_title="TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
+st.set_page_config(page_title="🚆 TTN Shift Producer | C.L.F", page_icon="700st.png", layout="centered")
 
 # 📱 強制鎖定深色模式與按鈕保護的 CSS
 st.markdown("""
@@ -75,6 +75,14 @@ st.markdown("""
         font-size: 18px;
         font-weight: 700;
         font-family: monospace;
+    }
+    .telemetry-sub {
+        color: #94A3B8 !important;
+        font-size: 12px;
+        font-family: monospace;
+        margin-top: 6px;
+        border-top: 1px solid #334155;
+        padding-top: 6px;
     }
     /* 手機端輸入框優化 */
     .stTextInput input {
@@ -311,14 +319,21 @@ C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#
 C_TOWN_TXT = "#000000"
 
 st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
-st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">System Telemetry // 目前系統資料排班週期</div><div class="telemetry-value">{get_system_duty_period()}</div></div>""", unsafe_allow_html=True)
 
-# 🌐 公開顯示各職位班表更新進度狀態
-st.subheader("各職位班表更新狀態")
-status_data = [{"職位": role, "最後更新時間": get_file_info(path)[1]} for role, path in ROLE_FILES.items()]
-st.table(pd.DataFrame(status_data))
+# 🌐 將各職位更新時間精簡整合至上方 Telemetry 卡片中
+td_time = get_file_info(ROLE_FILES["駕駛"])[1]
+tm_time = get_file_info(ROLE_FILES["列車長"])[1]
+ta_time = get_file_info(ROLE_FILES["服勤員"])[1]
 
-st.markdown("---")
+st.markdown(f"""
+<div class="telemetry-card">
+    <div class="telemetry-title">System Telemetry // 目前系統排班週期</div>
+    <div class="telemetry-value">{get_system_duty_period()}</div>
+    <div class="telemetry-sub">
+        📌 <b>更新進度</b> ｜ 駕駛：{td_time} ｜ 列車長：{tm_time} ｜ 服勤員：{ta_time}
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A")
 access_password = st.text_input("輸入系統授權碼", type="password", value="")
