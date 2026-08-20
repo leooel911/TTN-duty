@@ -471,7 +471,6 @@ else:
                 with c3: min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx)
                 with c4: max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx)
 
-                # 新增快速篩選開關並排顯示
                 filter_col1, filter_col2 = st.columns(2)
                 with filter_col1:
                     only_main_line = st.checkbox("僅顯示正線勤務", value=False)
@@ -513,11 +512,9 @@ else:
                                         is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                         is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
                                         
-                                        # 過濾條件：僅顯示正線勤務
                                         if only_main_line and is_non_line:
                                             continue
                                         
-                                        # 過濾條件：僅顯示長班
                                         if only_long_shift and not is_long:
                                             continue
 
@@ -546,12 +543,16 @@ else:
                         
                         if search_results:
                             current_date_group = None
+                            c_col1, c_col2 = None, None
+                            col_idx = 0
+                            
                             for r in search_results:
                                 if r["日期"] != current_date_group:
                                     current_date_group = r["日期"]
                                     st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
-
-                                c_col1, c_col2 = st.columns(2)
+                                    # 每次遇到新日期，才建立一次新的雙欄容器，避免變成階梯狀
+                                    c_col1, c_col2 = st.columns(2)
+                                    col_idx = 0 
                                 
                                 long_shift_badge = '<span style="color:#F87171; font-size:12px; margin-left:4px;">●長</span>' if r['長班'] else ''
                                 non_line_badge = '<span style="background:#4C1D95; color:#C4B5FD; font-size:10px; padding:1px 4px; border-radius:3px; margin-left:4px;">非正線</span>' if r['非正線'] else ''
@@ -565,10 +566,12 @@ else:
                                 </div>
                                 """
                                 
-                                if r == search_results[0] or search_results.index(r) % 2 == 0:
+                                # 依序放入左右兩欄
+                                if col_idx % 2 == 0:
                                     with c_col1: st.markdown(card_html, unsafe_allow_html=True)
                                 else:
                                     with c_col2: st.markdown(card_html, unsafe_allow_html=True)
+                                col_idx += 1
                         else:
                             st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
