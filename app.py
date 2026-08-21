@@ -549,13 +549,13 @@ if app_mode == "生產個人班表圖片檔":
                     status_placeholder.empty()
                     progress_bar.empty()
 
-                    # ── 💡 將生成完畢的自動捲動錨點改到圖片正上方（讓整張圖完整置中呈現） ──
-                    st.markdown('<div id="result-preview"></div>', unsafe_allow_html=True)
+                    # ── 💡 將捲動錨點放在成功訊息的正上方，並改用 block: 'start' 確保整張圖片頂部完整置頂對齊 ──
+                    st.markdown('<div id="result-preview" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
                     st.markdown("""
                     <script>
                         const resultEl = document.getElementById('result-preview');
                         if (resultEl) {
-                            resultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }
                     </script>
                     """, unsafe_allow_html=True)
