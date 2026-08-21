@@ -44,6 +44,21 @@ st.markdown("""
     .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
     .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
     
+    /* 🚀 科技感霓虹進度條與載入容器美化 */
+    .stProgress > div > div > div > div {
+        background: linear-gradient(90deg, #3B82F6 0%, #60A5FA 50%, #93C5FD 100%) !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+        border-radius: 4px;
+    }
+    .loading-status-text {
+        font-family: monospace;
+        font-size: 13px;
+        color: #60A5FA;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+        font-weight: 600;
+    }
+
     /* 功能模式選擇器外觀強化 */
     .stRadio > label { font-size: 13px !important; color: #94A3B8 !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 1px !important; margin-bottom: 8px !important; }
     .stRadio > div { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px !important; padding: 14px 18px !important; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
@@ -309,26 +324,26 @@ else:
             elif not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料")
             else:
                 try:
-                    # 🚀 新增：進度條與階段狀態提示
+                    # 🚀 科技感動態進度條與狀態提示
+                    status_placeholder = st.empty()
                     progress_bar = st.progress(0)
-                    status_text = st.empty()
 
-                    status_text.text("正在解析組員班表資料庫...")
-                    progress_bar.progress(25)
-                    time.sleep(0.4)
+                    status_placeholder.markdown('<div class="loading-status-text">⚡ [SYSTEM] 正在載入組員資料庫...</div>', unsafe_allow_html=True)
+                    progress_bar.progress(20)
+                    time.sleep(0.3)
 
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(target_input)
                     
-                    status_text.text("計算工時、國定假日與疏運區間...")
-                    progress_bar.progress(55)
-                    time.sleep(0.4)
+                    status_placeholder.markdown('<div class="loading-status-text">⚙️ [ENGINE] 計算工時、國定假日與疏運區間...</div>', unsafe_allow_html=True)
+                    progress_bar.progress(50)
+                    time.sleep(0.3)
 
                     active_transport = parse_transport_periods(TRANSPORT_PERIODS)
                     font_prop = setup_font()
                     def fp(size=9): return fm.FontProperties(fname=font_prop.get_file(), size=size) if font_prop else fm.FontProperties(size=size)
                     
-                    status_text.text("正在繪製高解析向量排班表格...")
-                    progress_bar.progress(80)
+                    status_placeholder.markdown('<div class="loading-status-text">🎨 [MATPLOTLIB] 渲染高解析向量排班表格...</div>', unsafe_allow_html=True)
+                    progress_bar.progress(85)
                     
                     weeks = build_weeks(start_dt, dates, cells)
                     fig, ax = plt.subplots(figsize=(16, 11), dpi=300)
@@ -446,9 +461,9 @@ else:
                     
                     # 完成進度條
                     progress_bar.progress(100)
-                    status_text.text("圖檔生成完畢！")
+                    status_placeholder.markdown('<div class="loading-status-text" style="color: #34D399;">✨ [COMPLETE] 圖檔生成完畢！</div>', unsafe_allow_html=True)
                     time.sleep(0.3)
-                    status_text.empty()
+                    status_placeholder.empty()
                     progress_bar.empty()
 
                     st.success("個人班表圖片生成成功")
