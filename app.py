@@ -289,7 +289,6 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    # 升級後的質感功能模式選擇器
     app_mode = st.radio("系統操作模式選擇", ["生產個人班表圖片檔", "換班｜尋找指定時段報到組員（Beta測試版）"], horizontal=True)
     st.markdown("---")
 
@@ -402,12 +401,13 @@ else:
                     has_active_transport = any(d in active_transport for d in dates)
                     has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
 
+                    # 國定假日膠囊改為無填色（透明背景），僅在有出現時點亮邊框與文字
                     pill_legends = [
                         (0, "#F1F5F9", "#475569", C_NOTE_TXT, "備註"),
                         (1, C_DO_BG if has_emp_do else C_WORK_BG, "#E11D48" if has_emp_do else "#64748B", C_DO_TXT if has_emp_do else "#64748B", "休假日"),
                         (2, C_PAY_BG if has_emp_pay else C_WORK_BG, "#EA580C" if has_emp_pay else "#64748B", C_PAY_TXT if has_emp_pay else "#64748B", "特休"),
                         (3, C_WORK_BG, "#DC2626" if has_emp_ot else "#64748B", C_OT_TXT if has_emp_ot else "#64748B", "工時 > 8.5h"),
-                        (4, "#FFF7ED" if has_active_holiday else C_WORK_BG, "#C2410C" if has_active_holiday else "#64748B", C_HOLI_TXT if has_active_holiday else "#64748B", "國定假日"),
+                        (4, C_WORK_BG, "#C2410C" if has_active_holiday else "#64748B", C_HOLI_TXT if has_active_holiday else "#64748B", "國定假日"),
                         (5, "#F3E8FF" if has_active_transport else C_WORK_BG, "#7C3AED" if has_active_transport else "#64748B", C_NOTE_TXT if has_active_transport else "#64748B", "疏運"),
                         (6, C_TOWN_BG if has_emp_town else C_WORK_BG, "#334155" if has_emp_town else "#64748B", C_TOWN_TXT if has_emp_town else "#64748B", "非正線勤務"),
                     ]
