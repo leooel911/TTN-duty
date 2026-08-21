@@ -108,8 +108,6 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "admin_bypassed" not in st.session_state:
     st.session_state["admin_bypassed"] = False
-if "last_input" not in st.session_state:
-    st.session_state["last_input"] = "A"
 
 def get_file_mtime_str(path):
     if os.path.exists(path):
@@ -397,18 +395,18 @@ if app_mode == "生產個人班表圖片檔":
     </div>
     """, unsafe_allow_html=True)
 
-    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value=st.session_state["last_input"])
+    # 修正：不使用預設固定 value 強制綁定，讓輸入框由元件本身獨立管理
+    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
-        if not target_input.strip():
+        current_input = st.session_state.get("user_input_field", "").strip()
+        if not current_input:
             st.warning("請輸入員編或姓名")
         else:
-            st.session_state["last_input"] = target_input.strip()
-            
             if not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料")
             else:
                 try:
-                    _, _, _, temp_emp_name, _ = process_file_data(target_input)
+                    _, _, _, temp_emp_name, _ = process_file_data(current_input)
                     first_name = temp_emp_name[1:] if len(temp_emp_name) > 1 else temp_emp_name
 
                     status_placeholder = st.empty()
@@ -418,7 +416,7 @@ if app_mode == "生產個人班表圖片檔":
                     progress_bar.progress(30)
                     time.sleep(0.4)
 
-                    start_dt, dates, emp_id, emp_name, cells = process_file_data(target_input)
+                    start_dt, dates, emp_id, emp_name, cells = process_file_data(current_input)
                     
                     progress_bar.progress(70)
                     time.sleep(0.4)
