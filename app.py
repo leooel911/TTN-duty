@@ -91,6 +91,10 @@ ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
 
+# 初始化 Session State 授權狀態
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
 def get_file_mtime_str(path):
     if os.path.exists(path):
         mtime = os.path.getmtime(path)
@@ -276,6 +280,30 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
+# --- 🔒 前置授權碼門戶檢查 ---
+if not st.session_state["authenticated"]:
+    st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F Edition // Secure Portal</div></div>""", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-radius: 12px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 13px; font-weight: 600; color: #60A5FA; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">SECURITY VERIFICATION</div>
+            <div style="font-size: 16px; font-weight: 700; color: #F8FAFC; margin-bottom: 4px;">請輸入系統授權碼以繼續</div>
+            <div style="font-size: 12px; color: #94A3B8; font-family: monospace;">Authorized Personnel Only</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        entered_key = st.text_input("系統授權碼", type="password", placeholder="請輸入授權碼...", label_visibility="collapsed")
+        if st.button("安全登入系統", use_container_width=True):
+            if entered_key == CREW_ACCESS_PASSWORD:
+                st.session_state["authenticated"] = True
+                st.rerun()
+            else:
+                st.error("授權碼錯誤，請重新輸入")
+    st.stop()
+
+# --- 🔓 通過授權後的主系統介面 ---
 st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
 
 if is_maintenance_mode():
@@ -327,11 +355,9 @@ else:
         """, unsafe_allow_html=True)
 
         target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A")
-        access_password = st.text_input("輸入系統授權碼", type="password", value="")
 
         if st.button("立即生成個人班表圖片檔"):
-            if access_password != CREW_ACCESS_PASSWORD: st.error("系統授權碼錯誤，請洽管理員")
-            elif not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料")
+            if not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料")
             else:
                 try:
                     _, _, _, temp_emp_name, _ = process_file_data(target_input)
@@ -479,7 +505,7 @@ else:
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-    elif app_mode == "換班｜尋找指定時段報到組員（Beta測試版）":
+    elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
         st.markdown("""
         <div class="section-header-box">
             <div class="section-title">指定 Sign-In 時段組員名單快篩</div>
