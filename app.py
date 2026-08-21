@@ -21,9 +21,63 @@ st.markdown("""
 <style>
     .stApp { background-color: #0B0F19 !important; color: #F8FAFC !important; }
     .block-container { padding: 3rem 1rem !important; }
-    .header-container { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 1rem; }
-    .main-title { color: #F8FAFC !important; font-size: 26px; font-weight: 800; letter-spacing: 0.5px; margin: 0; }
-    .edition-badge { color: #64748B !important; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+    
+    /* 專業科技感標題區樣式 */
+    .header-container { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        width: 100%; 
+        margin-bottom: 1.5rem; 
+        padding-bottom: 12px;
+        border-bottom: 1px solid #1E293B;
+    }
+    .title-left-group {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .main-title { 
+        color: #F8FAFC !important; 
+        font-size: 24px; 
+        font-weight: 800; 
+        letter-spacing: 1.5px; 
+        margin: 0; 
+        font-family: monospace;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #38BDF8;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #38BDF8;
+        display: inline-block;
+    }
+    .title-subtitle {
+        color: #64748B;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        font-family: monospace;
+    }
+    .edition-badge { 
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important;
+        border: 1px solid #334155;
+        color: #38BDF8 !important; 
+        font-size: 11px; 
+        font-weight: 700; 
+        letter-spacing: 1.5px; 
+        text-transform: uppercase; 
+        padding: 6px 12px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        font-family: monospace;
+    }
+
     .telemetry-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); position: relative; overflow: hidden; }
     .telemetry-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #3B82F6; }
     .telemetry-title { color: #94A3B8 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
@@ -324,8 +378,16 @@ if not st.session_state["authenticated"]:
                 st.error("授權碼錯誤，請重新輸入")
     st.stop()
 
-# --- 🔓 主系統介面 ---
-st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
+# --- 🔓 主系統介面 (專業科技感標題區) ---
+st.markdown("""
+<div class="header-container">
+    <div class="title-left-group">
+        <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
+        <div class="title-subtitle">TTN Operational Intelligence Matrix</div>
+    </div>
+    <div class="edition-badge">C.L.F // 2026.08</div>
+</div>
+""", unsafe_allow_html=True)
 
 td_time = get_file_mtime_str(ROLE_FILES["駕駛"])
 tm_time = get_file_mtime_str(ROLE_FILES["列車長"])
