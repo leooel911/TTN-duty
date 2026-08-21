@@ -915,18 +915,19 @@ elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
                     else:
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
-# 💎 完美垂直置中於頁面最下方的極低調管理員後台入口
+# 🔒 完美垂直置中於頁面最下方的極低調管理員後台入口（需密碼驗證）
 st.markdown('<div class="footer-admin-container">', unsafe_allow_html=True)
 if st.button("系統管理員後台", key="footer_admin_btn"):
-    st.session_state["show_admin_panel"] = True
+    st.session_state["show_admin_panel"] = not st.session_state.get("show_admin_panel", False)
     st.rerun()
 
-if st.session_state.get("show_admin_panel", False) and not st.session_state.get("direct_to_admin", False):
+if st.session_state.get("show_admin_panel", False):
     st.markdown("<div style='max-width: 250px; margin: 10px auto;'>", unsafe_allow_html=True)
     admin_pwd_input = st.text_input("請輸入管理員密碼", type="password", key="footer_admin_pwd", label_visibility="collapsed", placeholder="請輸入管理員密碼...")
     if st.button("確認解鎖後台", key="confirm_admin_unlock"):
         if admin_pwd_input == ADMIN_PASSWORD:
             st.session_state["direct_to_admin"] = True
+            st.session_state["show_admin_panel"] = False
             st.success("驗證成功，正在進入後台...")
             st.rerun()
         else:
