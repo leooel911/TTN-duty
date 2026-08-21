@@ -70,14 +70,19 @@ st.markdown("""
     .stTextInput input { font-size: 18px !important; padding: 14px 16px !important; border-radius: 10px !important; background-color: #1E293B !important; color: #F8FAFC !important; border: 1px solid #475569 !important; }
     div.stButton > button { font-size: 18px !important; font-weight: 700 !important; padding: 16px 24px !important; border-radius: 12px !important; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 50%, #1D4ED8 100%) !important; color: #ffffff !important; width: 100% !important; margin-top: 10px; }
     
-    /* 👑 修正後的管理員覆寫按鈕專用高權重選擇器 */
-    div.admin-override-btn div.stButton button {
+    /* 👑 強制精準覆寫管理員按鈕背景色 (使用更高階的屬性選擇器與 !important) */
+    button[kind="secondary"] {
+        /* 預設按鈕 */
+    }
+    .admin-override-btn button, div.admin-override-btn button {
         background: linear-gradient(135deg, #DC2626 0%, #991B1B 50%, #7F1D1D 100%) !important;
         border: 1px solid #EF4444 !important;
+        color: #ffffff !important;
         box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4) !important;
     }
-    div.admin-override-btn div.stButton button:hover {
+    .admin-override-btn button:hover, div.admin-override-btn button:hover {
         background: linear-gradient(135deg, #EF4444 0%, #DC2626 50%, #991B1B 100%) !important;
+        border-color: #FCA5A5 !important;
         box-shadow: 0 0 20px rgba(239, 68, 68, 0.6) !important;
     }
 </style>
@@ -337,7 +342,7 @@ if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
     with c2:
         admin_bypass_input = st.text_input("管理員授權覆寫", type="password", placeholder="請輸入管理員密碼...", label_visibility="collapsed")
         
-        # 透過高權重覆寫按鈕樣式
+        # 透過專屬容器與樣式確保深紅漸層按鈕成功渲染
         st.markdown('<div class="admin-override-btn">', unsafe_allow_html=True)
         admin_login_clicked = st.button("進入系統後台預覽", use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
