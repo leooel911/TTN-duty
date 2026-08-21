@@ -172,13 +172,27 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
     
-    /* 完美對稱、置中且與輸入框等寬對齊的科技質感按鈕 */
+    /* 專屬置中對齊與群組容器 */
+    .auth-center-wrapper {
+        max-width: 460px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    /* 隱藏 Streamlit 表單預設的邊框與內距，讓排版極致俐落 */
+    [data-testid="stForm"] {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+
+    /* 完美置中且與輸入框等寬對齊的科技質感按鈕 */
     div.stButton {
         display: flex !important;
         justify-content: center !important;
         width: 100% !important;
     }
-    div.stButton > button { 
+    div.stButton > button, [data-testid="stFormSubmitButton"] > button { 
         font-weight: 700 !important; 
         padding: 14px 24px !important; 
         border-radius: 10px !important; 
@@ -194,7 +208,7 @@ st.markdown("""
         letter-spacing: 1px;
         text-align: center !important;
     }
-    div.stButton > button:hover {
+    div.stButton > button:hover, [data-testid="stFormSubmitButton"] > button:hover {
         border-color: #38BDF8 !important;
         border-left-color: #38BDF8 !important;
         color: #FFFFFF !important;
@@ -422,36 +436,41 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 🔒 系統維護模式檢查（使用完美對稱置中排版） ---
+# --- 🔒 系統維護模式檢查（使用 st.form 支援 Enter 鍵直接觸發） ---
 if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
     st.markdown("""<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;"><div style="font-size: 34px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
-    col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
-    with col_m2:
-        st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
-        
+    st.markdown('<div class="auth-center-wrapper">', unsafe_allow_html=True)
+    st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
+    
+    with st.form("maint_form"):
         admin_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input")
-        if st.button("進入系統"):
+        submitted_maint = st.form_submit_button("進入系統")
+        if submitted_maint:
             if admin_unlock == ADMIN_PASSWORD:
                 st.session_state["admin_bypassed"] = True
                 st.success("管理員身分驗證成功")
                 st.rerun()
             else:
                 st.error("密碼錯誤")
+    st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查（使用完美對稱置中排版） ---
+# --- 🔒 前置授權碼門戶檢查（使用 st.form 支援 Enter 鍵直接觸發） ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
+    
+    st.markdown('<div class="auth-center-wrapper">', unsafe_allow_html=True)
+    with st.form("auth_form"):
         entered_key = st.text_input("系統授權碼", type="password", placeholder="請輸入授權碼...", label_visibility="collapsed")
-        if st.button("進入系統"):
+        submitted_auth = st.form_submit_button("進入系統")
+        if submitted_auth:
             if entered_key == CREW_ACCESS_PASSWORD:
                 st.session_state["authenticated"] = True
                 st.rerun()
             else:
                 st.error("授權碼錯誤，請重新輸入")
+    st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # --- 🔓 主系統介面 (專業科技感標題區) ---
