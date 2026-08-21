@@ -359,10 +359,10 @@ sched_range = get_schedule_range()
 
 st.markdown(f"""
 <div class="telemetry-card">
-    <div class="telemetry-title">目前系統排班週期 & 資料同步狀態</div>
+    <div class="telemetry-title">目前系統排班週期 & 伺服器資料狀態</div>
     <div class="telemetry-value" style="font-size: 22px; color: #60A5FA; margin-bottom: 8px;">{sched_range}</div>
     <div class="telemetry-sub">
-        🟢 伺服器資料狀態：已同步最新檔案<br>
+        伺服器資料狀態：<br>
         - 駕駛更新：{td_time}<br>
         - 列車長更新：{tm_time}<br>
         - 服勤員更新：{ta_time}
@@ -388,7 +388,6 @@ if app_mode == "生產個人班表圖片檔":
     </div>
     """, unsafe_allow_html=True)
 
-    # 確保預設帶入 "A"，且透過 session_state 同步
     target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A", key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
@@ -539,6 +538,18 @@ if app_mode == "生產個人班表圖片檔":
                     progress_bar.empty()
 
                     st.success("個人班表圖片生成成功")
+                    
+                    # 畫面自動上拉至圖片頂端錨點
+                    st.markdown('<div id="result-anchor"></div>', unsafe_allow_html=True)
+                    st.components.v1.html("""
+                        <script>
+                            window.parent.document.querySelector('#result-anchor').scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start'
+                            });
+                        </script>
+                    """, height=0)
+
                     st.image(buf, use_container_width=True)
                     st.info("提醒：長按上方的班表圖片即可一鍵存入手機相簿")
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
