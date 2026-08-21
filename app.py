@@ -296,7 +296,7 @@ else:
     if app_mode == "生產個人班表圖片檔":
         st.markdown("""
         <div class="section-header-box">
-            <div class="section-title">個人班表高解析圖檔生成</div>
+            <div class="section-title">個人班表圖檔生成</div>
             <div class="section-subtitle">Personal Shift Schedule Image Generator</div>
         </div>
         """, unsafe_allow_html=True)
@@ -605,7 +605,7 @@ else:
                                     </div>
                                     <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
                                     <div class="compact-sub">班別: {r['車次']}</div>
-                                    <div class="compact-sub">隔日: {r['隔日Sign-In']}</div>
+                                    <div class="compact-sub">隔日勤務時間: {r['隔日Sign-In']}</div>
                                 </div>
                                 """
                                 
