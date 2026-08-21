@@ -43,29 +43,29 @@ st.markdown("""
     .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
     .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
     
-    /* 🚀 彗星子彈尾光特效進度條 */
-    .stProgress > div > div > div {
+    /* 🚀 修正版：高效能彗星子彈尾光特效進度條 */
+    .stProgress div[data-baseweb="progress-bar"] {
         background-color: #1E293B !important;
         border-radius: 6px;
         overflow: hidden;
         border: 1px solid #334155;
+        height: 10px !important;
     }
-    .stProgress > div > div > div > div {
+    .stProgress div[role="progressbar"] {
         background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, #3B82F6 70%, #60A5FA 90%, #FFFFFF 100%) !important;
-        box-shadow: 0 0 16px rgba(96, 165, 250, 0.8), inset 0 0 6px rgba(255, 255, 255, 0.9);
+        box-shadow: 0 0 16px rgba(96, 165, 250, 0.9), inset 0 0 6px rgba(255, 255, 255, 0.9);
         border-radius: 5px;
         position: relative;
     }
-    /* 在進度條最前端加上超高亮光頭 */
-    .stProgress > div > div > div > div::after {
+    .stProgress div[role="progressbar"]::after {
         content: '';
         position: absolute;
         right: 0;
         top: 0;
         bottom: 0;
-        width: 8px;
+        width: 10px;
         background: #FFFFFF;
-        box-shadow: 0 0 12px #FFFFFF, 0 0 20px #60A5FA;
+        box-shadow: 0 0 14px #FFFFFF, 0 0 22px #60A5FA;
         border-radius: 50%;
     }
 
@@ -78,7 +78,6 @@ st.markdown("""
         font-weight: 600;
     }
 
-    /* 📱 手機優化：隱藏原生預設標題，將選項改為獨立卡片式排列 */
     .stRadio > label { display: none !important; }
     .stRadio > div { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; display: flex; flex-direction: column; gap: 10px; }
     .stRadio label { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px !important; padding: 16px 20px !important; width: 100% !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); transition: all 0.2s ease; cursor: pointer; }
