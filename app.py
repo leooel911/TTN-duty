@@ -78,20 +78,20 @@ st.markdown("""
         font-family: monospace;
     }
 
-    /* 維護公告不換行樣式 */
+    /* 施工中質感黃色警告框樣式 */
     .maintenance-msg-box {
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        border: 1px solid #334155;
-        padding: 14px 20px;
+        background: linear-gradient(135deg, #422006 100%, #291104 100%);
+        border: 1px solid #CA8A04;
+        border-left: 5px solid #EAB308;
+        padding: 16px 20px;
         border-radius: 8px;
-        color: #E2E8F0;
+        color: #FEF08A;
         font-size: 14px;
+        font-weight: 600;
+        line-height: 1.6;
         text-align: center;
-        margin-bottom: 16px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 16px rgba(202, 138, 4, 0.2);
     }
 
     /* 管理員維護解鎖模式識別列 */
@@ -401,7 +401,7 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
     with col_m2:
         st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
         
-        admin_unlock = st.text_input("管理員解鎖密碼", type="password", key="maint_unlock_input")
+        admin_unlock = st.text_input("管理員登入口", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input")
         if st.button("管理員身分登入 (ADMIN LOGIN)", use_container_width=True):
             if admin_unlock == ADMIN_PASSWORD:
                 st.session_state["admin_bypassed"] = True
@@ -810,7 +810,6 @@ with st.expander("管理員專用：Database"):
                 st.session_state["admin_bypassed"] = False
             st.rerun()
         
-        # 內部的關閉維護模式快速按鈕
         if current_maint:
             if st.button("解除維護模式（恢復全體開放）"):
                 set_maintenance_mode(False)
