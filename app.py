@@ -364,6 +364,20 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
+# --- 🔒 系統維護模式檢查（最高優先級：若開啟維護，任何人進入皆直接阻擋，僅留後台解鎖通道） ---
+if is_maintenance_mode():
+    st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 36px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #94A3B8; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F Operational Intelligence Matrix // 目前暫停開放服務</div></div>""", unsafe_allow_html=True)
+    
+    col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
+    with col_m2:
+        st.warning("系統目前正在進行排班資料更新或維護中，請稍候再試。")
+        admin_unlock = st.text_input("管理員解鎖密碼", type="password", key="maint_unlock_input")
+        if admin_unlock == ADMIN_PASSWORD:
+            set_maintenance_mode(False)
+            st.success("已成功解除維護模式，請重新整理頁面")
+            st.rerun()
+    st.stop()
+
 # --- 🔒 前置授權碼門戶檢查 ---
 if not st.session_state["authenticated"]:
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F Edition // Secure Portal</div></div>""", unsafe_allow_html=True)
@@ -378,7 +392,7 @@ if not st.session_state["authenticated"]:
                 st.error("授權碼錯誤，請重新輸入")
     st.stop()
 
-# --- 🔓 主系統介面 (專業科技感標題區：加入幽默梗副標與純英文識別膠囊) ---
+# --- 🔓 主系統介面 (專業科技感標題區) ---
 st.markdown("""
 <div class="header-container">
     <div class="title-left-group">
