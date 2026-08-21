@@ -172,7 +172,7 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
 
-    /* 💎 高質感專業按鈕風格 */
+    /* 一般主按鈕高質感樣式 */
     div.stButton > button { 
         font-weight: 700 !important; 
         padding: 12px 18px !important; 
@@ -196,6 +196,37 @@ st.markdown("""
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
         box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), 0 6px 16px rgba(0,0,0,0.5) !important;
         transform: translateY(-2px) !important;
+    }
+
+    /* 🔒 極低調底部的「系統管理員後台」專屬微型按鈕樣式 */
+    .footer-admin-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        margin-top: 60px;
+        padding-top: 20px;
+        border-top: 1px solid #1E293B;
+    }
+    .footer-admin-container div.stButton > button {
+        background: transparent !important;
+        border: none !important;
+        border-left: none !important;
+        color: #475569 !important;
+        font-size: 11px !important;
+        font-weight: 500 !important;
+        letter-spacing: 2px !important;
+        box-shadow: none !important;
+        width: auto !important;
+        padding: 4px 12px !important;
+        margin: 0 auto !important;
+    }
+    .footer-admin-container div.stButton > button:hover {
+        background: rgba(30, 41, 59, 0.4) !important;
+        color: #94A3B8 !important;
+        box-shadow: none !important;
+        transform: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -563,7 +594,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 💡 使用者主導向：功能選單只留一般組員的核心功能，畫面乾淨清爽
+# 💡 使用者主導向：功能選單純淨化
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
     "換班｜尋找指定時段報到組員（Alpha測試版）"
@@ -884,24 +915,22 @@ elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
                     else:
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
-# 💎 永遠將管理員按鈕放置在系統畫面最下方（Footer 區），並移除所有多餘符號與圖示
-st.markdown("---")
-st.markdown("<div style='text-align: center; color: #475569; font-size: 11px; font-family: monospace; letter-spacing: 1.5px; margin-bottom: 8px;'>SYSTEM ADMINISTRATION ACCESS</div>", unsafe_allow_html=True)
+# 💎 完美垂直置中於頁面最下方的極低調管理員後台入口
+st.markdown('<div class="footer-admin-container">', unsafe_allow_html=True)
+if st.button("系統管理員後台", key="footer_admin_btn"):
+    st.session_state["show_admin_panel"] = True
+    st.rerun()
 
-col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
-with col_f2:
-    if st.button("系統管理員後台", key="footer_admin_btn"):
-        st.session_state["show_admin_panel"] = True
-        st.rerun()
+if st.session_state.get("show_admin_panel", False) and not st.session_state.get("direct_to_admin", False):
+    st.markdown("<div style='max-width: 250px; margin: 10px auto;'>", unsafe_allow_html=True)
+    admin_pwd_input = st.text_input("請輸入管理員密碼", type="password", key="footer_admin_pwd", label_visibility="collapsed", placeholder="請輸入管理員密碼...")
+    if st.button("確認解鎖後台", key="confirm_admin_unlock"):
+        if admin_pwd_input == ADMIN_PASSWORD:
+            st.session_state["direct_to_admin"] = True
+            st.success("驗證成功，正在進入後台...")
+            st.rerun()
+        else:
+            st.error("管理員密碼錯誤")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    # 彈出密碼輸入框讓管理員解鎖
-    if st.session_state.get("show_admin_panel", False) and not st.session_state.get("direct_to_admin", False):
-        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-        admin_pwd_input = st.text_input("請輸入管理員密碼", type="password", key="footer_admin_pwd", label_visibility="collapsed", placeholder="請輸入管理員密碼...")
-        if st.button("確認解鎖後台", key="confirm_admin_unlock"):
-            if admin_pwd_input == ADMIN_PASSWORD:
-                st.session_state["direct_to_admin"] = True
-                st.success("驗證成功，正在進入後台...")
-                st.rerun()
-            else:
-                st.error("管理員密碼錯誤")
+st.markdown('</div>', unsafe_allow_html=True)
