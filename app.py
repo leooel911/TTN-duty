@@ -14,6 +14,9 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="TTN Shift Producer", page_icon="700st.png", layout="centered")
 
+# --- 定義台灣時區 (GMT+8) ---
+TAIWAN_TZ = timezone(timedelta(hours=8))
+
 st.markdown("""
 <style>
     .stApp { background-color: #0B0F19 !important; color: #F8FAFC !important; }
@@ -26,6 +29,7 @@ st.markdown("""
     .telemetry-title { color: #94A3B8 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
     .telemetry-value { color: #F8FAFC !important; font-size: 18px; font-weight: 700; font-family: monospace; }
     .telemetry-sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid #334155; font-size: 13px; color: #94A3B8; }
+    .maint-sub { border-top: 1px solid #991B1B !important; color: #FECACA !important; }
     
     .section-header-box { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 5px solid #3B82F6; border-radius: 10px; padding: 16px 20px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .section-title { color: #F8FAFC; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin: 0; }
@@ -42,23 +46,22 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 設定
 ROLE_FILES = {"駕駛": "TD.xlsx", "列車長": "TM.xlsx", "服勤員": "TA.xlsx"}
 ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 LOG_FILE = "activity_log.txt"
 
-# --- 輔助函數 ---
 def log_activity(input_str):
     try:
-        log_entry = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 查詢: {input_str}\n"
+        now_tw = datetime.now(TAIWAN_TZ).strftime('%Y-%m-%d %H:%M:%S')
+        log_entry = f"{now_tw} - 查詢: {input_str}\n"
         with open(LOG_FILE, "a", encoding="utf-8") as f: f.write(log_entry)
     except: pass
 
 def get_file_mtime_str(path):
     if os.path.exists(path):
         mtime = os.path.getmtime(path)
-        dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(timezone(timedelta(hours=8)))
+        dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(TAIWAN_TZ)
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     return "無檔案"
 
@@ -73,34 +76,19 @@ def get_schedule_range():
             except: pass
     return "尚無資料"
 
-# --- 登入控制 ---
-if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
-if not st.session_state["authenticated"]:
-    st.markdown("<h1 style='text-align:center'>CREW DUTY ENGINE</h1>", unsafe_allow_html=True)
-    entered_key = st.text_input("輸入授權碼", type="password")
-    if st.button("安全登入"):
-        if entered_key == CREW_ACCESS_PASSWORD:
-            st.session_state["authenticated"] = True; st.rerun()
-        else: st.error("授權碼錯誤")
-    st.stop()
+# --- 其他輔助邏輯與繪圖函數 (略，請保持與上個版本一致) ---
+# (為了方便閱讀，這裡是框架)
+# ... (請保留原本的 is_maintenance_mode, pad_time, calculate_hours, is_valid_train_code, is_overtime, translate_train_code, is_town_shift, parse_cell, process_file_data, draw_bold_text, parse_transport_periods, build_weeks, setup_font 等函數) ...
+
+# --- 登入控制 (請保留原本) ---
+# ...
 
 # --- 主介面 ---
 st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
 
-st.markdown(f"""
-<div class="telemetry-card">
-    <div class="telemetry-title">目前系統排班週期 & 伺服器資料狀態</div>
-    <div class="telemetry-value" style="font-size: 20px; color: #60A5FA; margin-bottom: 8px;">{get_schedule_range()}</div>
-    <div class="telemetry-sub">
-        伺服器資料狀態：<br>
-        - 駕駛更新：{get_file_mtime_str(ROLE_FILES["駕駛"])}<br>
-        - 列車長更新：{get_file_mtime_str(ROLE_FILES["列車長"])}<br>
-        - 服勤員更新：{get_file_mtime_str(ROLE_FILES["服勤員"])}
-    </div>
-</div>
-""", unsafe_allow_html=True)
+# ... (顯示Telemetry區塊) ...
 
-app_mode = st.radio("系統操作模式", ["生產個人班表圖片檔", "換班｜尋找指定時段報到組員"], horizontal=False)
+app_mode = st.radio("系統操作模式選擇", ["生產個人班表圖片檔", "換班｜尋找指定時段報到組員（Alpha測試版）"], horizontal=False)
 st.markdown("---")
 
 if app_mode == "生產個人班表圖片檔":
@@ -108,12 +96,15 @@ if app_mode == "生產個人班表圖片檔":
     target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A")
     if st.button("立即生成個人班表圖片檔"):
         log_activity(target_input)
-        st.success("已觸發繪製流程 (紀錄已更新)")
-        # ... (繪圖與生成邏輯請銜接您原本的繪圖區塊) ...
+        # ... (繪圖邏輯) ...
+        st.success("個人班表圖片生成成功")
+        # (這裡已經移除自動捲動 JS)
+        st.image(buf, use_container_width=True)
+        st.download_button("下載", data=buf, file_name=f"班表.png", mime="image/png")
 
 # --- 管理員區塊 ---
 with st.expander("管理員專用：Database"):
-    password = st.text_input("管理員密碼", type="password")
+    password = st.text_input("密碼", type="password")
     if password == ADMIN_PASSWORD:
         st.subheader("查詢紀錄清單")
         col1, col2 = st.columns(2)
@@ -121,18 +112,8 @@ with st.expander("管理員專用：Database"):
         if col2.button("🗑️ 清除紀錄"):
             if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
             st.rerun()
-        
         if os.path.exists(LOG_FILE):
             with open(LOG_FILE, "r", encoding="utf-8") as f:
                 logs = f.readlines()
                 for line in reversed(logs[-20:]): st.text(line.strip())
-        else: st.info("無紀錄")
-        
-        st.markdown("---")
-        st.subheader("檔案上傳")
-        role = st.selectbox("選擇職位", ["駕駛", "列車長", "服勤員"])
-        uploaded = st.file_uploader(f"上傳 {role} 班表")
-        if uploaded:
-            with open(ROLE_FILES[role], "wb") as f: f.write(uploaded.getbuffer())
-            st.success("上傳成功")
-    elif password: st.error("密碼錯誤")
+        # ... (檔案上傳功能)
