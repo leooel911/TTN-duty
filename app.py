@@ -262,6 +262,7 @@ if "authenticated" not in st.session_state: st.session_state["authenticated"] = 
 if "admin_bypassed" not in st.session_state: st.session_state["admin_bypassed"] = False
 if "direct_to_admin" not in st.session_state: st.session_state["direct_to_admin"] = False
 if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
+if "show_admin_panel" not in st.session_state: st.session_state["show_admin_panel"] = False
 
 def get_file_mtime_str(path):
     if os.path.exists(path):
@@ -443,7 +444,7 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
                 st.error("密碼錯誤")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查 (智慧辨識：輸入一般碼或管理員碼皆可) ---
+# --- 🔒 前置授權碼門戶檢查 ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
     
@@ -486,7 +487,7 @@ if st.session_state.get("admin_bypassed", False) and is_maintenance_mode():
     """, unsafe_allow_html=True)
 
 # --- 如果是透過管理員登入直接導向，或是從選單選擇進入管理員後台 ---
-if st.session_state.get("direct_to_admin", False):
+if st.session_state.get("direct_to_admin", False) or st.session_state.get("show_admin_panel", False):
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">管理員專用：Database 控制台</div>
@@ -498,6 +499,7 @@ if st.session_state.get("direct_to_admin", False):
     
     if st.button("← 返回一般首頁"):
         st.session_state["direct_to_admin"] = False
+        st.session_state["show_admin_panel"] = False
         st.rerun()
 
     st.markdown("---")
@@ -561,34 +563,13 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 💡 在模式選單中加入管理員後台選項
+# 💡 使用者主導向：功能選單只留一般組員的核心功能，畫面乾淨清爽
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
-    "換班｜尋找指定時段報到組員（Alpha測試版）", 
-    "⚙️ 系統管理員後台控制台 (需密碼解鎖)"
+    "換班｜尋找指定時段報到組員（Alpha測試版）"
 ], horizontal=False)
-st.markdown("---")
 
-# 💡 如果選擇了管理員後台，要求輸入管理員密碼才能解鎖進入
-if app_mode == "⚙️ 系統管理員後台控制台 (需密碼解鎖)":
-    st.markdown("""
-    <div class="section-header-box">
-        <div class="section-title">管理員權限驗證</div>
-        <div class="section-subtitle">Administrator Access Verification</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col_adm1, col_adm2, col_adm3 = st.columns([1, 2, 1])
-    with col_adm2:
-        input_admin_pwd = st.text_input("請輸入管理員密碼", type="password", key="admin_panel_pwd_input")
-        if st.button("解鎖進入管理員後台"):
-            if input_admin_pwd == ADMIN_PASSWORD:
-                st.session_state["direct_to_admin"] = True
-                st.success("驗證成功，正在切換後台...")
-                st.rerun()
-            else:
-                st.error("管理員密碼錯誤")
-    st.stop()
+st.markdown("---")
 
 if app_mode == "生產個人班表圖片檔":
     st.markdown("""
@@ -902,3 +883,25 @@ elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
                             col_idx += 1
                     else:
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
+
+# 💎 永遠將管理員按鈕放置在系統畫面最下方（Footer 區），並移除所有多餘符號與圖示
+st.markdown("---")
+st.markdown("<div style='text-align: center; color: #475569; font-size: 11px; font-family: monospace; letter-spacing: 1.5px; margin-bottom: 8px;'>SYSTEM ADMINISTRATION ACCESS</div>", unsafe_allow_html=True)
+
+col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
+with col_f2:
+    if st.button("系統管理員後台", key="footer_admin_btn"):
+        st.session_state["show_admin_panel"] = True
+        st.rerun()
+
+    # 彈出密碼輸入框讓管理員解鎖
+    if st.session_state.get("show_admin_panel", False) and not st.session_state.get("direct_to_admin", False):
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+        admin_pwd_input = st.text_input("請輸入管理員密碼", type="password", key="footer_admin_pwd", label_visibility="collapsed", placeholder="請輸入管理員密碼...")
+        if st.button("確認解鎖後台", key="confirm_admin_unlock"):
+            if admin_pwd_input == ADMIN_PASSWORD:
+                st.session_state["direct_to_admin"] = True
+                st.success("驗證成功，正在進入後台...")
+                st.rerun()
+            else:
+                st.error("管理員密碼錯誤")
