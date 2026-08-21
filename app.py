@@ -172,7 +172,7 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
 
-    /* 一般主按鈕高質感樣式（預設靠右對齊佈局） */
+    /* 一般主按鈕高質感樣式 */
     div.stButton > button { 
         font-weight: 700 !important; 
         padding: 12px 18px !important; 
@@ -198,23 +198,11 @@ st.markdown("""
         transform: translateY(-2px) !important;
     }
 
-    /* 🔒 登入按鈕專屬靠右容器 */
-    .login-right-container {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        width: 100%;
-    }
-    .login-right-container div.stButton > button {
-        width: auto !important;
-        min-width: 140px;
-    }
-
-    /* 🔒 極低調底部的「系統管理員後台」專屬微型按鈕樣式（靠右對齊） */
+    /* 🔒 極低調底部的「系統管理員後台」專屬微型按鈕樣式 */
     .footer-admin-container {
         display: flex;
         flex-direction: column;
-        align-items: flex-end;
+        align-items: center;
         justify-content: center;
         width: 100%;
         margin-top: 60px;
@@ -232,7 +220,7 @@ st.markdown("""
         box-shadow: none !important;
         width: auto !important;
         padding: 4px 12px !important;
-        margin: 0 0 0 auto !important;
+        margin: 0 auto !important;
     }
     .footer-admin-container div.stButton > button:hover {
         background: rgba(30, 41, 59, 0.4) !important;
@@ -487,13 +475,12 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
                 st.error("密碼錯誤")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查 (靠右對齊佈局) ---
+# --- 🔒 前置授權碼門戶檢查 ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
-    st.markdown("""<div style="text-align: left; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 1, 2])
-    with col3:
-        st.markdown('<div class="login-right-container">', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
         entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
         
         btn_auth = st.button("進入系統", key="auth_btn_1")
@@ -509,7 +496,6 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_byp
                 st.rerun()
             else:
                 st.error("授權碼或密碼錯誤，請重新輸入")
-        st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # --- 🔒 如果點擊了底部管理員後台且尚未驗證：顯示專屬密碼輸入畫面 ---
@@ -955,7 +941,7 @@ elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
                     else:
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
-# 🔒 完美對齊右下角的極低調管理員後台入口
+# 🔒 完美垂直置中於頁面最下方的極低調管理員後台入口
 st.markdown('<div class="footer-admin-container">', unsafe_allow_html=True)
 if st.button("系統管理員後台", key="footer_admin_btn_strict"):
     st.session_state["show_admin_login"] = True
