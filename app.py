@@ -545,6 +545,14 @@ if app_mode == "生產個人班表圖片檔":
                 except Exception as e: st.error(f"錯誤：{e}")
 
 elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
+    # 注入 JavaScript 自動平滑捲動到畫面頂端
+    st.components.v1.html("""
+        <script>
+            const doc = window.parent.document;
+            doc.querySelector('.main').scrollTo({ top: 0, behavior: 'smooth' });
+        </script>
+    """, height=0)
+
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">指定 Sign-In 時段組員名單快篩</div>
