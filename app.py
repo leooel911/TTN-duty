@@ -312,35 +312,35 @@ if not st.session_state["authenticated"]:
 if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
     st.markdown("""
     <div class="telemetry-card" style="border: 1px solid #EF4444; background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%); max-width: 600px; margin: 4rem auto 2rem auto; text-align: center; padding: 30px;">
-        <div class="telemetry-title" style="color: #FCA5A5; font-size: 14px;">系統維護公告</div>
-        <div class="telemetry-value" style="color: #FEE2E2; font-size: 24px; margin-top: 8px;">系統目前暫停開放維護中</div>
+        <div class="telemetry-title" style="color: #FCA5A5; font-size: 14px;">SYSTEM MAINTENANCE</div>
+        <div class="telemetry-value" style="color: #FEE2E2; font-size: 24px; margin-top: 8px;">系統目前正在進行例行維護</div>
         <div class="telemetry-sub maint-sub" style="margin-top: 15px; font-size: 14px;">
             管理員正在更新排班資料或進行系統維護，請稍後再試。
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # 👑 管理員專用維護 bypass 通道
-    st.markdown("<div style='text-align: center; color: #64748B; font-size: 13px; margin-bottom: 10px;'>--- 管理員偵測通道 ---</div>", unsafe_allow_html=True)
+    # 👑 專業級管理員覆寫通道 (Admin Override)
+    st.markdown("<div style='text-align: center; color: #64748B; font-size: 12px; font-family: monospace; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;'>--- Admin Override Gateway ---</div>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
-        admin_bypass_input = st.text_input("輸入管理員密碼以在維護中檢視", type="password", placeholder="管理員密碼...", label_visibility="collapsed")
-        if st.button("管理員強制檢視網頁", use_container_width=True):
+        admin_bypass_input = st.text_input("管理員授權覆寫", type="password", placeholder="請輸入管理員密碼...", label_visibility="collapsed")
+        if st.button("略過維護模式預覽", use_container_width=True):
             if admin_bypass_input == ADMIN_PASSWORD:
                 st.session_state["admin_bypassed"] = True
                 st.rerun()
             else:
-                st.error("管理員密碼錯誤")
+                st.error("管理員認證失敗")
     st.stop()
 
 # --- 🔓 通過授權與維護檢查後的主系統介面 ---
 st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
 
-# 如果目前是透過管理員身分在維護模式下瀏覽，顯示一個提醒橫幅
+# 專業的管理員預覽提示橫幅
 if is_maintenance_mode() and st.session_state["admin_bypassed"]:
     st.markdown("""
     <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid #EF4444; border-radius: 8px; padding: 10px 15px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-        <span style="color: #FCA5A5; font-size: 13px; font-weight: 600;">⚠️ 【管理員預覽模式】目前系統正在進行維護（一般用戶將被封鎖）</span>
+        <span style="color: #FCA5A5; font-size: 13px; font-weight: 600;">⚠️ 【管理員預覽模式 (Override Active)】目前系統處於維護狀態，一般訪客將被阻擋。</span>
     </div>
     """, unsafe_allow_html=True)
 
