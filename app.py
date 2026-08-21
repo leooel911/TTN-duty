@@ -172,21 +172,22 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
     
-    /* 完美全寬對稱、俐落立體的科技質感按鈕 */
+    /* 完美對稱、置中且俐落立體的科技質感按鈕 */
     div.stButton > button { 
         font-weight: 700 !important; 
-        padding: 12px 20px !important; 
-        border-radius: 8px !important; 
+        padding: 14px 24px !important; 
+        border-radius: 10px !important; 
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
         border: 1px solid #334155 !important;
         border-left: 4px solid #3B82F6 !important;
         color: #38BDF8 !important; 
         width: 100% !important; 
         display: block !important;
-        margin-top: 0px !important;
+        margin-top: 10px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
         transition: all 0.25s ease !important;
         letter-spacing: 1px;
+        text-align: center !important;
     }
     div.stButton > button:hover {
         border-color: #38BDF8 !important;
@@ -416,7 +417,7 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 🔒 系統維護模式檢查（若管理員已 bypass 則允許預覽） ---
+# --- 🔒 系統維護模式檢查（使用 3 欄式置中佈局確保完美對稱） ---
 if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
     st.markdown("""<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;"><div style="font-size: 34px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
@@ -434,7 +435,7 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
                 st.error("密碼錯誤")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查（若管理員已 bypass 則直接略過） ---
+# --- 🔒 前置授權碼門戶檢查（使用 3 欄式置中佈局確保完美對稱） ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
