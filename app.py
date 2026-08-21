@@ -172,7 +172,7 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
 
-    /* 💎 高質感專業按鈕風格 (「進入系統」主按鈕：精緻金屬暗灰漸層與電馭藍邊框) */
+    /* 💎 高質感專業按鈕風格 */
     div.stButton > button { 
         font-weight: 700 !important; 
         padding: 12px 18px !important; 
@@ -196,21 +196,6 @@ st.markdown("""
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
         box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), 0 6px 16px rgba(0,0,0,0.5) !important;
         transform: translateY(-2px) !important;
-    }
-
-    /* 🔒 「管理員登入」按鈕專屬：低調內斂的專業冷色鋼鐵風/科技銀藍點綴 */
-    .admin-btn div.stButton > button {
-        background: linear-gradient(135deg, #172033 0%, #0B1120 100%) !important;
-        border: 1px solid #334155 !important;
-        border-left: 4px solid #64748B !important;
-        color: #94A3B8 !important;
-    }
-    .admin-btn div.stButton > button:hover {
-        border-color: #94A3B8 !important;
-        border-left-color: #CBD5E1 !important;
-        background: linear-gradient(135deg, #334155 100%, #1E293B 100%) !important;
-        color: #FFFFFF !important;
-        box-shadow: 0 0 20px rgba(148, 163, 184, 0.25), 0 6px 16px rgba(0,0,0,0.5) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -440,31 +425,25 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
     col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
     with col_m2:
         st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
-        admin_unlock = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input")
+        admin_unlock = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", key="maint_unlock_input", label_visibility="collapsed")
         
-        btn_m1 = st.button("進入系統", key="maint_btn_1")
-        st.markdown('<div class="admin-btn">', unsafe_allow_html=True)
-        btn_m2 = st.button("管理員登入", key="maint_btn_2")
-        st.markdown('</div>', unsafe_allow_html=True)
+        btn_m = st.button("進入系統", key="maint_btn_1")
 
-        if btn_m1:
-            if admin_unlock == ADMIN_PASSWORD:
-                st.session_state["admin_bypassed"] = True
-                st.success("管理員身分驗證成功")
-                st.rerun()
-            else:
-                st.error("密碼錯誤")
-        elif btn_m2:
+        if btn_m:
             if admin_unlock == ADMIN_PASSWORD:
                 st.session_state["direct_to_admin"] = True
                 st.session_state["admin_bypassed"] = True
-                st.success("直接進入管理員後台")
+                st.success("管理員身分驗證成功，正在載入後台...")
+                st.rerun()
+            elif admin_unlock == CREW_ACCESS_PASSWORD:
+                st.session_state["admin_bypassed"] = True
+                st.success("系統維護預覽解鎖成功")
                 st.rerun()
             else:
-                st.error("管理員密碼錯誤")
+                st.error("密碼錯誤")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查 ---
+# --- 🔒 前置授權碼門戶檢查 (智慧辨識：輸入一般碼或管理員碼皆可) ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
     
@@ -473,24 +452,18 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_byp
         entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
         
         btn_auth = st.button("進入系統", key="auth_btn_1")
-        st.markdown('<div class="admin-btn">', unsafe_allow_html=True)
-        btn_admin = st.button("管理員登入", key="auth_btn_2")
-        st.markdown('</div>', unsafe_allow_html=True)
 
         if btn_auth:
             if entered_key == CREW_ACCESS_PASSWORD:
                 st.session_state["authenticated"] = True
                 st.rerun()
-            else:
-                st.error("授權碼錯誤，請重新輸入")
-        elif btn_admin:
-            if entered_key == ADMIN_PASSWORD:
+            elif entered_key == ADMIN_PASSWORD:
                 st.session_state["direct_to_admin"] = True
                 st.session_state["admin_bypassed"] = True
                 st.success("管理員驗證成功，正在載入後台...")
                 st.rerun()
             else:
-                st.error("管理員密碼錯誤")
+                st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
 # --- 🔓 主系統介面 (專業科技感標題區) ---
