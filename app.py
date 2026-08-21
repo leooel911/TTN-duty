@@ -378,12 +378,12 @@ if not st.session_state["authenticated"]:
                 st.error("授權碼錯誤，請重新輸入")
     st.stop()
 
-# --- 🔓 主系統介面 (專業科技感標題區：無 TTN、純英文創辦人副標、精緻純英文識別膠囊) ---
+# --- 🔓 主系統介面 (專業科技感標題區：加入幽默梗副標與純英文識別膠囊) ---
 st.markdown("""
 <div class="header-container">
     <div class="title-left-group">
         <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
-        <div class="title-subtitle">C.L.F OPERATIONAL INTELLIGENCE MATRIX</div>
+        <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
     </div>
     <div class="edition-badge">C.L.F EDITION</div>
 </div>
