@@ -172,40 +172,45 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
 
-    /* 統一按鈕的高質感與外型（強制 100% 寬度齊平對稱） */
+    /* 💎 高質感專業按鈕風格 (「進入系統」主按鈕：精緻金屬暗灰漸層與電馭藍邊框) */
     div.stButton > button { 
         font-weight: 700 !important; 
-        padding: 12px 16px !important; 
+        padding: 12px 18px !important; 
         border-radius: 10px !important; 
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
         border: 1px solid #334155 !important;
-        border-left: 4px solid #3B82F6 !important;
-        color: #38BDF8 !important; 
+        border-left: 4px solid #38BDF8 !important;
+        color: #F8FAFC !important; 
         width: 100% !important; 
         margin-top: 6px !important;
         margin-bottom: 6px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-        transition: all 0.25s ease !important;
-        letter-spacing: 1px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        letter-spacing: 1.5px;
+        font-family: monospace;
     }
     div.stButton > button:hover {
         border-color: #38BDF8 !important;
         border-left-color: #38BDF8 !important;
         color: #FFFFFF !important;
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        box-shadow: 0 0 16px rgba(56, 189, 248, 0.35), 0 6px 16px rgba(0,0,0,0.5) !important;
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), 0 6px 16px rgba(0,0,0,0.5) !important;
         transform: translateY(-2px) !important;
     }
 
-    /* 「管理員登入」按鈕的專屬高級琥珀/微紅工業風點綴 */
+    /* 🔒 「管理員登入」按鈕專屬：低調內斂的專業冷色鋼鐵風/科技銀藍點綴 */
     .admin-btn div.stButton > button {
-        border-left-color: #EF4444 !important;
-        color: #FCA5A5 !important;
+        background: linear-gradient(135deg, #172033 0%, #0B1120 100%) !important;
+        border: 1px solid #334155 !important;
+        border-left: 4px solid #64748B !important;
+        color: #94A3B8 !important;
     }
     .admin-btn div.stButton > button:hover {
-        border-left-color: #F87171 !important;
-        background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%) !important;
+        border-color: #94A3B8 !important;
+        border-left-color: #CBD5E1 !important;
+        background: linear-gradient(135deg, #334155 100%, #1E293B 100%) !important;
         color: #FFFFFF !important;
+        box-shadow: 0 0 20px rgba(148, 163, 184, 0.25), 0 6px 16px rgba(0,0,0,0.5) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -467,7 +472,6 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_byp
     with col2:
         entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
         
-        # 修正：直接依序放置按鈕並透過 CSS 統一寬度，確保完美對稱
         btn_auth = st.button("進入系統", key="auth_btn_1")
         st.markdown('<div class="admin-btn">', unsafe_allow_html=True)
         btn_admin = st.button("管理員登入", key="auth_btn_2")
