@@ -172,18 +172,18 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
     
-    /* 完美對稱、俐落的科技質感立體按鈕 */
+    /* 完美全寬對稱、俐落立體的科技質感按鈕 */
     div.stButton > button { 
         font-weight: 700 !important; 
-        padding: 14px 24px !important; 
-        border-radius: 10px !important; 
+        padding: 12px 20px !important; 
+        border-radius: 8px !important; 
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
         border: 1px solid #334155 !important;
         border-left: 4px solid #3B82F6 !important;
         color: #38BDF8 !important; 
         width: 100% !important; 
         display: block !important;
-        margin-top: 10px;
+        margin-top: 0px !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
         transition: all 0.25s ease !important;
         letter-spacing: 1px;
