@@ -172,7 +172,29 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
     
-    div.stButton > button { font-weight: 700 !important; padding: 16px 24px !important; border-radius: 12px !important; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%) !important; color: #ffffff !important; width: 100% !important; margin-top: 10px; }
+    /* 升級版科技質感立體按鈕：附帶左側發光邊條與懸停立體浮動特效 */
+    div.stButton > button { 
+        font-weight: 700 !important; 
+        padding: 16px 24px !important; 
+        border-radius: 12px !important; 
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
+        border: 1px solid #334155 !important;
+        border-left: 5px solid #3B82F6 !important;
+        color: #38BDF8 !important; 
+        width: 100% !important; 
+        margin-top: 10px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+        transition: all 0.25s ease !important;
+        letter-spacing: 1px;
+    }
+    div.stButton > button:hover {
+        border-color: #38BDF8 !important;
+        border-left-color: #38BDF8 !important;
+        color: #FFFFFF !important;
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+        box-shadow: 0 0 18px rgba(56, 189, 248, 0.4), 0 6px 20px rgba(0,0,0,0.6) !important;
+        transform: translateY(-2px) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -395,14 +417,14 @@ C_TOWN_TXT = "#000000"
 
 # --- 🔒 系統維護模式檢查（若管理員已 bypass 則允許預覽） ---
 if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
-    st.markdown("""<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;"><div style="font-size: 34px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;"><div style="font-size: 34px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
     col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
     with col_m2:
         st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
         
         admin_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input")
-        if st.button("管理員身分登入 (ADMIN LOGIN)", use_container_width=True):
+        if st.button("進入系統"):
             if admin_unlock == ADMIN_PASSWORD:
                 st.session_state["admin_bypassed"] = True
                 st.success("管理員身分驗證成功")
@@ -413,11 +435,11 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
 
 # --- 🔒 前置授權碼門戶檢查（若管理員已 bypass 則直接略過） ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False):
-    st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F Edition // Secure Portal</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         entered_key = st.text_input("系統授權碼", type="password", placeholder="請輸入授權碼...", label_visibility="collapsed")
-        if st.button("安全登入系統", use_container_width=True):
+        if st.button("進入系統"):
             if entered_key == CREW_ACCESS_PASSWORD:
                 st.session_state["authenticated"] = True
                 st.rerun()
