@@ -278,6 +278,7 @@ def log_activity(input_str):
 
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
 if "admin_bypassed" not in st.session_state: st.session_state["admin_bypassed"] = False
+if "direct_to_admin" not in st.session_state: st.session_state["direct_to_admin"] = False
 if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
 
 def get_file_mtime_str(path):
@@ -435,14 +436,14 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 🔒 系統維護模式檢查（完美等寬對稱佈局） ---
-if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
+# --- 🔒 系統維護模式檢查 ---
+if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;"><div style="font-size: 34px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
     col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
     with col_m2:
         st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
-        admin_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input")
+        admin_unlock = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input")
         
         st.markdown('<div class="symmetric-buttons">', unsafe_allow_html=True)
         btn_m1 = st.button("進入系統", key="maint_btn_1")
@@ -450,24 +451,31 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
         btn_m2 = st.button("管理員登入", key="maint_btn_2")
         st.markdown('</div></div>', unsafe_allow_html=True)
 
-        if btn_m1 or btn_m2:
+        if btn_m1:
             if admin_unlock == ADMIN_PASSWORD:
                 st.session_state["admin_bypassed"] = True
                 st.success("管理員身分驗證成功")
                 st.rerun()
             else:
                 st.error("密碼錯誤")
+        elif btn_m2:
+            if admin_unlock == ADMIN_PASSWORD:
+                st.session_state["direct_to_admin"] = True
+                st.session_state["admin_bypassed"] = True
+                st.success("直接進入管理員後台")
+                st.rerun()
+            else:
+                st.error("管理員密碼錯誤")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查（完美的左右對稱雙按鈕佈局） ---
-if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False):
+# --- 🔒 前置授權碼門戶檢查（支援一秒直達後台） ---
+if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        entered_key = st.text_input("系統授權碼", type="password", placeholder="請輸入授權碼...", label_visibility="collapsed")
+        entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
         
-        # 使用 CSS Grid 完美對稱並排兩顆按鈕
         st.markdown('<div class="symmetric-buttons">', unsafe_allow_html=True)
         btn_auth = st.button("進入系統", key="auth_btn_1")
         st.markdown('<div class="admin-btn-col" style="display:contents;">', unsafe_allow_html=True)
@@ -482,8 +490,9 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_byp
                 st.error("授權碼錯誤，請重新輸入")
         elif btn_admin:
             if entered_key == ADMIN_PASSWORD:
+                st.session_state["direct_to_admin"] = True
                 st.session_state["admin_bypassed"] = True
-                st.success("管理員身分驗證成功")
+                st.success("管理員驗證成功，正在載入後台...")
                 st.rerun()
             else:
                 st.error("管理員密碼錯誤")
@@ -507,6 +516,64 @@ if st.session_state.get("admin_bypassed", False) and is_maintenance_mode():
         <span>[!] ADMIN BYPASS MODE // 目前正處於維護模式預覽中（僅限管理員可見）</span>
     </div>
     """, unsafe_allow_html=True)
+
+# --- 如果是透過管理員登入直接導向，優先展示後台 ---
+if st.session_state.get("direct_to_admin", False):
+    st.markdown("""
+    <div class="section-header-box">
+        <div class="section-title">管理員專用：Database 控制台</div>
+        <div class="section-subtitle">Direct Administrator Dashboard</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.success("歡迎回來，管理員 LEO")
+    
+    if st.button("← 返回一般首頁"):
+        st.session_state["direct_to_admin"] = False
+        st.rerun()
+
+    st.markdown("---")
+    st.subheader("查詢紀錄清單")
+    col_log_1, col_log_2 = st.columns([1, 1])
+    with col_log_1:
+        if st.button("🔄 刷新紀錄"): st.rerun()
+    with col_log_2:
+        if st.button("🗑️ 清除紀錄"):
+            if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
+            st.rerun()
+
+    if os.path.exists(LOG_FILE):
+        with open(LOG_FILE, "r", encoding="utf-8") as f:
+            logs = f.readlines()
+            for line in reversed(logs[-20:]): st.text(line.strip())
+    else: st.info("尚無任何查詢紀錄")
+
+    st.markdown("---")
+    st.subheader("系統維護控制台")
+    current_maint = is_maintenance_mode()
+    maint_toggle = st.checkbox("暫停開放系統服務 (維護模式)", value=current_maint)
+    if maint_toggle != current_maint:
+        set_maintenance_mode(maint_toggle)
+        if not maint_toggle:
+            st.session_state["admin_bypassed"] = False
+        st.rerun()
+    
+    if current_maint:
+        if st.button("解除維護模式（恢復全體開放）"):
+            set_maintenance_mode(False)
+            st.session_state["admin_bypassed"] = False
+            st.success("維護模式已解除")
+            st.rerun()
+
+    st.markdown("---")
+    st.subheader("管理員檔案上傳區")
+    selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
+    uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
+    if uploaded_file:
+        with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
+        st.success("上傳成功")
+
+    st.stop()
 
 td_time = get_file_mtime_str(ROLE_FILES["駕駛"])
 tm_time = get_file_mtime_str(ROLE_FILES["列車長"])
@@ -841,52 +908,3 @@ elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
                             col_idx += 1
                     else:
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
-
-# --- 管理員專用：Database 區塊 ---
-st.markdown("---")
-with st.expander("管理員專用：Database"):
-    password_input = st.text_input("請輸入管理員密碼", type="password")
-    if password_input == ADMIN_PASSWORD:
-        st.success("歡迎 LEO")
-        
-        st.subheader("查詢紀錄清單")
-        col_log_1, col_log_2 = st.columns([1, 1])
-        with col_log_1:
-            if st.button("🔄 刷新紀錄"): st.rerun()
-        with col_log_2:
-            if st.button("🗑️ 清除紀錄"):
-                if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
-                st.rerun()
-
-        if os.path.exists(LOG_FILE):
-            with open(LOG_FILE, "r", encoding="utf-8") as f:
-                logs = f.readlines()
-                for line in reversed(logs[-20:]): st.text(line.strip())
-        else: st.info("尚無任何查詢紀錄")
-
-        st.markdown("---")
-        st.subheader("系統維護控制台")
-        current_maint = is_maintenance_mode()
-        maint_toggle = st.checkbox("暫停開放系統服務 (維護模式)", value=current_maint)
-        if maint_toggle != current_maint:
-            set_maintenance_mode(maint_toggle)
-            if not maint_toggle:
-                st.session_state["admin_bypassed"] = False
-            st.rerun()
-        
-        if current_maint:
-            if st.button("解除維護模式（恢復全體開放）"):
-                set_maintenance_mode(False)
-                st.session_state["admin_bypassed"] = False
-                st.success("維護模式已解除")
-                st.rerun()
-
-        st.markdown("---")
-        st.subheader("管理員檔案上傳區")
-        selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
-        uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
-        if uploaded_file:
-            with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
-            st.success("上傳成功")
-    elif password_input:
-        st.error("密碼錯誤，請洽 CLF")
