@@ -172,7 +172,7 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
 
-    /* 統一按鈕的高質感與外型（堆疊等寬對稱） */
+    /* 統一按鈕的高質感與外型（強制 100% 寬度齊平對稱） */
     div.stButton > button { 
         font-weight: 700 !important; 
         padding: 12px 16px !important; 
@@ -182,7 +182,8 @@ st.markdown("""
         border-left: 4px solid #3B82F6 !important;
         color: #38BDF8 !important; 
         width: 100% !important; 
-        margin-top: 10px !important;
+        margin-top: 6px !important;
+        margin-bottom: 6px !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
         transition: all 0.25s ease !important;
         letter-spacing: 1px;
@@ -197,11 +198,11 @@ st.markdown("""
     }
 
     /* 「管理員登入」按鈕的專屬高級琥珀/微紅工業風點綴 */
-    .admin-btn button {
+    .admin-btn div.stButton > button {
         border-left-color: #EF4444 !important;
         color: #FCA5A5 !important;
     }
-    .admin-btn button:hover {
+    .admin-btn div.stButton > button:hover {
         border-left-color: #F87171 !important;
         background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%) !important;
         color: #FFFFFF !important;
@@ -466,6 +467,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_byp
     with col2:
         entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
         
+        # 修正：直接依序放置按鈕並透過 CSS 統一寬度，確保完美對稱
         btn_auth = st.button("進入系統", key="auth_btn_1")
         st.markdown('<div class="admin-btn">', unsafe_allow_html=True)
         btn_admin = st.button("管理員登入", key="auth_btn_2")
