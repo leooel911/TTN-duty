@@ -417,13 +417,13 @@ else:
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-    elif app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測試版）":
-        st.subheader("乘務時段區間與 Sign-In Time 快篩工具")
+    elif app_mode == "換班｜搜尋指定時段組員名單（・Beta測試版）":
+        st.subheader("組員 Sign-In 快篩")
         selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2)
         target_path = ROLE_FILES[selected_role]
 
         if not os.path.exists(target_path):
-            st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請先至管理員後台上傳")
+            st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請洽管理員")
         else:
             df_search = pd.read_excel(target_path, header=3)
             df_search.columns = [str(c).strip() for c in df_search.columns]
