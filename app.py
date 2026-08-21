@@ -27,7 +27,6 @@ st.markdown("""
     .telemetry-sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid #334155; font-size: 13px; color: #94A3B8; }
     .maint-sub { border-top: 1px solid #991B1B !important; color: #FECACA !important; }
     
-    /* 質感方塊標題與頁面標頭設計 */
     .section-header-box { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 5px solid #3B82F6; border-radius: 10px; padding: 16px 20px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .section-title { color: #F8FAFC; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin: 0; }
     .section-subtitle { color: #94A3B8; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
@@ -44,7 +43,6 @@ st.markdown("""
     .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
     .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
     
-    /* 🚀 科技感霓虹進度條與載入容器美化 */
     .stProgress > div > div > div > div {
         background: linear-gradient(90deg, #3B82F6 0%, #60A5FA 50%, #93C5FD 100%) !important;
         box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
@@ -52,14 +50,13 @@ st.markdown("""
     }
     .loading-status-text {
         font-family: monospace;
-        font-size: 13px;
+        font-size: 14px;
         color: #60A5FA;
         letter-spacing: 0.5px;
         margin-bottom: 6px;
         font-weight: 600;
     }
 
-    /* 功能模式選擇器外觀強化 */
     .stRadio > label { font-size: 13px !important; color: #94A3B8 !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 1px !important; margin-bottom: 8px !important; }
     .stRadio > div { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px !important; padding: 14px 18px !important; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
     .stRadio label span { font-size: 16px !important; font-weight: 700 !important; color: #F8FAFC !important; }
@@ -324,26 +321,27 @@ else:
             elif not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料")
             else:
                 try:
-                    # 🚀 科技感動態進度條與狀態提示
+                    # 預先快速解析以取得姓名以便顯示去姓氏提示
+                    _, _, _, temp_emp_name, _ = process_file_data(target_input)
+                    first_name = temp_emp_name[1:] if len(temp_emp_name) > 1 else temp_emp_name
+
                     status_placeholder = st.empty()
                     progress_bar = st.progress(0)
 
-                    status_placeholder.markdown('<div class="loading-status-text">⚡ [SYSTEM] 正在載入組員資料庫...</div>', unsafe_allow_html=True)
-                    progress_bar.progress(20)
-                    time.sleep(0.3)
+                    status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」班表製造中，請稍後...</div>', unsafe_allow_html=True)
+                    progress_bar.progress(30)
+                    time.sleep(0.4)
 
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(target_input)
                     
-                    status_placeholder.markdown('<div class="loading-status-text">⚙️ [ENGINE] 計算工時、國定假日與疏運區間...</div>', unsafe_allow_html=True)
-                    progress_bar.progress(50)
-                    time.sleep(0.3)
+                    progress_bar.progress(70)
+                    time.sleep(0.4)
 
                     active_transport = parse_transport_periods(TRANSPORT_PERIODS)
                     font_prop = setup_font()
                     def fp(size=9): return fm.FontProperties(fname=font_prop.get_file(), size=size) if font_prop else fm.FontProperties(size=size)
                     
-                    status_placeholder.markdown('<div class="loading-status-text">🎨 [MATPLOTLIB] 渲染高解析向量排班表格...</div>', unsafe_allow_html=True)
-                    progress_bar.progress(85)
+                    progress_bar.progress(90)
                     
                     weeks = build_weeks(start_dt, dates, cells)
                     fig, ax = plt.subplots(figsize=(16, 11), dpi=300)
@@ -459,10 +457,7 @@ else:
                     buf = io.BytesIO()
                     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
                     
-                    # 完成進度條
                     progress_bar.progress(100)
-                    status_placeholder.markdown('<div class="loading-status-text" style="color: #34D399;">✨ [COMPLETE] 圖檔生成完畢！</div>', unsafe_allow_html=True)
-                    time.sleep(0.3)
                     status_placeholder.empty()
                     progress_bar.empty()
 
@@ -604,7 +599,6 @@ else:
                                             "非正線": is_non_line
                                         })
 
-                        # 🔒 嚴格修正排序：日期 ➔ 報到時間(Sign-In) ➔ 收工時間 ➔ 員編
                         search_results = sorted(
                             search_results, 
                             key=lambda x: (
