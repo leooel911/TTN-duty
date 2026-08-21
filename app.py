@@ -485,7 +485,7 @@ if st.session_state.get("admin_bypassed", False) and is_maintenance_mode():
     </div>
     """, unsafe_allow_html=True)
 
-# --- 如果是透過管理員登入直接導向，一秒直達後台 ---
+# --- 如果是透過管理員登入直接導向，或是從選單選擇進入管理員後台 ---
 if st.session_state.get("direct_to_admin", False):
     st.markdown("""
     <div class="section-header-box">
@@ -561,8 +561,34 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-app_mode = st.radio("系統操作模式選擇", ["生產個人班表圖片檔", "換班｜尋找指定時段報到組員（Alpha測試版）"], horizontal=False)
+# 💡 在模式選單中加入管理員後台選項
+app_mode = st.radio("系統操作模式選擇", [
+    "生產個人班表圖片檔", 
+    "換班｜尋找指定時段報到組員（Alpha測試版）", 
+    "⚙️ 系統管理員後台控制台 (需密碼解鎖)"
+], horizontal=False)
 st.markdown("---")
+
+# 💡 如果選擇了管理員後台，要求輸入管理員密碼才能解鎖進入
+if app_mode == "⚙️ 系統管理員後台控制台 (需密碼解鎖)":
+    st.markdown("""
+    <div class="section-header-box">
+        <div class="section-title">管理員權限驗證</div>
+        <div class="section-subtitle">Administrator Access Verification</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col_adm1, col_adm2, col_adm3 = st.columns([1, 2, 1])
+    with col_adm2:
+        input_admin_pwd = st.text_input("請輸入管理員密碼", type="password", key="admin_panel_pwd_input")
+        if st.button("解鎖進入管理員後台"):
+            if input_admin_pwd == ADMIN_PASSWORD:
+                st.session_state["direct_to_admin"] = True
+                st.success("驗證成功，正在切換後台...")
+                st.rerun()
+            else:
+                st.error("管理員密碼錯誤")
+    st.stop()
 
 if app_mode == "生產個人班表圖片檔":
     st.markdown("""
