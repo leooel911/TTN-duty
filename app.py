@@ -375,7 +375,21 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# ── 💡 模式選擇並自動下拉至操作區塊 ──
 app_mode = st.radio("系統操作模式選擇", ["生產個人班表圖片檔", "換班｜尋找指定時段報到組員（Alpha測試版）"], horizontal=False)
+
+# 自動捲動至操作區塊的錨點與 JS
+st.markdown('<div id="mode-target"></div>', unsafe_allow_html=True)
+st.markdown("""
+<script>
+    // 當切換模式時自動平滑滾動到操作介面
+    const targetElement = document.getElementById('mode-target');
+    if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+</script>
+""", unsafe_allow_html=True)
+
 st.markdown("---")
 
 if app_mode == "生產個人班表圖片檔":
@@ -386,7 +400,7 @@ if app_mode == "生產個人班表圖片檔":
     </div>
     """, unsafe_allow_html=True)
 
-    # 員編預設帶入 A（明確帶入 value 參數，開啓網頁即可見）
+    # 員編預設帶入 A
     target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value=st.session_state["user_input_field"], key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
@@ -403,7 +417,6 @@ if app_mode == "生產個人班表圖片檔":
                     status_placeholder = st.empty()
                     progress_bar = st.progress(0)
 
-                    # 名字＋的班表繪製中，請稍後...
                     status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
                     progress_bar.progress(30)
                     time.sleep(0.4)
@@ -536,6 +549,17 @@ if app_mode == "生產個人班表圖片檔":
                     progress_bar.progress(100)
                     status_placeholder.empty()
                     progress_bar.empty()
+
+                    # ── 💡 繪圖完畢自動捲動至預覽結果錨點 ──
+                    st.markdown('<div id="result-preview"></div>', unsafe_allow_html=True)
+                    st.markdown("""
+                    <script>
+                        const resultEl = document.getElementById('result-preview');
+                        if (resultEl) {
+                            resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    </script>
+                    """, unsafe_allow_html=True)
 
                     st.success("個人班表圖片生成成功")
                     st.image(buf, use_container_width=True)
