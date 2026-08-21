@@ -172,13 +172,11 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
     
-    /* 完美對稱的 CSS Grid 雙按鈕容器：強制左右 1:1 等寬並排 */
-    .symmetric-buttons {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 12px !important;
-        width: 100% !important;
-        margin-top: 10px !important;
+    /* 讓 Streamlit 的 columns 完美對稱並排按鈕 */
+    [data-testid="column"] {
+        width: calc(50% - 6px) !important;
+        flex: 1 1 calc(50% - 6px) !important;
+        min-width: calc(50% - 6px) !important;
     }
 
     /* 統一按鈕的高質感與外型 */
@@ -191,7 +189,7 @@ st.markdown("""
         border-left: 4px solid #3B82F6 !important;
         color: #38BDF8 !important; 
         width: 100% !important; 
-        margin-top: 0px !important;
+        margin-top: 10px !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
         transition: all 0.25s ease !important;
         letter-spacing: 1px;
@@ -445,11 +443,13 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
         st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
         admin_unlock = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input")
         
-        st.markdown('<div class="symmetric-buttons">', unsafe_allow_html=True)
-        btn_m1 = st.button("進入系統", key="maint_btn_1")
-        st.markdown('<div class="admin-btn-col" style="display:contents;">', unsafe_allow_html=True)
-        btn_m2 = st.button("管理員登入", key="maint_btn_2")
-        st.markdown('</div></div>', unsafe_allow_html=True)
+        b_col1, b_col2 = st.columns(2)
+        with b_col1:
+            btn_m1 = st.button("進入系統", key="maint_btn_1")
+        with b_col2:
+            st.markdown('<div class="admin-btn-col">', unsafe_allow_html=True)
+            btn_m2 = st.button("管理員登入", key="maint_btn_2")
+            st.markdown('</div>', unsafe_allow_html=True)
 
         if btn_m1:
             if admin_unlock == ADMIN_PASSWORD:
@@ -468,7 +468,7 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
                 st.error("管理員密碼錯誤")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查（支援一秒直達後台） ---
+# --- 🔒 前置授權碼門戶檢查（完美左右並排等寬按鈕） ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
@@ -476,11 +476,14 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_byp
     with col2:
         entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
         
-        st.markdown('<div class="symmetric-buttons">', unsafe_allow_html=True)
-        btn_auth = st.button("進入系統", key="auth_btn_1")
-        st.markdown('<div class="admin-btn-col" style="display:contents;">', unsafe_allow_html=True)
-        btn_admin = st.button("管理員登入", key="auth_btn_2")
-        st.markdown('</div></div>', unsafe_allow_html=True)
+        # 使用標準 st.columns(2) 配合 CSS 達到完美對稱
+        b_col1, b_col2 = st.columns(2)
+        with b_col1:
+            btn_auth = st.button("進入系統", key="auth_btn_1")
+        with b_col2:
+            st.markdown('<div class="admin-btn-col">', unsafe_allow_html=True)
+            btn_admin = st.button("管理員登入", key="auth_btn_2")
+            st.markdown('</div>', unsafe_allow_html=True)
 
         if btn_auth:
             if entered_key == CREW_ACCESS_PASSWORD:
