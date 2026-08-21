@@ -78,12 +78,29 @@ st.markdown("""
         font-family: monospace;
     }
 
+    /* 管理員維護解鎖模式識別列 */
+    .admin-bypass-banner {
+        background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);
+        border: 1px solid #EF4444;
+        border-left: 5px solid #F87171;
+        color: #FEE2E2;
+        padding: 10px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-family: monospace;
+        font-size: 13px;
+        font-weight: 700;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
     .telemetry-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); position: relative; overflow: hidden; }
     .telemetry-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #3B82F6; }
     .telemetry-title { color: #94A3B8 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
     .telemetry-value { color: #F8FAFC !important; font-size: 18px; font-weight: 700; font-family: monospace; }
     .telemetry-sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid #334155; font-size: 13px; color: #94A3B8; }
-    .maint-sub { border-top: 1px solid #991B1B !important; color: #FECACA !important; }
     
     .section-header-box { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 5px solid #3B82F6; border-radius: 10px; padding: 16px 20px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .section-title { color: #F8FAFC; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin: 0; }
@@ -91,7 +108,6 @@ st.markdown("""
 
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
     
-    /* 資料卡片：立體感微光互動與左側高亮邊條 */
     .compact-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 4px solid #3B82F6; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5); transform: translateY(-2px); }
 
@@ -99,14 +115,12 @@ st.markdown("""
     .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
     .badge-group { display: flex; gap: 4px; align-items: center; }
     
-    /* 霓虹亮燈標籤樣式 */
     .long-badge { background: rgba(153, 27, 27, 0.4); border: 1px solid #EF4444; color: #FCA5A5; font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
     .non-line-badge { background: rgba(76, 29, 149, 0.4); border: 1px solid #8B5CF6; color: #C4B5FD; font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600; box-shadow: 0 0 8px rgba(139, 92, 246, 0.4); }
     
     .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
     .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
 
-    /* 專業科技感系統選單按鈕 (st.radio 升級) */
     .stRadio > label { display: none !important; }
     .stRadio > div { background: transparent !important; display: flex; flex-direction: column; gap: 12px; }
     .stRadio label { 
@@ -127,7 +141,6 @@ st.markdown("""
         transform: translateY(-2px) !important;
     }
 
-    /* 霓虹藍色進度條與高質感橘色狀態文字 */
     .stProgress > div > div > div > div {
         background: linear-gradient(90deg, #3B82F6 0%, #60A5FA 50%, #93C5FD 100%) !important;
         box-shadow: 0 0 16px rgba(59, 130, 246, 0.9), 0 0 8px rgba(96, 165, 250, 0.7) !important;
@@ -364,22 +377,34 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 🔒 系統維護模式檢查（最高優先級：若開啟維護，任何人進入皆直接阻擋，僅留後台解鎖通道） ---
-if is_maintenance_mode():
-    st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 36px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #94A3B8; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F Operational Intelligence Matrix // 目前暫停開放服務</div></div>""", unsafe_allow_html=True)
+# --- 🔒 系統維護模式檢查（若管理員已解鎖 bypass，則允許預覽） ---
+if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
+    st.markdown("""<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;"><div style="font-size: 34px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #94A3B8; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F OPERATIONAL INTELLIGENCE MATRIX // 目前暫停開放服務</div></div>""", unsafe_allow_html=True)
     
     col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
     with col_m2:
-        st.warning("系統目前正在進行排班資料更新或維護中，請稍候再試。")
+        st.markdown("""<div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; padding: 12px 16px; border-radius: 8px; color: #E2E8F0; font-size: 14px; text-align: center; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
+        
         admin_unlock = st.text_input("管理員解鎖密碼", type="password", key="maint_unlock_input")
-        if admin_unlock == ADMIN_PASSWORD:
-            set_maintenance_mode(False)
-            st.success("已成功解除維護模式，請重新整理頁面")
-            st.rerun()
+        if st.button("以管理員身分預覽系統", use_container_width=True):
+            if admin_unlock == ADMIN_PASSWORD:
+                st.session_state["admin_bypassed"] = True
+                st.success("已進入管理員預覽模式")
+                st.rerun()
+            else:
+                st.error("密碼錯誤")
+        
+        if st.button("關閉維護模式（恢復全體開放）", use_container_width=True):
+            if admin_unlock == ADMIN_PASSWORD:
+                set_maintenance_mode(False)
+                st.success("維護模式已關閉")
+                st.rerun()
+            else:
+                st.error("請先輸入正確的管理員解鎖密碼")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查 ---
-if not st.session_state["authenticated"]:
+# --- 🔒 前置授權碼門戶檢查（若管理員已 bypass 則直接略過） ---
+if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F Edition // Secure Portal</div></div>""", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -402,6 +427,14 @@ st.markdown("""
     <div class="edition-badge">C.L.F EDITION</div>
 </div>
 """, unsafe_allow_html=True)
+
+# 若目前是管理員透過維護模式解鎖進入，顯示頂部專屬預覽狀態列
+if st.session_state.get("admin_bypassed", False) and is_maintenance_mode():
+    st.markdown("""
+    <div class="admin-bypass-banner">
+        <span>[!] ADMIN BYPASS MODE // 目前正處於維護模式預覽中（僅限管理員可見）</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 td_time = get_file_mtime_str(ROLE_FILES["駕駛"])
 tm_time = get_file_mtime_str(ROLE_FILES["列車長"])
@@ -765,6 +798,9 @@ with st.expander("管理員專用：Database"):
         maint_toggle = st.checkbox("暫停開放系統服務 (維護模式)", value=current_maint)
         if maint_toggle != current_maint:
             set_maintenance_mode(maint_toggle)
+            # 如果取消勾選維護模式，順便清除 bypass 狀態
+            if not maint_toggle:
+                st.session_state["admin_bypassed"] = False
             st.rerun()
 
         st.markdown("---")
