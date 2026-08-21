@@ -171,30 +171,18 @@ st.markdown("""
         font-weight: 700;
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
-    
-    /* 完美 1:1 左右等寬並排容器 */
-    .symmetric-btn-container {
-        display: flex !important;
-        gap: 12px !important;
-        width: 100% !important;
-        margin-top: 10px !important;
-    }
-    .symmetric-btn-container > div {
-        flex: 1 !important;
-        min-width: 0 !important;
-    }
 
-    /* 統一按鈕的高質感與外型 */
+    /* 統一按鈕的高質感與外型（強制 100% 寬度完美對齊堆疊） */
     div.stButton > button { 
         font-weight: 700 !important; 
-        padding: 12px 10px !important; 
+        padding: 12px 16px !important; 
         border-radius: 10px !important; 
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
         border: 1px solid #334155 !important;
         border-left: 4px solid #3B82F6 !important;
         color: #38BDF8 !important; 
         width: 100% !important; 
-        margin-top: 0px !important;
+        margin-top: 10px !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
         transition: all 0.25s ease !important;
         letter-spacing: 1px;
@@ -208,12 +196,12 @@ st.markdown("""
         transform: translateY(-2px) !important;
     }
 
-    /* 右側「管理員登入」按鈕的專屬高級琥珀/微紅工業風點綴 */
-    .admin-custom-btn button {
+    /* 「管理員登入」按鈕的專屬高級琥珀/微紅工業風點綴 */
+    .admin-btn button {
         border-left-color: #EF4444 !important;
         color: #FCA5A5 !important;
     }
-    .admin-custom-btn button:hover {
+    .admin-btn button:hover {
         border-left-color: #F87171 !important;
         background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%) !important;
         color: #FFFFFF !important;
@@ -448,14 +436,9 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
         st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
         admin_unlock = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input")
         
-        st.markdown('<div class="symmetric-btn-container">', unsafe_allow_html=True)
-        col_sub1, col_sub2 = st.columns(2)
-        with col_sub1:
-            btn_m1 = st.button("進入系統", key="maint_btn_1")
-        with col_sub2:
-            st.markdown('<div class="admin-custom-btn">', unsafe_allow_html=True)
-            btn_m2 = st.button("管理員登入", key="maint_btn_2")
-            st.markdown('</div>', unsafe_allow_html=True)
+        btn_m1 = st.button("進入系統", key="maint_btn_1")
+        st.markdown('<div class="admin-btn">', unsafe_allow_html=True)
+        btn_m2 = st.button("管理員登入", key="maint_btn_2")
         st.markdown('</div>', unsafe_allow_html=True)
 
         if btn_m1:
@@ -475,7 +458,7 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
                 st.error("管理員密碼錯誤")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查（完美左右並排等寬對稱按鈕與直達後台） ---
+# --- 🔒 前置授權碼門戶檢查（完美的上下堆疊等寬對稱按鈕與直達後台） ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
@@ -483,14 +466,10 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_byp
     with col2:
         entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
         
-        st.markdown('<div class="symmetric-btn-container">', unsafe_allow_html=True)
-        col_sub1, col_sub2 = st.columns(2)
-        with col_sub1:
-            btn_auth = st.button("進入系統", key="auth_btn_1")
-        with col_sub2:
-            st.markdown('<div class="admin-custom-btn">', unsafe_allow_html=True)
-            btn_admin = st.button("管理員登入", key="auth_btn_2")
-            st.markdown('</div>', unsafe_allow_html=True)
+        # 改為上下垂直堆疊，完美等寬、絕對不會歪斜
+        btn_auth = st.button("進入系統", key="auth_btn_1")
+        st.markdown('<div class="admin-btn">', unsafe_allow_html=True)
+        btn_admin = st.button("管理員登入", key="auth_btn_2")
         st.markdown('</div>', unsafe_allow_html=True)
 
         if btn_auth:
