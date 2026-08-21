@@ -38,6 +38,22 @@ st.markdown("""
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
     .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     
+    /* 霓虹藍色進度條與狀態文字 */
+    .stProgress > div > div > div > div {
+        background: linear-gradient(90deg, #3B82F6 0%, #60A5FA 50%, #93C5FD 100%) !important;
+        box-shadow: 0 0 16px rgba(59, 130, 246, 0.9), 0 0 8px rgba(96, 165, 250, 0.7) !important;
+        border-radius: 6px;
+    }
+    .loading-status-text {
+        font-family: monospace;
+        font-size: 14px;
+        color: #60A5FA;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+        font-weight: 700;
+        text-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+    }
+    
     .stRadio > label { display: none !important; }
     .stRadio > div { background: transparent !important; display: flex; flex-direction: column; gap: 10px; }
     .stRadio label { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px !important; padding: 16px 20px !important; width: 100% !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
