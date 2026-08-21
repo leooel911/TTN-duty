@@ -315,7 +315,7 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    app_mode = st.radio("系統操作模式選擇", ["生產個人班表圖片檔", "換班｜尋找指定時段報到組員（Beta測試版）"], horizontal=False)
+    app_mode = st.radio("系統操作模式選擇", ["生產個人班表圖片檔", "換班｜尋找指定時段報到組員（Alpha測試版）"], horizontal=False)
     st.markdown("---")
 
     if app_mode == "生產個人班表圖片檔":
