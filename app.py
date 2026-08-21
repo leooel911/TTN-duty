@@ -73,7 +73,7 @@ st.markdown("""
         transform: translateY(-2px) !important;
     }
 
-    /* 霓虹藍色進度條與狀態文字 */
+    /* 霓虹藍色進度條與高質感橘色狀態文字 */
     .stProgress > div > div > div > div {
         background: linear-gradient(90deg, #3B82F6 0%, #60A5FA 50%, #93C5FD 100%) !important;
         box-shadow: 0 0 16px rgba(59, 130, 246, 0.9), 0 0 8px rgba(96, 165, 250, 0.7) !important;
@@ -82,11 +82,11 @@ st.markdown("""
     .loading-status-text {
         font-family: monospace;
         font-size: 14px;
-        color: #60A5FA;
+        color: #FB923C;
         letter-spacing: 0.5px;
         margin-bottom: 6px;
         font-weight: 700;
-        text-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+        text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
     
     div.stButton > button { font-weight: 700 !important; padding: 16px 24px !important; border-radius: 12px !important; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%) !important; color: #ffffff !important; width: 100% !important; margin-top: 10px; }
@@ -115,58 +115,40 @@ MAINTENANCE_FLAG_FILE = "maintenance.flag"
 LOG_FILE = "activity_log.txt"
 
 def parse_device_info(ua_string):
-    """解析 User-Agent 萃取裝置與系統型號"""
     ua = ua_string.lower()
-    if "iphone" in ua:
-        device = "iPhone"
-    elif "ipad" in ua:
-        device = "iPad"
+    if "iphone" in ua: device = "iPhone"
+    elif "ipad" in ua: device = "iPad"
     elif "android" in ua:
         device = "Android Phone"
         if "build" in ua:
             try:
-                # 嘗試簡單捕捉 Android 型號
                 parts = ua_string.split(";")
                 for p in parts:
                     if "build" in p.lower():
                         device = f"Android ({p.split('Build')[0].strip()})"
             except: pass
-    elif "macintosh" in ua or "mac os" in ua:
-        device = "Mac"
-    elif "windows" in ua:
-        device = "Windows PC"
-    else:
-        device = "Desktop / Other"
+    elif "macintosh" in ua or "mac os" in ua: device = "Mac"
+    elif "windows" in ua: device = "Windows PC"
+    else: device = "Desktop / Other"
 
-    # 辨識瀏覽器
-    if "safari" in ua and "chrome" not in ua and "crios" not in ua:
-        browser = "Safari"
-    elif "chrome" in ua or "crios" in ua:
-        browser = "Chrome"
-    elif "line" in ua:
-        browser = "LINE App"
-    elif "edg" in ua:
-        browser = "Edge"
-    else:
-        browser = "Browser"
+    if "safari" in ua and "chrome" not in ua and "crios" not in ua: browser = "Safari"
+    elif "chrome" in ua or "crios" in ua: browser = "Chrome"
+    elif "line" in ua: browser = "LINE App"
+    elif "edg" in ua: browser = "Edge"
+    else: browser = "Browser"
 
     return f"{device} [{browser}]"
 
 def log_activity(input_str):
     try:
         now_tw = datetime.now(TAIWAN_TZ).strftime('%Y-%m-%d %H:%M:%S')
-        # 取得使用者的 User-Agent 標頭
         ua_raw = ""
-        try:
-            ua_raw = st.context.headers.get("user-agent", "")
-        except:
-            pass
+        try: ua_raw = st.context.headers.get("user-agent", "")
+        except: pass
         
         device_info = parse_device_info(ua_raw) if ua_raw else "未知裝置"
         log_entry = f"{now_tw} | 裝置: {device_info} | 查詢: {input_str}\n"
-        
-        with open(LOG_FILE, "a", encoding="utf-8") as f: 
-            f.write(log_entry)
+        with open(LOG_FILE, "a", encoding="utf-8") as f: f.write(log_entry)
     except: pass
 
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
