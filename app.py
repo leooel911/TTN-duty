@@ -37,7 +37,6 @@ st.markdown("""
     .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 4px 12px rgba(0,0,0,0.4); transform: translateY(-2px); }
     
-    /* 👑 Admin Override 按鈕：懸停時精緻的紅色微光發光特效 */
     .admin-override-btn div.stButton > button {
         border: 1px solid #334155 !important;
         transition: all 0.25s ease !important;
@@ -103,7 +102,7 @@ ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
 
-# 初始化 Session State 狀態（含 A 的預設與空值防護機制）
+# 初始化 Session State 狀態（強制確保每次重新整理時，員編預設帶入 "A"）
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "admin_bypassed" not in st.session_state:
@@ -167,8 +166,7 @@ def is_valid_train_code(tr):
     return bool(re.match(r'^[A-Z]+\d+', tr_clean))
 
 def is_overtime(h, tr, note):
-    if not is_valid_train_code(tr):
-        return False
+    if not is_valid_train_code(tr): return False
     if not h: return False
     try:
         p = str(h).replace("h", ":").replace("m", "").split(":")
@@ -189,12 +187,9 @@ def translate_train_code(tr):
 
 def is_town_shift(tr, note):
     tr_upper = str(tr).strip().upper()
-    if is_valid_train_code(tr_upper):
-        return False
-    if tr_upper in ["PAY", "FAC"]:
-        return False
-    if not tr or tr_upper in ["", "無", "NAN"]:
-        return True
+    if is_valid_train_code(tr_upper): return False
+    if tr_upper in ["PAY", "FAC"]: return False
+    if not tr or tr_upper in ["", "無", "NAN"]: return True
     keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "OGC", "FAC", "DS", "H9", "WRSL"]
     return any(kw in f"{tr_upper} {str(note).upper()}" for kw in keywords)
 
@@ -217,11 +212,9 @@ def parse_cell(raw):
     
     if not real_train:
         non_time_lines = [l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l]
-        if non_time_lines:
-            real_train = non_time_lines[0]
+        if non_time_lines: real_train = non_time_lines[0]
 
     notes = [l for l in lines if l not in times and l != real_train]
-
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
 def process_file_data(input_str):
@@ -331,12 +324,10 @@ if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
     </div>
     """, unsafe_allow_html=True)
     
-    # 👑 企業級專業術語與按鈕發光互動
     st.markdown("<div style='text-align: center; color: #EF4444; font-size: 12px; font-family: monospace; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;'>--- ADMIN OVERRIDE GATEWAY ---</div>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         admin_bypass_input = st.text_input("輸入管理者密碼", type="password", placeholder="請輸入管理者密碼...", label_visibility="collapsed")
-        
         st.markdown('<div class="admin-override-btn">', unsafe_allow_html=True)
         admin_login_clicked = st.button("使用 Admin Override 登入", use_container_width=True, key="admin_override_btn_unique")
         st.markdown('</div>', unsafe_allow_html=True)
@@ -349,10 +340,9 @@ if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
             st.error("認證失敗：管理者密碼不符")
     st.stop()
 
-# --- 🔓 通過授權與維護檢查後的主系統介面 ---
+# --- 🔓 主系統介面 ---
 st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY ENGINE</div><div class="edition-badge">C.L.F Edition</div></div>""", unsafe_allow_html=True)
 
-# 專業的管理員預覽提示橫幅
 if is_maintenance_mode() and st.session_state["admin_bypassed"]:
     st.markdown("""
     <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid #EF4444; border-radius: 8px; padding: 10px 15px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
@@ -378,7 +368,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 💎 專業方塊標題取代預設 Label
 st.markdown("""
 <div class="section-header-box" style="margin-bottom: 12px;">
     <div class="section-title">系統操作模式選擇</div>
@@ -397,7 +386,7 @@ if app_mode == "生產個人班表圖片檔":
     </div>
     """, unsafe_allow_html=True)
 
-    # 員編預設帶入 "A"
+    # 員編預設帶入 A
     target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
@@ -414,7 +403,7 @@ if app_mode == "生產個人班表圖片檔":
                     status_placeholder = st.empty()
                     progress_bar = st.progress(0)
 
-                    # 輸出過程顯示：「名字＋的班表繪製中，請稍後...」
+                    # 名字＋的班表繪製中，請稍後...
                     status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
                     progress_bar.progress(30)
                     time.sleep(0.4)
