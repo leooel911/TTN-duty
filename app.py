@@ -43,11 +43,32 @@ st.markdown("""
     .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
     .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
     
-    .stProgress > div > div > div > div {
-        background: linear-gradient(90deg, #3B82F6 0%, #60A5FA 50%, #93C5FD 100%) !important;
-        box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
-        border-radius: 4px;
+    /* 🚀 彗星子彈尾光特效進度條 */
+    .stProgress > div > div > div {
+        background-color: #1E293B !important;
+        border-radius: 6px;
+        overflow: hidden;
+        border: 1px solid #334155;
     }
+    .stProgress > div > div > div > div {
+        background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, #3B82F6 70%, #60A5FA 90%, #FFFFFF 100%) !important;
+        box-shadow: 0 0 16px rgba(96, 165, 250, 0.8), inset 0 0 6px rgba(255, 255, 255, 0.9);
+        border-radius: 5px;
+        position: relative;
+    }
+    /* 在進度條最前端加上超高亮光頭 */
+    .stProgress > div > div > div > div::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 8px;
+        background: #FFFFFF;
+        box-shadow: 0 0 12px #FFFFFF, 0 0 20px #60A5FA;
+        border-radius: 50%;
+    }
+
     .loading-status-text {
         font-family: monospace;
         font-size: 14px;
@@ -305,7 +326,6 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    # 💎 專業方塊標題取代預設 Label
     st.markdown("""
     <div class="section-header-box" style="margin-bottom: 12px;">
         <div class="section-title">系統操作模式選擇</div>
