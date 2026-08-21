@@ -72,7 +72,7 @@ st.markdown("""
         font-weight: 700; 
         letter-spacing: 1.5px; 
         text-transform: uppercase; 
-        padding: 6px 12px;
+        padding: 8px 14px;
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         font-family: monospace;
@@ -378,14 +378,14 @@ if not st.session_state["authenticated"]:
                 st.error("授權碼錯誤，請重新輸入")
     st.stop()
 
-# --- 🔓 主系統介面 (專業科技感標題區) ---
+# --- 🔓 主系統介面 (專業科技感標題區：無 TTN、純英文創辦人副標、精緻純英文識別膠囊) ---
 st.markdown("""
 <div class="header-container">
     <div class="title-left-group">
         <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
-        <div class="title-subtitle">TTN Operational Intelligence Matrix</div>
+        <div class="title-subtitle">C.L.F OPERATIONAL INTELLIGENCE MATRIX</div>
     </div>
-    <div class="edition-badge">C.L.F // 2026.08</div>
+    <div class="edition-badge">C.L.F EDITION</div>
 </div>
 """, unsafe_allow_html=True)
 
