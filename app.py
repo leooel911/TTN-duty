@@ -553,188 +553,188 @@ if app_mode == "生產個人班表圖片檔":
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-    elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
-        st.markdown("""
-        <div class="section-header-box">
-            <div class="section-title">指定 Sign-In 時段組員名單快篩</div>
-            <div class="section-subtitle">Duty Time Window & Sign-In Filter Matrix</div>
-        </div>
-        """, unsafe_allow_html=True)
+elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
+    st.markdown("""
+    <div class="section-header-box">
+        <div class="section-title">指定 Sign-In 時段組員名單快篩</div>
+        <div class="section-subtitle">Duty Time Window & Sign-In Filter Matrix</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-        selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2)
-        target_path = ROLE_FILES[selected_role]
+    selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2)
+    target_path = ROLE_FILES[selected_role]
 
-        if not os.path.exists(target_path):
-            st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請先至管理員後台上傳")
+    if not os.path.exists(target_path):
+        st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請先至管理員後台上傳")
+    else:
+        df_search = pd.read_excel(target_path, header=3)
+        df_search.columns = [str(c).strip() for c in df_search.columns]
+        
+        date_cols = []
+        for col in df_search.columns[2:]:
+            match_d = re.search(r'(\d+/\d+)', str(col))
+            if match_d: date_cols.append(match_d.group(1))
+
+        if not date_cols:
+            st.error("表中未偵測到有效日期欄位")
         else:
-            df_search = pd.read_excel(target_path, header=3)
-            df_search.columns = [str(c).strip() for c in df_search.columns]
+            dynamic_time_set = set()
+            for _, r_row in df_search.iterrows():
+                for cell_val in r_row.iloc[2:]:
+                    p_temp = parse_cell(cell_val)
+                    if p_temp["start"] and re.match(r'^\d{1,2}:\d{2}$', p_temp["start"]):
+                        dynamic_time_set.add(p_temp["start"])
             
-            date_cols = []
-            for col in df_search.columns[2:]:
-                match_d = re.search(r'(\d+/\d+)', str(col))
-                if match_d: date_cols.append(match_d.group(1))
+            TIME_OPTIONS = sorted(list(dynamic_time_set))
+            if not TIME_OPTIONS:
+                TIME_OPTIONS = ["04:00", "05:00", "06:00", "07:00"]
 
-            if not date_cols:
-                st.error("表中未偵測到有效日期欄位")
+            if selected_role == "駕駛":
+                earliest_default = TIME_OPTIONS[0]
             else:
-                dynamic_time_set = set()
-                for _, r_row in df_search.iterrows():
-                    for cell_val in r_row.iloc[2:]:
-                        p_temp = parse_cell(cell_val)
-                        if p_temp["start"] and re.match(r'^\d{1,2}:\d{2}$', p_temp["start"]):
-                            dynamic_time_set.add(p_temp["start"])
-                
-                TIME_OPTIONS = sorted(list(dynamic_time_set))
-                if not TIME_OPTIONS:
-                    TIME_OPTIONS = ["04:00", "05:00", "06:00", "07:00"]
+                target_default = "05:26"
+                earliest_default = target_default if target_default in TIME_OPTIONS else min(TIME_OPTIONS, key=lambda x: abs(datetime.strptime(x, "%H:%M") - datetime.strptime("05:26", "%H:%M")))
 
-                if selected_role == "駕駛":
-                    earliest_default = TIME_OPTIONS[0]
-                else:
-                    target_default = "05:26"
-                    earliest_default = target_default if target_default in TIME_OPTIONS else min(TIME_OPTIONS, key=lambda x: abs(datetime.strptime(x, "%H:%M") - datetime.strptime("05:26", "%H:%M")))
+            default_min_idx = TIME_OPTIONS.index(earliest_default) if earliest_default in TIME_OPTIONS else 0
 
-                default_min_idx = TIME_OPTIONS.index(earliest_default) if earliest_default in TIME_OPTIONS else 0
+            try:
+                h, m = map(int, earliest_default.split(":"))
+                target_mins = h * 60 + m + 120
+                target_h = (target_mins // 60) % 24
+                target_m = target_mins % 60
+                suggested_end = f"{target_h:02d}:{target_m:02d}"
+                default_max_idx = TIME_OPTIONS.index(suggested_end) if suggested_end in TIME_OPTIONS else min(range(len(TIME_OPTIONS)), key=lambda i: abs(datetime.strptime(TIME_OPTIONS[i], "%H:%M") - datetime.strptime(suggested_end, "%H:%M")))
+            except:
+                default_max_idx = min(default_min_idx + 4, len(TIME_OPTIONS) - 1)
 
+            c1, c2 = st.columns(2)
+            with c1: start_date = st.selectbox("起始日期", date_cols, index=0)
+            
+            start_date_idx = date_cols.index(start_date) if start_date in date_cols else 0
+            with c2: end_date = st.selectbox("結束日期", date_cols, index=start_date_idx)
+
+            c3, c4 = st.columns(2)
+            with c3: 
+                min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
+            with c4: 
+                max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx, key="max_time_selectbox")
+
+            filter_col1, filter_col2 = st.columns(2)
+            with filter_col1:
+                only_main_line = st.checkbox("僅顯示正線勤務", value=False)
+            with filter_col2:
+                only_long_shift = st.checkbox("僅顯示長班 (>8.5h)", value=False)
+
+            if st.button("開始區間檢索符合條件人員"):
                 try:
-                    h, m = map(int, earliest_default.split(":"))
-                    target_mins = h * 60 + m + 120
-                    target_h = (target_mins // 60) % 24
-                    target_m = target_mins % 60
-                    suggested_end = f"{target_h:02d}:{target_m:02d}"
-                    default_max_idx = TIME_OPTIONS.index(suggested_end) if suggested_end in TIME_OPTIONS else min(range(len(TIME_OPTIONS)), key=lambda i: abs(datetime.strptime(TIME_OPTIONS[i], "%H:%M") - datetime.strptime(suggested_end, "%H:%M")))
-                except:
-                    default_max_idx = min(default_min_idx + 4, len(TIME_OPTIONS) - 1)
+                    s_idx = date_cols.index(start_date)
+                    e_idx = date_cols.index(end_date)
+                    target_dates = date_cols[s_idx:e_idx+1] if s_idx <= e_idx else []
+                except: target_dates = []
 
-                c1, c2 = st.columns(2)
-                with c1: start_date = st.selectbox("起始日期", date_cols, index=0)
-                
-                start_date_idx = date_cols.index(start_date) if start_date in date_cols else 0
-                with c2: end_date = st.selectbox("結束日期", date_cols, index=start_date_idx)
+                if not target_dates:
+                    st.warning("起始日期不可大於結束日期")
+                else:
+                    search_results = []
+                    all_cols_list = list(df_search.columns[2:])
 
-                c3, c4 = st.columns(2)
-                with c3: 
-                    min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
-                with c4: 
-                    max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx, key="max_time_selectbox")
-
-                filter_col1, filter_col2 = st.columns(2)
-                with filter_col1:
-                    only_main_line = st.checkbox("僅顯示正線勤務", value=False)
-                with filter_col2:
-                    only_long_shift = st.checkbox("僅顯示長班 (>8.5h)", value=False)
-
-                if st.button("開始區間檢索符合條件人員"):
-                    try:
-                        s_idx = date_cols.index(start_date)
-                        e_idx = date_cols.index(end_date)
-                        target_dates = date_cols[s_idx:e_idx+1] if s_idx <= e_idx else []
-                    except: target_dates = []
-
-                    if not target_dates:
-                        st.warning("起始日期不可大於結束日期")
-                    else:
-                        search_results = []
-                        all_cols_list = list(df_search.columns[2:])
-
-                        for _, row in df_search.iterrows():
-                            emp_id = str(row.iloc[0]).strip()
-                            emp_name = str(row.iloc[1]).strip()
-                            
-                            for d_str in target_dates:
-                                target_col_idx = -1
-                                actual_col_pos = -1
-                                for idx, col in enumerate(all_cols_list):
-                                    if d_str in str(col):
-                                        target_col_idx = idx + 2
-                                        actual_col_pos = idx
-                                        break
-                                
-                                if target_col_idx != -1:
-                                    cell_raw = row.iloc[target_col_idx]
-                                    parsed = parse_cell(cell_raw)
-                                    start_t = parsed["start"]
-                                    
-                                    if start_t and min_time <= start_t <= max_time:
-                                        is_non_line = is_town_shift(parsed["train"], parsed["note"])
-                                        is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
-                                        
-                                        if only_main_line and is_non_line:
-                                            continue
-                                        
-                                        if only_long_shift and not is_long:
-                                            continue
-
-                                        next_day_sign_in = "無記錄"
-                                        if actual_col_pos + 1 < len(all_cols_list):
-                                            next_cell_raw = row.iloc[target_col_idx + 1]
-                                            next_parsed = parse_cell(next_cell_raw)
-                                            if next_parsed["start"]: next_day_sign_in = next_parsed["start"]
-                                            elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
-                                        
-                                        search_results.append({
-                                            "日期": d_str,
-                                            "員編": emp_id,
-                                            "姓名": emp_name,
-                                            "Sign-In": start_t,
-                                            "收工時間": parsed["end"],
-                                            "車次": translate_train_code(parsed["train"]),
-                                            "隔日Sign-In": next_day_sign_in,
-                                            "長班": is_long,
-                                            "非正線": is_non_line
-                                        })
-
-                        search_results = sorted(
-                            search_results, 
-                            key=lambda x: (
-                                date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, 
-                                str(x["Sign-In"]), 
-                                str(x["收工時間"]), 
-                                str(x["員編"])
-                            )
-                        )
-
-                        st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ 區間 {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
+                    for _, row in df_search.iterrows():
+                        emp_id = str(row.iloc[0]).strip()
+                        emp_name = str(row.iloc[1]).strip()
                         
-                        if search_results:
-                            current_date_group = None
-                            c_col1, c_col2 = None, None
-                            col_idx = 0 
+                        for d_str in target_dates:
+                            target_col_idx = -1
+                            actual_col_pos = -1
+                            for idx, col in enumerate(all_cols_list):
+                                if d_str in str(col):
+                                    target_col_idx = idx + 2
+                                    actual_col_pos = idx
+                                    break
                             
-                            for r in search_results:
-                                if r["日期"] != current_date_group:
-                                    current_date_group = r["日期"]
-                                    st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
-                                    c_col1, c_col2 = st.columns(2)
-                                    col_idx = 0 
+                            if target_col_idx != -1:
+                                cell_raw = row.iloc[target_col_idx]
+                                parsed = parse_cell(cell_raw)
+                                start_t = parsed["start"]
                                 
-                                badges_html = '<div class="badge-group">'
-                                if r['長班']:
-                                    badges_html += '<span class="long-badge">●長班</span>'
-                                if r['非正線']:
-                                    badges_html += '<span class="non-line-badge">非正線</span>'
-                                badges_html += '</div>'
-                                
-                                card_html = f"""
-                                <div class="compact-card">
-                                    <div class="time-header-row">
-                                        <span class="compact-time">{r['Sign-In']} ➔ {r['收工時間']}</span>
-                                        {badges_html}
-                                    </div>
-                                    <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
-                                    <div class="compact-sub">班別: {r['車次']}</div>
-                                    <div class="compact-sub">隔日勤務時間: {r['隔日Sign-In']}</div>
+                                if start_t and min_time <= start_t <= max_time:
+                                    is_non_line = is_town_shift(parsed["train"], parsed["note"])
+                                    is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
+                                    
+                                    if only_main_line and is_non_line:
+                                        continue
+                                    
+                                    if only_long_shift and not is_long:
+                                        continue
+
+                                    next_day_sign_in = "無記錄"
+                                    if actual_col_pos + 1 < len(all_cols_list):
+                                        next_cell_raw = row.iloc[target_col_idx + 1]
+                                        next_parsed = parse_cell(next_cell_raw)
+                                        if next_parsed["start"]: next_day_sign_in = next_parsed["start"]
+                                        elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
+                                    
+                                    search_results.append({
+                                        "日期": d_str,
+                                        "員編": emp_id,
+                                        "姓名": emp_name,
+                                        "Sign-In": start_t,
+                                        "收工時間": parsed["end"],
+                                        "車次": translate_train_code(parsed["train"]),
+                                        "隔日Sign-In": next_day_sign_in,
+                                        "長班": is_long,
+                                        "非正線": is_non_line
+                                    })
+
+                    search_results = sorted(
+                        search_results, 
+                        key=lambda x: (
+                            date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, 
+                            str(x["Sign-In"]), 
+                            str(x["收工時間"]), 
+                            str(x["員編"])
+                        )
+                    )
+
+                    st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ 區間 {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
+                    
+                    if search_results:
+                        current_date_group = None
+                        c_col1, c_col2 = None, None
+                        col_idx = 0 
+                        
+                        for r in search_results:
+                            if r["日期"] != current_date_group:
+                                current_date_group = r["日期"]
+                                st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
+                                c_col1, c_col2 = st.columns(2)
+                                col_idx = 0 
+                            
+                            badges_html = '<div class="badge-group">'
+                            if r['長班']:
+                                badges_html += '<span class="long-badge">●長班</span>'
+                            if r['非正線']:
+                                badges_html += '<span class="non-line-badge">非正線</span>'
+                            badges_html += '</div>'
+                            
+                            card_html = f"""
+                            <div class="compact-card">
+                                <div class="time-header-row">
+                                    <span class="compact-time">{r['Sign-In']} ➔ {r['收工時間']}</span>
+                                    {badges_html}
                                 </div>
-                                """
-                                
-                                if col_idx % 2 == 0:
-                                    with c_col1: st.markdown(card_html, unsafe_allow_html=True)
-                                else:
-                                    with c_col2: st.markdown(card_html, unsafe_allow_html=True)
-                                col_idx += 1
-                        else:
-                            st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
+                                <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
+                                <div class="compact-sub">班別: {r['車次']}</div>
+                                <div class="compact-sub">隔日勤務時間: {r['隔日Sign-In']}</div>
+                            </div>
+                            """
+                            
+                            if col_idx % 2 == 0:
+                                with c_col1: st.markdown(card_html, unsafe_allow_html=True)
+                            else:
+                                with c_col2: st.markdown(card_html, unsafe_allow_html=True)
+                            col_idx += 1
+                    else:
+                        st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 # --- 管理員專用：Database 區塊 ---
 st.markdown("---")
