@@ -102,10 +102,13 @@ ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
 
+# --- 初始化 Session State 狀態 ---
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "admin_bypassed" not in st.session_state:
     st.session_state["admin_bypassed"] = False
+
+# 強制確保預設值邏輯：預設帶入 "A"
 if "user_input_field" not in st.session_state:
     st.session_state["user_input_field"] = "A"
 
@@ -385,6 +388,7 @@ if app_mode == "生產個人班表圖片檔":
     </div>
     """, unsafe_allow_html=True)
 
+    # 確保預設帶入 "A"，且透過 session_state 同步
     target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A", key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
@@ -535,18 +539,6 @@ if app_mode == "生產個人班表圖片檔":
                     progress_bar.empty()
 
                     st.success("個人班表圖片生成成功")
-                    
-                    # 畫面自動上拉至圖片頂端錨點
-                    st.markdown('<div id="result-anchor"></div>', unsafe_allow_html=True)
-                    st.components.v1.html("""
-                        <script>
-                            window.parent.document.querySelector('#result-anchor').scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'start'
-                            });
-                        </script>
-                    """, height=0)
-
                     st.image(buf, use_container_width=True)
                     st.info("提醒：長按上方的班表圖片即可一鍵存入手機相簿")
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
