@@ -382,7 +382,6 @@ app_mode = st.radio("系統操作模式選擇", ["生產個人班表圖片檔", 
 st.markdown('<div id="mode-target"></div>', unsafe_allow_html=True)
 st.markdown("""
 <script>
-    // 當切換模式時自動平滑滾動到操作介面
     const targetElement = document.getElementById('mode-target');
     if (targetElement) {
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -550,13 +549,13 @@ if app_mode == "生產個人班表圖片檔":
                     status_placeholder.empty()
                     progress_bar.empty()
 
-                    # ── 💡 繪圖完畢自動捲動至預覽結果錨點 ──
+                    # ── 💡 將生成完畢的自動捲動錨點改到圖片正上方（讓整張圖完整置中呈現） ──
                     st.markdown('<div id="result-preview"></div>', unsafe_allow_html=True)
                     st.markdown("""
                     <script>
                         const resultEl = document.getElementById('result-preview');
                         if (resultEl) {
-                            resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            resultEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                     </script>
                     """, unsafe_allow_html=True)
