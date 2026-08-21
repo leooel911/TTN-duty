@@ -37,14 +37,15 @@ st.markdown("""
     .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 4px 12px rgba(0,0,0,0.4); transform: translateY(-2px); }
     
-    /* 👑 管理員專用通道卡片：帶有與茶班表相同的懸停微光發光特效 */
+    /* 👑 完美包覆管理員通道：滑鼠移過去會發光的精緻面板 */
     .admin-override-box {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
         border: 1px solid #334155;
         border-left: 4px solid #EF4444;
         border-radius: 12px;
-        padding: 20px;
-        margin-top: 20px;
+        padding: 24px;
+        margin: 2rem auto;
+        max-width: 600px;
         box-shadow: 0 4px 16px rgba(0,0,0,0.4);
         transition: all 0.25s ease;
     }
@@ -328,7 +329,7 @@ if not st.session_state["authenticated"]:
 # --- 🛠️ 維護模式攔截與管理員預覽通道 ---
 if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
     st.markdown("""
-    <div class="telemetry-card" style="border: 1px solid #EF4444; background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%); max-width: 600px; margin: 4rem auto 2rem auto; text-align: center; padding: 30px;">
+    <div class="telemetry-card" style="border: 1px solid #EF4444; background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%); max-width: 600px; margin: 2rem auto; text-align: center; padding: 30px;">
         <div class="telemetry-title" style="color: #FCA5A5; font-size: 14px;">SYSTEM MAINTENANCE</div>
         <div class="telemetry-value" style="color: #FEE2E2; font-size: 24px; margin-top: 8px;">系統目前正在進行例行維護</div>
         <div class="telemetry-sub maint-sub" style="margin-top: 15px; font-size: 14px;">
@@ -337,7 +338,7 @@ if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
     </div>
     """, unsafe_allow_html=True)
     
-    # 👑 將整個管理員輸入區塊包覆在 .admin-override-box 中，滑鼠移過去時就會像茶班表一樣有精緻的紅色微光外框！
+    # 👑 將標題、輸入框與按鈕全部完美整合進同一個發光面板中
     st.markdown('<div class="admin-override-box">', unsafe_allow_html=True)
     st.markdown("<div style='text-align: center; color: #EF4444; font-size: 12px; font-family: monospace; margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;'>--- Admin Override Gateway ---</div>", unsafe_allow_html=True)
     
