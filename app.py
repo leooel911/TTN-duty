@@ -108,9 +108,9 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "admin_bypassed" not in st.session_state:
     st.session_state["admin_bypassed"] = False
-# 初始化預設帶入的 A 使用者員編（可依需求修改預設字串）
+# 首次進入系統時預設帶入 "A"
 if "user_input_field" not in st.session_state:
-    st.session_state["user_input_field"] = "A023300"
+    st.session_state["user_input_field"] = "A"
 
 def get_file_mtime_str(path):
     if os.path.exists(path):
@@ -398,7 +398,7 @@ if app_mode == "生產個人班表圖片檔":
     </div>
     """, unsafe_allow_html=True)
 
-    # 綁定 st.session_state["user_input_field"]，既可預設帶入 A 開頭員編，又能自由切換查詢其他使用者
+    # 員編預設帶入 "A"
     target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
@@ -415,7 +415,8 @@ if app_mode == "生產個人班表圖片檔":
                     status_placeholder = st.empty()
                     progress_bar = st.progress(0)
 
-                    status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」班表製造中，請稍後...</div>', unsafe_allow_html=True)
+                    # 輸出過程顯示：「名字＋的班表繪製中，請稍後...」
+                    status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
                     progress_bar.progress(30)
                     time.sleep(0.4)
 
