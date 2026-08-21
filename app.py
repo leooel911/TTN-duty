@@ -172,15 +172,8 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
     
-    /* 隱藏 Streamlit 表單預設邊框 */
-    [data-testid="stForm"] {
-        background: transparent !important;
-        border: none !important;
-        padding: 0 !important;
-    }
-
-    /* 完美對稱的 CSS Grid 按鈕排版容器 */
-    .symmetric-btn-row {
+    /* 完美對稱的 CSS Grid 雙按鈕容器：強制左右 1:1 等寬並排 */
+    .symmetric-buttons {
         display: grid !important;
         grid-template-columns: 1fr 1fr !important;
         gap: 12px !important;
@@ -188,8 +181,8 @@ st.markdown("""
         margin-top: 10px !important;
     }
 
-    /* 俐落、精緻、等寬對稱的科技質感按鈕 */
-    div.stButton > button, [data-testid="stFormSubmitButton"] > button { 
+    /* 統一按鈕的高質感與外型 */
+    div.stButton > button { 
         font-weight: 700 !important; 
         padding: 12px 16px !important; 
         border-radius: 10px !important; 
@@ -203,7 +196,7 @@ st.markdown("""
         transition: all 0.25s ease !important;
         letter-spacing: 1px;
     }
-    div.stButton > button:hover, [data-testid="stFormSubmitButton"] > button:hover {
+    div.stButton > button:hover {
         border-color: #38BDF8 !important;
         border-left-color: #38BDF8 !important;
         color: #FFFFFF !important;
@@ -212,12 +205,12 @@ st.markdown("""
         transform: translateY(-2px) !important;
     }
 
-    /* 右側管理員登入按鈕的專屬精緻色調（琥珀/微紅工業風） */
-    .admin-action-btn button {
+    /* 右側「管理員登入」按鈕的專屬高級琥珀/微紅工業風點綴 */
+    .admin-btn-col button {
         border-left-color: #EF4444 !important;
         color: #FCA5A5 !important;
     }
-    .admin-action-btn button:hover {
+    .admin-btn-col button:hover {
         border-left-color: #F87171 !important;
         background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%) !important;
         color: #FFFFFF !important;
@@ -442,57 +435,58 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 🔒 系統維護模式檢查（完美對稱 Grid 佈局） ---
+# --- 🔒 系統維護模式檢查（完美等寬對稱佈局） ---
 if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
     st.markdown("""<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;"><div style="font-size: 34px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
     col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
     with col_m2:
         st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
-        with st.form("maint_form"):
-            admin_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input")
-            st.markdown('<div class="symmetric-btn-row">', unsafe_allow_html=True)
-            submitted_maint = st.form_submit_button("進入系統")
-            submitted_admin_bypass = st.form_submit_button("管理員登入")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            if submitted_maint or submitted_admin_bypass:
-                if admin_unlock == ADMIN_PASSWORD:
-                    st.session_state["admin_bypassed"] = True
-                    st.success("管理員身分驗證成功")
-                    st.rerun()
-                else:
-                    st.error("密碼錯誤")
+        admin_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input")
+        
+        st.markdown('<div class="symmetric-buttons">', unsafe_allow_html=True)
+        btn_m1 = st.button("進入系統", key="maint_btn_1")
+        st.markdown('<div class="admin-btn-col" style="display:contents;">', unsafe_allow_html=True)
+        btn_m2 = st.button("管理員登入", key="maint_btn_2")
+        st.markdown('</div></div>', unsafe_allow_html=True)
+
+        if btn_m1 or btn_m2:
+            if admin_unlock == ADMIN_PASSWORD:
+                st.session_state["admin_bypassed"] = True
+                st.success("管理員身分驗證成功")
+                st.rerun()
+            else:
+                st.error("密碼錯誤")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查（完美對稱 Grid 佈局，完美對齊與支援 Enter） ---
+# --- 🔒 前置授權碼門戶檢查（完美的左右對稱雙按鈕佈局） ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        with st.form("auth_form"):
-            entered_key = st.text_input("系統授權碼", type="password", placeholder="請輸入授權碼...", label_visibility="collapsed")
-            
-            # 使用 CSS Grid 實現絕對對稱的雙按鈕
-            st.markdown('<div class="symmetric-btn-row">', unsafe_allow_html=True)
-            submitted_auth = st.form_submit_button("進入系統")
-            submitted_admin_shortcut = st.form_submit_button("管理員登入")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            if submitted_auth:
-                if entered_key == CREW_ACCESS_PASSWORD:
-                    st.session_state["authenticated"] = True
-                    st.rerun()
-                else:
-                    st.error("授權碼錯誤，請重新輸入")
-            elif submitted_admin_shortcut:
-                if entered_key == ADMIN_PASSWORD:
-                    st.session_state["admin_bypassed"] = True
-                    st.success("管理員身分驗證成功")
-                    st.rerun()
-                else:
-                    st.error("管理員密碼錯誤")
+        entered_key = st.text_input("系統授權碼", type="password", placeholder="請輸入授權碼...", label_visibility="collapsed")
+        
+        # 使用 CSS Grid 完美對稱並排兩顆按鈕
+        st.markdown('<div class="symmetric-buttons">', unsafe_allow_html=True)
+        btn_auth = st.button("進入系統", key="auth_btn_1")
+        st.markdown('<div class="admin-btn-col" style="display:contents;">', unsafe_allow_html=True)
+        btn_admin = st.button("管理員登入", key="auth_btn_2")
+        st.markdown('</div></div>', unsafe_allow_html=True)
+
+        if btn_auth:
+            if entered_key == CREW_ACCESS_PASSWORD:
+                st.session_state["authenticated"] = True
+                st.rerun()
+            else:
+                st.error("授權碼錯誤，請重新輸入")
+        elif btn_admin:
+            if entered_key == ADMIN_PASSWORD:
+                st.session_state["admin_bypassed"] = True
+                st.success("管理員身分驗證成功")
+                st.rerun()
+            else:
+                st.error("管理員密碼錯誤")
     st.stop()
 
 # --- 🔓 主系統介面 (專業科技感標題區) ---
