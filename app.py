@@ -37,9 +37,9 @@ st.markdown("""
 
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
     
-    /* 完整精緻的卡片微光互動與左側高亮邊框 */
-    .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 4px solid #3B82F6; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-    .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 4px 12px rgba(0,0,0,0.4); transform: translateY(-2px); }
+    /* 資料卡片：立體感微光互動與左側高亮邊條 */
+    .compact-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 4px solid #3B82F6; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5); transform: translateY(-2px); }
 
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
@@ -51,6 +51,27 @@ st.markdown("""
     
     .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
     .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
+
+    /* 專業科技感系統選單按鈕 (st.radio 升級) */
+    .stRadio > label { display: none !important; }
+    .stRadio > div { background: transparent !important; display: flex; flex-direction: column; gap: 12px; }
+    .stRadio label { 
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
+        border: 1px solid #334155 !important; 
+        border-left: 4px solid #3B82F6 !important; 
+        border-radius: 10px !important; 
+        padding: 16px 20px !important; 
+        width: 100% !important; 
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        transition: all 0.25s ease !important;
+        cursor: pointer !important;
+    }
+    .stRadio label:hover {
+        border-color: #38BDF8 !important;
+        border-left-color: #38BDF8 !important;
+        box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5) !important;
+        transform: translateY(-2px) !important;
+    }
 
     /* 霓虹藍色進度條與狀態文字 */
     .stProgress > div > div > div > div {
@@ -67,10 +88,6 @@ st.markdown("""
         font-weight: 700;
         text-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
     }
-    
-    .stRadio > label { display: none !important; }
-    .stRadio > div { background: transparent !important; display: flex; flex-direction: column; gap: 10px; }
-    .stRadio label { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px !important; padding: 16px 20px !important; width: 100% !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
     
     div.stButton > button { font-weight: 700 !important; padding: 16px 24px !important; border-radius: 12px !important; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%) !important; color: #ffffff !important; width: 100% !important; margin-top: 10px; }
 </style>
