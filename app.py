@@ -108,6 +108,9 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "admin_bypassed" not in st.session_state:
     st.session_state["admin_bypassed"] = False
+# 初始化預設帶入的 A 使用者員編（可依需求修改預設字串）
+if "user_input_field" not in st.session_state:
+    st.session_state["user_input_field"] = "A023300"
 
 def get_file_mtime_str(path):
     if os.path.exists(path):
@@ -395,7 +398,7 @@ if app_mode == "生產個人班表圖片檔":
     </div>
     """, unsafe_allow_html=True)
 
-    # 修正：不使用預設固定 value 強制綁定，讓輸入框由元件本身獨立管理
+    # 綁定 st.session_state["user_input_field"]，既可預設帶入 A 開頭員編，又能自由切換查詢其他使用者
     target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
