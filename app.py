@@ -69,6 +69,17 @@ st.markdown("""
     
     .stTextInput input { font-size: 18px !important; padding: 14px 16px !important; border-radius: 10px !important; background-color: #1E293B !important; color: #F8FAFC !important; border: 1px solid #475569 !important; }
     div.stButton > button { font-size: 18px !important; font-weight: 700 !important; padding: 16px 24px !important; border-radius: 12px !important; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 50%, #1D4ED8 100%) !important; color: #ffffff !important; width: 100% !important; margin-top: 10px; }
+    
+    /* 👑 管理員覆寫按鈕專用特殊樣式：高質感深紅/琥珀漸層，與一般按鈕區隔 */
+    div.admin-override-btn div.stButton > button {
+        background: linear-gradient(135deg, #DC2626 0%, #991B1B 50%, #7F1D1D 100%) !important;
+        border: 1px solid #EF4444 !important;
+        box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4);
+    }
+    div.admin-override-btn div.stButton > button:hover {
+        background: linear-gradient(135deg, #EF4444 0%, #DC2626 50%, #991B1B 100%) !important;
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -325,7 +336,13 @@ if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         admin_bypass_input = st.text_input("管理員授權覆寫", type="password", placeholder="請輸入管理員密碼...", label_visibility="collapsed")
-        if st.button("略過維護模式預覽", use_container_width=True):
+        
+        # 使用 div 包裹以便透過 CSS 精準套用特殊的深紅/琥珀管理員按鈕樣式
+        st.markdown('<div class="admin-override-btn">', unsafe_allow_html=True)
+        admin_login_clicked = st.button("進入系統後台預覽", use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        if admin_login_clicked:
             if admin_bypass_input == ADMIN_PASSWORD:
                 st.session_state["admin_bypassed"] = True
                 st.rerun()
