@@ -545,11 +545,19 @@ if app_mode == "生產個人班表圖片檔":
                 except Exception as e: st.error(f"錯誤：{e}")
 
 elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
-    # 注入 JavaScript 自動平滑捲動到畫面頂端
+    # 透過 JavaScript 抓取該標題區塊並精準置頂顯示
     st.components.v1.html("""
         <script>
             const doc = window.parent.document;
-            doc.querySelector('.main').scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => {
+                const headers = doc.querySelectorAll('.section-header-box');
+                for (let h of headers) {
+                    if (h.innerText.includes('指定 Sign-In 時段組員名單快篩')) {
+                        h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        break;
+                    }
+                }
+            }, 100);
         </script>
     """, height=0)
 
