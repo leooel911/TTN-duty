@@ -19,7 +19,7 @@ st.markdown("""
     .stApp { background-color: #0B0F19 !important; color: #F8FAFC !important; }
     .block-container { padding: 3rem 1rem !important; }
     /* 捲動定位錨點：調整 top 的數值即可控制停在畫面的高低位置 */
-    .scroll-anchor { position: relative; top: -120px; visibility: hidden; }
+    .scroll-anchor { position: relative; top: -160px; visibility: hidden; }
     
     .header-container { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 1rem; }
     .main-title { color: #F8FAFC !important; font-size: 26px; font-weight: 800; letter-spacing: 0.5px; margin: 0; }
