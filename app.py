@@ -78,6 +78,22 @@ st.markdown("""
         font-family: monospace;
     }
 
+    /* 維護公告不換行樣式 */
+    .maintenance-msg-box {
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border: 1px solid #334155;
+        padding: 14px 20px;
+        border-radius: 8px;
+        color: #E2E8F0;
+        font-size: 14px;
+        text-align: center;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     /* 管理員維護解鎖模式識別列 */
     .admin-bypass-banner {
         background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);
@@ -377,30 +393,22 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 🔒 系統維護模式檢查（若管理員已解鎖 bypass，則允許預覽） ---
+# --- 🔒 系統維護模式檢查（若管理員已 bypass 則允許預覽） ---
 if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
-    st.markdown("""<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;"><div style="font-size: 34px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #94A3B8; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F OPERATIONAL INTELLIGENCE MATRIX // 目前暫停開放服務</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;"><div style="font-size: 34px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div></div>""", unsafe_allow_html=True)
     
     col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
     with col_m2:
-        st.markdown("""<div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; padding: 12px 16px; border-radius: 8px; color: #E2E8F0; font-size: 14px; text-align: center; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
         
         admin_unlock = st.text_input("管理員解鎖密碼", type="password", key="maint_unlock_input")
-        if st.button("以管理員身分預覽系統", use_container_width=True):
+        if st.button("管理員身分登入 (ADMIN LOGIN)", use_container_width=True):
             if admin_unlock == ADMIN_PASSWORD:
                 st.session_state["admin_bypassed"] = True
-                st.success("已進入管理員預覽模式")
+                st.success("管理員身分驗證成功")
                 st.rerun()
             else:
                 st.error("密碼錯誤")
-        
-        if st.button("關閉維護模式（恢復全體開放）", use_container_width=True):
-            if admin_unlock == ADMIN_PASSWORD:
-                set_maintenance_mode(False)
-                st.success("維護模式已關閉")
-                st.rerun()
-            else:
-                st.error("請先輸入正確的管理員解鎖密碼")
     st.stop()
 
 # --- 🔒 前置授權碼門戶檢查（若管理員已 bypass 則直接略過） ---
@@ -798,10 +806,17 @@ with st.expander("管理員專用：Database"):
         maint_toggle = st.checkbox("暫停開放系統服務 (維護模式)", value=current_maint)
         if maint_toggle != current_maint:
             set_maintenance_mode(maint_toggle)
-            # 如果取消勾選維護模式，順便清除 bypass 狀態
             if not maint_toggle:
                 st.session_state["admin_bypassed"] = False
             st.rerun()
+        
+        # 內部的關閉維護模式快速按鈕
+        if current_maint:
+            if st.button("解除維護模式（恢復全體開放）"):
+                set_maintenance_mode(False)
+                st.session_state["admin_bypassed"] = False
+                st.success("維護模式已解除")
+                st.rerun()
 
         st.markdown("---")
         st.subheader("管理員檔案上傳區")
