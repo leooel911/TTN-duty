@@ -375,20 +375,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── 💡 模式選擇並自動下拉至操作區塊 ──
 app_mode = st.radio("系統操作模式選擇", ["生產個人班表圖片檔", "換班｜尋找指定時段報到組員（Alpha測試版）"], horizontal=False)
-
-# 自動捲動至操作區塊的錨點與 JS
-st.markdown('<div id="mode-target"></div>', unsafe_allow_html=True)
-st.markdown("""
-<script>
-    const targetElement = document.getElementById('mode-target');
-    if (targetElement) {
-        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-</script>
-""", unsafe_allow_html=True)
-
 st.markdown("---")
 
 if app_mode == "生產個人班表圖片檔":
@@ -399,8 +386,8 @@ if app_mode == "生產個人班表圖片檔":
     </div>
     """, unsafe_allow_html=True)
 
-    # 員編預設帶入 A
-    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value=st.session_state["user_input_field"], key="user_input_field")
+    # 修正：移除 value 參數，由 st.session_state["user_input_field"] 統一管理
+    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
         current_input = st.session_state.get("user_input_field", "").strip()
@@ -548,17 +535,6 @@ if app_mode == "生產個人班表圖片檔":
                     progress_bar.progress(100)
                     status_placeholder.empty()
                     progress_bar.empty()
-
-                    # ── 💡 將捲動錨點放在成功訊息的正上方，並改用 block: 'start' 確保整張圖片頂部完整置頂對齊 ──
-                    st.markdown('<div id="result-preview" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
-                    st.markdown("""
-                    <script>
-                        const resultEl = document.getElementById('result-preview');
-                        if (resultEl) {
-                            resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                    </script>
-                    """, unsafe_allow_html=True)
 
                     st.success("個人班表圖片生成成功")
                     st.image(buf, use_container_width=True)
