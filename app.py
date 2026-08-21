@@ -37,7 +37,7 @@ st.markdown("""
     .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 4px 12px rgba(0,0,0,0.4); transform: translateY(-2px); }
     
-    /* 👑 讓管理員專用按鈕在滑鼠移過去時，像茶班表一樣亮起紅燈外框與微光發光特效 */
+    /* 👑 企業級管理員按鈕：滑鼠懸停時精緻的紅色微光發光特效 */
     .admin-override-btn div.stButton > button {
         border: 1px solid #334155 !important;
         transition: all 0.25s ease !important;
@@ -326,19 +326,19 @@ if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
         <div class="telemetry-title" style="color: #FCA5A5; font-size: 14px;">SYSTEM MAINTENANCE</div>
         <div class="telemetry-value" style="color: #FEE2E2; font-size: 24px; margin-top: 8px;">系統目前正在進行例行維護</div>
         <div class="telemetry-sub maint-sub" style="margin-top: 15px; font-size: 14px;">
-            管理員正在更新排班資料或進行系統維護，請稍後再試。
+            系統維護中，一般使用者存取已暫時掛載。管理者可透過授權憑證進行通道覆寫。
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # 👑 將按鈕包覆在 .admin-override-btn 中，只有按鈕本身在 Hover 時會亮紅燈發光！
-    st.markdown("<div style='text-align: center; color: #EF4444; font-size: 12px; font-family: monospace; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;'>--- Admin Override Gateway ---</div>", unsafe_allow_html=True)
+    # 👑 企業級專業術語與按鈕發光互動
+    st.markdown("<div style='text-align: center; color: #EF4444; font-size: 12px; font-family: monospace; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;'>--- ADMIN OVERRIDE GATEWAY ---</div>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
-        admin_bypass_input = st.text_input("管理員授權覆寫", type="password", placeholder="請輸入管理員密碼...", label_visibility="collapsed")
+        admin_bypass_input = st.text_input("管理者憑證金鑰", type="password", placeholder="請輸入管理者存取金鑰...", label_visibility="collapsed")
         
         st.markdown('<div class="admin-override-btn">', unsafe_allow_html=True)
-        admin_login_clicked = st.button("進入系統後台預覽", use_container_width=True, key="admin_override_btn_unique")
+        admin_login_clicked = st.button("執行通道覆寫並進入管理後台", use_container_width=True, key="admin_override_btn_unique")
         st.markdown('</div>', unsafe_allow_html=True)
 
     if admin_login_clicked:
@@ -346,7 +346,7 @@ if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
             st.session_state["admin_bypassed"] = True
             st.rerun()
         else:
-            st.error("管理員認證失敗")
+            st.error("認證失敗：管理者憑證金鑰不符")
     st.stop()
 
 # --- 🔓 通過授權與維護檢查後的主系統介面 ---
@@ -356,7 +356,7 @@ st.markdown("""<div class="header-container"><div class="main-title">CREW DUTY E
 if is_maintenance_mode() and st.session_state["admin_bypassed"]:
     st.markdown("""
     <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid #EF4444; border-radius: 8px; padding: 10px 15px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-        <span style="color: #FCA5A5; font-size: 13px; font-weight: 600;">⚠️ 【管理員預覽模式 (Override Active)】目前系統處於維護狀態，一般訪客將被阻擋。</span>
+        <span style="color: #FCA5A5; font-size: 13px; font-weight: 600;">⚠️ 【管理者覆寫模式運作中 (Override Active)】目前系統處於維護狀態，一般使用者存取已被隔離。</span>
     </div>
     """, unsafe_allow_html=True)
 
