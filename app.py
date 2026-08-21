@@ -172,15 +172,15 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
     
-    /* 核心修復：強制讓 Streamlit 的水平區塊（stHorizontalBlock）內的欄位左右並排各分一半 */
-    [data-testid="stHorizontalBlock"] {
+    /* 完美 1:1 左右等寬並排容器 */
+    .symmetric-btn-container {
         display: flex !important;
-        flex-direction: row !important;
         gap: 12px !important;
+        width: 100% !important;
+        margin-top: 10px !important;
     }
-    [data-testid="stHorizontalBlock"] > [data-testid="column"] {
-        width: 50% !important;
-        flex: 1 1 50% !important;
+    .symmetric-btn-container > div {
+        flex: 1 !important;
         min-width: 0 !important;
     }
 
@@ -194,7 +194,7 @@ st.markdown("""
         border-left: 4px solid #3B82F6 !important;
         color: #38BDF8 !important; 
         width: 100% !important; 
-        margin-top: 10px !important;
+        margin-top: 0px !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
         transition: all 0.25s ease !important;
         letter-spacing: 1px;
@@ -209,11 +209,11 @@ st.markdown("""
     }
 
     /* 右側「管理員登入」按鈕的專屬高級琥珀/微紅工業風點綴 */
-    .admin-btn-col button {
+    .admin-custom-btn button {
         border-left-color: #EF4444 !important;
         color: #FCA5A5 !important;
     }
-    .admin-btn-col button:hover {
+    .admin-custom-btn button:hover {
         border-left-color: #F87171 !important;
         background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%) !important;
         color: #FFFFFF !important;
@@ -448,13 +448,15 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
         st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
         admin_unlock = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input")
         
-        b_col1, b_col2 = st.columns(2)
-        with b_col1:
+        st.markdown('<div class="symmetric-btn-container">', unsafe_allow_html=True)
+        col_sub1, col_sub2 = st.columns(2)
+        with col_sub1:
             btn_m1 = st.button("進入系統", key="maint_btn_1")
-        with b_col2:
-            st.markdown('<div class="admin-btn-col">', unsafe_allow_html=True)
+        with col_sub2:
+            st.markdown('<div class="admin-custom-btn">', unsafe_allow_html=True)
             btn_m2 = st.button("管理員登入", key="maint_btn_2")
             st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
         if btn_m1:
             if admin_unlock == ADMIN_PASSWORD:
@@ -473,7 +475,7 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
                 st.error("管理員密碼錯誤")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查（完美左右並排等寬對稱按鈕） ---
+# --- 🔒 前置授權碼門戶檢查（完美左右並排等寬對稱按鈕與直達後台） ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
@@ -481,13 +483,15 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_byp
     with col2:
         entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
         
-        b_col1, b_col2 = st.columns(2)
-        with b_col1:
+        st.markdown('<div class="symmetric-btn-container">', unsafe_allow_html=True)
+        col_sub1, col_sub2 = st.columns(2)
+        with col_sub1:
             btn_auth = st.button("進入系統", key="auth_btn_1")
-        with b_col2:
-            st.markdown('<div class="admin-btn-col">', unsafe_allow_html=True)
+        with col_sub2:
+            st.markdown('<div class="admin-custom-btn">', unsafe_allow_html=True)
             btn_admin = st.button("管理員登入", key="auth_btn_2")
             st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
         if btn_auth:
             if entered_key == CREW_ACCESS_PASSWORD:
@@ -524,7 +528,7 @@ if st.session_state.get("admin_bypassed", False) and is_maintenance_mode():
     </div>
     """, unsafe_allow_html=True)
 
-# --- 如果是透過管理員登入直接導向，優先展示後台 ---
+# --- 如果是透過管理員登入直接導向，一秒直達後台 ---
 if st.session_state.get("direct_to_admin", False):
     st.markdown("""
     <div class="section-header-box">
