@@ -103,13 +103,12 @@ ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
 
-# 初始化 Session State 狀態
+# 初始化 Session State 狀態（含 A 的預設與空值防護機制）
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "admin_bypassed" not in st.session_state:
     st.session_state["admin_bypassed"] = False
-# 首次進入系統時預設帶入 "A"
-if "user_input_field" not in st.session_state:
+if "user_input_field" not in st.session_state or not st.session_state["user_input_field"]:
     st.session_state["user_input_field"] = "A"
 
 def get_file_mtime_str(path):
