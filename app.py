@@ -583,7 +583,7 @@ else:
                                     </div>
                                     <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
                                     <div class="compact-sub">班別: {r['車次']}</div>
-                                    <div class="compact-sub">隔日singin時間: {r['隔日Sign-In']}</div>
+                                    <div class="compact-sub">隔日報到時間: {r['隔日Sign-In']}</div>
                                 </div>
                                 """
                                 
