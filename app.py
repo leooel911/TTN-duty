@@ -202,6 +202,17 @@ st.markdown("""
         box-shadow: 0 0 16px rgba(56, 189, 248, 0.35), 0 6px 16px rgba(0,0,0,0.5) !important;
         transform: translateY(-2px) !important;
     }
+
+    /* 管理員按鈕特殊微調：邊框改為帶點紅色調或琥珀色質感，與左側主按鈕區隔但保持一致工業風 */
+    .admin-btn-container button {
+        border-left-color: #EF4444 !important;
+        color: #FCA5A5 !important;
+    }
+    .admin-btn-container button:hover {
+        border-left-color: #F87171 !important;
+        background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%) !important;
+        color: #FFFFFF !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -422,7 +433,7 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 🔒 系統維護模式檢查（標準黃金比例 3 欄式置中佈局） ---
+# --- 🔒 系統維護模式檢查（雙按鈕對稱佈局） ---
 if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
     st.markdown("""<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;"><div style="font-size: 34px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
@@ -431,8 +442,13 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
         st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
         with st.form("maint_form"):
             admin_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input")
-            submitted_maint = st.form_submit_button("進入系統")
-            if submitted_maint:
+            bc1, bc2 = st.columns(2)
+            with bc1:
+                submitted_maint = st.form_submit_button("進入系統")
+            with bc2:
+                submitted_admin_bypass = st.form_submit_button("管理員登入")
+            
+            if submitted_maint or submitted_admin_bypass:
                 if admin_unlock == ADMIN_PASSWORD:
                     st.session_state["admin_bypassed"] = True
                     st.success("管理員身分驗證成功")
@@ -441,7 +457,7 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False):
                     st.error("密碼錯誤")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查（標準黃金比例 3 欄式置中佈局，完美對齊與支援 Enter） ---
+# --- 🔒 前置授權碼門戶檢查（雙按鈕完美對稱佈局） ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
@@ -449,13 +465,27 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_byp
     with col2:
         with st.form("auth_form"):
             entered_key = st.text_input("系統授權碼", type="password", placeholder="請輸入授權碼...", label_visibility="collapsed")
-            submitted_auth = st.form_submit_button("進入系統")
+            
+            # 使用兩欄並排按鈕，達到完美對稱
+            b_col1, b_col2 = st.columns(2)
+            with b_col1:
+                submitted_auth = st.form_submit_button("進入系統")
+            with b_col2:
+                submitted_admin_shortcut = st.form_submit_button("管理員登入")
+            
             if submitted_auth:
                 if entered_key == CREW_ACCESS_PASSWORD:
                     st.session_state["authenticated"] = True
                     st.rerun()
                 else:
                     st.error("授權碼錯誤，請重新輸入")
+            elif submitted_admin_shortcut:
+                if entered_key == ADMIN_PASSWORD:
+                    st.session_state["admin_bypassed"] = True
+                    st.success("管理員身分驗證成功")
+                    st.rerun()
+                else:
+                    st.error("管理員密碼錯誤")
     st.stop()
 
 # --- 🔓 主系統介面 (專業科技感標題區) ---
