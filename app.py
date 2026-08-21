@@ -57,8 +57,8 @@ st.markdown("""
         font-weight: 600;
     }
 
-    /* 📱 手機優化：改為上下堆疊、字體放大且具備高質感觸控區塊的 Radio 選單 */
-    .stRadio > label { font-size: 14px !important; color: #94A3B8 !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 1.5px !important; margin-bottom: 12px !important; }
+    /* 📱 手機優化：隱藏原生預設標題，將選項改為獨立卡片式排列 */
+    .stRadio > label { display: none !important; }
     .stRadio > div { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; display: flex; flex-direction: column; gap: 10px; }
     .stRadio label { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px !important; padding: 16px 20px !important; width: 100% !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); transition: all 0.2s ease; cursor: pointer; }
     .stRadio label:hover { border-color: #3B82F6 !important; background: linear-gradient(135deg, #334155 0%, #1E293B 100%) !important; }
@@ -305,7 +305,14 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    # 📱 手機端大尺寸卡片式操作模式選擇器
+    # 💎 專業方塊標題取代預設 Label
+    st.markdown("""
+    <div class="section-header-box" style="margin-bottom: 12px;">
+        <div class="section-title">系統操作模式選擇</div>
+        <div class="section-subtitle">System Operation Mode Selection</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     app_mode = st.radio("系統操作模式選擇", ["生產個人班表圖片檔", "換班｜尋找指定時段報到組員（Beta測試版）"], horizontal=False)
     st.markdown("---")
 
