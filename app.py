@@ -57,9 +57,12 @@ st.markdown("""
         font-weight: 600;
     }
 
-    .stRadio > label { font-size: 13px !important; color: #94A3B8 !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 1px !important; margin-bottom: 8px !important; }
-    .stRadio > div { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px !important; padding: 14px 18px !important; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
-    .stRadio label span { font-size: 16px !important; font-weight: 700 !important; color: #F8FAFC !important; }
+    /* 📱 手機優化：改為上下堆疊、字體放大且具備高質感觸控區塊的 Radio 選單 */
+    .stRadio > label { font-size: 14px !important; color: #94A3B8 !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 1.5px !important; margin-bottom: 12px !important; }
+    .stRadio > div { background: transparent !important; border: none !important; padding: 0 !important; box-shadow: none !important; display: flex; flex-direction: column; gap: 10px; }
+    .stRadio label { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px !important; padding: 16px 20px !important; width: 100% !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); transition: all 0.2s ease; cursor: pointer; }
+    .stRadio label:hover { border-color: #3B82F6 !important; background: linear-gradient(135deg, #334155 0%, #1E293B 100%) !important; }
+    .stRadio label span { font-size: 17px !important; font-weight: 700 !important; color: #F8FAFC !important; }
     
     .stTextInput input { font-size: 18px !important; padding: 14px 16px !important; border-radius: 10px !important; background-color: #1E293B !important; color: #F8FAFC !important; border: 1px solid #475569 !important; }
     div.stButton > button { font-size: 18px !important; font-weight: 700 !important; padding: 16px 24px !important; border-radius: 12px !important; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 50%, #1D4ED8 100%) !important; color: #ffffff !important; width: 100% !important; margin-top: 10px; }
@@ -302,7 +305,8 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    app_mode = st.radio("系統操作模式選擇", ["生產個人班表圖片檔", "換班｜尋找指定時段報到組員（Beta測試版）"], horizontal=True)
+    # 📱 手機端大尺寸卡片式操作模式選擇器
+    app_mode = st.radio("系統操作模式選擇", ["生產個人班表圖片檔", "換班｜尋找指定時段報到組員（Beta測試版）"], horizontal=False)
     st.markdown("---")
 
     if app_mode == "生產個人班表圖片檔":
@@ -321,7 +325,6 @@ else:
             elif not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料")
             else:
                 try:
-                    # 預先快速解析以取得姓名以便顯示去姓氏提示
                     _, _, _, temp_emp_name, _ = process_file_data(target_input)
                     first_name = temp_emp_name[1:] if len(temp_emp_name) > 1 else temp_emp_name
 
