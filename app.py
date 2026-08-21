@@ -108,7 +108,7 @@ if "authenticated" not in st.session_state:
 if "admin_bypassed" not in st.session_state:
     st.session_state["admin_bypassed"] = False
 
-# 強制確保預設值邏輯
+# 強制確保預設值邏輯：預設帶入 "A"
 if "user_input_field" not in st.session_state:
     st.session_state["user_input_field"] = "A"
 
@@ -388,8 +388,8 @@ if app_mode == "生產個人班表圖片檔":
     </div>
     """, unsafe_allow_html=True)
 
-    # 輸入框與 session_state 綁定
-    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", key="user_input_field")
+    # 確保預設帶入 "A"，且透過 session_state 同步
+    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A", key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
         current_input = st.session_state.get("user_input_field", "").strip()
