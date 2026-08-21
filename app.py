@@ -18,6 +18,9 @@ st.markdown("""
 <style>
     .stApp { background-color: #0B0F19 !important; color: #F8FAFC !important; }
     .block-container { padding: 3rem 1rem !important; }
+    /* 這裡增加一個隱形錨點定位，確保精準對齊 */
+    .scroll-anchor { position: relative; top: -80px; visibility: hidden; }
+    
     .header-container { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 1rem; }
     .main-title { color: #F8FAFC !important; font-size: 26px; font-weight: 800; letter-spacing: 0.5px; margin: 0; }
     .edition-badge { color: #64748B !important; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
@@ -388,7 +391,6 @@ if app_mode == "生產個人班表圖片檔":
     </div>
     """, unsafe_allow_html=True)
 
-    # 確保預設帶入 "A"，且透過 session_state 同步
     target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A", key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
@@ -545,19 +547,19 @@ if app_mode == "生產個人班表圖片檔":
                 except Exception as e: st.error(f"錯誤：{e}")
 
 elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
-    # 透過 JavaScript 抓取該標題區塊並精準置頂顯示
+    # 加入精準的錨點定位
+    st.markdown('<div id="filter-target" class="scroll-anchor"></div>', unsafe_allow_html=True)
+    
+    # JavaScript 捲動：強制對齊到該 section-header-box 的頂部
     st.components.v1.html("""
         <script>
             const doc = window.parent.document;
             setTimeout(() => {
-                const headers = doc.querySelectorAll('.section-header-box');
-                for (let h of headers) {
-                    if (h.innerText.includes('指定 Sign-In 時段組員名單快篩')) {
-                        h.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        break;
-                    }
+                const target = doc.getElementById('filter-target');
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
-            }, 100);
+            }, 200);
         </script>
     """, height=0)
 
