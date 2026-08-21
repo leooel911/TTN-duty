@@ -172,17 +172,22 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
     
-    /* 讓 Streamlit 的 columns 完美對稱並排按鈕 */
-    [data-testid="column"] {
-        width: calc(50% - 6px) !important;
-        flex: 1 1 calc(50% - 6px) !important;
-        min-width: calc(50% - 6px) !important;
+    /* 核心修復：強制讓 Streamlit 的水平區塊（stHorizontalBlock）內的欄位左右並排各分一半 */
+    [data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 12px !important;
+    }
+    [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+        width: 50% !important;
+        flex: 1 1 50% !important;
+        min-width: 0 !important;
     }
 
     /* 統一按鈕的高質感與外型 */
     div.stButton > button { 
         font-weight: 700 !important; 
-        padding: 12px 16px !important; 
+        padding: 12px 10px !important; 
         border-radius: 10px !important; 
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
         border: 1px solid #334155 !important;
@@ -468,7 +473,7 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
                 st.error("管理員密碼錯誤")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查（完美左右並排等寬按鈕） ---
+# --- 🔒 前置授權碼門戶檢查（完美左右並排等寬對稱按鈕） ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div></div>""", unsafe_allow_html=True)
     
@@ -476,7 +481,6 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_byp
     with col2:
         entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
         
-        # 使用標準 st.columns(2) 配合 CSS 達到完美對稱
         b_col1, b_col2 = st.columns(2)
         with b_col1:
             btn_auth = st.button("進入系統", key="auth_btn_1")
