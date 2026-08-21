@@ -37,22 +37,15 @@ st.markdown("""
     .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 4px 12px rgba(0,0,0,0.4); transform: translateY(-2px); }
     
-    /* 👑 完美包覆管理員通道：滑鼠移過去會發光的精緻面板 */
-    .admin-override-box {
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        border: 1px solid #334155;
-        border-left: 4px solid #EF4444;
-        border-radius: 12px;
-        padding: 24px;
-        margin: 2rem auto;
-        max-width: 600px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-        transition: all 0.25s ease;
+    /* 👑 讓管理員專用按鈕在滑鼠移過去時，像茶班表一樣亮起紅燈外框與微光發光特效 */
+    .admin-override-btn div.stButton > button {
+        border: 1px solid #334155 !important;
+        transition: all 0.25s ease !important;
     }
-    .admin-override-box:hover {
-        border-color: #EF4444;
-        box-shadow: 0 0 20px rgba(239, 68, 68, 0.35), 0 4px 16px rgba(0,0,0,0.6);
-        transform: translateY(-2px);
+    .admin-override-btn div.stButton > button:hover {
+        border-color: #EF4444 !important;
+        box-shadow: 0 0 18px rgba(239, 68, 68, 0.5), 0 4px 12px rgba(0,0,0,0.4) !important;
+        transform: translateY(-2px) !important;
     }
     
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -329,7 +322,7 @@ if not st.session_state["authenticated"]:
 # --- 🛠️ 維護模式攔截與管理員預覽通道 ---
 if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
     st.markdown("""
-    <div class="telemetry-card" style="border: 1px solid #EF4444; background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%); max-width: 600px; margin: 2rem auto; text-align: center; padding: 30px;">
+    <div class="telemetry-card" style="border: 1px solid #EF4444; background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%); max-width: 600px; margin: 4rem auto 2rem auto; text-align: center; padding: 30px;">
         <div class="telemetry-title" style="color: #FCA5A5; font-size: 14px;">SYSTEM MAINTENANCE</div>
         <div class="telemetry-value" style="color: #FEE2E2; font-size: 24px; margin-top: 8px;">系統目前正在進行例行維護</div>
         <div class="telemetry-sub maint-sub" style="margin-top: 15px; font-size: 14px;">
@@ -338,14 +331,15 @@ if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
     </div>
     """, unsafe_allow_html=True)
     
-    # 👑 將標題、輸入框與按鈕全部完美整合進同一個發光面板中
-    st.markdown('<div class="admin-override-box">', unsafe_allow_html=True)
-    st.markdown("<div style='text-align: center; color: #EF4444; font-size: 12px; font-family: monospace; margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;'>--- Admin Override Gateway ---</div>", unsafe_allow_html=True)
-    
-    admin_bypass_input = st.text_input("管理員授權覆寫", type="password", placeholder="請輸入管理員密碼...", label_visibility="collapsed")
-    admin_login_clicked = st.button("進入系統後台預覽", use_container_width=True, key="admin_override_btn_unique")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    # 👑 將按鈕包覆在 .admin-override-btn 中，只有按鈕本身在 Hover 時會亮紅燈發光！
+    st.markdown("<div style='text-align: center; color: #EF4444; font-size: 12px; font-family: monospace; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;'>--- Admin Override Gateway ---</div>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        admin_bypass_input = st.text_input("管理員授權覆寫", type="password", placeholder="請輸入管理員密碼...", label_visibility="collapsed")
+        
+        st.markdown('<div class="admin-override-btn">', unsafe_allow_html=True)
+        admin_login_clicked = st.button("進入系統後台預覽", use_container_width=True, key="admin_override_btn_unique")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     if admin_login_clicked:
         if admin_bypass_input == ADMIN_PASSWORD:
