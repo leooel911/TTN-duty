@@ -102,7 +102,7 @@ ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
 
-# 初始化 Session State 狀態（強制確保每次重新整理時，員編預設帶入 "A"）
+# 初始化 Session State 狀態（強制確保每次重新整理時，員編欄位預設帶入 "A"）
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "admin_bypassed" not in st.session_state:
