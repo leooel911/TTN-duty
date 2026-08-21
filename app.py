@@ -172,18 +172,19 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
     
-    /* 升級版科技質感立體按鈕：附帶左側發光邊條與懸停立體浮動特效 */
+    /* 完美對稱、俐落的科技質感立體按鈕 */
     div.stButton > button { 
         font-weight: 700 !important; 
-        padding: 16px 24px !important; 
-        border-radius: 12px !important; 
+        padding: 14px 24px !important; 
+        border-radius: 10px !important; 
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
         border: 1px solid #334155 !important;
-        border-left: 5px solid #3B82F6 !important;
+        border-left: 4px solid #3B82F6 !important;
         color: #38BDF8 !important; 
         width: 100% !important; 
+        display: block !important;
         margin-top: 10px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
         transition: all 0.25s ease !important;
         letter-spacing: 1px;
     }
@@ -192,7 +193,7 @@ st.markdown("""
         border-left-color: #38BDF8 !important;
         color: #FFFFFF !important;
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        box-shadow: 0 0 18px rgba(56, 189, 248, 0.4), 0 6px 20px rgba(0,0,0,0.6) !important;
+        box-shadow: 0 0 16px rgba(56, 189, 248, 0.35), 0 6px 16px rgba(0,0,0,0.5) !important;
         transform: translateY(-2px) !important;
     }
 </style>
