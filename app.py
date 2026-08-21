@@ -37,6 +37,23 @@ st.markdown("""
     .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 4px 12px rgba(0,0,0,0.4); transform: translateY(-2px); }
     
+    /* 👑 管理員專用通道卡片：帶有與茶班表相同的懸停微光發光特效 */
+    .admin-override-box {
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border: 1px solid #334155;
+        border-left: 4px solid #EF4444;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        transition: all 0.25s ease;
+    }
+    .admin-override-box:hover {
+        border-color: #EF4444;
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.35), 0 4px 16px rgba(0,0,0,0.6);
+        transform: translateY(-2px);
+    }
+    
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
     .badge-group { display: flex; gap: 4px; align-items: center; }
@@ -320,40 +337,21 @@ if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
     </div>
     """, unsafe_allow_html=True)
     
-    # 👑 透過 HTML 區塊與高質感紅色按鈕完美突破 Streamlit 限制
-    st.markdown("<div style='text-align: center; color: #64748B; font-size: 12px; font-family: monospace; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;'>--- Admin Override Gateway ---</div>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 2, 1])
-    with c2:
-        admin_bypass_input = st.text_input("管理員授權覆寫", type="password", placeholder="請輸入管理員密碼...", label_visibility="collapsed")
-        
-        # 使用 HTML 渲染出帶有專屬深紅質感的按鈕
-        st.markdown("""
-        <style>
-            div.admin-btn-container button {
-                background: linear-gradient(135deg, #DC2626 0%, #991B1B 50%, #7F1D1D 100%) !important;
-                border: 1px solid #EF4444 !important;
-                color: #FFFFFF !important;
-                font-weight: 700 !important;
-                box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4) !important;
-            }
-            div.admin-btn-container button:hover {
-                background: linear-gradient(135deg, #EF4444 0%, #DC2626 50%, #991B1B 100%) !important;
-                border-color: #FCA5A5 !important;
-                box-shadow: 0 0 20px rgba(239, 68, 68, 0.6) !important;
-            }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        st.markdown('<div class="admin-btn-container">', unsafe_allow_html=True)
-        admin_login_clicked = st.button("進入系統後台預覽", use_container_width=True, key="admin_override_btn_unique")
-        st.markdown('</div>', unsafe_allow_html=True)
+    # 👑 將整個管理員輸入區塊包覆在 .admin-override-box 中，滑鼠移過去時就會像茶班表一樣有精緻的紅色微光外框！
+    st.markdown('<div class="admin-override-box">', unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; color: #EF4444; font-size: 12px; font-family: monospace; margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;'>--- Admin Override Gateway ---</div>", unsafe_allow_html=True)
+    
+    admin_bypass_input = st.text_input("管理員授權覆寫", type="password", placeholder="請輸入管理員密碼...", label_visibility="collapsed")
+    admin_login_clicked = st.button("進入系統後台預覽", use_container_width=True, key="admin_override_btn_unique")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        if admin_login_clicked:
-            if admin_bypass_input == ADMIN_PASSWORD:
-                st.session_state["admin_bypassed"] = True
-                st.rerun()
-            else:
-                st.error("管理員認證失敗")
+    if admin_login_clicked:
+        if admin_bypass_input == ADMIN_PASSWORD:
+            st.session_state["admin_bypassed"] = True
+            st.rerun()
+        else:
+            st.error("管理員認證失敗")
     st.stop()
 
 # --- 🔓 通過授權與維護檢查後的主系統介面 ---
