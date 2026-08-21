@@ -69,22 +69,6 @@ st.markdown("""
     
     .stTextInput input { font-size: 18px !important; padding: 14px 16px !important; border-radius: 10px !important; background-color: #1E293B !important; color: #F8FAFC !important; border: 1px solid #475569 !important; }
     div.stButton > button { font-size: 18px !important; font-weight: 700 !important; padding: 16px 24px !important; border-radius: 12px !important; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 50%, #1D4ED8 100%) !important; color: #ffffff !important; width: 100% !important; margin-top: 10px; }
-    
-    /* 👑 強制精準覆寫管理員按鈕背景色 (使用更高階的屬性選擇器與 !important) */
-    button[kind="secondary"] {
-        /* 預設按鈕 */
-    }
-    .admin-override-btn button, div.admin-override-btn button {
-        background: linear-gradient(135deg, #DC2626 0%, #991B1B 50%, #7F1D1D 100%) !important;
-        border: 1px solid #EF4444 !important;
-        color: #ffffff !important;
-        box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4) !important;
-    }
-    .admin-override-btn button:hover, div.admin-override-btn button:hover {
-        background: linear-gradient(135deg, #EF4444 0%, #DC2626 50%, #991B1B 100%) !important;
-        border-color: #FCA5A5 !important;
-        box-shadow: 0 0 20px rgba(239, 68, 68, 0.6) !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -336,15 +320,32 @@ if is_maintenance_mode() and not st.session_state["admin_bypassed"]:
     </div>
     """, unsafe_allow_html=True)
     
-    # 👑 專業級管理員覆寫通道 (Admin Override)
+    # 👑 透過 HTML 區塊與高質感紅色按鈕完美突破 Streamlit 限制
     st.markdown("<div style='text-align: center; color: #64748B; font-size: 12px; font-family: monospace; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;'>--- Admin Override Gateway ---</div>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         admin_bypass_input = st.text_input("管理員授權覆寫", type="password", placeholder="請輸入管理員密碼...", label_visibility="collapsed")
         
-        # 透過專屬容器與樣式確保深紅漸層按鈕成功渲染
-        st.markdown('<div class="admin-override-btn">', unsafe_allow_html=True)
-        admin_login_clicked = st.button("進入系統後台預覽", use_container_width=True)
+        # 使用 HTML 渲染出帶有專屬深紅質感的按鈕
+        st.markdown("""
+        <style>
+            div.admin-btn-container button {
+                background: linear-gradient(135deg, #DC2626 0%, #991B1B 50%, #7F1D1D 100%) !important;
+                border: 1px solid #EF4444 !important;
+                color: #FFFFFF !important;
+                font-weight: 700 !important;
+                box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4) !important;
+            }
+            div.admin-btn-container button:hover {
+                background: linear-gradient(135deg, #EF4444 0%, #DC2626 50%, #991B1B 100%) !important;
+                border-color: #FCA5A5 !important;
+                box-shadow: 0 0 20px rgba(239, 68, 68, 0.6) !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('<div class="admin-btn-container">', unsafe_allow_html=True)
+        admin_login_clicked = st.button("進入系統後台預覽", use_container_width=True, key="admin_override_btn_unique")
         st.markdown('</div>', unsafe_allow_html=True)
 
         if admin_login_clicked:
