@@ -102,7 +102,7 @@ ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
 
-# 初始化 Session State 狀態（強制確保每次重新整理時，員編欄位預設帶入 "A"）
+# 初始化 Session State 狀態（強制確保每次重新整理時，員編預設帶入 "A"）
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 if "admin_bypassed" not in st.session_state:
@@ -386,8 +386,8 @@ if app_mode == "生產個人班表圖片檔":
     </div>
     """, unsafe_allow_html=True)
 
-    # 員編預設帶入 A
-    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", key="user_input_field")
+    # 員編預設帶入 A（明確帶入 value 參數，開啓網頁即可見）
+    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value=st.session_state["user_input_field"], key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
         current_input = st.session_state.get("user_input_field", "").strip()
