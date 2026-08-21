@@ -26,6 +26,11 @@ st.markdown("""
     .telemetry-sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid #334155; font-size: 13px; color: #94A3B8; }
     .maint-sub { border-top: 1px solid #991B1B !important; color: #FECACA !important; }
     
+    /* 質感方塊標題與頁面標頭設計 */
+    .section-header-box { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 5px solid #3B82F6; border-radius: 10px; padding: 16px 20px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .section-title { color: #F8FAFC; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin: 0; }
+    .section-subtitle { color: #94A3B8; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
     .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
 
     .compact-card { background: #1E293B; border: 1px solid #334155; border-left: 3px solid #3B82F6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; color: #F8FAFC; }
@@ -38,8 +43,11 @@ st.markdown("""
     .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
     .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
     
-    .stRadio > div { background-color: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 12px 16px; }
-    .stRadio label { font-size: 15px !important; font-weight: 600 !important; color: #F8FAFC !important; }
+    /* 功能模式選擇器外觀強化 */
+    .stRadio > label { font-size: 13px !important; color: #94A3B8 !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 1px !important; margin-bottom: 8px !important; }
+    .stRadio > div { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px !important; padding: 14px 18px !important; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); }
+    .stRadio label span { font-size: 16px !important; font-weight: 700 !important; color: #F8FAFC !important; }
+    
     .stTextInput input { font-size: 18px !important; padding: 14px 16px !important; border-radius: 10px !important; background-color: #1E293B !important; color: #F8FAFC !important; border: 1px solid #475569 !important; }
     div.stButton > button { font-size: 18px !important; font-weight: 700 !important; padding: 16px 24px !important; border-radius: 12px !important; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 50%, #1D4ED8 100%) !important; color: #ffffff !important; width: 100% !important; margin-top: 10px; }
 </style>
@@ -281,10 +289,18 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    app_mode = st.radio("選擇功能模式", ["生產個人班表圖片檔", "組員動態時段篩選（尋找換班協調專用・Beta測試版）"], horizontal=True)
+    # 升級後的質感功能模式選擇器
+    app_mode = st.radio("系統操作模式選擇", ["生產個人班表圖片檔", "換班｜尋找指定時段報到組員（Beta測試版）"], horizontal=True)
     st.markdown("---")
 
     if app_mode == "生產個人班表圖片檔":
+        st.markdown("""
+        <div class="section-header-box">
+            <div class="section-title">個人班表高解析圖檔生成</div>
+            <div class="section-subtitle">Personal Shift Schedule Image Generator</div>
+        </div>
+        """, unsafe_allow_html=True)
+
         target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A")
         access_password = st.text_input("輸入系統授權碼", type="password", value="")
 
@@ -417,8 +433,14 @@ else:
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-    elif app_mode == "組員動態時段篩選（尋找換班協調專用・Beta測試版）":
-        st.subheader("乘務時段區間與 Sign-In Time 快篩工具")
+    elif app_mode == "換班｜尋找指定時段報到組員（Beta測試版）":
+        st.markdown("""
+        <div class="section-header-box">
+            <div class="section-title">指定 Sign-In 時段組員名單快篩</div>
+            <div class="section-subtitle">Duty Time Window & Sign-In Filter Matrix</div>
+        </div>
+        """, unsafe_allow_html=True)
+
         selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2)
         target_path = ROLE_FILES[selected_role]
 
