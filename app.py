@@ -8,6 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
+import time
 
 matplotlib.use('Agg')
 
@@ -308,10 +309,26 @@ else:
             elif not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料")
             else:
                 try:
+                    # 🚀 新增：進度條與階段狀態提示
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+
+                    status_text.text("正在解析組員班表資料庫...")
+                    progress_bar.progress(25)
+                    time.sleep(0.4)
+
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(target_input)
+                    
+                    status_text.text("計算工時、國定假日與疏運區間...")
+                    progress_bar.progress(55)
+                    time.sleep(0.4)
+
                     active_transport = parse_transport_periods(TRANSPORT_PERIODS)
                     font_prop = setup_font()
                     def fp(size=9): return fm.FontProperties(fname=font_prop.get_file(), size=size) if font_prop else fm.FontProperties(size=size)
+                    
+                    status_text.text("正在繪製高解析向量排班表格...")
+                    progress_bar.progress(80)
                     
                     weeks = build_weeks(start_dt, dates, cells)
                     fig, ax = plt.subplots(figsize=(16, 11), dpi=300)
@@ -401,7 +418,6 @@ else:
                     has_active_transport = any(d in active_transport for d in dates)
                     has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
 
-                    # 國定假日膠囊改為無填色（透明背景），僅在有出現時點亮邊框與文字
                     pill_legends = [
                         (0, "#F1F5F9", "#475569", C_NOTE_TXT, "備註"),
                         (1, C_DO_BG if has_emp_do else C_WORK_BG, "#E11D48" if has_emp_do else "#64748B", C_DO_TXT if has_emp_do else "#64748B", "休假日"),
@@ -427,6 +443,14 @@ else:
                     
                     buf = io.BytesIO()
                     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
+                    
+                    # 完成進度條
+                    progress_bar.progress(100)
+                    status_text.text("圖檔生成完畢！")
+                    time.sleep(0.3)
+                    status_text.empty()
+                    progress_bar.empty()
+
                     st.success("個人班表圖片生成成功")
                     st.image(buf, use_container_width=True)
                     st.info("提醒：長按上方的班表圖片即可一鍵存入手機相簿")
