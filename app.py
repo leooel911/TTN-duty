@@ -114,11 +114,59 @@ CREW_ACCESS_PASSWORD = "0900"
 MAINTENANCE_FLAG_FILE = "maintenance.flag"
 LOG_FILE = "activity_log.txt"
 
+def parse_device_info(ua_string):
+    """解析 User-Agent 萃取裝置與系統型號"""
+    ua = ua_string.lower()
+    if "iphone" in ua:
+        device = "iPhone"
+    elif "ipad" in ua:
+        device = "iPad"
+    elif "android" in ua:
+        device = "Android Phone"
+        if "build" in ua:
+            try:
+                # 嘗試簡單捕捉 Android 型號
+                parts = ua_string.split(";")
+                for p in parts:
+                    if "build" in p.lower():
+                        device = f"Android ({p.split('Build')[0].strip()})"
+            except: pass
+    elif "macintosh" in ua or "mac os" in ua:
+        device = "Mac"
+    elif "windows" in ua:
+        device = "Windows PC"
+    else:
+        device = "Desktop / Other"
+
+    # 辨識瀏覽器
+    if "safari" in ua and "chrome" not in ua and "crios" not in ua:
+        browser = "Safari"
+    elif "chrome" in ua or "crios" in ua:
+        browser = "Chrome"
+    elif "line" in ua:
+        browser = "LINE App"
+    elif "edg" in ua:
+        browser = "Edge"
+    else:
+        browser = "Browser"
+
+    return f"{device} [{browser}]"
+
 def log_activity(input_str):
     try:
         now_tw = datetime.now(TAIWAN_TZ).strftime('%Y-%m-%d %H:%M:%S')
-        log_entry = f"{now_tw} - 查詢: {input_str}\n"
-        with open(LOG_FILE, "a", encoding="utf-8") as f: f.write(log_entry)
+        # 取得使用者的 User-Agent 標頭
+        ua_raw = ""
+        try:
+            ua_raw = st.context.headers.get("user-agent", "")
+        except:
+            pass
+        
+        device_info = parse_device_info(ua_raw) if ua_raw else "未知裝置"
+        log_entry = f"{now_tw} | 裝置: {device_info} | 查詢: {input_str}\n"
+        
+        with open(LOG_FILE, "a", encoding="utf-8") as f: 
+            f.write(log_entry)
     except: pass
 
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
