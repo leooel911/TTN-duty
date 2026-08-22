@@ -249,8 +249,26 @@ ROLE_FILES = {
 
 ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
-MAINTENANCE_FLAG_FILE = "maintenance.flag"
 LOG_FILE = "activity_log.txt"
+
+# --- 三種獨立系統的維護狀態檔案定義 ---
+MAINTENANCE_FLAGS = {
+    "producer": "maintenance_producer.flag",
+    "window_filter": "maintenance_window.flag",
+    "exchange_filter": "maintenance_exchange.flag"
+}
+
+def set_module_maintenance(module_key, is_maint):
+    flag_path = MAINTENANCE_FLAGS.get(module_key)
+    if not flag_path: return
+    if is_maint:
+        with open(flag_path, "w") as f: f.write("ON")
+    else:
+        if os.path.exists(flag_path): os.remove(flag_path)
+
+def is_module_maintenance(module_key):
+    flag_path = MAINTENANCE_FLAGS.get(module_key)
+    return os.path.exists(flag_path) if flag_path else False
 
 def parse_device_info(ua_string):
     ua = ua_string.lower()
@@ -312,14 +330,6 @@ def get_schedule_range():
                 if dates: return f"{dates[0]} 至 {dates[-1]}"
             except: pass
     return "尚無資料"
-
-def set_maintenance_mode(is_maintenance):
-    if is_maintenance:
-        with open(MAINTENANCE_FLAG_FILE, "w") as f: f.write("ON")
-    else:
-        if os.path.exists(MAINTENANCE_FLAG_FILE): os.remove(MAINTENANCE_FLAG_FILE)
-
-def is_maintenance_mode(): return os.path.exists(MAINTENANCE_FLAG_FILE)
 
 def pad_time(t_str):
     if not t_str or ":" not in t_str: return t_str
@@ -450,27 +460,6 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 🔒 系統維護模式檢查 ---
-if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
-    st.markdown("""<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;"><div style="font-size: 34px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
-    
-    col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
-    with col_m2:
-        st.markdown("""<div class="maintenance-msg-box">系統目前正在維護中，請稍候再試。</div>""", unsafe_allow_html=True)
-        admin_unlock = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input", label_visibility="collapsed")
-        
-        btn_m = st.button("進入系統", key="maint_btn_1")
-
-        if btn_m:
-            if admin_unlock == ADMIN_PASSWORD:
-                st.session_state["direct_to_admin"] = True
-                st.session_state["admin_bypassed"] = True
-                st.success("管理員身分驗證成功，正在載入後台...")
-                st.rerun()
-            else:
-                st.error("密碼錯誤（維護期間僅限管理員登入）")
-    st.stop()
-
 # --- 🔒 前置授權碼門戶檢查 ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
@@ -553,21 +542,29 @@ if st.session_state.get("direct_to_admin", False):
     else: st.info("尚無任何查詢紀錄")
 
     st.markdown("---")
-    st.subheader("系統維護控制台")
-    current_maint = is_maintenance_mode()
-    maint_toggle = st.checkbox("暫停開放系統服務 (維護模式)", value=current_maint)
-    if maint_toggle != current_maint:
-        set_maintenance_mode(maint_toggle)
-        if not maint_toggle:
-            st.session_state["admin_bypassed"] = False
+    st.subheader("各系統獨立維護開關控制台")
+    st.caption("您可以針對這三種系統分別設定維護狀態，不需一次關閉全部系統：")
+
+    # 1. 生產個人班表圖片檔
+    maint_p = is_module_maintenance("producer")
+    toggle_p = st.checkbox("【系統 1】生產個人班表圖片檔 - 進入維護模式", value=maint_p, key="toggle_producer")
+    if toggle_p != maint_p:
+        set_module_maintenance("producer", toggle_p)
         st.rerun()
-    
-    if current_maint:
-        if st.button("解除維護模式（恢復全體開放）"):
-            set_maintenance_mode(False)
-            st.session_state["admin_bypassed"] = False
-            st.success("維護模式已解除")
-            st.rerun()
+
+    # 2. 指定時段報到組員快篩
+    maint_w = is_module_maintenance("window_filter")
+    toggle_w = st.checkbox("【系統 2】指定時段報到組員快篩 - 進入維護模式", value=maint_w, key="toggle_window")
+    if toggle_w != maint_w:
+        set_module_maintenance("window_filter", toggle_w)
+        st.rerun()
+
+    # 3. 換假日期快篩
+    maint_e = is_module_maintenance("exchange_filter")
+    toggle_e = st.checkbox("【系統 3】換假日期快篩 - 進入維護模式", value=maint_e, key="toggle_exchange")
+    if toggle_e != maint_e:
+        set_module_maintenance("exchange_filter", toggle_e)
+        st.rerun()
 
     st.markdown("---")
     st.subheader("管理員檔案上傳區")
@@ -579,7 +576,7 @@ if st.session_state.get("direct_to_admin", False):
 
     st.stop()
 
-# --- 🔓 主系統介面 (專業科技感標題區) ---
+# --- 🔒 主系統介面 (專業科技感標題區) ---
 st.markdown("""
 <div class="header-container">
     <div class="title-left-group">
@@ -589,14 +586,6 @@ st.markdown("""
     <div class="edition-badge">C.L.F EDITION</div>
 </div>
 """, unsafe_allow_html=True)
-
-# 若目前是管理員透過維護模式解鎖進入，顯示頂部專屬預覽狀態列
-if st.session_state.get("admin_bypassed", False) and is_maintenance_mode():
-    st.markdown("""
-    <div class="admin-bypass-banner">
-        <span>[!] ADMIN BYPASS MODE // 目前正處於維護模式預覽中（僅限管理員可見）</span>
-    </div>
-    """, unsafe_allow_html=True)
 
 td_time = get_file_mtime_str(ROLE_FILES["駕駛"])
 tm_time = get_file_mtime_str(ROLE_FILES["列車長"])
@@ -616,7 +605,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 💡 使用者主導向：功能選單純淨化（換假日期快篩加入 Alpha 測試版標記）
+# 💡 使用者主導向：功能選單純淨化
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
     "指定時段報到組員快篩（Alpha測試版）",
@@ -626,6 +615,11 @@ app_mode = st.radio("系統操作模式選擇", [
 st.markdown("---")
 
 if app_mode == "生產個人班表圖片檔":
+    # 檢查該模組獨立維護狀態
+    if is_module_maintenance("producer") and not st.session_state.get("admin_bypassed", False):
+        st.markdown("""<div class="maintenance-msg-box">「個人班表圖片檔生產系統」目前正在維護中，請稍候再試。</div>""", unsafe_allow_html=True)
+        st.stop()
+
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">個人班表圖檔生成</div>
@@ -785,6 +779,11 @@ if app_mode == "生產個人班表圖片檔":
                 except Exception as e: st.error(f"錯誤：{e}")
 
 elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
+    # 檢查該模組獨立維護狀態
+    if is_module_maintenance("window_filter") and not st.session_state.get("admin_bypassed", False):
+        st.markdown("""<div class="maintenance-msg-box">「指定時段報到組員快篩系統」目前正在維護中，請稍候再試。</div>""", unsafe_allow_html=True)
+        st.stop()
+
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">指定 Sign-In 時段組員名單快篩</div>
@@ -939,6 +938,11 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 elif app_mode == "換假日期快篩（Alpha測試版）":
+    # 檢查該模組獨立維護狀態
+    if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_bypassed", False):
+        st.markdown("""<div class="maintenance-msg-box">「換假日期快篩系統」目前正在維護中，請稍候再試。</div>""", unsafe_allow_html=True)
+        st.stop()
+
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">換假日期快篩系統</div>
