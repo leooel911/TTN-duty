@@ -616,11 +616,11 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 💡 使用者主導向：功能選單純淨化（包含原本兩項 + 新增的換假協調系統）
+# 💡 使用者主導向：功能選單純淨化（包含原本兩項 + 新增的換假日期快篩系統）
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
     "指定時段報到組員快篩（Alpha測試版）",
-    "換假｜尋找指定日期可協調換班/休假人員（新功能）"
+    "換假｜日期快篩"
 ], horizontal=False)
 
 st.markdown("---")
@@ -938,11 +938,11 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                     else:
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
-elif app_mode == "換假｜尋找指定日期可協調換班/休假人員（新功能）":
+elif app_mode == "換假｜日期快篩":
     st.markdown("""
     <div class="section-header-box">
-        <div class="section-title">換假協調智慧檢索系統</div>
-        <div class="section-subtitle">Auto-Role Detection & Pure-DO Shift Exchange Matcher</div>
+        <div class="section-title">換假日期快篩系統</div>
+        <div class="section-subtitle">Shift Exchange Date Filter Matrix</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -961,9 +961,9 @@ elif app_mode == "換假｜尋找指定日期可協調換班/休假人員（新�
         sample_path = ROLE_FILES["駕駛"] if os.path.exists(ROLE_FILES["駕駛"]) else list(ROLE_FILES.values())[0]
         temp_df_dates = pd.read_excel(sample_path, header=3)
         date_cols = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in temp_df_dates.columns[2:] if re.search(r'(\d+/\d+)', str(c))]
-        target_date = st.selectbox("想休假的目標日期 (A天)", date_cols, index=0, key="ex_target_date_auto")
+        target_date = st.selectbox("想休假的的日期", date_cols, index=0, key="ex_target_date_auto")
 
-    strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員（避免法規違規）", value=True)
+    strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True)
 
     if st.button("開始自動識別並尋找可協調換假人員", key="btn_auto_search_exchange"):
         if not user_self_input.strip():
@@ -1052,8 +1052,9 @@ elif app_mode == "換假｜尋找指定日期可協調換班/休假人員（新�
                             if strict_limit and max_streak >= 6:
                                 continue
                                 
-                            disp_s = max(0, actual_pos - 2)
-                            disp_e = min(len(all_cols_list) - 1, actual_pos + 2)
+                            # 改為前後各抓 4 天動態顯示
+                            disp_s = max(0, actual_pos - 4)
+                            disp_e = min(len(all_cols_list) - 1, actual_pos + 4)
                             mini_schedule = []
                             for p_i in range(disp_s, disp_e + 1):
                                 d_str = date_cols[p_i] if p_i < len(date_cols) else all_cols_list[p_i]
@@ -1069,7 +1070,7 @@ elif app_mode == "換假｜尋找指定日期可協調換班/休假人員（新�
                                 "鄰近天數概況": " | ".join(mini_schedule)
                             })
 
-                    st.markdown(f"### 🎯 查詢結果：{target_date} 可協調換假人員（共 {len(candidates)} 位）")
+                    st.markdown(f"### 查詢結果：{target_date} 可協調換假人員（共 {len(candidates)} 位）")
                     
                     if candidates:
                         ex_c1, ex_c2 = st.columns(2)
