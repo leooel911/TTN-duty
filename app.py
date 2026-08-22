@@ -616,7 +616,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 💡 使用者主導向：功能選單純淨化（包含原本兩項 + 新增的換假日期快篩系統）
+# 💡 使用者主導向：功能選單純淨化
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
     "指定時段報到組員快篩（Alpha測試版）",
@@ -946,13 +946,6 @@ elif app_mode == "換假｜日期快篩":
     </div>
     """, unsafe_allow_html=True)
 
-    # 返回首頁（模式選擇頁面）快捷按鈕
-    if st.button("← 返回系統功能選單"):
-        st.session_state["user_input_field"] = "A"
-        st.rerun()
-
-    st.markdown("---")
-
     # 1. 輸入個人識別與目標日期
     ex_c1, ex_c2 = st.columns(2)
     with ex_c1:
@@ -1070,7 +1063,7 @@ elif app_mode == "換假｜日期快篩":
                                 "鄰近天數概況": " | ".join(mini_schedule)
                             })
 
-                    st.markdown(f"### 查詢結果：{target_date} 可協調換假人員（共 {len(candidates)} 位）")
+                    st.markdown(f"### 🎯 查詢結果：{target_date} 可協調換假人員（共 {len(candidates)} 位）")
                     
                     if candidates:
                         ex_c1, ex_c2 = st.columns(2)
