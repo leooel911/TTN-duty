@@ -308,7 +308,9 @@ def log_activity(input_str):
     except: pass
 
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
-if "admin_bypassed" not in st.session_state: st.session_state["admin_bypassed"] = False
+if "admin_bypassed_producer" not in st.session_state: st.session_state["admin_bypassed_producer"] = False
+if "admin_bypassed_window" not in st.session_state: st.session_state["admin_bypassed_window"] = False
+if "admin_bypassed_exchange" not in st.session_state: st.session_state["admin_bypassed_exchange"] = False
 if "direct_to_admin" not in st.session_state: st.session_state["direct_to_admin"] = False
 if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
@@ -461,7 +463,7 @@ C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#
 C_TOWN_TXT = "#000000"
 
 # --- 🔒 前置授權碼門戶檢查 ---
-if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
+if not st.session_state["authenticated"] and not st.session_state.get("direct_to_admin", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -476,7 +478,6 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_byp
                 st.rerun()
             elif entered_key == ADMIN_PASSWORD:
                 st.session_state["direct_to_admin"] = True
-                st.session_state["admin_bypassed"] = True
                 st.success("管理員驗證成功，正在載入後台...")
                 st.rerun()
             else:
@@ -615,10 +616,30 @@ app_mode = st.radio("系統操作模式選擇", [
 st.markdown("---")
 
 if app_mode == "生產個人班表圖片檔":
-    # 檢查該模組獨立維護狀態
-    if is_module_maintenance("producer") and not st.session_state.get("admin_bypassed", False):
-        st.markdown("""<div class="maintenance-msg-box">「個人班表圖片檔生產系統」目前正在維護中，請稍候再試。</div>""", unsafe_allow_html=True)
+    # 檢查該模組維護狀態，若開啟且未解鎖則秀出專屬密碼登入畫面
+    if is_module_maintenance("producer") and not st.session_state.get("admin_bypassed_producer", False):
+        st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 個人班表圖片檔生產系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
+        
+        col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
+        with col_m2:
+            st.markdown("""<div class="maintenance-msg-box">此功能目前正在維護中。管理員可於下方輸入密碼進行身分解鎖與預覽。</div>""", unsafe_allow_html=True)
+            p_unlock = st.text_input("管理員解鎖金鑰", type="password", placeholder="請輸入管理員密碼...", key="producer_unlock_input")
+            if st.button("解鎖並進入預覽", key="producer_unlock_btn"):
+                if p_unlock == ADMIN_PASSWORD:
+                    st.session_state["admin_bypassed_producer"] = True
+                    st.success("解鎖成功！")
+                    st.rerun()
+                else:
+                    st.error("管理員密碼錯誤")
         st.stop()
+
+    # 若管理員已解鎖，顯示識別橫幅
+    if st.session_state.get("admin_bypassed_producer", False) and is_module_maintenance("producer"):
+        st.markdown("""
+        <div class="admin-bypass-banner">
+            <span>[!] ADMIN BYPASS // 「個人班表」目前處於維護中，您正以管理員身分預覽</span>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="section-header-box">
@@ -779,10 +800,30 @@ if app_mode == "生產個人班表圖片檔":
                 except Exception as e: st.error(f"錯誤：{e}")
 
 elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
-    # 檢查該模組獨立維護狀態
-    if is_module_maintenance("window_filter") and not st.session_state.get("admin_bypassed", False):
-        st.markdown("""<div class="maintenance-msg-box">「指定時段報到組員快篩系統」目前正在維護中，請稍候再試。</div>""", unsafe_allow_html=True)
+    # 檢查該模組維護狀態，若開啟且未解鎖則秀出專屬密碼登入畫面
+    if is_module_maintenance("window_filter") and not st.session_state.get("admin_bypassed_window", False):
+        st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 指定時段報到組員快篩系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
+        
+        col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
+        with col_m2:
+            st.markdown("""<div class="maintenance-msg-box">此功能目前正在維護中。管理員可於下方輸入密碼進行身分解鎖與預覽。</div>""", unsafe_allow_html=True)
+            w_unlock = st.text_input("管理員解鎖金鑰", type="password", placeholder="請輸入管理員密碼...", key="window_unlock_input")
+            if st.button("解鎖並進入預覽", key="window_unlock_btn"):
+                if w_unlock == ADMIN_PASSWORD:
+                    st.session_state["admin_bypassed_window"] = True
+                    st.success("解鎖成功！")
+                    st.rerun()
+                else:
+                    st.error("管理員密碼錯誤")
         st.stop()
+
+    # 若管理員已解鎖，顯示識別橫幅
+    if st.session_state.get("admin_bypassed_window", False) and is_module_maintenance("window_filter"):
+        st.markdown("""
+        <div class="admin-bypass-banner">
+            <span>[!] ADMIN BYPASS // 「時段快篩」目前處於維護中，您正以管理員身分預覽</span>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="section-header-box">
@@ -938,10 +979,30 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 elif app_mode == "換假日期快篩（Alpha測試版）":
-    # 檢查該模組獨立維護狀態
-    if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_bypassed", False):
-        st.markdown("""<div class="maintenance-msg-box">「換假日期快篩系統」目前正在維護中，請稍候再試。</div>""", unsafe_allow_html=True)
+    # 檢查該模組維護狀態，若開啟且未解鎖則秀出專屬密碼登入畫面
+    if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_bypassed_exchange", False):
+        st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 換假日期快篩系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
+        
+        col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
+        with col_m2:
+            st.markdown("""<div class="maintenance-msg-box">此功能目前正在維護中。管理員可於下方輸入密碼進行身分解鎖與預覽。</div>""", unsafe_allow_html=True)
+            e_unlock = st.text_input("管理員解鎖金鑰", type="password", placeholder="請輸入管理員密碼...", key="exchange_unlock_input")
+            if st.button("解鎖並進入預覽", key="exchange_unlock_btn"):
+                if e_unlock == ADMIN_PASSWORD:
+                    st.session_state["admin_bypassed_exchange"] = True
+                    st.success("解鎖成功！")
+                    st.rerun()
+                else:
+                    st.error("管理員密碼錯誤")
         st.stop()
+
+    # 若管理員已解鎖，顯示識別橫幅
+    if st.session_state.get("admin_bypassed_exchange", False) and is_module_maintenance("exchange_filter"):
+        st.markdown("""
+        <div class="admin-bypass-banner">
+            <span>[!] ADMIN BYPASS // 「換假快篩」目前處於維護中，您正以管理員身分預覽</span>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="section-header-box">
