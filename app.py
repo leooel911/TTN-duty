@@ -1037,7 +1037,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                             "鄰近天數概況": " | ".join(mini_schedule)
                         })
 
-                st.markdown(f"### 🎯 查詢結果：{target_date} 【{selected_role}】可協調換假人員（共 {len(candidates)} 位）")
+                st.markdown(f"###  查詢結果：{target_date} 【{selected_role}】可協調換假人員（共 {len(candidates)} 位）")
                 
                 if candidates:
                     ex_c1, ex_c2 = st.columns(2)
