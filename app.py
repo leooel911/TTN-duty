@@ -198,23 +198,11 @@ st.markdown("""
         transform: translateY(-2px) !important;
     }
 
-    /* 🔒 登入按鈕專屬靠右容器 */
-    .login-right-container {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        width: 100%;
-    }
-    .login-right-container div.stButton > button {
-        width: auto !important;
-        min-width: 140px;
-    }
-
-    /* 🔒 極低調底部的「系統管理員後台」專屬微型按鈕樣式（靠右對齊） */
+    /* 🔒 極低調底部的「系統管理員後台」專屬微型按鈕樣式 */
     .footer-admin-container {
         display: flex;
         flex-direction: column;
-        align-items: flex-end;
+        align-items: center;
         justify-content: center;
         width: 100%;
         margin-top: 60px;
@@ -232,7 +220,7 @@ st.markdown("""
         box-shadow: none !important;
         width: auto !important;
         padding: 4px 12px !important;
-        margin: 0 0 0 auto !important;
+        margin: 0 auto !important;
     }
     .footer-admin-container div.stButton > button:hover {
         background: rgba(30, 41, 59, 0.4) !important;
@@ -304,6 +292,7 @@ def log_activity(input_str):
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
 if "admin_bypassed" not in st.session_state: st.session_state["admin_bypassed"] = False
 if "direct_to_admin" not in st.session_state: st.session_state["direct_to_admin"] = False
+if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
 
 def get_file_mtime_str(path):
@@ -323,23 +312,6 @@ def get_schedule_range():
                 if dates: return f"{dates[0]} 至 {dates[-1]}"
             except: pass
     return "尚無資料"
-
-# 💡 自動掃描所有 Excel 檔案，建立組員下拉選單清單
-def get_all_crew_options():
-    crew_list = []
-    for role, path in ROLE_FILES.items():
-        if os.path.exists(path):
-            try:
-                df_temp = pd.read_excel(path, header=3)
-                for _, row in df_temp.iterrows():
-                    emp_id = str(row.iloc[0]).strip()
-                    emp_name = str(row.iloc[1]).strip()
-                    if emp_id and emp_name and emp_id.lower() != "nan" and emp_name.lower() != "nan":
-                        display_str = f"[{role}] {emp_id} - {emp_name}"
-                        if display_str not in crew_list:
-                            crew_list.append(display_str)
-            except: pass
-    return sorted(crew_list)
 
 def set_maintenance_mode(is_maintenance):
     if is_maintenance:
@@ -421,9 +393,7 @@ def process_file_data(input_str):
             df_temp = pd.read_excel(path, header=3)
             df_temp.columns = [str(c).strip() for c in df_temp.columns]
             for idx, row in df_temp.iterrows():
-                row_id = str(row.iloc[0]).strip().upper()
-                row_name = str(row.iloc[1]).strip().upper()
-                if row_id == input_clean or row_name == input_clean or input_clean in f"[{role.upper()}] {row_id} - {row_name}":
+                if str(row.iloc[0]).strip().upper() == input_clean or str(row.iloc[1]).strip().upper() == input_clean:
                     matched_row, emp_id, emp_name, df_found = row, str(row.iloc[0]).strip(), str(row.iloc[1]).strip(), df_temp
                     break
         if matched_row is not None: break
@@ -505,13 +475,12 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
                 st.error("密碼錯誤")
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查 (靠右對齊佈局) ---
+# --- 🔒 前置授權碼門戶檢查 ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
-    st.markdown("""<div style="text-align: left; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
+    st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 1, 2])
-    with col3:
-        st.markdown('<div class="login-right-container">', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
         entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
         
         btn_auth = st.button("進入系統", key="auth_btn_1")
@@ -527,7 +496,6 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_byp
                 st.rerun()
             else:
                 st.error("授權碼或密碼錯誤，請重新輸入")
-        st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # --- 🔒 如果點擊了底部管理員後台且尚未驗證：顯示專屬密碼輸入畫面 ---
@@ -576,7 +544,7 @@ if st.session_state.get("direct_to_admin", False):
     st.subheader("查詢紀錄清單")
     col_log_1, col_log_2 = st.columns([1, 1])
     with col_log_1:
-        if st.button("🔄 刷新紀錄"): st.rerun()
+        if st.button("🔄 重新載入紀錄"): st.rerun()
     with col_log_2:
         if st.button("🗑️ 清除紀錄"):
             if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
@@ -668,18 +636,12 @@ if app_mode == "生產個人班表圖片檔":
     </div>
     """, unsafe_allow_html=True)
 
-    # 💡 改為自動讀取所有 Excel 內的名單供下拉搜尋點選
-    all_crews = get_all_crew_options()
-    if all_crews:
-        selected_crew = st.selectbox("選擇或搜尋組員 (支援輸入員編或姓名過濾)", all_crews, key="crew_selectbox")
-        target_input = selected_crew.split(" - ")[0].split("] ")[-1] if selected_crew else ""
-    else:
-        target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A", key="user_input_field")
+    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A", key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
-        current_input = target_input.strip()
+        current_input = st.session_state.get("user_input_field", "").strip()
         if not current_input:
-            st.warning("請選擇或輸入員編/姓名")
+            st.warning("請輸入員編或姓名")
         else:
             log_activity(current_input)
             if not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料")
@@ -979,7 +941,7 @@ elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
                     else:
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
-# 🔒 完美對齊右下角的極低調管理員後台入口
+# 🔒 完美垂直置中於頁面最下方的極低調管理員後台入口
 st.markdown('<div class="footer-admin-container">', unsafe_allow_html=True)
 if st.button("系統管理員後台", key="footer_admin_btn_strict"):
     st.session_state["show_admin_login"] = True
