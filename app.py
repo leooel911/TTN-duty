@@ -22,7 +22,6 @@ st.markdown("""
     .stApp { background-color: #0B0F19 !important; color: #F8FAFC !important; }
     .block-container { padding: 3rem 1rem !important; }
     
-    /* 專業科技感標題區樣式 */
     .header-container { 
         display: flex; 
         justify-content: space-between; 
@@ -78,7 +77,6 @@ st.markdown("""
         font-family: monospace;
     }
 
-    /* 施工中質感黃色暗調框樣式 */
     .maintenance-msg-box {
         background: linear-gradient(135deg, #271C0C 100%, #171005 100%);
         border: 1px solid #854D0E;
@@ -94,7 +92,6 @@ st.markdown("""
         box-shadow: 0 4px 16px rgba(133, 77, 14, 0.2);
     }
 
-    /* 管理員維護解鎖模式識別列 */
     .admin-bypass-banner {
         background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);
         border: 1px solid #EF4444;
@@ -172,7 +169,6 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
 
-    /* 一般主按鈕高質感樣式 */
     div.stButton > button { 
         font-weight: 700 !important; 
         padding: 12px 18px !important; 
@@ -198,7 +194,6 @@ st.markdown("""
         transform: translateY(-2px) !important;
     }
 
-    /* 🔒 極低調底部的「系統管理員後台」專屬微型按鈕樣式 */
     .footer-admin-container {
         display: flex;
         flex-direction: column;
@@ -572,36 +567,7 @@ if st.session_state.get("direct_to_admin", False):
 
     st.stop()
 
-# --- 主系統介面 ---
-st.markdown("""
-<div class="header-container">
-    <div class="title-left-group">
-        <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
-        <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
-    </div>
-    <div class="edition-badge">C.L.F EDITION</div>
-</div>
-""", unsafe_allow_html=True)
-
-td_time = get_file_mtime_str(ROLE_FILES["駕駛"])
-tm_time = get_file_mtime_str(ROLE_FILES["列車長"])
-ta_time = get_file_mtime_str(ROLE_FILES["服勤員"])
-sched_range = get_schedule_range()
-
-st.markdown(f"""
-<div class="telemetry-card">
-    <div class="telemetry-title">目前系統排班週期 & 伺服器資料狀態</div>
-    <div class="telemetry-value" style="font-size: 22px; color: #60A5FA; margin-bottom: 8px;">{sched_range}</div>
-    <div class="telemetry-sub">
-        伺服器資料狀態：<br>
-        - 駕駛更新：{td_time}<br>
-        - 列車長更新：{tm_time}<br>
-        - 服勤員更新：{ta_time}
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# 檢視特定組員完整班表的獨立檢視模式（如果被點擊）
+# --- 🔒 如果使用者點擊了「檢視完整班表」，最優先攔截並繪製該組員的月班表 ---
 if st.session_state.get("inspect_emp_target") is not None:
     target_emp = st.session_state["inspect_emp_target"]
     st.markdown(f"""
@@ -611,7 +577,7 @@ if st.session_state.get("inspect_emp_target") is not None:
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("返回換假快篩列表"):
+    if st.button("上一頁 (返回換假列表)"):
         st.session_state["inspect_emp_target"] = None
         st.rerun()
 
@@ -738,6 +704,35 @@ if st.session_state.get("inspect_emp_target") is not None:
         st.error(f"載入完整班表時發生錯誤: {e}")
 
     st.stop()
+
+# --- 主系統介面 ---
+st.markdown("""
+<div class="header-container">
+    <div class="title-left-group">
+        <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
+        <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
+    </div>
+    <div class="edition-badge">C.L.F EDITION</div>
+</div>
+""", unsafe_allow_html=True)
+
+td_time = get_file_mtime_str(ROLE_FILES["駕駛"])
+tm_time = get_file_mtime_str(ROLE_FILES["列車長"])
+ta_time = get_file_mtime_str(ROLE_FILES["服勤員"])
+sched_range = get_schedule_range()
+
+st.markdown(f"""
+<div class="telemetry-card">
+    <div class="telemetry-title">目前系統排班週期 & 伺服器資料狀態</div>
+    <div class="telemetry-value" style="font-size: 22px; color: #60A5FA; margin-bottom: 8px;">{sched_range}</div>
+    <div class="telemetry-sub">
+        伺服器資料狀態：<br>
+        - 駕駛更新：{td_time}<br>
+        - 列車長更新：{tm_time}<br>
+        - 服勤員更新：{ta_time}
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
