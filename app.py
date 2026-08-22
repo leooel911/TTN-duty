@@ -616,7 +616,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 💡 使用者主導向：功能選單純淨化（換假日期快篩加入 Alpha 測試版標記）
+# 💡 使用者主導向：功能選單純淨化
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
     "指定時段報到組員快篩（Alpha測試版）",
@@ -1019,7 +1019,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                         if strict_limit and max_streak >= 6:
                             continue
                             
-                        # 前後各抓 4 天動態顯示
+                        # 修正：前後各抓 4 天動態顯示（完整涵蓋前 4 天、當天、後 4 天）
                         disp_s = max(0, actual_pos - 4)
                         disp_e = min(len(all_cols_list) - 1, actual_pos + 4)
                         mini_schedule = []
