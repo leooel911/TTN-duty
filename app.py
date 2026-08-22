@@ -457,117 +457,7 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 🔒 前置授權碼門戶檢查 ---
-if not st.session_state["authenticated"] and not st.session_state.get("direct_to_admin", False):
-    st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
-        
-        btn_auth = st.button("進入系統", key="auth_btn_1")
-
-        if btn_auth:
-            if entered_key == CREW_ACCESS_PASSWORD:
-                st.session_state["authenticated"] = True
-                st.rerun()
-            elif entered_key == ADMIN_PASSWORD:
-                st.session_state["direct_to_admin"] = True
-                st.success("管理員驗證成功，正在載入後台...")
-                st.rerun()
-            else:
-                st.error("授權碼或密碼錯誤，請重新輸入")
-    st.stop()
-
-if st.session_state.get("show_admin_login", False) and not st.session_state.get("direct_to_admin", False):
-    st.markdown("""
-    <div class="section-header-box">
-        <div class="section-title">管理員身分驗證</div>
-        <div class="section-subtitle">Administrator Security Verification</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
-    with col_l2:
-        adm_pwd_input = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員解鎖密碼...", key="strict_admin_pwd_box")
-        if st.button("確認解鎖進入後台", key="strict_admin_submit"):
-            if adm_pwd_input == ADMIN_PASSWORD:
-                st.session_state["direct_to_admin"] = True
-                st.session_state["show_admin_login"] = False
-                st.success("驗證成功，正在切換後台...")
-                st.rerun()
-            else:
-                st.error("管理員密碼錯誤，無法進入後台")
-        
-        if st.button("返回一般首頁", key="back_from_login"):
-            st.session_state["show_admin_login"] = False
-            st.rerun()
-    st.stop()
-
-if st.session_state.get("direct_to_admin", False):
-    st.markdown("""
-    <div class="section-header-box">
-        <div class="section-title">管理員專用：Database 控制台</div>
-        <div class="section-subtitle">Direct Administrator Dashboard</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.success("歡迎回來，管理員 LEO")
-    
-    if st.button("← 返回一般首頁"):
-        st.session_state["direct_to_admin"] = False
-        st.session_state["show_admin_login"] = False
-        st.rerun()
-
-    st.markdown("---")
-    st.subheader("查詢紀錄清單")
-    col_log_1, col_log_2 = st.columns([1, 1])
-    with col_log_1:
-        if st.button("🔄 重新載入紀錄"): st.rerun()
-    with col_log_2:
-        if st.button("🗑️ 清除紀錄"):
-            if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
-            st.rerun()
-
-    if os.path.exists(LOG_FILE):
-        with open(LOG_FILE, "r", encoding="utf-8") as f:
-            logs = f.readlines()
-            for line in reversed(logs[-20:]): st.text(line.strip())
-    else: st.info("尚無任何查詢紀錄")
-
-    st.markdown("---")
-    st.subheader("各系統獨立維護開關控制台")
-    st.caption("您可以針對這三種系統分別設定維護狀態，不需一次關閉全部系統：")
-
-    maint_p = is_module_maintenance("producer")
-    toggle_p = st.checkbox("【系統 1】生產個人班表圖片檔 - 進入維護模式", value=maint_p, key="toggle_producer")
-    if toggle_p != maint_p:
-        set_module_maintenance("producer", toggle_p)
-        st.rerun()
-
-    maint_w = is_module_maintenance("window_filter")
-    toggle_w = st.checkbox("【系統 2】指定時段報到組員快篩 - 進入維護模式", value=maint_w, key="toggle_window")
-    if toggle_w != maint_w:
-        set_module_maintenance("window_filter", toggle_w)
-        st.rerun()
-
-    maint_e = is_module_maintenance("exchange_filter")
-    toggle_e = st.checkbox("【系統 3】換假日期快篩 - 進入維護模式", value=maint_e, key="toggle_exchange")
-    if toggle_e != maint_e:
-        set_module_maintenance("exchange_filter", toggle_e)
-        st.rerun()
-
-    st.markdown("---")
-    st.subheader("管理員檔案上傳區")
-    selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
-    uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
-    if uploaded_file:
-        with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
-        st.success("上傳成功")
-
-    st.stop()
-
-# --- 🔒 如果使用者點擊了「檢視完整班表」，最優先攔截並繪製該組員的月班表 ---
+# --- 🔒 最優先攔截：如果使用者點擊了「檢視完整班表」，直接在此處渲染整月圖檔並停止 ---
 if st.session_state.get("inspect_emp_target") is not None:
     target_emp = st.session_state["inspect_emp_target"]
     st.markdown(f"""
@@ -702,6 +592,116 @@ if st.session_state.get("inspect_emp_target") is not None:
         st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
     except Exception as e:
         st.error(f"載入完整班表時發生錯誤: {e}")
+
+    st.stop()
+
+# --- 🔒 前置授權碼門戶檢查 ---
+if not st.session_state["authenticated"] and not st.session_state.get("direct_to_admin", False):
+    st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
+        
+        btn_auth = st.button("進入系統", key="auth_btn_1")
+
+        if btn_auth:
+            if entered_key == CREW_ACCESS_PASSWORD:
+                st.session_state["authenticated"] = True
+                st.rerun()
+            elif entered_key == ADMIN_PASSWORD:
+                st.session_state["direct_to_admin"] = True
+                st.success("管理員驗證成功，正在載入後台...")
+                st.rerun()
+            else:
+                st.error("授權碼或密碼錯誤，請重新輸入")
+    st.stop()
+
+if st.session_state.get("show_admin_login", False) and not st.session_state.get("direct_to_admin", False):
+    st.markdown("""
+    <div class="section-header-box">
+        <div class="section-title">管理員身分驗證</div>
+        <div class="section-subtitle">Administrator Security Verification</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
+    with col_l2:
+        adm_pwd_input = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員解鎖密碼...", key="strict_admin_pwd_box")
+        if st.button("確認解鎖進入後台", key="strict_admin_submit"):
+            if adm_pwd_input == ADMIN_PASSWORD:
+                st.session_state["direct_to_admin"] = True
+                st.session_state["show_admin_login"] = False
+                st.success("驗證成功，正在切換後台...")
+                st.rerun()
+            else:
+                st.error("管理員密碼錯誤，無法進入後台")
+        
+        if st.button("返回一般首頁", key="back_from_login"):
+            st.session_state["show_admin_login"] = False
+            st.rerun()
+    st.stop()
+
+if st.session_state.get("direct_to_admin", False):
+    st.markdown("""
+    <div class="section-header-box">
+        <div class="section-title">管理員專用：Database 控制台</div>
+        <div class="section-subtitle">Direct Administrator Dashboard</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.success("歡迎回來，管理員 LEO")
+    
+    if st.button("← 返回一般首頁"):
+        st.session_state["direct_to_admin"] = False
+        st.session_state["show_admin_login"] = False
+        st.rerun()
+
+    st.markdown("---")
+    st.subheader("查詢紀錄清單")
+    col_log_1, col_log_2 = st.columns([1, 1])
+    with col_log_1:
+        if st.button("🔄 重新載入紀錄"): st.rerun()
+    with col_log_2:
+        if st.button("🗑️ 清除紀錄"):
+            if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
+            st.rerun()
+
+    if os.path.exists(LOG_FILE):
+        with open(LOG_FILE, "r", encoding="utf-8") as f:
+            logs = f.readlines()
+            for line in reversed(logs[-20:]): st.text(line.strip())
+    else: st.info("尚無任何查詢紀錄")
+
+    st.markdown("---")
+    st.subheader("各系統獨立維護開關控制台")
+    st.caption("您可以針對這三種系統分別設定維護狀態，不需一次關閉全部系統：")
+
+    maint_p = is_module_maintenance("producer")
+    toggle_p = st.checkbox("【系統 1】生產個人班表圖片檔 - 進入維護模式", value=maint_p, key="toggle_producer")
+    if toggle_p != maint_p:
+        set_module_maintenance("producer", toggle_p)
+        st.rerun()
+
+    maint_w = is_module_maintenance("window_filter")
+    toggle_w = st.checkbox("【系統 2】指定時段報到組員快篩 - 進入維護模式", value=maint_w, key="toggle_window")
+    if toggle_w != maint_w:
+        set_module_maintenance("window_filter", toggle_w)
+        st.rerun()
+
+    maint_e = is_module_maintenance("exchange_filter")
+    toggle_e = st.checkbox("【系統 3】換假日期快篩 - 進入維護模式", value=maint_e, key="toggle_exchange")
+    if toggle_e != maint_e:
+        set_module_maintenance("exchange_filter", toggle_e)
+        st.rerun()
+
+    st.markdown("---")
+    st.subheader("管理員檔案上傳區")
+    selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
+    uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
+    if uploaded_file:
+        with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
+        st.success("上傳成功")
 
     st.stop()
 
