@@ -1019,7 +1019,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                         if strict_limit and max_streak >= 6:
                             continue
                             
-                        # 修正：前後各抓 4 天動態顯示（完整涵蓋前 4 天、當天、後 4 天）
+                        # 【修正】以目標當天 (actual_pos) 為中心，前後各抓 4 天（總共 9 天完整動態）
                         disp_s = max(0, actual_pos - 4)
                         disp_e = min(len(all_cols_list) - 1, actual_pos + 4)
                         mini_schedule = []
@@ -1049,7 +1049,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                                 <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                             </div>
                             <div class="compact-name">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
-                            <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
+                            <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1; word-break: break-all;">前後動態: {cand['鄰近天數概況']}</div>
                         </div>
                         """
                         if idx % 2 == 0:
