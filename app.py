@@ -456,8 +456,8 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
     
     col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
     with col_m2:
-        st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
-        admin_unlock = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", key="maint_unlock_input", label_visibility="collapsed")
+        st.markdown("""<div class="maintenance-msg-box">系統目前正在維護中，請稍候再試。</div>""", unsafe_allow_html=True)
+        admin_unlock = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入管理員密碼...", key="maint_unlock_input", label_visibility="collapsed")
         
         btn_m = st.button("進入系統", key="maint_btn_1")
 
@@ -467,12 +467,8 @@ if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) a
                 st.session_state["admin_bypassed"] = True
                 st.success("管理員身分驗證成功，正在載入後台...")
                 st.rerun()
-            elif admin_unlock == CREW_ACCESS_PASSWORD:
-                st.session_state["admin_bypassed"] = True
-                st.success("系統維護預覽解鎖成功")
-                st.rerun()
             else:
-                st.error("密碼錯誤")
+                st.error("密碼錯誤（維護期間僅限管理員登入）")
     st.stop()
 
 # --- 🔒 前置授權碼門戶檢查 ---
@@ -524,7 +520,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
             st.rerun()
     st.stop()
 
-# --- 🔓 如果已通過驗證，直接進入管理員後台控制台 ---
+# --- 🔒 如果已通過驗證，直接進入管理員後台控制台 ---
 if st.session_state.get("direct_to_admin", False):
     st.markdown("""
     <div class="section-header-box">
@@ -620,10 +616,11 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 💡 使用者主導向：功能選單純淨化
+# 💡 使用者主導向：功能選單純淨化（包含原本兩項 + 新增的換假協調系統）
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
-    "換班｜尋找指定時段報到組員（Alpha測試版）"
+    "指定時段報到組員快篩（Alpha測試版）",
+    "換假｜尋找指定日期可協調換班/休假人員（新功能）"
 ], horizontal=False)
 
 st.markdown("---")
@@ -787,7 +784,7 @@ if app_mode == "生產個人班表圖片檔":
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
+elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">指定 Sign-In 時段組員名單快篩</div>
@@ -940,6 +937,159 @@ elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
                             col_idx += 1
                     else:
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
+
+elif app_mode == "換假｜尋找指定日期可協調換班/休假人員（新功能）":
+    st.markdown("""
+    <div class="section-header-box">
+        <div class="section-title">換假協調智慧檢索系統</div>
+        <div class="section-subtitle">Auto-Role Detection & Pure-DO Shift Exchange Matcher</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 返回首頁（模式選擇頁面）快捷按鈕
+    if st.button("← 返回系統功能選單"):
+        st.session_state["user_input_field"] = "A"
+        st.rerun()
+
+    st.markdown("---")
+
+    # 1. 輸入個人識別與目標日期
+    ex_c1, ex_c2 = st.columns(2)
+    with ex_c1:
+        user_self_input = st.text_input("您的員編或姓名 (例如: A023300)", value="", key="ex_user_self_auto")
+    with ex_c2:
+        sample_path = ROLE_FILES["駕駛"] if os.path.exists(ROLE_FILES["駕駛"]) else list(ROLE_FILES.values())[0]
+        temp_df_dates = pd.read_excel(sample_path, header=3)
+        date_cols = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in temp_df_dates.columns[2:] if re.search(r'(\d+/\d+)', str(c))]
+        target_date = st.selectbox("想休假的目標日期 (A天)", date_cols, index=0, key="ex_target_date_auto")
+
+    strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員（避免法規違規）", value=True)
+
+    if st.button("開始自動識別並尋找可協調換假人員", key="btn_auto_search_exchange"):
+        if not user_self_input.strip():
+            st.warning("請先輸入您的員編或姓名，以便系統自動判斷您的職位與排除您自己。")
+        else:
+            detected_role = None
+            user_emp_id = ""
+            user_emp_name = ""
+            
+            for role, path in ROLE_FILES.items():
+                if os.path.exists(path):
+                    df_r = pd.read_excel(path, header=3)
+                    for _, row in df_r.iterrows():
+                        e_id = str(row.iloc[0]).strip().upper()
+                        e_name = str(row.iloc[1]).strip().upper()
+                        if user_self_input.strip().upper() in e_id or user_self_input.strip().upper() in e_name:
+                            detected_role = role
+                            user_emp_id = str(row.iloc[0]).strip()
+                            user_emp_name = str(row.iloc[1]).strip()
+                            break
+                if detected_role:
+                    break
+            
+            if not detected_role:
+                st.error(f"找不到員編或姓名為「{user_self_input}」的組員資料，請確認輸入是否正確。")
+            else:
+                st.success(f"系統自動識別成功：您的職位為【{detected_role}】（員編: {user_emp_id} / 姓名: {user_emp_name}）")
+                
+                target_path = ROLE_FILES[detected_role]
+                df_ex = pd.read_excel(target_path, header=3)
+                df_ex.columns = [str(c).strip() for c in df_ex.columns]
+                
+                target_col_idx = -1
+                actual_pos = -1
+                all_cols_list = list(df_ex.columns[2:])
+                for idx, col in enumerate(all_cols_list):
+                    if target_date in str(col):
+                        target_col_idx = idx + 2
+                        actual_pos = idx
+                        break
+
+                if target_col_idx == -1:
+                    st.warning("找不到該日期的欄位資料")
+                else:
+                    candidates = []
+                    for _, row in df_ex.iterrows():
+                        emp_id = str(row.iloc[0]).strip()
+                        emp_name = str(row.iloc[1]).strip()
+                        
+                        if emp_id.upper() == user_emp_id.upper() or emp_name == user_emp_name:
+                            continue
+                            
+                        cell_raw = row.iloc[target_col_idx]
+                        parsed = parse_cell(cell_raw)
+                        raw_str = str(cell_raw).upper()
+                        tr = str(parsed["train"]).strip().upper()
+                        
+                        # 判定目標當天 A 是否為「純 DO」（PAY、FAC 等特別假不能調動）
+                        is_pure_do = ("DO" in raw_str) or ("D2W" in raw_str)
+                        is_special_leave = (tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_str) or ("FAC" in raw_str)
+                        
+                        if is_pure_do and not is_special_leave:
+                            # 計算前後 5 天連續上班天數（純 DO 斷開，PAY/FAC 視同工作天無法斷開）
+                            s_idx = max(0, actual_pos - 5)
+                            e_idx = min(len(all_cols_list) - 1, actual_pos + 5)
+                            
+                            current_streak = 0
+                            max_streak = 0
+                            
+                            for p_i in range(s_idx, e_idx + 1):
+                                c_val = row.iloc[p_i + 2]
+                                p_res = parse_cell(c_val)
+                                c_raw_str = str(c_val).upper()
+                                c_tr = str(p_res["train"]).strip().upper()
+                                
+                                is_c_rest = ("DO" in c_raw_str) or ("D2W" in c_raw_str)
+                                is_c_special_leave = (c_tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_str) or ("FAC" in c_raw_str)
+                                
+                                if is_c_rest and not is_c_special_leave:
+                                    current_streak = 0
+                                else:
+                                    current_streak += 1
+                                    if current_streak > max_streak:
+                                        max_streak = current_streak
+                            
+                            if strict_limit and max_streak >= 6:
+                                continue
+                                
+                            disp_s = max(0, actual_pos - 2)
+                            disp_e = min(len(all_cols_list) - 1, actual_pos + 2)
+                            mini_schedule = []
+                            for p_i in range(disp_s, disp_e + 1):
+                                d_str = date_cols[p_i] if p_i < len(date_cols) else all_cols_list[p_i]
+                                c_val = row.iloc[p_i + 2]
+                                p_res = parse_cell(c_val)
+                                mini_schedule.append(f"{d_str}: {p_res['train'] if p_res['train'] else '休'}")
+
+                            candidates.append({
+                                "員編": emp_id,
+                                "姓名": emp_name,
+                                "當天狀態": "DO (可調動)",
+                                "前後連續上班最大天數": max_streak,
+                                "鄰近天數概況": " | ".join(mini_schedule)
+                            })
+
+                    st.markdown(f"### 🎯 查詢結果：{target_date} 可協調換假人員（共 {len(candidates)} 位）")
+                    
+                    if candidates:
+                        ex_c1, ex_c2 = st.columns(2)
+                        for idx, cand in enumerate(candidates):
+                            card_html = f"""
+                            <div class="compact-card" style="border-left-color: #10B981;">
+                                <div class="time-header-row">
+                                    <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
+                                    <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
+                                </div>
+                                <div class="compact-name">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
+                                <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
+                            </div>
+                            """
+                            if idx % 2 == 0:
+                                with ex_c1: st.markdown(card_html, unsafe_allow_html=True)
+                            else:
+                                with ex_c2: st.markdown(card_html, unsafe_allow_html=True)
+                    else:
+                        st.info("在該日期找不到符合「純 DO」且前後 5 天連續上班天數在安全範圍內的同職位組員可供調動。")
 
 # 🔒 完美垂直置中於頁面最下方的極低調管理員後台入口
 st.markdown('<div class="footer-admin-container">', unsafe_allow_html=True)
