@@ -985,9 +985,9 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
         
         col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
         with col_m2:
-            st.markdown("""<div class="maintenance-msg-box">此功能目前正在維護中。管理員可於下方輸入密碼進行身分解鎖與預覽。</div>""", unsafe_allow_html=True)
-            e_unlock = st.text_input("管理員解鎖金鑰", type="password", placeholder="請輸入管理員密碼...", key="exchange_unlock_input")
-            if st.button("解鎖並進入預覽", key="exchange_unlock_btn"):
+            st.markdown("""<div class="maintenance-msg-box">此系統目前正在維護中。</div>""", unsafe_allow_html=True)
+            e_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="exchange_unlock_input")
+            if st.button("進入系統", key="exchange_unlock_btn"):
                 if e_unlock == ADMIN_PASSWORD:
                     st.session_state["admin_bypassed_exchange"] = True
                     st.success("解鎖成功！")
