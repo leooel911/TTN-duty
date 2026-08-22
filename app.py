@@ -251,7 +251,6 @@ ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 LOG_FILE = "activity_log.txt"
 
-# --- 三種獨立系統的維護狀態檔案定義 ---
 MAINTENANCE_FLAGS = {
     "producer": "maintenance_producer.flag",
     "window_filter": "maintenance_window.flag",
@@ -314,6 +313,7 @@ if "admin_bypassed_exchange" not in st.session_state: st.session_state["admin_by
 if "direct_to_admin" not in st.session_state: st.session_state["direct_to_admin"] = False
 if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
+if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_target"] = None
 
 def get_file_mtime_str(path):
     if os.path.exists(path):
@@ -484,7 +484,6 @@ if not st.session_state["authenticated"] and not st.session_state.get("direct_to
                 st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 🔒 如果點擊了底部管理員後台且尚未驗證：顯示專屬密碼輸入畫面 ---
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""
     <div class="section-header-box">
@@ -510,7 +509,6 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
             st.rerun()
     st.stop()
 
-# --- 🔒 如果已通過驗證，直接進入管理員後台控制台 ---
 if st.session_state.get("direct_to_admin", False):
     st.markdown("""
     <div class="section-header-box">
@@ -546,21 +544,18 @@ if st.session_state.get("direct_to_admin", False):
     st.subheader("各系統獨立維護開關控制台")
     st.caption("您可以針對這三種系統分別設定維護狀態，不需一次關閉全部系統：")
 
-    # 1. 生產個人班表圖片檔
     maint_p = is_module_maintenance("producer")
     toggle_p = st.checkbox("【系統 1】生產個人班表圖片檔 - 進入維護模式", value=maint_p, key="toggle_producer")
     if toggle_p != maint_p:
         set_module_maintenance("producer", toggle_p)
         st.rerun()
 
-    # 2. 指定時段報到組員快篩
     maint_w = is_module_maintenance("window_filter")
     toggle_w = st.checkbox("【系統 2】指定時段報到組員快篩 - 進入維護模式", value=maint_w, key="toggle_window")
     if toggle_w != maint_w:
         set_module_maintenance("window_filter", toggle_w)
         st.rerun()
 
-    # 3. 換假日期快篩
     maint_e = is_module_maintenance("exchange_filter")
     toggle_e = st.checkbox("【系統 3】換假日期快篩 - 進入維護模式", value=maint_e, key="toggle_exchange")
     if toggle_e != maint_e:
@@ -577,7 +572,7 @@ if st.session_state.get("direct_to_admin", False):
 
     st.stop()
 
-# --- 🔒 主系統介面 (專業科技感標題區) ---
+# --- 主系統介面 ---
 st.markdown("""
 <div class="header-container">
     <div class="title-left-group">
@@ -606,7 +601,144 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 💡 使用者主導向：功能選單純淨化
+# 檢視特定組員完整班表的獨立檢視模式（如果被點擊）
+if st.session_state.get("inspect_emp_target") is not None:
+    target_emp = st.session_state["inspect_emp_target"]
+    st.markdown(f"""
+    <div class="section-header-box">
+        <div class="section-title">組員完整班表檢視: {target_emp}</div>
+        <div class="section-subtitle">Inspection Mode // Full Schedule View</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    if st.button("返回換假快篩列表"):
+        st.session_state["inspect_emp_target"] = None
+        st.rerun()
+
+    try:
+        start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
+        active_transport = parse_transport_periods(TRANSPORT_PERIODS)
+        font_prop = setup_font()
+        def fp(size=9): return fm.FontProperties(fname=font_prop.get_file(), size=size) if font_prop else fm.FontProperties(size=size)
+
+        weeks = build_weeks(start_dt, dates, cells)
+        fig, ax = plt.subplots(figsize=(16, 11), dpi=300)
+        ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
+        fig.patch.set_facecolor("white")
+        ML, MR, MT, MB, TH, DH = 0.015, 0.015, 0.015, 0.08, 0.09, 0.055
+        TW, CW = 1.0 - ML - MR, (1.0 - ML - MR) / 7
+        RH = (1.0 - MT - MB - TH - DH) / len(weeks)
+        ty = 1.0 - MT - TH
+        ax.add_patch(FancyBboxPatch((ML, ty), TW, TH, boxstyle="square,pad=0", linewidth=0, facecolor=C_HDR))
+
+        draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(16))
+        draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]}", ha="left", va="center", color="#CBD5E1", fontproperties=fp(11))
+
+        badge_w = CW * 0.90
+        badge_x = (1.0 - MR) - CW + (CW - badge_w) / 2
+        badge_y = ty + TH * 0.42
+        badge_h = 0.035
+
+        ax.add_patch(FancyBboxPatch((badge_x, badge_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.01", linewidth=1.0, edgecolor="#334155", facecolor="#1E293B"))
+        draw_bold_text(ax, badge_x + badge_w / 2, badge_y + badge_h / 2, "Inspector | C.L.F", ha="center", va="center", color="#38BDF8", fontproperties=fp(10.5))
+
+        dy = ty - DH
+        for c in range(7):
+            x = ML + c * CW
+            ax.add_patch(FancyBboxPatch((x, dy), CW, DH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#475569", facecolor="#94A3B8"))
+            draw_bold_text(ax, x + CW / 2, dy + DH / 2, ["SUN 星期日", "MON 星期一", "TUE 星期二", "WED 星期三", "THU 星期四", "FRI 星期五", "SAT 星期六"][c], ha="center", va="center", color="#000000", fontproperties=fp(11))
+
+        has_emp_do, has_emp_pay, has_emp_ot, has_emp_town = False, False, False, False
+        for week in weeks:
+            for item in week:
+                if item is not None:
+                    dt, d, raw_cell_str = item
+                    tr, note, hours = d["train"], d.get("note", ""), d.get("hours", "")
+                    is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d["start"]
+                    if is_pure_hol or tr.startswith("DO"): has_emp_do = True
+                    elif tr in ["PAY", "FAC"] or "PAY" in raw_cell_str or "FAC" in raw_cell_str: has_emp_pay = True
+                    elif is_town_shift(tr, note): has_emp_town = True
+                    if is_overtime(hours, tr, note): has_emp_ot = True
+
+        for ri, week in enumerate(weeks):
+            ry = dy - (ri + 1) * RH
+            for ci, item in enumerate(week):
+                x = ML + ci * CW
+                if item is None: 
+                    ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=C_EMPTY))
+                    continue
+                dt, d, raw_cell_str = item
+                tr, note = d["train"], d.get("note", "")
+
+                is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d["start"]
+                is_pay_shift = (tr in ["PAY", "FAC"]) or ("PAY" in raw_cell_str) or ("FAC" in raw_cell_str)
+
+                bg = C_DO_BG if is_pure_hol else (C_PAY_BG if is_pay_shift else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
+                ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
+
+                if dt in NATIONAL_HOLIDAYS:
+                    full_date_str = f"{dt} ({NATIONAL_HOLIDAYS[dt]})"
+                    draw_bold_text(ax, x + 0.005, ry + RH - 0.004, full_date_str, ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(9.5))
+                else:
+                    draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color="#000000", fontproperties=fp(10))
+
+                if dt in active_transport:
+                    draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(8.5))
+
+                if d.get("hours"): 
+                    draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"], tr, note) else "#000000", fontproperties=fp(11.5))
+                    do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l or "OGC" in l), "")
+                    if do_match:
+                        draw_bold_text(ax, x + CW - 0.004, ry + 0.026, do_match, ha="right", va="bottom", color=C_DO_TXT, fontproperties=fp(10.5))
+
+                cx = x + CW / 2
+                if is_pure_hol: 
+                    do_code = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l), "DO")
+                    draw_bold_text(ax, cx, ry + RH * 0.48, do_code, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
+                elif is_pay_shift and not d["start"]: 
+                    draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(14))
+                else:
+                    draw_bold_text(ax, cx, ry + RH * 0.65, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(13))
+                    draw_bold_text(ax, cx, ry + RH * 0.40, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(13))
+                    draw_bold_text(ax, cx, ry + RH * 0.15, tr, ha="center", va="center", color=C_PAY_TXT if is_pay_shift else "#000000", fontproperties=fp(12))
+
+        legend_y = MB * 0.45
+        badge_w_leg, badge_h_leg = CW * 0.90, 0.022
+        has_active_transport = any(d in active_transport for d in dates)
+        has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
+
+        pill_legends = [
+            (0, "#F1F5F9", "#475569", C_NOTE_TXT, "備註"),
+            (1, C_DO_BG if has_emp_do else C_WORK_BG, "#E11D48" if has_emp_do else "#64748B", C_DO_TXT if has_emp_do else "#64748B", "休假日"),
+            (2, C_PAY_BG if has_emp_pay else C_WORK_BG, "#EA580C" if has_emp_pay else "#64748B", C_PAY_TXT if has_emp_pay else "#64748B", "特休"),
+            (3, C_WORK_BG, "#DC2626" if has_emp_ot else "#64748B", C_OT_TXT if has_emp_ot else "#64748B", "工時 > 8.5h"),
+            (4, C_WORK_BG, "#C2410C" if has_active_holiday else "#64748B", C_HOLI_TXT if has_active_holiday else "#64748B", "國定假日"),
+            (5, "#F3E8FF" if has_active_transport else C_WORK_BG, "#7C3AED" if has_active_transport else "#64748B", C_NOTE_TXT if has_active_transport else "#64748B", "疏運"),
+            (6, C_TOWN_BG if has_emp_town else C_WORK_BG, "#334155" if has_emp_town else "#64748B", C_TOWN_TXT if has_emp_town else "#64748B", "非正線勤務"),
+        ]
+
+        for col_idx, bg_clr, border_clr, txt_clr, label in pill_legends:
+            col_x = ML + col_idx * CW
+            lx = col_x + (CW - badge_w_leg) / 2
+            badge = FancyBboxPatch((lx, legend_y), badge_w_leg, badge_h_leg, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.2, edgecolor=border_clr, facecolor=bg_clr)
+            ax.add_patch(badge)
+            draw_bold_text(ax, lx + badge_w_leg / 2, legend_y + badge_h_leg / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(9))
+
+        now_str = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M")
+        draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
+        draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#0F172A", fontproperties=fp(12))
+
+        buf = io.BytesIO()
+        plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
+
+        st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
+        st.image(buf, use_container_width=True)
+        st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
+    except Exception as e:
+        st.error(f"載入完整班表時發生錯誤: {e}")
+
+    st.stop()
+
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
     "指定時段報到組員快篩（Alpha測試版）",
@@ -616,7 +748,6 @@ app_mode = st.radio("系統操作模式選擇", [
 st.markdown("---")
 
 if app_mode == "生產個人班表圖片檔":
-    # 檢查該模組維護狀態，若開啟且未解鎖則秀出專屬密碼登入畫面
     if is_module_maintenance("producer") and not st.session_state.get("admin_bypassed_producer", False):
         st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 個人班表圖片檔生產系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
         
@@ -633,7 +764,6 @@ if app_mode == "生產個人班表圖片檔":
                     st.error("管理員密碼錯誤")
         st.stop()
 
-    # 若管理員已解鎖，顯示識別橫幅
     if st.session_state.get("admin_bypassed_producer", False) and is_module_maintenance("producer"):
         st.markdown("""
         <div class="admin-bypass-banner">
@@ -800,7 +930,6 @@ if app_mode == "生產個人班表圖片檔":
                 except Exception as e: st.error(f"錯誤：{e}")
 
 elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
-    # 檢查該模組維護狀態，若開啟且未解鎖則秀出專屬密碼登入畫面
     if is_module_maintenance("window_filter") and not st.session_state.get("admin_bypassed_window", False):
         st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 指定時段報到組員快篩系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
         
@@ -817,7 +946,6 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                     st.error("管理員密碼錯誤")
         st.stop()
 
-    # 若管理員已解鎖，顯示識別橫幅
     if st.session_state.get("admin_bypassed_window", False) and is_module_maintenance("window_filter"):
         st.markdown("""
         <div class="admin-bypass-banner">
@@ -955,14 +1083,14 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                                 col_idx = 0 
                             
                             badges_html = '<div class="badge-group">'
-                            if r['長班']: badges_html += '<span class="long-badge">●長班</span>'
+                            if r['長班']: badges_html += '<span class="long-badge">長班</span>'
                             if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
                             badges_html += '</div>'
                             
                             card_html = f"""
                             <div class="compact-card">
                                 <div class="time-header-row">
-                                    <span class="compact-time">{r['Sign-In']} ➔ {r['收工時間']}</span>
+                                    <span class="compact-time">{r['Sign-In']} -> {r['收工時間']}</span>
                                     {badges_html}
                                 </div>
                                 <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
@@ -979,7 +1107,6 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 elif app_mode == "換假日期快篩（Alpha測試版）":
-    # 檢查該模組維護狀態，若開啟且未解鎖則秀出專屬密碼登入畫面
     if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_bypassed_exchange", False):
         st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 換假日期快篩系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
         
@@ -996,7 +1123,6 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                     st.error("管理員密碼錯誤")
         st.stop()
 
-    # 若管理員已解鎖，顯示識別橫幅
     if st.session_state.get("admin_bypassed_exchange", False) and is_module_maintenance("exchange_filter"):
         st.markdown("""
         <div class="admin-bypass-banner">
@@ -1011,7 +1137,6 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
     </div>
     """, unsafe_allow_html=True)
 
-    # 1. 選擇職位類別與目標日期 (預設服勤員)
     ex_c1, ex_c2 = st.columns(2)
     with ex_c1:
         selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], index=0, key="ex_role_select")
@@ -1053,12 +1178,10 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                     raw_str = str(cell_raw).upper()
                     tr = str(parsed["train"]).strip().upper()
                     
-                    # 判定目標當天是否為「純 DO」（PAY、FAC 等特別假不能調動）
                     is_pure_do = ("DO" in raw_str) or ("D2W" in raw_str)
                     is_special_leave = (tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_str) or ("FAC" in raw_str)
                     
                     if is_pure_do and not is_special_leave:
-                        # 計算前後 5 天連續上班天數（純 DO 斷開，PAY/FAC 視同工作天無法斷開）
                         s_idx = max(0, actual_pos - 5)
                         e_idx = min(len(all_cols_list) - 1, actual_pos + 5)
                         
@@ -1084,7 +1207,6 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                         if strict_limit and max_streak >= 6:
                             continue
                             
-                        # 前後各抓 4 天動態顯示
                         disp_s = max(0, actual_pos - 4)
                         disp_e = min(len(all_cols_list) - 1, actual_pos + 4)
                         mini_schedule = []
@@ -1102,13 +1224,12 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                             "鄰近天數概況": " | ".join(mini_schedule)
                         })
 
-                st.markdown(f"###  查詢結果：{target_date} 【{selected_role}】可協調換假人員（共 {len(candidates)} 位）")
+                st.markdown(f"### 查詢結果：{target_date} 【{selected_role}】可協調換假人員（共 {len(candidates)} 位）")
                 
                 if candidates:
-                    ex_c1, ex_c2 = st.columns(2)
                     for idx, cand in enumerate(candidates):
-                        card_html = f"""
-                        <div class="compact-card" style="border-left-color: #10B981;">
+                        st.markdown(f"""
+                        <div class="compact-card" style="border-left-color: #10B981; margin-bottom: 8px;">
                             <div class="time-header-row">
                                 <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
                                 <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
@@ -1116,15 +1237,14 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                             <div class="compact-name">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
                             <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
                         </div>
-                        """
-                        if idx % 2 == 0:
-                            with ex_c1: st.markdown(card_html, unsafe_allow_html=True)
-                        else:
-                            with ex_c2: st.markdown(card_html, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
+                        
+                        if st.button(f"檢視完整班表: {cand['姓名']} ({cand['員編']})", key=f"inspect_btn_{cand['員編']}_{idx}"):
+                            st.session_state["inspect_emp_target"] = cand['員編']
+                            st.rerun()
                 else:
                     st.info("在該日期找不到符合「純 DO」且前後 5 天連續上班天數在安全範圍內的同職位組員可供調動。")
 
-# 🔒 完美垂直置中於頁面最下方的極低調管理員後台入口
 st.markdown('<div class="footer-admin-container">', unsafe_allow_html=True)
 if st.button("系統管理員後台", key="footer_admin_btn_strict"):
     st.session_state["show_admin_login"] = True
