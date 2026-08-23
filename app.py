@@ -1123,9 +1123,10 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 elif app_mode == "換假日期快篩（Alpha測試版）":
-    # 追蹤切換模式，如果剛切進來，強制重置為輸入表單狀態
+    # 追蹤切換模式，如果剛切進來，強制重置為輸入表單狀態並清空舊查詢結果
     if st.session_state.get("last_app_mode") != "換假日期快篩（Alpha測試版）":
         st.session_state["ex_sub_mode"] = "search_form"
+        st.session_state["ex_saved_candidates"] = []  # 強制清空舊名單，防止切換回來時自動顯示
         st.session_state["last_app_mode"] = "換假日期快篩（Alpha測試版）"
 
     # 維護模式檢查（這段絕對要保留！）
