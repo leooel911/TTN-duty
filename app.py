@@ -1145,7 +1145,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("← 返回換假列表並保留條件"):
+        if st.button("← 回到上一頁"):
             st.session_state["ex_sub_mode"] = "results"
             st.rerun()
 
