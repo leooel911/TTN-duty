@@ -1399,25 +1399,31 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
 
-        st.markdown(f"### 查詢結果：{saved_date} 【{saved_role}】可協調換假人員（共 {len(saved_candidates)} 位）")
+        st.markdown(f"### 查詢結果：{saved_date} 【{saved_role}】可協調換假名單（共 {len(saved_candidates)} 位）")
         
         if saved_candidates:
             for idx, cand in enumerate(saved_candidates):
+                # 整合卡片與提示文字
                 st.markdown(f"""
-                <div class="compact-card" style="border-left-color: #10B981; margin-bottom: 8px;">
+                <div class="compact-card" style="border-left-color: #10B981; margin-bottom: 2px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none;">
                     <div class="time-header-row">
                         <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
                         <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                     </div>
                     <div class="compact-name">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
                     <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
+                    <div style="margin-top: 8px; font-size: 10px; color: #34D399; font-family: monospace; letter-spacing: 0.5px;">點選下方按鈕可生成並查看完整班表</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                if st.button(f"生成並檢視完整班表: {cand['姓名']} ({cand['員編']})", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
+                # 讓按鈕緊貼卡片下方，並且在按鈕樣式上做一點微調融入卡片
+                if st.button(f"生成並檢視完整班表：{cand['姓名']} ({cand['員編']})", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
                     st.session_state["ex_selected_emp"] = cand['員編']
                     st.session_state["ex_sub_mode"] = "inspect_image"
                     st.rerun()
+                
+                # 在卡片與卡片之間增加一點微小間距
+                st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
         else:
             st.info("在該日期找不到符合「純 DO」且前後 5 天連續上班天數在安全範圍內的同職位組員可供調動。")
 
