@@ -101,7 +101,7 @@ st.markdown("""
         font-family: monospace;
     }
     
-    /* 右上角精緻貼紙按鈕 - 改回原汁原味的小巧精緻貼紙外觀 */
+    /* 右上角極致低調、不佔空間的精緻版權小貼紙（完全消除主要按鈕感） */
     .clf-edition-badge-wrapper {
         display: flex;
         justify-content: flex-end;
@@ -109,31 +109,32 @@ st.markdown("""
         width: 100%;
     }
     
-    .clf-edition-badge-wrapper div.stButton > button { 
-        background: #0B0F19 !important;
+    div[data-testid="column"] div.stButton > button#top_right_edition_badge { 
+        background: transparent !important;
         border: 1px solid #334155 !important;
-        border-left: 2.5px solid #38BDF8 !important;
-        color: #38BDF8 !important; 
-        font-size: 9px !important; 
-        font-weight: 700 !important; 
-        letter-spacing: 1.2px !important; 
+        border-left: 2px solid #38BDF8 !important;
+        color: #64748B !important; 
+        font-size: 8.5px !important; 
+        font-weight: 500 !important; 
+        letter-spacing: 1px !important; 
         text-transform: uppercase !important; 
-        padding: 4px 8px !important;
+        padding: 3px 8px !important;
         border-radius: 4px !important;
-        box-shadow: inset 0 1px 2px rgba(0,0,0,0.6), 0 1px 4px rgba(0,0,0,0.3) !important;
+        box-shadow: none !important;
         font-family: monospace !important;
         width: auto !important;
+        float: right !important;
         margin: 0 !important;
         min-height: unset !important;
         line-height: 1.2 !important;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        transition: all 0.2s ease !important;
     }
-    .clf-edition-badge-wrapper div.stButton > button:hover {
+    div[data-testid="column"] div.stButton > button#top_right_edition_badge:hover {
         border-color: #38BDF8 !important;
-        color: #FFFFFF !important;
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        box-shadow: 0 0 12px rgba(56, 189, 248, 0.4) !important;
-        transform: translateY(-1px) !important;
+        color: #38BDF8 !important;
+        background: rgba(56, 189, 248, 0.05) !important;
+        transform: none !important;
+        box-shadow: none !important;
     }
 
     /* 高質感施工中黃色呼吸燈提示卡片 */
@@ -680,7 +681,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭與完整外框呼吸燈光暈 (Header Container) - 完美比例確保手機不跳行 ---
+# --- 頂部質感標頭與完整外框呼吸燈光暈 (Header Container) ---
 h_col1, h_col2 = st.columns([4, 1.6])
 with h_col1:
     st.markdown("""
@@ -693,7 +694,7 @@ with h_col1:
     """, unsafe_allow_html=True)
 
 with h_col2:
-    st.markdown('<div class="clf-edition-badge-wrapper" style="height: 100%; display: flex; align-items: center; padding-top: 4px;">', unsafe_allow_html=True)
+    st.markdown('<div class="clf-edition-badge-wrapper" style="height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-top: 4px;">', unsafe_allow_html=True)
     badge_label = "ADMIN PANEL" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
     if st.button(badge_label, key="top_right_edition_badge"):
         if st.session_state.get("admin_logged_in", False):
