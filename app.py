@@ -92,7 +92,7 @@ st.markdown("""
         animation: missing-data-pulse 2.5s infinite ease-in-out;
     }
 
-    /* 頂部導航總成 */
+    /* 頂部導航總成 (首頁專用呼吸外框) */
     .header-container { 
         display: flex; 
         justify-content: space-between; 
@@ -101,8 +101,9 @@ st.markdown("""
         margin-bottom: 1.5rem; 
         padding: 16px 22px;
         background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
-        border: 1.5px solid #1E293B;
+        border: 2px solid #38BDF8;
         border-radius: 12px;
+        animation: missing-data-pulse 2.5s infinite ease-in-out;
     }
     .title-left-group {
         display: flex;
@@ -738,8 +739,8 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
     col1, col2, col3 = st.columns([1, 2.2, 1])
     with col2:
         with st.form("auth_form"):
-            entered_emp = st.text_input("操作者員編 (僅輸入數字)", value="A", placeholder="例如: 023300", max_chars=10)
-            entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入系統授權碼...")
+            entered_emp = st.text_input("使用者員編", value="A", placeholder="例如: 023300", max_chars=10)
+            entered_key = st.text_input("系統授權碼", type="password", placeholder="請輸入系統授權碼...")
             btn_auth = st.form_submit_button("進入系統")
 
             if btn_auth:
@@ -760,12 +761,15 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭 ---
+# --- 頂部質感標頭 (首頁專用呼吸外框與幽默灰色小字) ---
 st.markdown(f"""
 <div class="header-container">
     <div class="title-left-group">
         <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
-        <div class="title-subtitle">C.L.F // OPERATOR: {st.session_state.get("current_user_id", "A")}</div>
+        <div style="color: #64748B; font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; font-family: monospace; margin-top: 2px;">
+            <span class="radar-dot" style="margin: 0 4px 0 0;"></span>C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION<span class="radar-dot" style="margin: 0 0 0 4px;"></span>
+        </div>
+        <div class="title-subtitle" style="margin-top: 2px;">OPERATOR: {st.session_state.get("current_user_id", "A")}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
