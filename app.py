@@ -651,7 +651,6 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
     with col_l2:
         adm_pwd_input = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員解鎖密碼...", key="strict_admin_pwd_box")
         
-        # 左右並排對稱按鈕
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if st.button("登入", key="strict_admin_submit"):
@@ -678,20 +677,20 @@ if st.session_state.get("admin_logged_in", False) or st.session_state.get("direc
     </div>
     """, unsafe_allow_html=True)
 
-    col_admin_top1, col_admin_top2 = st.columns([3, 1])
+    col_admin_top1, col_admin_top2 = st.columns(2)
     with col_admin_top1:
-        st.success("歡迎回來，管理員 LEO（目前為管理員在線狀態）")
-    with col_admin_top2:
-        if st.button("🔒 登出管理員"):
+        if st.button("🔒 登出管理員", key="admin_logout_btn_top"):
             st.session_state["admin_logged_in"] = False
             st.session_state["direct_to_admin"] = False
             st.session_state["show_admin_login"] = False
             st.rerun()
-    
-    if st.button("← 返回一般首頁"):
-        st.session_state["direct_to_admin"] = False
-        st.session_state["show_admin_login"] = False
-        st.rerun()
+    with col_admin_top2:
+        if st.button("← 返回首頁", key="admin_back_home_btn_top"):
+            st.session_state["direct_to_admin"] = False
+            st.session_state["show_admin_login"] = False
+            st.rerun()
+
+    st.success("歡迎回來，管理員 LEO（目前為管理員在線狀態）")
 
     st.markdown("---")
     st.subheader("查詢紀錄清單")
