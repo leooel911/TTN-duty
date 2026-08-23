@@ -20,51 +20,64 @@ TAIWAN_TZ = timezone(timedelta(hours=8))
 st.markdown("""
 <style>
     .stApp { background-color: #0B0F19 !important; color: #F8FAFC !important; }
-    .block-container { padding: 3rem 1rem !important; }
+    .block-container { padding: 2.5rem 1rem !important; }
     
+    /* 頂部導航總成 - 打造高質感控制台視覺 */
     .header-container { 
         display: flex; 
         justify-content: space-between; 
         align-items: center; 
         width: 100%; 
         margin-bottom: 1.5rem; 
-        padding-bottom: 12px;
-        border-bottom: 1px solid #1E293B;
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
+        border: 1px solid #1E293B;
+        border-top: 2px solid #3B82F6;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     }
     .title-left-group {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 4px;
     }
     .main-title { 
         color: #F8FAFC !important; 
-        font-size: 24px; 
+        font-size: 22px; 
         font-weight: 800; 
-        letter-spacing: 1.5px; 
+        letter-spacing: 2px; 
         margin: 0; 
         font-family: monospace;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
+    }
+    
+    /* 呼吸燈光暈特效 */
+    @keyframes pulse-glow {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(56, 189, 248, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
     }
     .status-dot {
-        width: 8px;
-        height: 8px;
+        width: 9px;
+        height: 9px;
         background-color: #38BDF8;
         border-radius: 50%;
-        box-shadow: 0 0 10px #38BDF8;
         display: inline-block;
+        animation: pulse-glow 2s infinite;
     }
+    
     .title-subtitle {
         color: #64748B;
-        font-size: 11px;
+        font-size: 10.5px;
         font-weight: 600;
-        letter-spacing: 2px;
+        letter-spacing: 2.5px;
         text-transform: uppercase;
         font-family: monospace;
     }
     
-    /* 完美還原與圖表同等級的精緻科技感貼紙 (Edition Badge) */
+    /* 右上角精緻貼紙按鈕 */
     .clf-edition-badge-wrapper {
         display: flex;
         justify-content: flex-end;
@@ -72,28 +85,28 @@ st.markdown("""
     }
     
     .clf-edition-badge-wrapper div.stButton > button { 
-        background: #1E293B !important;
+        background: #0B0F19 !important;
         border: 1px solid #334155 !important;
         border-left: 3px solid #38BDF8 !important;
         color: #38BDF8 !important; 
-        font-size: 10.5px !important; 
+        font-size: 11px !important; 
         font-weight: 700 !important; 
-        letter-spacing: 1.8px !important; 
+        letter-spacing: 2px !important; 
         text-transform: uppercase !important; 
-        padding: 5px 12px !important;
-        border-radius: 4px !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
+        padding: 8px 16px !important;
+        border-radius: 6px !important;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4) !important;
         font-family: monospace !important;
         width: auto !important;
         margin: 0 !important;
-        transition: all 0.2s ease !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
     .clf-edition-badge-wrapper div.stButton > button:hover {
         border-color: #38BDF8 !important;
         color: #FFFFFF !important;
-        background: #2563EB !important;
-        box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
-        transform: translateY(-1px) !important;
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+        box-shadow: 0 0 16px rgba(56, 189, 248, 0.4) !important;
+        transform: translateY(-2px) !important;
     }
 
     .maintenance-msg-box {
@@ -625,18 +638,20 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部標頭與精緻貼紙標籤 (Edition Badge) ---
+# --- 頂部質感標頭與呼吸燈光暈、高質感貼紙 (Header Box) ---
 h_col1, h_col2 = st.columns([3, 1])
 with h_col1:
     st.markdown("""
-    <div style="display: flex; flex-direction: column; gap: 2px; justify-content: center; height: 100%;">
-        <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
-        <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
+    <div class="header-container">
+        <div class="title-left-group">
+            <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
+            <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
 with h_col2:
-    st.markdown('<div class="clf-edition-badge-wrapper">', unsafe_allow_html=True)
+    st.markdown('<div class="clf-edition-badge-wrapper" style="height: 100%; display: flex; align-items: center; padding-top: 4px;">', unsafe_allow_html=True)
     badge_label = "ADMIN PANEL" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
     if st.button(badge_label, key="top_right_edition_badge"):
         if st.session_state.get("admin_logged_in", False):
@@ -648,8 +663,6 @@ with h_col2:
             st.session_state["show_admin_login"] = True
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown('<div style="border-bottom: 1px solid #1E293B; margin-top: 14px; margin-bottom: 1.5rem;"></div>', unsafe_allow_html=True)
 
 # 點擊右上角貼紙後彈出的密碼輸入驗證區塊
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
