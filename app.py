@@ -1578,134 +1578,135 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         st.button("修正上述日期後 開始查詢", disabled=True, key="btn_auto_search_exchange_disabled")
         btn_search_clicked = False
 
-    if btn_search_clicked and is_selection_valid:
-        log_activity(f"換假快篩 [{selected_role}] 想休:{target_date} 還假:{return_date}")
-        st.session_state["ex_sub_mode"] = "results"
-        try:
-            target_path = ROLE_FILES[selected_role]
-            df_ex = pd.read_excel(target_path, header=3)
-            df_ex.columns = [str(c).strip() for c in df_ex.columns]
-            
-            target_col_idx = -1
-            return_col_idx = -1
-            actual_pos = -1
-            all_cols_list = list(df_ex.columns[2:])
-            
-            for idx, col in enumerate(all_cols_list):
-                c_str = str(col)
-                if target_date in c_str:
-                    target_col_idx = idx + 2
-                    actual_pos = idx
-                if return_date in c_str:
-                    return_col_idx = idx + 2
+    # 只要點擊按鈕，或是目前狀態已經是 results 且有已儲存的候選名單，就直接進行運算或渲染
+    if (btn_search_clicked and is_selection_valid) or (st.session_state["ex_sub_mode"] == "results" and st.session_state.get("ex_saved_candidates")):
+        if btn_search_clicked and is_selection_valid:
+            log_activity(f"換假快篩 [{selected_role}] 想休:{target_date} 還假:{return_date}")
+            st.session_state["ex_sub_mode"] = "results"
+            try:
+                target_path = ROLE_FILES[selected_role]
+                df_ex = pd.read_excel(target_path, header=3)
+                df_ex.columns = [str(c).strip() for c in df_ex.columns]
+                
+                target_col_idx = -1
+                return_col_idx = -1
+                actual_pos = -1
+                all_cols_list = list(df_ex.columns[2:])
+                
+                for idx, col in enumerate(all_cols_list):
+                    c_str = str(col)
+                    if target_date in c_str:
+                        target_col_idx = idx + 2
+                        actual_pos = idx
+                    if return_date in c_str:
+                        return_col_idx = idx + 2
 
-            if target_col_idx == -1 or return_col_idx == -1:
-                st.warning("找不到指定日期的欄位資料")
-                st.session_state["ex_saved_candidates"] = []
-            else:
-                candidates = []
-                for _, row in df_ex.iterrows():
-                    emp_id = str(row.iloc[0]).strip()
-                    emp_name = str(row.iloc[1]).strip()
-                    
-                    cell_target = row.iloc[target_col_idx]
-                    parsed_target = parse_cell(cell_target)
-                    raw_target_str = str(cell_target).upper()
-                    tr_target = str(parsed_target["train"]).strip().upper()
-                    
-                    is_target_do = ("DO" in raw_target_str) or ("D2W" in raw_target_str)
-                    is_target_leave = (tr_target in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_target_str) or ("FAC" in raw_target_str)
-                    
-                    if not (is_target_do and not is_target_leave):
-                        continue
-
-                    cell_return = row.iloc[return_col_idx]
-                    parsed_return = parse_cell(cell_return)
-                    raw_return_str = str(cell_return).upper()
-                    tr_return = str(parsed_return["train"]).strip().upper()
-                    
-                    is_return_do = ("DO" in raw_return_str) or ("D2W" in raw_return_str)
-                    is_return_leave = (tr_return in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_return_str) or ("FAC" in raw_return_str)
-                    
-                    if is_return_do or is_return_leave:
-                        continue
-
-                    if return_time_filter != "不限":
-                        min_allowed_time = return_time_filter.split(" ")[0]
-                        return_start_time = parsed_return["start"]
-                        if not return_start_time or return_start_time < min_allowed_time:
+                if target_col_idx == -1 or return_col_idx == -1:
+                    st.warning("找不到指定日期的欄位資料")
+                    st.session_state["ex_saved_candidates"] = []
+                else:
+                    candidates = []
+                    for _, row in df_ex.iterrows():
+                        emp_id = str(row.iloc[0]).strip()
+                        emp_name = str(row.iloc[1]).strip()
+                        
+                        cell_target = row.iloc[target_col_idx]
+                        parsed_target = parse_cell(cell_target)
+                        raw_target_str = str(cell_target).upper()
+                        tr_target = str(parsed_target["train"]).strip().upper()
+                        
+                        is_target_do = ("DO" in raw_target_str) or ("D2W" in raw_target_str)
+                        is_target_leave = (tr_target in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_target_str) or ("FAC" in raw_target_str)
+                        
+                        if not (is_target_do and not is_target_leave):
                             continue
 
-                    s_idx = max(0, actual_pos - 5)
-                    e_idx = min(len(all_cols_list) - 1, actual_pos + 5)
-                    
-                    current_streak = 0
-                    max_streak = 0
-                    
-                    for p_i in range(s_idx, e_idx + 1):
-                        c_val = row.iloc[p_i + 2]
-                        p_res = parse_cell(c_val)
-                        c_raw_str = str(c_val).upper()
-                        c_tr = str(p_res["train"]).strip().upper()
+                        cell_return = row.iloc[return_col_idx]
+                        parsed_return = parse_cell(cell_return)
+                        raw_return_str = str(cell_return).upper()
+                        tr_return = str(parsed_return["train"]).strip().upper()
                         
-                        is_c_rest = ("DO" in c_raw_str) or ("D2W" in c_raw_str)
-                        is_c_special_leave = (c_tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_str) or ("FAC" in c_raw_str)
+                        is_return_do = ("DO" in raw_return_str) or ("D2W" in raw_return_str)
+                        is_return_leave = (tr_return in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_return_str) or ("FAC" in raw_return_str)
                         
-                        if is_c_rest and not is_c_special_leave:
-                            current_streak = 0
-                        else:
-                            current_streak += 1
-                            if current_streak > max_streak:
-                                max_streak = current_streak
-                    
-                    if strict_limit and max_streak >= 6:
-                        continue
+                        if is_return_do or is_return_leave:
+                            continue
+
+                        if return_time_filter != "不限":
+                            min_allowed_time = return_time_filter.split(" ")[0]
+                            return_start_time = parsed_return["start"]
+                            if not return_start_time or return_start_time < min_allowed_time:
+                                continue
+
+                        s_idx = max(0, actual_pos - 5)
+                        e_idx = min(len(all_cols_list) - 1, actual_pos + 5)
                         
-                    disp_s = max(0, actual_pos - 7)
-                    disp_e = min(len(all_cols_list) - 1, actual_pos + 7)
-                    mini_schedule = []
-                    for p_i in range(disp_s, disp_e + 1):
-                        d_str = date_cols[p_i] if p_i < len(date_cols) else all_cols_list[p_i]
-                        c_val = row.iloc[p_i + 2]
-                        p_res = parse_cell(c_val)
+                        current_streak = 0
+                        max_streak = 0
                         
-                        c_raw_s = str(c_val).upper()
-                        c_tr_s = str(p_res["train"]).strip().upper()
-                        is_c_hol = ("DO" in c_raw_s) or ("D2W" in c_raw_s)
-                        is_c_leave = (c_tr_s in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_s) or ("FAC" in c_raw_s) or ("特休" in c_raw_s)
-                        
-                        if is_c_hol and not is_c_leave:
-                            shift_display = "休"
-                        elif is_c_leave:
-                            if "PAY" in c_raw_s or "特休" in c_raw_s:
-                                shift_display = "PAY"
-                            elif "FAC" in c_raw_s:
-                                shift_display = "FAC"
-                            else:
-                                shift_display = c_tr_s if c_tr_s else "特休"
-                        else:
-                            main_tr_code = str(p_res["train"]).strip()
-                            if main_tr_code.upper().startswith("N") and p_res["start"] and p_res["end"]:
-                                shift_display = f"{p_res['start']}->{p_res['end']}"
-                            else:
-                                shift_display = main_tr_code if main_tr_code and main_tr_code != "無" else (p_res["note"] if p_res["note"] else "班")
+                        for p_i in range(s_idx, e_idx + 1):
+                            c_val = row.iloc[p_i + 2]
+                            p_res = parse_cell(c_val)
+                            c_raw_str = str(c_val).upper()
+                            c_tr = str(p_res["train"]).strip().upper()
                             
-                        mini_schedule.append(f"{d_str}: {shift_display}")
+                            is_c_rest = ("DO" in c_raw_str) or ("D2W" in c_raw_str)
+                            is_c_special_leave = (c_tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_str) or ("FAC" in c_raw_str)
+                            
+                            if is_c_rest and not is_c_special_leave:
+                                current_streak = 0
+                            else:
+                                current_streak += 1
+                                if current_streak > max_streak:
+                                    max_streak = current_streak
+                        
+                        if strict_limit and max_streak >= 6:
+                            continue
+                            
+                        disp_s = max(0, actual_pos - 7)
+                        disp_e = min(len(all_cols_list) - 1, actual_pos + 7)
+                        mini_schedule = []
+                        for p_i in range(disp_s, disp_e + 1):
+                            d_str = date_cols[p_i] if p_i < len(date_cols) else all_cols_list[p_i]
+                            c_val = row.iloc[p_i + 2]
+                            p_res = parse_cell(c_val)
+                            
+                            c_raw_s = str(c_val).upper()
+                            c_tr_s = str(p_res["train"]).strip().upper()
+                            is_c_hol = ("DO" in c_raw_s) or ("D2W" in c_raw_s)
+                            is_c_leave = (c_tr_s in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_s) or ("FAC" in c_raw_s) or ("特休" in c_raw_s)
+                            
+                            if is_c_hol and not is_c_leave:
+                                shift_display = "休"
+                            elif is_c_leave:
+                                if "PAY" in c_raw_s or "特休" in c_raw_s:
+                                    shift_display = "PAY"
+                                elif "FAC" in c_raw_s:
+                                    shift_display = "FAC"
+                                else:
+                                    shift_display = c_tr_s if c_tr_s else "特休"
+                            else:
+                                main_tr_code = str(p_res["train"]).strip()
+                                if main_tr_code.upper().startswith("N") and p_res["start"] and p_res["end"]:
+                                    shift_display = f"{p_res['start']}->{p_res['end']}"
+                                else:
+                                    shift_display = main_tr_code if main_tr_code and main_tr_code != "無" else (p_res["note"] if p_res["note"] else "班")
+                                
+                            mini_schedule.append(f"{d_str}: {shift_display}")
 
-                    candidates.append({
-                        "員編": emp_id,
-                        "姓名": emp_name,
-                        "當天狀態": f"想休 {target_date}(DO) ｜ 還假 {return_date}({parsed_return['start']+'->'+parsed_return['end'] if parsed_return['start'] else parsed_return['train']})",
-                        "前後連續上班最大天數": max_streak,
-                        "鄰近天數概況": " | ".join(mini_schedule)
-                    })
-                st.session_state["ex_saved_candidates"] = candidates
-                st.session_state["ex_saved_target_date"] = target_date
-                st.session_state["ex_saved_role"] = selected_role
-        except Exception as e:
-            st.error(f"日期計算發生錯誤: {e}")
+                        candidates.append({
+                            "員編": emp_id,
+                            "姓名": emp_name,
+                            "當天狀態": f"想休 {target_date}(DO) ｜ 還假 {return_date}({parsed_return['start']+'->'+parsed_return['end'] if parsed_return['start'] else parsed_return['train']})",
+                            "前後連續上班最大天數": max_streak,
+                            "鄰近天數概況": " | ".join(mini_schedule)
+                        })
+                    st.session_state["ex_saved_candidates"] = candidates
+                    st.session_state["ex_saved_target_date"] = target_date
+                    st.session_state["ex_saved_role"] = selected_role
+            except Exception as e:
+                st.error(f"日期計算發生錯誤: {e}")
 
-    if st.session_state["ex_sub_mode"] == "results" and st.session_state.get("ex_saved_candidates"):
         saved_candidates = st.session_state["ex_saved_candidates"]
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
