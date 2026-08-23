@@ -837,12 +837,27 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.rerun()
 
     st.markdown("---")
-    st.subheader("管理員檔案上傳區")
-    selected_role = st.selectbox("選擇要上傳的職位類別", ["駕駛", "列車長", "服勤員"])
-    uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
-    if uploaded_file:
-        with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
-        st.success("上傳成功")
+    st.subheader("管理員檔案上傳與刪除區")
+    selected_role = st.selectbox("選擇要上傳或刪除的職位類別", ["駕駛", "列車長", "服勤員"])
+    
+    col_up, col_del = st.columns(2)
+    with col_up:
+        uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
+        if uploaded_file:
+            with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
+            st.success("上傳成功")
+            st.rerun()
+
+    with col_del:
+        st.write("目前檔案狀態：" + ("已存在" if os.path.exists(ROLE_FILES[selected_role]) else "無檔案"))
+        if st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案"):
+            target_path = ROLE_FILES[selected_role]
+            if os.path.exists(target_path):
+                os.remove(target_path)
+                st.success(f"已成功刪除【{selected_role}】的班表檔案")
+                st.rerun()
+            else:
+                st.warning(f"【{selected_role}】本來就沒有檔案")
 
     st.stop()
 
