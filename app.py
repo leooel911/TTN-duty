@@ -794,7 +794,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.caption("您可以針對這三種系統分別設定維護狀態，不需一次關閉全部系統：")
 
     maint_p = is_module_maintenance("producer")
-    toggle_p = st.checkbox("【系統 1】生產個人班表圖片檔 - 進入維護模式", value=maint_p, key="toggle_producer")
+    toggle_p = st.checkbox("【系統 1】繪製個人月班表圖檔 - 進入維護模式", value=maint_p, key="toggle_producer")
     if toggle_p != maint_p:
         set_module_maintenance("producer", toggle_p)
         st.rerun()
@@ -841,8 +841,8 @@ st.markdown(f"""
 
 st.markdown('<div class="mode-selection-header">Select Operation Mode // 請選擇系統模式</div>', unsafe_allow_html=True)
 app_mode = st.radio("系統操作模式選擇", [
-    "生產個人班表圖片檔", 
-    "指定時段報到組員快篩（Alpha測試版）",
+    "繪製個人月班表圖檔", 
+    "換班｜指定時段組員快篩（Alpha測試版）",
     "換假｜日期快篩（Alpha測試版）"
 ], horizontal=False, label_visibility="collapsed")
 
@@ -853,11 +853,11 @@ if app_mode != "換假｜日期快篩（Alpha測試版）":
 
 st.markdown("---")
 
-if app_mode == "生產個人班表圖片檔":
+if app_mode == "繪製個人月班表圖檔":
     if is_module_maintenance("producer") and not st.session_state.get("admin_logged_in", False):
         st.markdown("""
         <div class="maintenance-card-box">
-            <div class="maintenance-title">[ 系統維護中 ] 個人班表圖片檔生產系統</div>
+            <div class="maintenance-title">[ 系統維護中 ] 繪製個人月班表圖檔系統</div>
             <div class="maintenance-sub">C.L.F // MAINTENANCE MODE &bull; SYSTEM UPGRADING</div>
         </div>
         <div class="maintenance-red-glow-line"></div>
