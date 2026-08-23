@@ -711,7 +711,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 點擊頂部或底部貼紙後彈出的密碼輸入驗證區塊（使用 form 支援 Enter 鍵直接確認送出）
+# 點擊底部貼紙後彈出的管理員身分驗證區塊
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -1523,10 +1523,10 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
             
             st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-# --- 將 C.L.F EDITION 移至網頁最下方（低調如頁尾精巧版本標籤） ---
+# --- 將底部版本/管理員貼紙統一由 state 完美同步 ---
 st.markdown('<div class="footer-badge-container">', unsafe_allow_html=True)
-badge_label = "ADMIN PANEL // C.L.F EDITION" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
-if st.button(badge_label, key="bottom_footer_edition_badge"):
+footer_badge_label = "ADMIN PANEL // C.L.F EDITION" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
+if st.button(footer_badge_label, key="bottom_footer_edition_badge"):
     if st.session_state.get("admin_logged_in", False):
         if st.session_state["nav_mode"] == "home":
             st.session_state["nav_mode"] = "admin_panel"
