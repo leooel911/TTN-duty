@@ -23,46 +23,32 @@ st.markdown("""
     /* 調整頂部留白與整體畫面下移 */
     .block-container { padding: 4.5rem 1rem 3rem 1rem !important; }
     
-    /* 呼吸燈外框動畫定義 (通用) */
-    @keyframes header-pulse-glow {
+    /* 雷達波呼吸光點動畫定義 */
+    @keyframes radar-pulse {
         0% { 
-            border-color: #1E293B; 
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 rgba(56, 189, 248, 0); 
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7);
         }
-        50% { 
-            border-color: #38BDF8; 
-            box-shadow: 0 4px 28px rgba(56, 189, 248, 0.25), 0 0 15px rgba(56, 189, 248, 0.15); 
+        70% { 
+            transform: scale(1.05);
+            box-shadow: 0 0 0 8px rgba(56, 189, 248, 0);
         }
         100% { 
-            border-color: #1E293B; 
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 rgba(56, 189, 248, 0); 
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
         }
     }
 
-    /* 登入卡片專屬精緻呼吸燈動畫 */
-    @keyframes auth-card-pulse {
-        0% { 
-            border-color: #1E293B; 
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0px rgba(56, 189, 248, 0); 
-        }
-        50% { 
-            border-color: #38BDF8; 
-            box-shadow: 0 12px 40px rgba(56, 189, 248, 0.2), 0 0 20px rgba(56, 189, 248, 0.15); 
-        }
-        100% { 
-            border-color: #1E293B; 
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0px rgba(56, 189, 248, 0); 
-        }
-    }
-
-    .auth-card-container {
-        background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
-        border: 1.5px solid #1E293B;
-        border-radius: 16px;
-        padding: 32px 28px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-        animation: auth-card-pulse 4s infinite ease-in-out;
-        margin-top: 1rem;
+    .radar-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #38BDF8;
+        border-radius: 50%;
+        display: inline-block;
+        animation: radar-pulse 2s infinite ease-in-out;
+        box-shadow: 0 0 10px #38BDF8;
+        margin: 0 8px;
+        vertical-align: middle;
     }
 
     /* 施工中紅色底線呼吸燈動畫定義 */
@@ -117,7 +103,6 @@ st.markdown("""
         background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
         border: 1.5px solid #1E293B;
         border-radius: 12px;
-        animation: header-pulse-glow 4s infinite ease-in-out;
     }
     .title-left-group {
         display: flex;
@@ -744,16 +729,15 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
     st.markdown("""
     <div style="text-align: center; margin-top: 2rem; margin-bottom: 1.5rem;">
         <div style="font-size: 34px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
-        <div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div>
+        <div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace;">
+            <span class="radar-dot"></span>C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION<span class="radar-dot"></span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2.2, 1])
     with col2:
-        # 用自定義的帶呼吸燈外框包覆整個登入表單
-        st.markdown('<div class="auth-card-container">', unsafe_allow_html=True)
         with st.form("auth_form"):
-            st.markdown('<div style="font-size: 14px; font-weight: 700; color: #94A3B8; margin-bottom: 10px; font-family: monospace; letter-spacing: 1px;">SYSTEM LOGIN // 身分驗證</div>', unsafe_allow_html=True)
             entered_emp = st.text_input("操作者員編 (僅輸入數字)", value="A", placeholder="例如: 023300", max_chars=10)
             entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入系統授權碼...")
             btn_auth = st.form_submit_button("進入系統")
@@ -774,7 +758,6 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.rerun()
                 else:
                     st.error("授權碼或密碼錯誤，請重新輸入")
-        st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # --- 頂部質感標頭 ---
