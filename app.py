@@ -670,6 +670,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
 
 # --- 🔒 已記錄為管理員身分，直接放行進入控制台 ---
 if st.session_state.get("admin_logged_in", False) or st.session_state.get("direct_to_admin", False):
+    # 檢查是否點擊了返回首頁（將 direct_to_admin 歸零，但保留 admin_logged_in 讓下次免密碼）
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">管理員專用：Database 控制台</div>
@@ -688,8 +689,11 @@ if st.session_state.get("admin_logged_in", False) or st.session_state.get("direc
         if st.button("← 返回首頁", key="admin_back_home_btn_top"):
             st.session_state["direct_to_admin"] = False
             st.session_state["show_admin_login"] = False
-            # 保持 st.session_state["admin_logged_in"] = True 不變，以便下次進入後台免密碼
             st.rerun()
+
+    # 如果點擊了返回首頁，此時把 direct_to_admin 設為 False 並且立刻重新整理跳出後台區塊
+    if not st.session_state.get("direct_to_admin", True):
+        st.rerun()
 
     st.success("歡迎回來，管理員 LEO（目前為管理員在線狀態）")
 
