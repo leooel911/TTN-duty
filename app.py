@@ -244,25 +244,8 @@ ROLE_FILES = {
 
 ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
+MAINTENANCE_FLAG_FILE = "maintenance.flag"
 LOG_FILE = "activity_log.txt"
-
-MAINTENANCE_FLAGS = {
-    "producer": "maintenance_producer.flag",
-    "window_filter": "maintenance_window.flag",
-    "exchange_filter": "maintenance_exchange.flag"
-}
-
-def set_module_maintenance(module_key, is_maint):
-    flag_path = MAINTENANCE_FLAGS.get(module_key)
-    if not flag_path: return
-    if is_maint:
-        with open(flag_path, "w") as f: f.write("ON")
-    else:
-        if os.path.exists(flag_path): os.remove(flag_path)
-
-def is_module_maintenance(module_key):
-    flag_path = MAINTENANCE_FLAGS.get(module_key)
-    return os.path.exists(flag_path) if flag_path else False
 
 def parse_device_info(ua_string):
     ua = ua_string.lower()
@@ -302,9 +285,7 @@ def log_activity(input_str):
     except: pass
 
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
-if "admin_bypassed_producer" not in st.session_state: st.session_state["admin_bypassed_producer"] = False
-if "admin_bypassed_window" not in st.session_state: st.session_state["admin_bypassed_window"] = False
-if "admin_bypassed_exchange" not in st.session_state: st.session_state["admin_bypassed_exchange"] = False
+if "admin_bypassed" not in st.session_state: st.session_state["admin_bypassed"] = False
 if "direct_to_admin" not in st.session_state: st.session_state["direct_to_admin"] = False
 if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
@@ -327,6 +308,14 @@ def get_schedule_range():
                 if dates: return f"{dates[0]} 至 {dates[-1]}"
             except: pass
     return "尚無資料"
+
+def set_maintenance_mode(is_maintenance):
+    if is_maintenance:
+        with open(MAINTENANCE_FLAG_FILE, "w") as f: f.write("ON")
+    else:
+        if os.path.exists(MAINTENANCE_FLAG_FILE): os.remove(MAINTENANCE_FLAG_FILE)
+
+def is_maintenance_mode(): return os.path.exists(MAINTENANCE_FLAG_FILE)
 
 def pad_time(t_str):
     if not t_str or ":" not in t_str: return t_str
@@ -457,7 +446,9 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 🔒 最優先攔截：如果使用者點擊了「檢視完整班表」，直接在此處渲染整月圖檔並停止 ---
+# ==========================================
+# --- 🔒 最優先攔截：檢視完整班表模式 (移至最頂端) ---
+# ==========================================
 if st.session_state.get("inspect_emp_target") is not None:
     target_emp = st.session_state["inspect_emp_target"]
     st.markdown(f"""
@@ -595,8 +586,33 @@ if st.session_state.get("inspect_emp_target") is not None:
 
     st.stop()
 
+# --- 🔒 系統維護模式檢查 ---
+if is_maintenance_mode() and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
+    st.markdown("""<div style="text-align: center; margin-top: 3rem; margin-bottom: 1.5rem;"><div style="font-size: 34px; font-weight: 900; letter-spacing: 1px; color: #EF4444;">SYSTEM UNDER MAINTENANCE</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
+    
+    col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
+    with col_m2:
+        st.markdown("""<div class="maintenance-msg-box">系統目前正在進行排班資料更新或維護中，請稍候再試。</div>""", unsafe_allow_html=True)
+        admin_unlock = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", key="maint_unlock_input", label_visibility="collapsed")
+        
+        btn_m = st.button("進入系統", key="maint_btn_1")
+
+        if btn_m:
+            if admin_unlock == ADMIN_PASSWORD:
+                st.session_state["direct_to_admin"] = True
+                st.session_state["admin_bypassed"] = True
+                st.success("管理員身分驗證成功，正在載入後台...")
+                st.rerun()
+            elif admin_unlock == CREW_ACCESS_PASSWORD:
+                st.session_state["admin_bypassed"] = True
+                st.success("系統維護預覽解鎖成功")
+                st.rerun()
+            else:
+                st.error("密碼錯誤")
+    st.stop()
+
 # --- 🔒 前置授權碼門戶檢查 ---
-if not st.session_state["authenticated"] and not st.session_state.get("direct_to_admin", False):
+if not st.session_state["authenticated"] and not st.session_state.get("admin_bypassed", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -611,12 +627,14 @@ if not st.session_state["authenticated"] and not st.session_state.get("direct_to
                 st.rerun()
             elif entered_key == ADMIN_PASSWORD:
                 st.session_state["direct_to_admin"] = True
+                st.session_state["admin_bypassed"] = True
                 st.success("管理員驗證成功，正在載入後台...")
                 st.rerun()
             else:
                 st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
+# --- 🔒 如果點擊了底部管理員後台且尚未驗證：顯示專屬密碼輸入畫面 ---
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""
     <div class="section-header-box">
@@ -642,6 +660,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
             st.rerun()
     st.stop()
 
+# --- 🔒 如果已通過驗證，直接進入管理員後台控制台 ---
 if st.session_state.get("direct_to_admin", False):
     st.markdown("""
     <div class="section-header-box">
@@ -674,26 +693,21 @@ if st.session_state.get("direct_to_admin", False):
     else: st.info("尚無任何查詢紀錄")
 
     st.markdown("---")
-    st.subheader("各系統獨立維護開關控制台")
-    st.caption("您可以針對這三種系統分別設定維護狀態，不需一次關閉全部系統：")
-
-    maint_p = is_module_maintenance("producer")
-    toggle_p = st.checkbox("【系統 1】生產個人班表圖片檔 - 進入維護模式", value=maint_p, key="toggle_producer")
-    if toggle_p != maint_p:
-        set_module_maintenance("producer", toggle_p)
+    st.subheader("系統維護控制台")
+    current_maint = is_maintenance_mode()
+    maint_toggle = st.checkbox("暫停開放系統服務 (維護模式)", value=current_maint)
+    if maint_toggle != current_maint:
+        set_maintenance_mode(maint_toggle)
+        if not maint_toggle:
+            st.session_state["admin_bypassed"] = False
         st.rerun()
-
-    maint_w = is_module_maintenance("window_filter")
-    toggle_w = st.checkbox("【系統 2】指定時段報到組員快篩 - 進入維護模式", value=maint_w, key="toggle_window")
-    if toggle_w != maint_w:
-        set_module_maintenance("window_filter", toggle_w)
-        st.rerun()
-
-    maint_e = is_module_maintenance("exchange_filter")
-    toggle_e = st.checkbox("【系統 3】換假日期快篩 - 進入維護模式", value=maint_e, key="toggle_exchange")
-    if toggle_e != maint_e:
-        set_module_maintenance("exchange_filter", toggle_e)
-        st.rerun()
+    
+    if current_maint:
+        if st.button("解除維護模式（恢復全體開放）"):
+            set_maintenance_mode(False)
+            st.session_state["admin_bypassed"] = False
+            st.success("維護模式已解除")
+            st.rerun()
 
     st.markdown("---")
     st.subheader("管理員檔案上傳區")
@@ -705,7 +719,7 @@ if st.session_state.get("direct_to_admin", False):
 
     st.stop()
 
-# --- 主系統介面 ---
+# --- 🔓 主系統介面 (專業科技感標題區) ---
 st.markdown("""
 <div class="header-container">
     <div class="title-left-group">
@@ -715,6 +729,13 @@ st.markdown("""
     <div class="edition-badge">C.L.F EDITION</div>
 </div>
 """, unsafe_allow_html=True)
+
+if st.session_state.get("admin_bypassed", False) and is_maintenance_mode():
+    st.markdown("""
+    <div class="admin-bypass-banner">
+        <span>[!] ADMIN BYPASS MODE // 目前正處於維護模式預覽中（僅限管理員可見）</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 td_time = get_file_mtime_str(ROLE_FILES["駕駛"])
 tm_time = get_file_mtime_str(ROLE_FILES["列車長"])
@@ -736,36 +757,12 @@ st.markdown(f"""
 
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
-    "指定時段報到組員快篩（Alpha測試版）",
-    "換假日期快篩（Alpha測試版）"
+    "換班｜尋找指定時段報到組員（Alpha測試版）"
 ], horizontal=False)
 
 st.markdown("---")
 
 if app_mode == "生產個人班表圖片檔":
-    if is_module_maintenance("producer") and not st.session_state.get("admin_bypassed_producer", False):
-        st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 個人班表圖片檔生產系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
-        
-        col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
-        with col_m2:
-            st.markdown("""<div class="maintenance-msg-box">此功能目前正在維護中。</div>""", unsafe_allow_html=True)
-            p_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="producer_unlock_input")
-            if st.button("管理員登入", key="producer_unlock_btn"):
-                if p_unlock == ADMIN_PASSWORD:
-                    st.session_state["admin_bypassed_producer"] = True
-                    st.success("解鎖成功！")
-                    st.rerun()
-                else:
-                    st.error("管理員密碼錯誤")
-        st.stop()
-
-    if st.session_state.get("admin_bypassed_producer", False) and is_module_maintenance("producer"):
-        st.markdown("""
-        <div class="admin-bypass-banner">
-            <span>[!] ADMIN BYPASS // 「個人班表」目前處於維護中，您正以管理員身分預覽</span>
-        </div>
-        """, unsafe_allow_html=True)
-
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">個人班表圖檔生成</div>
@@ -924,30 +921,7 @@ if app_mode == "生產個人班表圖片檔":
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
-    if is_module_maintenance("window_filter") and not st.session_state.get("admin_bypassed_window", False):
-        st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 指定時段報到組員快篩系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
-        
-        col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
-        with col_m2:
-            st.markdown("""<div class="maintenance-msg-box">此系統目前正在維護中。</div>""", unsafe_allow_html=True)
-            w_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="window_unlock_input")
-            if st.button("進入系統", key="window_unlock_btn"):
-                if w_unlock == ADMIN_PASSWORD:
-                    st.session_state["admin_bypassed_window"] = True
-                    st.success("解鎖成功！")
-                    st.rerun()
-                else:
-                    st.error("管理員密碼錯誤")
-        st.stop()
-
-    if st.session_state.get("admin_bypassed_window", False) and is_module_maintenance("window_filter"):
-        st.markdown("""
-        <div class="admin-bypass-banner">
-            <span>[!] ADMIN BYPASS // 「時段快篩」目前處於維護中，您正以管理員身分預覽</span>
-        </div>
-        """, unsafe_allow_html=True)
-
+elif app_mode == "換班｜尋找指定時段報到組員（Alpha測試版）":
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">指定 Sign-In 時段組員名單快篩</div>
@@ -1078,14 +1052,14 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                                 col_idx = 0 
                             
                             badges_html = '<div class="badge-group">'
-                            if r['長班']: badges_html += '<span class="long-badge">長班</span>'
+                            if r['長班']: badges_html += '<span class="long-badge">●長班</span>'
                             if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
                             badges_html += '</div>'
                             
                             card_html = f"""
                             <div class="compact-card">
                                 <div class="time-header-row">
-                                    <span class="compact-time">{r['Sign-In']} -> {r['收工時間']}</span>
+                                    <span class="compact-time">{r['Sign-In']} ➔ {r['收工時間']}</span>
                                     {badges_html}
                                 </div>
                                 <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
@@ -1101,145 +1075,7 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                     else:
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
-elif app_mode == "換假日期快篩（Alpha測試版）":
-    if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_bypassed_exchange", False):
-        st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 換假日期快篩系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
-        
-        col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
-        with col_m2:
-            st.markdown("""<div class="maintenance-msg-box">此系統目前正在維護中。</div>""", unsafe_allow_html=True)
-            e_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="exchange_unlock_input")
-            if st.button("進入系統", key="exchange_unlock_btn"):
-                if e_unlock == ADMIN_PASSWORD:
-                    st.session_state["admin_bypassed_exchange"] = True
-                    st.success("解鎖成功！")
-                    st.rerun()
-                else:
-                    st.error("管理員密碼錯誤")
-        st.stop()
-
-    if st.session_state.get("admin_bypassed_exchange", False) and is_module_maintenance("exchange_filter"):
-        st.markdown("""
-        <div class="admin-bypass-banner">
-            <span>[!] ADMIN BYPASS // 「換假快篩」目前處於維護中，您正以管理員身分預覽</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="section-header-box">
-        <div class="section-title">換假日期快篩系統</div>
-        <div class="section-subtitle">Shift Exchange Date Filter Matrix</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    ex_c1, ex_c2 = st.columns(2)
-    with ex_c1:
-        selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], index=0, key="ex_role_select")
-    with ex_c2:
-        sample_path = ROLE_FILES[selected_role] if os.path.exists(ROLE_FILES[selected_role]) else list(ROLE_FILES.values())[0]
-        temp_df_dates = pd.read_excel(sample_path, header=3)
-        date_cols = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in temp_df_dates.columns[2:] if re.search(r'(\d+/\d+)', str(c))]
-        target_date = st.selectbox("想休假的的日期", date_cols, index=0, key="ex_target_date_auto")
-
-    strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True)
-
-    if st.button("開始識別可換假人員", key="btn_auto_search_exchange"):
-        target_path = ROLE_FILES[selected_role]
-        if not os.path.exists(target_path):
-            st.error(f"找不到【{selected_role}】的班表檔案")
-        else:
-            df_ex = pd.read_excel(target_path, header=3)
-            df_ex.columns = [str(c).strip() for c in df_ex.columns]
-            
-            target_col_idx = -1
-            actual_pos = -1
-            all_cols_list = list(df_ex.columns[2:])
-            for idx, col in enumerate(all_cols_list):
-                if target_date in str(col):
-                    target_col_idx = idx + 2
-                    actual_pos = idx
-                    break
-
-            if target_col_idx == -1:
-                st.warning("找不到該日期的欄位資料")
-            else:
-                candidates = []
-                for _, row in df_ex.iterrows():
-                    emp_id = str(row.iloc[0]).strip()
-                    emp_name = str(row.iloc[1]).strip()
-                    
-                    cell_raw = row.iloc[target_col_idx]
-                    parsed = parse_cell(cell_raw)
-                    raw_str = str(cell_raw).upper()
-                    tr = str(parsed["train"]).strip().upper()
-                    
-                    is_pure_do = ("DO" in raw_str) or ("D2W" in raw_str)
-                    is_special_leave = (tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_str) or ("FAC" in raw_str)
-                    
-                    if is_pure_do and not is_special_leave:
-                        s_idx = max(0, actual_pos - 5)
-                        e_idx = min(len(all_cols_list) - 1, actual_pos + 5)
-                        
-                        current_streak = 0
-                        max_streak = 0
-                        
-                        for p_i in range(s_idx, e_idx + 1):
-                            c_val = row.iloc[p_i + 2]
-                            p_res = parse_cell(c_val)
-                            c_raw_str = str(c_val).upper()
-                            c_tr = str(p_res["train"]).strip().upper()
-                            
-                            is_c_rest = ("DO" in c_raw_str) or ("D2W" in c_raw_str)
-                            is_c_special_leave = (c_tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_str) or ("FAC" in c_raw_str)
-                            
-                            if is_c_rest and not is_c_special_leave:
-                                current_streak = 0
-                            else:
-                                current_streak += 1
-                                if current_streak > max_streak:
-                                    max_streak = current_streak
-                        
-                        if strict_limit and max_streak >= 6:
-                            continue
-                            
-                        disp_s = max(0, actual_pos - 4)
-                        disp_e = min(len(all_cols_list) - 1, actual_pos + 4)
-                        mini_schedule = []
-                        for p_i in range(disp_s, disp_e + 1):
-                            d_str = date_cols[p_i] if p_i < len(date_cols) else all_cols_list[p_i]
-                            c_val = row.iloc[p_i + 2]
-                            p_res = parse_cell(c_val)
-                            mini_schedule.append(f"{d_str}: {p_res['train'] if p_res['train'] else '休'}")
-
-                        candidates.append({
-                            "員編": emp_id,
-                            "姓名": emp_name,
-                            "當天狀態": "DO (可調動)",
-                            "前後連續上班最大天數": max_streak,
-                            "鄰近天數概況": " | ".join(mini_schedule)
-                        })
-
-                st.markdown(f"### 查詢結果：{target_date} 【{selected_role}】可協調換假人員（共 {len(candidates)} 位）")
-                
-                if candidates:
-                    for idx, cand in enumerate(candidates):
-                        st.markdown(f"""
-                        <div class="compact-card" style="border-left-color: #10B981; margin-bottom: 8px;">
-                            <div class="time-header-row">
-                                <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
-                                <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
-                            </div>
-                            <div class="compact-name">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
-                            <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        if st.button(f"檢視完整班表: {cand['姓名']} ({cand['員編']})", key=f"inspect_btn_{cand['員編']}_{idx}"):
-                            st.session_state["inspect_emp_target"] = cand['員編']
-                            st.rerun()
-                else:
-                    st.info("在該日期找不到符合「純 DO」且前後 5 天連續上班天數在安全範圍內的同職位組員可供調動。")
-
+# 🔒 完美垂直置中於頁面最下方的極低調管理員後台入口
 st.markdown('<div class="footer-admin-container">', unsafe_allow_html=True)
 if st.button("系統管理員後台", key="footer_admin_btn_strict"):
     st.session_state["show_admin_login"] = True
