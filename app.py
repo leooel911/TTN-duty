@@ -64,29 +64,36 @@ st.markdown("""
         font-family: monospace;
     }
     
-    /* 質感貼紙按鈕樣式 (完美融合原有的 edition-badge 品味) */
-    .badge-btn-container div.stButton > button { 
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important;
+    /* 完美還原與圖表同等級的精緻科技感貼紙 (Edition Badge) */
+    .clf-edition-badge-wrapper {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
+    
+    /* 讓 Streamlit 按鈕徹底偽裝成高質感貼紙 */
+    .clf-edition-badge-wrapper div.stButton > button { 
+        background: #1E293B !important;
         border: 1px solid #334155 !important;
-        border-left: 4px solid #38BDF8 !important;
+        border-left: 3px solid #38BDF8 !important;
         color: #38BDF8 !important; 
-        font-size: 11px !important; 
+        font-size: 10.5px !important; 
         font-weight: 700 !important; 
-        letter-spacing: 1.5px !important; 
+        letter-spacing: 1.8px !important; 
         text-transform: uppercase !important; 
-        padding: 8px 14px !important;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+        padding: 5px 12px !important;
+        border-radius: 4px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
         font-family: monospace !important;
         width: auto !important;
         margin: 0 !important;
-        transition: all 0.25s ease !important;
+        transition: all 0.2s ease !important;
     }
-    .badge-btn-container div.stButton > button:hover {
+    .clf-edition-badge-wrapper div.stButton > button:hover {
         border-color: #38BDF8 !important;
         color: #FFFFFF !important;
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        box-shadow: 0 0 16px rgba(56, 189, 248, 0.3) !important;
+        background: #2563EB !important;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
         transform: translateY(-1px) !important;
     }
 
@@ -619,7 +626,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭與右上角精緻貼紙標籤 (Edition Badge) ---
+# --- 頂部標頭與精緻貼紙標籤 (Edition Badge) ---
 h_col1, h_col2 = st.columns([3, 1])
 with h_col1:
     st.markdown("""
@@ -630,18 +637,15 @@ with h_col1:
     """, unsafe_allow_html=True)
 
 with h_col2:
-    st.markdown('<div class="badge-btn-container" style="display: flex; justify-content: flex-end; align-items: center; height: 100%;">', unsafe_allow_html=True)
-    # 動態調整貼紙標籤文字：如果是管理員在線，顯示 ADMIN PANEL；一般則顯示 C.L.F EDITION
-    badge_text = "ADMIN PANEL" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
-    if st.button(badge_text, key="top_right_badge_btn"):
+    st.markdown('<div class="clf-edition-badge-wrapper">', unsafe_allow_html=True)
+    badge_label = "ADMIN PANEL" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
+    if st.button(badge_label, key="top_right_edition_badge"):
         if st.session_state.get("admin_logged_in", False):
-            # 已經登入管理員：在「首頁」與「後台」之間切換
             if st.session_state["nav_mode"] == "home":
                 st.session_state["nav_mode"] = "admin_panel"
             else:
                 st.session_state["nav_mode"] = "home"
         else:
-            # 尚未登入管理員：跳出密碼輸入框
             st.session_state["show_admin_login"] = True
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
@@ -698,7 +702,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             st.session_state["nav_mode"] = "home"
             st.rerun()
 
-    st.success("歡迎回來，管理員 LEO（目前處於管理員在線狀態，可隨時點擊右上角或上方按鈕切換回首頁）")
+    st.success("歡迎回來，管理員 LEO（目前處於管理員在線狀態，可隨時點擊右上角貼紙切換回首頁）")
 
     st.markdown("---")
     st.subheader("查詢紀錄清單")
@@ -1278,7 +1282,6 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
 
             st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
             st.image(buf, use_container_width=True)
-            st.info("提醒：長按上方的班表圖片即可一鍵存入手機相簿")
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
         except Exception as e:
             st.error(f"載入完整班表時發生錯誤: {e}")
@@ -1414,7 +1417,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                     <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                 </div>
                 <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
-                <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
+                <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近text']}</div>
                 <div class="action-divider"></div>
             </div>
             """, unsafe_allow_html=True)
