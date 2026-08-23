@@ -720,8 +720,8 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         with st.form("auth_form"):
-            entered_emp = st.text_input("操作者員編 (僅輸入數字)", value="A", placeholder="例如: 023300", max_chars=10)
-            entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入系統授權碼...")
+            entered_emp = st.text_input("使用者員編", value="A", placeholder="例如: 023300", max_chars=10)
+            entered_key = st.text_input("授權碼", type="password", placeholder="請輸入系統授權碼...")
             btn_auth = st.form_submit_button("進入系統")
 
             if btn_auth:
