@@ -1000,19 +1000,19 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                 default_max_idx = min(default_min_idx + 4, len(TIME_OPTIONS) - 1)
 
             c1, c2 = st.columns(2)
-            with c1: start_date = st.selectbox("起始日期", date_cols, index=0)
+            with c1: start_date = st.selectbox("起始日期", date_cols, index=0, key="win_start_date")
             start_date_idx = date_cols.index(start_date) if start_date in date_cols else 0
-            with c2: end_date = st.selectbox("結束日期", date_cols, index=start_date_idx)
+            with c2: end_date = st.selectbox("結束日期", date_cols, index=start_date_idx, key="win_end_date")
 
             c3, c4 = st.columns(2)
             with c3: min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
             with c4: max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx, key="max_time_selectbox")
 
             filter_col1, filter_col2 = st.columns(2)
-            with filter_col1: only_main_line = st.checkbox("僅顯示正線勤務", value=False)
-            with filter_col2: only_long_shift = st.checkbox("僅顯示長班 (>8.5h)", value=False)
+            with filter_col1: only_main_line = st.checkbox("僅顯示正線勤務", value=False, key="win_main_line")
+            with filter_col2: only_long_shift = st.checkbox("僅顯示長班 (>8.5h)", value=False, key="win_long_shift")
 
-            if st.button("開始區間檢索符合條件人員"):
+            if st.button("開始區間檢索符合條件人員", key="btn_window_search"):
                 try:
                     s_idx = date_cols.index(start_date)
                     e_idx = date_cols.index(end_date)
@@ -1125,6 +1125,161 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
         </div>
         """, unsafe_allow_html=True)
 
+    # 初始化換假系統的狀態紀錄
+    if "ex_sub_mode" not in st.session_state: st.session_state["ex_sub_mode"] = "search_form"
+    if "ex_selected_emp" not in st.session_state: st.session_state["ex_selected_emp"] = None
+    if "ex_saved_candidates" not in st.session_state: st.session_state["ex_saved_candidates"] = []
+    if "ex_saved_target_date" not in st.session_state: st.session_state["ex_saved_target_date"] = ""
+    if "ex_saved_role" not in st.session_state: st.session_state["ex_saved_role"] = ""
+
+    # --- 情境 A：處於單一組員的圖檔檢視模式 ---
+    if st.session_state["ex_sub_mode"] == "inspect_image":
+        target_emp = st.session_state["ex_selected_emp"]
+        saved_role = st.session_state.get("ex_saved_role", "服勤員")
+        saved_date = st.session_state.get("ex_saved_target_date", "")
+
+        st.markdown(f"""
+        <div class="section-header-box">
+            <div class="section-title">換假組員完整班表檢視: {target_emp}</div>
+            <div class="section-subtitle">Exchange Inspector Mode // [{saved_role}] 欲休假日期: {saved_date}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.button("← 返回換假列表並保留條件"):
+            st.session_state["ex_sub_mode"] = "results"
+            st.rerun()
+
+        st.markdown("---")
+
+        try:
+            current_input = target_emp
+            log_activity(current_input)
+            
+            start_dt, dates, emp_id, emp_name, cells = process_file_data(current_input)
+            active_transport = parse_transport_periods(TRANSPORT_PERIODS)
+            font_prop = setup_font()
+            def fp(size=9): return fm.FontProperties(fname=font_prop.get_file(), size=size) if font_prop else fm.FontProperties(size=size)
+
+            weeks = build_weeks(start_dt, dates, cells)
+            fig, ax = plt.subplots(figsize=(16, 11), dpi=300)
+            ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
+            fig.patch.set_facecolor("white")
+            ML, MR, MT, MB, TH, DH = 0.015, 0.015, 0.015, 0.08, 0.09, 0.055
+            TW, CW = 1.0 - ML - MR, (1.0 - ML - MR) / 7
+            RH = (1.0 - MT - MB - TH - DH) / len(weeks)
+            ty = 1.0 - MT - TH
+            ax.add_patch(FancyBboxPatch((ML, ty), TW, TH, boxstyle="square,pad=0", linewidth=0, facecolor=C_HDR))
+
+            draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(16))
+            draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]}", ha="left", va="center", color="#CBD5E1", fontproperties=fp(11))
+
+            badge_w = CW * 0.90
+            badge_x = (1.0 - MR) - CW + (CW - badge_w) / 2
+            badge_y = ty + TH * 0.42
+            badge_h = 0.035
+
+            ax.add_patch(FancyBboxPatch((badge_x, badge_y), badge_w, badge_h, boxstyle="round,pad=0.002,rounding_size=0.01", linewidth=1.0, edgecolor="#334155", facecolor="#1E293B"))
+            draw_bold_text(ax, badge_x + badge_w / 2, badge_y + badge_h / 2, "Exchange | C.L.F", ha="center", va="center", color="#38BDF8", fontproperties=fp(10.5))
+
+            dy = ty - DH
+            for c in range(7):
+                x = ML + c * CW
+                ax.add_patch(FancyBboxPatch((x, dy), CW, DH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#475569", facecolor="#94A3B8"))
+                draw_bold_text(ax, x + CW / 2, dy + DH / 2, ["SUN 星期日", "MON 星期一", "TUE 星期二", "WED 星期三", "THU 星期四", "FRI 星期五", "SAT 星期六"][c], ha="center", va="center", color="#000000", fontproperties=fp(11))
+
+            has_emp_do, has_emp_pay, has_emp_ot, has_emp_town = False, False, False, False
+            for week in weeks:
+                for item in week:
+                    if item is not None:
+                        dt, d, raw_cell_str = item
+                        tr, note, hours = d["train"], d.get("note", ""), d.get("hours", "")
+                        is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d["start"]
+                        if is_pure_hol or tr.startswith("DO"): has_emp_do = True
+                        elif tr in ["PAY", "FAC"] or "PAY" in raw_cell_str or "FAC" in raw_cell_str: has_emp_pay = True
+                        elif is_town_shift(tr, note): has_emp_town = True
+                        if is_overtime(hours, tr, note): has_emp_ot = True
+
+            for ri, week in enumerate(weeks):
+                ry = dy - (ri + 1) * RH
+                for ci, item in enumerate(week):
+                    x = ML + ci * CW
+                    if item is None: 
+                        ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=C_EMPTY))
+                        continue
+                    dt, d, raw_cell_str = item
+                    tr, note = d["train"], d.get("note", "")
+
+                    is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d["start"]
+                    is_pay_shift = (tr in ["PAY", "FAC"]) or ("PAY" in raw_cell_str) or ("FAC" in raw_cell_str)
+
+                    bg = C_DO_BG if is_pure_hol else (C_PAY_BG if is_pay_shift else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
+                    ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
+
+                    if dt in NATIONAL_HOLIDAYS:
+                        full_date_str = f"{dt} ({NATIONAL_HOLIDAYS[dt]})"
+                        draw_bold_text(ax, x + 0.005, ry + RH - 0.004, full_date_str, ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(9.5))
+                    else:
+                        draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color="#000000", fontproperties=fp(10))
+
+                    if dt in active_transport:
+                        draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(8.5))
+
+                    if d.get("hours"): 
+                        draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"], tr, note) else "#000000", fontproperties=fp(11.5))
+                        do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l or "OGC" in l), "")
+                        if do_match:
+                            draw_bold_text(ax, x + CW - 0.004, ry + 0.026, do_match, ha="right", va="bottom", color=C_DO_TXT, fontproperties=fp(10.5))
+
+                    cx = x + CW / 2
+                    if is_pure_hol: 
+                        do_code = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l), "DO")
+                        draw_bold_text(ax, cx, ry + RH * 0.48, do_code, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(14))
+                    elif is_pay_shift and not d["start"]: 
+                        draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(14))
+                    else:
+                        draw_bold_text(ax, cx, ry + RH * 0.65, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(13))
+                        draw_bold_text(ax, cx, ry + RH * 0.40, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(13))
+                        draw_bold_text(ax, cx, ry + RH * 0.15, tr, ha="center", va="center", color=C_PAY_TXT if is_pay_shift else "#000000", fontproperties=fp(12))
+
+            legend_y = MB * 0.45
+            badge_w_leg, badge_h_leg = CW * 0.90, 0.022
+            has_active_transport = any(d in active_transport for d in dates)
+            has_active_holiday = any(d in NATIONAL_HOLIDAYS for d in dates)
+
+            pill_legends = [
+                (0, "#F1F5F9", "#475569", C_NOTE_TXT, "備註"),
+                (1, C_DO_BG if has_emp_do else C_WORK_BG, "#E11D48" if has_emp_do else "#64748B", C_DO_TXT if has_emp_do else "#64748B", "休假日"),
+                (2, C_PAY_BG if has_emp_pay else C_WORK_BG, "#EA580C" if has_emp_pay else "#64748B", C_PAY_TXT if has_emp_pay else "#64748B", "特休"),
+                (3, C_WORK_BG, "#DC2626" if has_emp_ot else "#64748B", C_OT_TXT if has_emp_ot else "#64748B", "工時 > 8.5h"),
+                (4, C_WORK_BG, "#C2410C" if has_active_holiday else "#64748B", C_HOLI_TXT if has_active_holiday else "#64748B", "國定假日"),
+                (5, "#F3E8FF" if has_active_transport else C_WORK_BG, "#7C3AED" if has_active_transport else "#64748B", C_NOTE_TXT if has_active_transport else "#64748B", "疏運"),
+                (6, C_TOWN_BG if has_emp_town else C_WORK_BG, "#334155" if has_emp_town else "#64748B", C_TOWN_TXT if has_emp_town else "#64748B", "非正線勤務"),
+            ]
+
+            for col_idx, bg_clr, border_clr, txt_clr, label in pill_legends:
+                col_x = ML + col_idx * CW
+                lx = col_x + (CW - badge_w_leg) / 2
+                badge = FancyBboxPatch((lx, legend_y), badge_w_leg, badge_h_leg, boxstyle="round,pad=0.002,rounding_size=0.008", linewidth=1.2, edgecolor=border_clr, facecolor=bg_clr)
+                ax.add_patch(badge)
+                draw_bold_text(ax, lx + badge_w_leg / 2, legend_y + badge_h_leg / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(9))
+
+            now_str = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M")
+            draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
+            draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#0F172A", fontproperties=fp(12))
+
+            buf = io.BytesIO()
+            plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
+
+            st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
+            st.image(buf, use_container_width=True)
+            st.info("提醒：長按上方的班表圖片即可一鍵存入手機相簿")
+            st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
+        except Exception as e:
+            st.error(f"載入完整班表時發生錯誤: {e}")
+
+        st.stop()
+
+    # --- 情境 B & C：輸入查詢表單與結果呈現列表 ---
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">換假日期快篩系統</div>
@@ -1135,110 +1290,136 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
     ex_c1, ex_c2 = st.columns(2)
     with ex_c1:
         selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], index=0, key="ex_role_select")
-    with ex_c2:
-        sample_path = ROLE_FILES[selected_role] if os.path.exists(ROLE_FILES[selected_role]) else list(ROLE_FILES.values())[0]
+    
+    sample_path = ROLE_FILES[selected_role] if os.path.exists(ROLE_FILES[selected_role]) else list(ROLE_FILES.values())[0]
+    try:
         temp_df_dates = pd.read_excel(sample_path, header=3)
         date_cols = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in temp_df_dates.columns[2:] if re.search(r'(\d+/\d+)', str(c))]
-        target_date = st.selectbox("想休假的的日期", date_cols, index=0, key="ex_target_date_auto")
+    except:
+        date_cols = []
 
-    strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True)
-
-    if st.button("開始識別可換假人員", key="btn_auto_search_exchange"):
-        target_path = ROLE_FILES[selected_role]
-        if not os.path.exists(target_path):
-            st.error(f"找不到【{selected_role}】的班表檔案")
+    with ex_c2:
+        if date_cols:
+            target_date = st.selectbox("想休假的的日期", date_cols, index=0, key=f"ex_target_date_{selected_role}")
         else:
-            df_ex = pd.read_excel(target_path, header=3)
-            df_ex.columns = [str(c).strip() for c in df_ex.columns]
-            
-            target_col_idx = -1
-            actual_pos = -1
-            all_cols_list = list(df_ex.columns[2:])
-            for idx, col in enumerate(all_cols_list):
-                if target_date in str(col):
-                    target_col_idx = idx + 2
-                    actual_pos = idx
-                    break
+            target_date = st.selectbox("想休假的的日期", ["無可用日期"], index=0, key=f"ex_target_date_{selected_role}")
 
-            if target_col_idx == -1:
-                st.warning("找不到該日期的欄位資料")
+    strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True, key="ex_strict_limit")
+
+    btn_search_clicked = st.button("開始識別可換假人員", key="btn_auto_search_exchange_fixed")
+
+    if btn_search_clicked:
+        st.session_state["ex_sub_mode"] = "results"
+        if not date_cols or target_date == "無可用日期":
+            st.warning("目前無有效的日期資料可供檢索")
+            st.session_state["ex_saved_candidates"] = []
+        else:
+            target_path = ROLE_FILES[selected_role]
+            if not os.path.exists(target_path):
+                st.error(f"找不到【{selected_role}】的班表檔案")
+                st.session_state["ex_saved_candidates"] = []
             else:
-                candidates = []
-                for _, row in df_ex.iterrows():
-                    emp_id = str(row.iloc[0]).strip()
-                    emp_name = str(row.iloc[1]).strip()
-                    
-                    cell_raw = row.iloc[target_col_idx]
-                    parsed = parse_cell(cell_raw)
-                    raw_str = str(cell_raw).upper()
-                    tr = str(parsed["train"]).strip().upper()
-                    
-                    is_pure_do = ("DO" in raw_str) or ("D2W" in raw_str)
-                    is_special_leave = (tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_str) or ("FAC" in raw_str)
-                    
-                    if is_pure_do and not is_special_leave:
-                        s_idx = max(0, actual_pos - 5)
-                        e_idx = min(len(all_cols_list) - 1, actual_pos + 5)
-                        
-                        current_streak = 0
-                        max_streak = 0
-                        
-                        for p_i in range(s_idx, e_idx + 1):
-                            c_val = row.iloc[p_i + 2]
-                            p_res = parse_cell(c_val)
-                            c_raw_str = str(c_val).upper()
-                            c_tr = str(p_res["train"]).strip().upper()
-                            
-                            is_c_rest = ("DO" in c_raw_str) or ("D2W" in c_raw_str)
-                            is_c_special_leave = (c_tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_str) or ("FAC" in c_raw_str)
-                            
-                            if is_c_rest and not is_c_special_leave:
-                                current_streak = 0
-                            else:
-                                current_streak += 1
-                                if current_streak > max_streak:
-                                    max_streak = current_streak
-                        
-                        if strict_limit and max_streak >= 6:
-                            continue
-                            
-                        disp_s = max(0, actual_pos - 4)
-                        disp_e = min(len(all_cols_list) - 1, actual_pos + 4)
-                        mini_schedule = []
-                        for p_i in range(disp_s, disp_e + 1):
-                            d_str = date_cols[p_i] if p_i < len(date_cols) else all_cols_list[p_i]
-                            c_val = row.iloc[p_i + 2]
-                            p_res = parse_cell(c_val)
-                            mini_schedule.append(f"{d_str}: {p_res['train'] if p_res['train'] else '休'}")
-
-                        candidates.append({
-                            "員編": emp_id,
-                            "姓名": emp_name,
-                            "當天狀態": "DO (可調動)",
-                            "前後連續上班最大天數": max_streak,
-                            "鄰近天數概況": " | ".join(mini_schedule)
-                        })
-
-                st.markdown(f"### 查詢結果：{target_date} 【{selected_role}】可協調換假人員（共 {len(candidates)} 位）")
+                df_ex = pd.read_excel(target_path, header=3)
+                df_ex.columns = [str(c).strip() for c in df_ex.columns]
                 
-                if candidates:
-                    for idx, cand in enumerate(candidates):
-                        st.markdown(f"""
-                        <div class="compact-card" style="border-left-color: #10B981; margin-bottom: 8px;">
-                            <div class="time-header-row">
-                                <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
-                                <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
-                            </div>
-                            <div class="compact-name">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
-                            <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        if st.button(f"檢視完整班表: {cand['姓名']} ({cand['員編']})", key=f"inspect_btn_{cand['員編']}_{idx}"):
-                            st.session_state["inspect_emp_target"] = cand['員編']
-                            st.rerun()
+                target_col_idx = -1
+                actual_pos = -1
+                all_cols_list = list(df_ex.columns[2:])
+                for idx, col in enumerate(all_cols_list):
+                    if target_date in str(col):
+                        target_col_idx = idx + 2
+                        actual_pos = idx
+                        break
+
+                if target_col_idx == -1:
+                    st.warning("找不到該日期的欄位資料")
+                    st.session_state["ex_saved_candidates"] = []
                 else:
-                    st.info("在該日期找不到符合「純 DO」且前後 5 天連續上班天數在安全範圍內的同職位組員可供調動。")
+                    candidates = []
+                    for _, row in df_ex.iterrows():
+                        emp_id = str(row.iloc[0]).strip()
+                        emp_name = str(row.iloc[1]).strip()
+                        
+                        cell_raw = row.iloc[target_col_idx]
+                        parsed = parse_cell(cell_raw)
+                        raw_str = str(cell_raw).upper()
+                        tr = str(parsed["train"]).strip().upper()
+                        
+                        is_pure_do = ("DO" in raw_str) or ("D2W" in raw_str)
+                        is_special_leave = (tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_str) or ("FAC" in raw_str)
+                        
+                        if is_pure_do and not is_special_leave:
+                            s_idx = max(0, actual_pos - 5)
+                            e_idx = min(len(all_cols_list) - 1, actual_pos + 5)
+                            
+                            current_streak = 0
+                            max_streak = 0
+                            
+                            for p_i in range(s_idx, e_idx + 1):
+                                c_val = row.iloc[p_i + 2]
+                                p_res = parse_cell(c_val)
+                                c_raw_str = str(c_val).upper()
+                                c_tr = str(p_res["train"]).strip().upper()
+                                
+                                is_c_rest = ("DO" in c_raw_str) or ("D2W" in c_raw_str)
+                                is_c_special_leave = (c_tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_str) or ("FAC" in c_raw_str)
+                                
+                                if is_c_rest and not is_c_special_leave:
+                                    current_streak = 0
+                                else:
+                                    current_streak += 1
+                                    if current_streak > max_streak:
+                                        max_streak = current_streak
+                            
+                            if strict_limit and max_streak >= 6:
+                                continue
+                                
+                            disp_s = max(0, actual_pos - 4)
+                            disp_e = min(len(all_cols_list) - 1, actual_pos + 4)
+                            mini_schedule = []
+                            for p_i in range(disp_s, disp_e + 1):
+                                d_str = date_cols[p_i] if p_i < len(date_cols) else all_cols_list[p_i]
+                                c_val = row.iloc[p_i + 2]
+                                p_res = parse_cell(c_val)
+                                mini_schedule.append(f"{d_str}: {p_res['train'] if p_res['train'] else '休'}")
+
+                            candidates.append({
+                                "員編": emp_id,
+                                "姓名": emp_name,
+                                "當天狀態": "DO (可調動)",
+                                "前後連續上班最大天數": max_streak,
+                                "鄰近天數概況": " | ".join(mini_schedule)
+                            })
+                    st.session_state["ex_saved_candidates"] = candidates
+                    st.session_state["ex_saved_target_date"] = target_date
+                    st.session_state["ex_saved_role"] = selected_role
+
+    if st.session_state["ex_sub_mode"] == "results":
+        saved_candidates = st.session_state.get("ex_saved_candidates", [])
+        saved_date = st.session_state.get("ex_saved_target_date", target_date)
+        saved_role = st.session_state.get("ex_saved_role", selected_role)
+
+        st.markdown(f"### 查詢結果：{saved_date} 【{saved_role}】可協調換假人員（共 {len(saved_candidates)} 位）")
+        
+        if saved_candidates:
+            for idx, cand in enumerate(saved_candidates):
+                st.markdown(f"""
+                <div class="compact-card" style="border-left-color: #10B981; margin-bottom: 8px;">
+                    <div class="time-header-row">
+                        <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
+                        <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
+                    </div>
+                    <div class="compact-name">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
+                    <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if st.button(f"生成並檢視完整班表: {cand['姓名']} ({cand['員編']})", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
+                    st.session_state["ex_selected_emp"] = cand['員編']
+                    st.session_state["ex_sub_mode"] = "inspect_image"
+                    st.rerun()
+        else:
+            st.info("在該日期找不到符合「純 DO」且前後 5 天連續上班天數在安全範圍內的同職位組員可供調動。")
 
 st.markdown('<div class="footer-admin-container">', unsafe_allow_html=True)
 if st.button("系統管理員後台", key="footer_admin_btn_strict"):
