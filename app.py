@@ -55,7 +55,7 @@ st.markdown("""
         }
     }
 
-    /* 頂部導航總成 - 完美無瑕疵的精緻外框與整體呼吸光暈 */
+    /* 頂部導航總成 */
     .header-container { 
         display: flex; 
         justify-content: space-between; 
@@ -101,40 +101,40 @@ st.markdown("""
         font-family: monospace;
     }
     
-    /* 右上角極致低調、不佔空間的精緻版權小貼紙（完全消除主要按鈕感） */
-    .clf-edition-badge-wrapper {
+    /* 底部低調精緻小貼紙按鈕樣式 */
+    .footer-badge-container {
         display: flex;
-        justify-content: flex-end;
+        justify-content: center;
         align-items: center;
         width: 100%;
+        margin-top: 3rem;
+        margin-bottom: 1rem;
     }
     
-    div[data-testid="column"] div.stButton > button#top_right_edition_badge { 
-        background: transparent !important;
-        border: 1px solid #334155 !important;
+    .footer-badge-container div.stButton > button { 
+        background: #0B0F19 !important;
+        border: 1px solid #1E293B !important;
         border-left: 2px solid #38BDF8 !important;
         color: #64748B !important; 
-        font-size: 8.5px !important; 
-        font-weight: 500 !important; 
-        letter-spacing: 1px !important; 
+        font-size: 9px !important; 
+        font-weight: 600 !important; 
+        letter-spacing: 1.5px !important; 
         text-transform: uppercase !important; 
-        padding: 3px 8px !important;
+        padding: 4px 12px !important;
         border-radius: 4px !important;
         box-shadow: none !important;
         font-family: monospace !important;
         width: auto !important;
-        float: right !important;
-        margin: 0 !important;
+        margin: 0 auto !important;
         min-height: unset !important;
-        line-height: 1.2 !important;
         transition: all 0.2s ease !important;
     }
-    div[data-testid="column"] div.stButton > button#top_right_edition_badge:hover {
+    .footer-badge-container div.stButton > button:hover {
         border-color: #38BDF8 !important;
         color: #38BDF8 !important;
-        background: rgba(56, 189, 248, 0.05) !important;
-        transform: none !important;
-        box-shadow: none !important;
+        background: #131C31 !important;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.15) !important;
+        transform: translateY(-1px) !important;
     }
 
     /* 高質感施工中黃色呼吸燈提示卡片 */
@@ -681,33 +681,17 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭與完整外框呼吸燈光暈 (Header Container) ---
-h_col1, h_col2 = st.columns([4, 1.6])
-with h_col1:
-    st.markdown("""
-    <div class="header-container">
-        <div class="title-left-group">
-            <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
-            <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
-        </div>
+# --- 頂部質感標頭（已將原本佔位移除，改為單純乾淨的主標題列） ---
+st.markdown("""
+<div class="header-container">
+    <div class="title-left-group">
+        <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
+        <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
     </div>
-    """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
 
-with h_col2:
-    st.markdown('<div class="clf-edition-badge-wrapper" style="height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-top: 4px;">', unsafe_allow_html=True)
-    badge_label = "ADMIN PANEL" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
-    if st.button(badge_label, key="top_right_edition_badge"):
-        if st.session_state.get("admin_logged_in", False):
-            if st.session_state["nav_mode"] == "home":
-                st.session_state["nav_mode"] = "admin_panel"
-            else:
-                st.session_state["nav_mode"] = "home"
-        else:
-            st.session_state["show_admin_login"] = True
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# 點擊右上角貼紙後彈出的密碼輸入驗證區塊
+# 點擊頂部或底部貼紙後彈出的密碼輸入驗證區塊
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -757,7 +741,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             st.session_state["nav_mode"] = "home"
             st.rerun()
 
-    st.success("歡迎回來，管理員 LEO（目前處於管理員在線狀態，可隨時點擊右上角貼紙切換回首頁）")
+    st.success("歡迎回來，管理員 LEO（目前處於管理員在線狀態，可隨時點擊頁面最下方的版本貼紙切換回首頁）")
 
     st.markdown("---")
     st.subheader("查詢紀錄清單")
@@ -1513,3 +1497,17 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                 st.rerun()
             
             st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+
+# --- 將 C.L.F EDITION 移至網頁最下方（低調如頁尾精巧版本標籤） ---
+st.markdown('<div class="footer-badge-container">', unsafe_allow_html=True)
+badge_label = "ADMIN PANEL // C.L.F EDITION" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
+if st.button(badge_label, key="bottom_footer_edition_badge"):
+    if st.session_state.get("admin_logged_in", False):
+        if st.session_state["nav_mode"] == "home":
+            st.session_state["nav_mode"] = "admin_panel"
+        else:
+            st.session_state["nav_mode"] = "home"
+    else:
+        st.session_state["show_admin_login"] = True
+    st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
