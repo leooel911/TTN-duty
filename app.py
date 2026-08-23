@@ -1416,7 +1416,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             validation_error_msg = "「想休假的日期」與「可還假的日期」不可選擇同一天！"
         else:
             try:
-                # 取得日曆週判斷
                 sample_col = ""
                 for c in temp_df_dates.columns[2:]:
                     if re.search(r'(\d+/\d+)', str(c)):
@@ -1450,7 +1449,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if not is_selection_valid:
         st.error(f"⚠️ 防呆檢核未通過：{validation_error_msg}")
 
-    # 只有當即時檢核通過時，才顯示查詢按鈕，否則將按鈕改為提示或停用
+    # 即時檢核通過才顯示查詢按鈕
     if is_selection_valid:
         btn_search_clicked = st.button("開始識別同週雙向可換假人員", key="btn_auto_search_exchange_fixed")
     else:
@@ -1486,7 +1485,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                     emp_id = str(row.iloc[0]).strip()
                     emp_name = str(row.iloc[1]).strip()
                     
-                    # 1. 檢查「想休假日」是否為 DO
                     cell_target = row.iloc[target_col_idx]
                     parsed_target = parse_cell(cell_target)
                     raw_target_str = str(cell_target).upper()
@@ -1498,7 +1496,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                     if not (is_target_do and not is_target_leave):
                         continue
 
-                    # 2. 檢查「可還假日」是否為上班日
                     cell_return = row.iloc[return_col_idx]
                     parsed_return = parse_cell(cell_return)
                     raw_return_str = str(cell_return).upper()
@@ -1510,7 +1507,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                     if is_return_do or is_return_leave:
                         continue
 
-                    # 3. 計算連續上班風險與過濾
                     s_idx = max(0, actual_pos - 5)
                     e_idx = min(len(all_cols_list) - 1, actual_pos + 5)
                     
@@ -1563,7 +1559,8 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
 
-        st.markdown(f"### 查詢結果：同週內想休 {target_date} ＋ 還假 {return_date} ｜ 【{saved_role}】雙向可換假名單（共 {len(saved_candidates)} 位）")
+        # 這裡已改為您指定的標題格式
+        st.markdown(f"### 【{saved_role}】可雙向換假名單『想休 ：{saved_date}  ｜還假： {return_date} 』 （共 {len(saved_candidates)} 位）")
         
         for idx, cand in enumerate(saved_candidates):
             st.markdown(f"""
