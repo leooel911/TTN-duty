@@ -533,6 +533,20 @@ def process_file_data(input_str):
         else: dates.append(col_str)
     return start_dt, dates, emp_id, emp_name, matched_row.iloc[2:].values
 
+def setup_font():
+    font_path = "NotoSansTC.ttf"
+    if os.path.exists(font_path):
+        fm.fontManager.addfont(font_path)
+        return fm.FontProperties(fname=font_path)
+    return None
+
+# 標準版面配色（重置修正粉色錯亂，維持專業沉穩灰白藍色調）
+C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#475569", "#F1F5F9"
+C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
+C_DO_BG, C_PAY_BG, C_TOWN_BG = "#F1F5F9", "#FEF3C7", "#E2E8F0"
+C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#EF4444", "#D97706", "#C2410C", "#DC2626", "#4C1D95"
+C_TOWN_TXT = "#0F172A"
+
 def draw_bold_text(ax, x, y, text, **kwargs):
     ax.text(x, y, text, **kwargs)
     offset = 0.0002
@@ -559,19 +573,6 @@ def build_weeks(start_dt, dates, cells):
         while len(week) < 7: week.append(None)
         weeks.append(week)
     return weeks
-
-def setup_font():
-    font_path = "NotoSansTC.ttf"
-    if os.path.exists(font_path):
-        fm.fontManager.addfont(font_path)
-        return fm.FontProperties(fname=font_path)
-    return None
-
-C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#475569", "#F1F5F9"
-C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
-C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
-C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
-C_TOWN_TXT = "#000000"
 
 # --- 檢視完整班表 ---
 if st.session_state.get("inspect_emp_target") is not None:
@@ -1594,7 +1595,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         c_val = row.iloc[p_i + 2]
                         p_res = parse_cell(c_val)
                         
-                        # 優化：前後動態顯示報到->收工時間窗
                         time_display = f"{p_res['start']}->{p_res['end']}" if p_res['start'] else (p_res['train'] if p_res['train'] else '休')
                         mini_schedule.append(f"{d_str}: {time_display}")
 
