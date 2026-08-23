@@ -838,30 +838,39 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.markdown("---")
     st.subheader("管理員檔案上傳與刪除區")
-    selected_role = st.selectbox("選擇要上傳或刪除的職位類別", ["駕駛", "列車長", "服勤員"])
+    selected_role = st.selectbox("選擇要上傳或刪除的職位類別", ["駕駛", "列車長", "服勤員"], key="admin_role_select")
     
     target_path = ROLE_FILES[selected_role]
 
     col_up, col_del = st.columns(2)
     with col_up:
-        uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
+        uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"], key=f"uploader_{selected_role}")
         if uploaded_file is not None:
+            # 寫入檔案
             with open(target_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
-            st.success("上傳成功")
+            # 給予極短暫的緩衝確保硬碟寫入完成
+            time.sleep(0.3)
+            st.success("上傳成功！")
             st.rerun()
 
     with col_del:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # 調整與左側對齊
         file_exists = os.path.exists(target_path)
-        st.write("目前檔案狀態：" + ("已存在" if file_exists else "無檔案"))
+        
+        # 即時動態檢測狀態
+        status_text = "已存在" if file_exists else "無檔案"
+        st.write(f"目前檔案狀態：{status_text}")
         
         if file_exists:
-            if st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案"):
-                os.remove(target_path)
+            if st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案", key=f"del_btn_{selected_role}"):
+                if os.path.exists(target_path):
+                    os.remove(target_path)
+                time.sleep(0.2)
                 st.success(f"已成功刪除【{selected_role}】的班表檔案")
                 st.rerun()
         else:
-            st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案", disabled=True)
+            st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案", disabled=True, key=f"del_disabled_{selected_role}")
 
     st.stop()
 
