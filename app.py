@@ -137,6 +137,26 @@ st.markdown("""
         transform: translateY(-1px) !important;
     }
 
+    /* 區塊小標題樣式 */
+    .mode-selection-header {
+        color: #64748B;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+        font-family: monospace;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .mode-selection-header::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #1E293B;
+    }
+
     /* 高質感施工中黃色呼吸燈提示卡片 */
     .maintenance-card-box {
         background: linear-gradient(135deg, #271C0C 0%, #171005 100%);
@@ -264,7 +284,7 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
     }
 
-    div.stButton > button { 
+    div.stButton > button, div.stFormSubmitButton > button { 
         font-weight: 700 !important; 
         padding: 12px 18px !important; 
         border-radius: 10px !important; 
@@ -280,7 +300,7 @@ st.markdown("""
         letter-spacing: 1.5px;
         font-family: monospace;
     }
-    div.stButton > button:hover {
+    div.stButton > button:hover, div.stFormSubmitButton > button:hover {
         border-color: #38BDF8 !important;
         border-left-color: #38BDF8 !important;
         color: #FFFFFF !important;
@@ -658,30 +678,30 @@ if st.session_state.get("inspect_emp_target") is not None:
 
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查 ---
+# --- 🔒 前置授權碼門戶檢查（使用 form 支援 Enter 鍵直接確認送出） ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
-        
-        btn_auth = st.button("進入系統", key="auth_btn_1")
+        with st.form("auth_form"):
+            entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入授權碼或管理員密碼...", label_visibility="collapsed")
+            btn_auth = st.form_submit_button("進入系統")
 
-        if btn_auth:
-            if entered_key == CREW_ACCESS_PASSWORD:
-                st.session_state["authenticated"] = True
-                st.rerun()
-            elif entered_key == ADMIN_PASSWORD:
-                st.session_state["admin_logged_in"] = True
-                st.session_state["nav_mode"] = "admin_panel"
-                st.success("管理員驗證成功，正在載入後台...")
-                st.rerun()
-            else:
-                st.error("授權碼或密碼錯誤，請重新輸入")
+            if btn_auth:
+                if entered_key == CREW_ACCESS_PASSWORD:
+                    st.session_state["authenticated"] = True
+                    st.rerun()
+                elif entered_key == ADMIN_PASSWORD:
+                    st.session_state["admin_logged_in"] = True
+                    st.session_state["nav_mode"] = "admin_panel"
+                    st.success("管理員驗證成功，正在載入後台...")
+                    st.rerun()
+                else:
+                    st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭（已將原本佔位移除，改為單純乾淨的主標題列） ---
+# --- 頂部質感標頭 ---
 st.markdown("""
 <div class="header-container">
     <div class="title-left-group">
@@ -691,7 +711,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 點擊頂部或底部貼紙後彈出的密碼輸入驗證區塊
+# 點擊頂部或底部貼紙後彈出的密碼輸入驗證區塊（使用 form 支援 Enter 鍵直接確認送出）
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -702,11 +722,16 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
 
     col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
     with col_l2:
-        adm_pwd_input = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員解鎖密碼...", key="badge_admin_pwd_box")
-        
-        col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-            if st.button("登入後台", key="badge_admin_submit"):
+        with st.form("admin_login_form"):
+            adm_pwd_input = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員解鎖密碼...", key="badge_admin_pwd_box")
+            
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                btn_submit_adm = st.form_submit_button("登入後台")
+            with col_btn2:
+                btn_cancel_adm = st.form_submit_button("取消")
+
+            if btn_submit_adm:
                 if adm_pwd_input == ADMIN_PASSWORD:
                     st.session_state["admin_logged_in"] = True
                     st.session_state["nav_mode"] = "admin_panel"
@@ -715,8 +740,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                     st.rerun()
                 else:
                     st.error("管理員密碼錯誤")
-        with col_btn2:
-            if st.button("取消", key="badge_cancel_login"):
+            elif btn_cancel_adm:
                 st.session_state["show_admin_login"] = False
                 st.rerun()
     st.stop()
@@ -809,12 +833,13 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 乾淨的三大系統操作選單
+# 帶有質感小標題的系統模式選擇區
+st.markdown('<div class="mode-selection-header">Select Operation Mode // 請選擇系統模式</div>', unsafe_allow_html=True)
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
     "指定時段報到組員快篩（Alpha測試版）",
     "換假日期快篩（Alpha測試版）"
-], horizontal=False)
+], horizontal=False, label_visibility="collapsed")
 
 if app_mode != "換假日期快篩（Alpha測試版）":
     st.session_state["ex_saved_candidates"] = []
