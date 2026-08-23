@@ -187,11 +187,11 @@ st.markdown("""
         transform: translateY(-1px) !important;
     }
 
-    /* 區塊小標題樣式 */
+    /* 區塊小標題樣式 (已放大並改為白色) */
     .mode-selection-header {
-        color: #64748B;
-        font-size: 11px;
-        font-weight: 700;
+        color: #FFFFFF;
+        font-size: 13px;
+        font-weight: 800;
         letter-spacing: 2px;
         text-transform: uppercase;
         margin-bottom: 10px;
@@ -204,7 +204,7 @@ st.markdown("""
         content: '';
         flex: 1;
         height: 1px;
-        background: #1E293B;
+        background: #334155;
     }
 
     /* 施工中卡片樣式 */
