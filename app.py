@@ -846,7 +846,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         if uploaded_file:
             with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
             st.success("上傳成功")
-            st.rerun()
+            st.rerun()  # 立即自動重新整理，讓檔案狀態即時更新
 
     with col_del:
         st.write("目前檔案狀態：" + ("已存在" if os.path.exists(ROLE_FILES[selected_role]) else "無檔案"))
@@ -855,7 +855,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             if os.path.exists(target_path):
                 os.remove(target_path)
                 st.success(f"已成功刪除【{selected_role}】的班表檔案")
-                st.rerun()
+                st.rerun()  # 立即自動重新整理，讓檔案狀態即時更新
             else:
                 st.warning(f"【{selected_role}】本來就沒有檔案")
 
