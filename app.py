@@ -843,10 +843,10 @@ st.markdown('<div class="mode-selection-header">Select Operation Mode // 請選�
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
     "指定時段報到組員快篩（Alpha測試版）",
-    "換假日期快篩（Alpha測試版）"
+    "換假｜日期快篩（Alpha測試版）"
 ], horizontal=False, label_visibility="collapsed")
 
-if app_mode != "換假日期快篩（Alpha測試版）":
+if app_mode != "換假｜日期快篩（Alpha測試版）":
     st.session_state["ex_saved_candidates"] = []
     st.session_state["ex_sub_mode"] = "search_form"
     st.session_state["last_app_mode"] = ""
@@ -1200,11 +1200,11 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                     else:
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
-elif app_mode == "換假日期快篩（Alpha測試版）":
-    if st.session_state.get("last_app_mode") != "換假日期快篩（Alpha測試版）":
+elif app_mode == "換假｜日期快篩（Alpha測試版）":
+    if st.session_state.get("last_app_mode") != "換假｜日期快篩（Alpha測試版）":
         st.session_state["ex_sub_mode"] = "search_form"
         st.session_state["ex_saved_candidates"] = []
-        st.session_state["last_app_mode"] = "換假日期快篩（Alpha測試版）"
+        st.session_state["last_app_mode"] = "換假｜日期快篩（Alpha測試版）"
 
     if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_logged_in", False):
         st.markdown("""
@@ -1417,22 +1417,52 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
             st.warning("「想休假的日期」與「可還假的日期」不可選擇同一天！")
             st.session_state["ex_saved_candidates"] = []
         else:
-            # 防呆：檢查是否在同一個星期區間內（間隔在 6 天以內，或透過日曆週判定）
+            # 防呆：檢查是否在同一個星期區間內（以週日為起始，日至六為一週）
             try:
-                # 簡單以索引位置或實際日期判定是否在 7 天（同一週）內
-                t_idx = date_cols.index(target_date)
-                r_idx = date_cols.index(return_date)
-                if abs(t_idx - r_idx) > 6:
-                    st.error("『想休假日』與『可還假日』必須選擇在 **同一週內**！")
+                # 取得檔案起始年份以構建真實日期進行日曆週計算
+                target_path = ROLE_FILES[selected_role]
+                df_ex_check = pd.read_excel(target_path, header=3)
+                df_ex_check.columns = [str(c).strip() for c in df_ex_check.columns]
+                
+                # 找出第一欄有效日期的年份
+                sample_col = ""
+                for c in df_ex_check.columns[2:]:
+                    if re.search(r'(\d+/\d+)', str(c)):
+                        sample_col = re.search(r'(\d+/\d+)', str(c)).group(1)
+                        break
+                
+                year_val = 2026
+                if sample_col:
+                    m_val = int(sample_col.split("/")[0])
+                    # 依據月份若在年初或年底可適當對應，這裡預設 2026
+                
+                def get_sun_sat_week(d_str):
+                    m, d = map(int, d_str.split("/"))
+                    dt_obj = date(year_val, m, d)
+                    # python weekday(): Mon=0 ... Sun=6
+                    # 轉換為 Sun=0, Mon=1 ... Sat=6
+                    w_day = (dt_obj.weekday() + 1) % 7
+                    sun_date = dt_obj - timedelta(days=w_day)
+                    sat_date = sun_date + timedelta(days=6)
+                    return sun_date, sat_date
+
+                t_sun, t_sat = get_sun_sat_week(target_date)
+                r_sun, r_sat = get_sun_sat_week(return_date)
+
+                if t_sun != r_sun:
+                    st.error("注意！『想休假日』與『可還假日』必須選擇在同一週內")
                     st.session_state["ex_saved_candidates"] = []
                 else:
-                    target_path = ROLE_FILES[selected_role]
+                    # 檢查是否為本次班表發布的第一週，若是則提示前一週連續工作情況
+                    first_week_sun, first_week_sat = get_sun_sat_week(date_cols[0])
+                    if t_sun == first_week_sun:
+                        st.info("提示：注意前一週是否連續工作7天喔！")
+
                     if not os.path.exists(target_path):
                         st.error(f"找不到【{selected_role}】的班表檔案")
                         st.session_state["ex_saved_candidates"] = []
                     else:
-                        df_ex = pd.read_excel(target_path, header=3)
-                        df_ex.columns = [str(c).strip() for c in df_ex.columns]
+                        df_ex = df_ex_check
                         
                         target_col_idx = -1
                         return_col_idx = -1
