@@ -846,19 +846,16 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     with col_up:
         uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"], key=f"uploader_{selected_role}")
         if uploaded_file is not None:
-            # 寫入檔案
             with open(target_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
-            # 給予極短暫的緩衝確保硬碟寫入完成
             time.sleep(0.3)
             st.success("上傳成功！")
             st.rerun()
 
     with col_del:
-        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # 調整與左側對齊
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
         file_exists = os.path.exists(target_path)
         
-        # 即時動態檢測狀態
         status_text = "已存在" if file_exists else "無檔案"
         st.write(f"目前檔案狀態：{status_text}")
         
@@ -875,7 +872,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.stop()
 
 # --- 一般系統首頁介面 ---
-# --- 檢查資料庫檔案狀態 ---
 missing_files = []
 for role, path in ROLE_FILES.items():
     if not os.path.exists(path) or os.path.getsize(path) == 0:
@@ -1269,8 +1265,6 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
 
 elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if st.session_state.get("last_app_mode") != "換假｜日期快篩（Alpha測試版）":
-        st.session_state["ex_sub_mode"] = "search_form"
-        st.session_state["ex_saved_candidates"] = []
         st.session_state["last_app_mode"] = "換假｜日期快篩（Alpha測試版）"
 
     if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_logged_in", False):
@@ -1293,8 +1287,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if "ex_sub_mode" not in st.session_state: st.session_state["ex_sub_mode"] = "search_form"
     if "ex_selected_emp" not in st.session_state: st.session_state["ex_selected_emp"] = None
     if "ex_saved_candidates" not in st.session_state: st.session_state["ex_saved_candidates"] = []
-    if "ex_saved_target_date" not in st.session_state: st.session_state["ex_saved_target_date"] = ""
-    if "ex_saved_role" not in st.session_state: st.session_state["ex_saved_role"] = ""
 
     if st.session_state["ex_sub_mode"] == "inspect_image":
         target_emp = st.session_state["ex_selected_emp"]
@@ -1491,16 +1483,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             validation_error_msg = "「想休假的日期」與「可還假的日期」不可選擇同一天！"
         else:
             try:
-                sample_col = ""
-                for c in temp_df_dates.columns[2:]:
-                    if re.search(r'(\d+/\d+)', str(c)):
-                        sample_col = re.search(r'(\d+/\d+)', str(c)).group(1)
-                        break
-                year_val = 2026
-
                 def get_sun_sat_week(d_str):
                     m, d = map(int, d_str.split("/"))
-                    dt_obj = date(year_val, m, d)
+                    dt_obj = date(2026, m, d)
                     w_day = (dt_obj.weekday() + 1) % 7
                     sun_date = dt_obj - timedelta(days=w_day)
                     sat_date = sun_date + timedelta(days=6)
@@ -1512,10 +1497,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 if t_sun != r_sun:
                     is_selection_valid = False
                     validation_error_msg = "注意！『想休假日』與『可還假日』必須選擇在同一週內"
-                else:
-                    first_week_sun, first_week_sat = get_sun_sat_week(date_cols[0])
-                    if t_sun == first_week_sun:
-                        st.info("提示：注意前一週是否連續工作 7 天喔！")
             except Exception as e:
                 is_selection_valid = False
                 validation_error_msg = f"日期解析發生錯誤: {e}"
@@ -1612,12 +1593,15 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         d_str = date_cols[p_i] if p_i < len(date_cols) else all_cols_list[p_i]
                         c_val = row.iloc[p_i + 2]
                         p_res = parse_cell(c_val)
-                        mini_schedule.append(f"{d_str}: {p_res['train'] if p_res['train'] else '休'}")
+                        
+                        # 優化：前後動態顯示報到->收工時間窗
+                        time_display = f"{p_res['start']}->{p_res['end']}" if p_res['start'] else (p_res['train'] if p_res['train'] else '休')
+                        mini_schedule.append(f"{d_str}: {time_display}")
 
                     candidates.append({
                         "員編": emp_id,
                         "姓名": emp_name,
-                        "當天狀態": f"想休 {target_date}(DO) ｜ 還假 {return_date}({parsed_return['train'] if parsed_return['train'] else '上班'})",
+                        "當天狀態": f"想休 {target_date}(DO) ｜ 還假 {return_date} ({parsed_return['start']}~{parsed_return['end']} | {translate_train_code(parsed_return['train'])})",
                         "前後連續上班最大天數": max_streak,
                         "鄰近天數概況": " | ".join(mini_schedule)
                     })
@@ -1627,7 +1611,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         except Exception as e:
             st.error(f"日期計算發生錯誤: {e}")
 
-    if st.session_state["ex_sub_mode"] == "results" and st.session_state.get("ex_saved_candidates"):
+    if st.session_state.get("ex_saved_candidates"):
         saved_candidates = st.session_state["ex_saved_candidates"]
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
@@ -1660,6 +1644,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             </div>
         </div>
         """, unsafe_allow_html=True)        
+        
         for idx, cand in enumerate(saved_candidates):
             st.markdown(f"""
             <div class="integrated-crew-box">
@@ -1668,30 +1653,14 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                     <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                 </div>
                 <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
-                <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
+                <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態(時間窗): {cand['鄰近天數概況']}</div>
                 <div class="action-divider"></div>
             </div>
             """, unsafe_allow_html=True)
             
             if st.button(f"檢視完整班表：{cand['姓名']}", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
-                status_placeholder = st.empty()
-                progress_bar = st.progress(0)
-
-                first_name = cand['姓名'][1:] if len(cand['姓名']) > 1 else cand['姓名']
-                status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
-                progress_bar.progress(40)
-                time.sleep(0.4)
-
-                progress_bar.progress(80)
-                time.sleep(0.3)
-
                 st.session_state["ex_selected_emp"] = cand['員編']
                 st.session_state["ex_sub_mode"] = "inspect_image"
-                
-                progress_bar.progress(100)
-                time.sleep(0.2)
-                status_placeholder.empty()
-                progress_bar.empty()
                 st.rerun()
             
             st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
