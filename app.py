@@ -1670,8 +1670,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         except Exception as e:
             st.error(f"日期計算發生錯誤: {e}")
 
-    if (st.session_state["ex_sub_mode"] == "results" or not st.session_state.get("ex_saved_candidates"] == []) and st.session_state.get("ex_saved_candidates"):
-        saved_candidates = st.session_state["ex_saved_candidates"]
+    if st.session_state["ex_sub_mode"] == "results" and st.session_state.get("ex_saved_candidates"):        saved_candidates = st.session_state["ex_saved_candidates"]
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
 
