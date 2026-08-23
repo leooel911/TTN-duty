@@ -1423,7 +1423,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                 t_idx = date_cols.index(target_date)
                 r_idx = date_cols.index(return_date)
                 if abs(t_idx - r_idx) > 6:
-                    st.error("防呆限制：為了符合每週休假平衡，『想休假日』與『可還假日』必須選擇在 **同一週內**（間隔 7 天以內）！")
+                    st.error("『想休假日』與『可還假日』必須選擇在 **同一週內**！")
                     st.session_state["ex_saved_candidates"] = []
                 else:
                     target_path = ROLE_FILES[selected_role]
