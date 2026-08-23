@@ -51,34 +51,6 @@ st.markdown("""
         vertical-align: middle;
     }
 
-    /* 原本標題下方的藍色光點（保留備用或依需求移除，此處保留供其他地方使用） */
-    @keyframes radar-pulse {
-        0% { 
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7);
-        }
-        70% { 
-            transform: scale(1.05);
-            box-shadow: 0 0 0 8px rgba(56, 189, 248, 0);
-        }
-        100% { 
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
-        }
-    }
-
-    .radar-dot {
-        width: 8px;
-        height: 8px;
-        background-color: #38BDF8;
-        border-radius: 50%;
-        display: inline-block;
-        animation: radar-pulse 2s infinite ease-in-out;
-        box-shadow: 0 0 10px #38BDF8;
-        margin: 0 8px;
-        vertical-align: middle;
-    }
-
     /* 施工中紅色底線呼吸燈動畫定義 */
     @keyframes maintenance-red-line-pulse {
         0% { 
@@ -776,7 +748,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
         <div style="font-size: 34px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
         <div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace; background: transparent !important;">
             BUSY DOING NOTHING PRODUCTIVE<br>
-            <span class="radar-dot" style="margin: 0 4px 0 0;"></span>C.L.F EDITION<span class="radar-dot" style="margin: 0 0 0 4px;"></span>
+            C.L.F EDITION
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -806,14 +778,14 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭（已將綠色線上呼吸光點移至 OPERATOR 兩側） ---
+# --- 頂部質感標頭（已移除 C.L.F EDITION 兩側藍點，保留 OPERATOR 兩側綠點） ---
 st.markdown(f"""
 <div class="header-container">
     <div class="title-left-group">
         <div class="main-title">CREW DUTY ENGINE</div>
         <div style="color: #94A3B8; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; font-family: monospace; margin-top: 6px; line-height: 1.6;">
             BUSY DOING NOTHING PRODUCTIVE<br>
-            <span class="radar-dot" style="margin: 0 6px 0 0;"></span>C.L.F EDITION<span class="radar-dot" style="margin: 0 0 0 6px;"></span>
+            C.L.F EDITION
         </div>
         <div class="title-subtitle">
             <span class="online-dot"></span>OPERATOR: {st.session_state.get("current_user_id", "A")}<span class="online-dot"></span>
