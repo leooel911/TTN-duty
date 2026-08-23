@@ -20,7 +20,7 @@ TAIWAN_TZ = timezone(timedelta(hours=8))
 st.markdown("""
 <style>
     .stApp { background-color: #0B0F19 !important; color: #F8FAFC !important; }
-    /* 調整頂部留白，讓整個控制台往下沉，避免呼吸燈被上方擋住 */
+    /* 調整頂部留白與整體畫面下移 */
     .block-container { padding: 4.5rem 1rem 3rem 1rem !important; }
     
     /* 呼吸燈外框動畫定義 */
@@ -59,14 +59,14 @@ st.markdown("""
     }
     .main-title { 
         color: #F8FAFC !important; 
-        font-size: 22px; 
+        font-size: 20px; 
         font-weight: 800; 
-        letter-spacing: 2px; 
+        letter-spacing: 1.5px; 
         margin: 0; 
         font-family: monospace;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
     }
     .status-dot {
         width: 8px;
@@ -78,18 +78,19 @@ st.markdown("""
     }
     .title-subtitle {
         color: #64748B;
-        font-size: 10.5px;
+        font-size: 9.5px;
         font-weight: 600;
-        letter-spacing: 2.5px;
+        letter-spacing: 2px;
         text-transform: uppercase;
         font-family: monospace;
     }
     
-    /* 右上角精緻貼紙按鈕 */
+    /* 右上角精緻貼紙按鈕 - 恢復完美水平並排與過去精緻視覺 */
     .clf-edition-badge-wrapper {
         display: flex;
         justify-content: flex-end;
         align-items: center;
+        width: 100%;
     }
     
     .clf-edition-badge-wrapper div.stButton > button { 
@@ -97,11 +98,11 @@ st.markdown("""
         border: 1px solid #334155 !important;
         border-left: 3px solid #38BDF8 !important;
         color: #38BDF8 !important; 
-        font-size: 11px !important; 
+        font-size: 10.5px !important; 
         font-weight: 700 !important; 
-        letter-spacing: 2px !important; 
+        letter-spacing: 1.5px !important; 
         text-transform: uppercase !important; 
-        padding: 8px 16px !important;
+        padding: 8px 12px !important;
         border-radius: 6px !important;
         box-shadow: inset 0 2px 4px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4) !important;
         font-family: monospace !important;
@@ -646,8 +647,8 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭與完整外框呼吸燈光暈 (Header Container) ---
-h_col1, h_col2 = st.columns([3, 1])
+# --- 頂部質感標頭與完整外框呼吸燈光暈 (Header Container) - 完美比例確保手機不跳行 ---
+h_col1, h_col2 = st.columns([4, 1.6])
 with h_col1:
     st.markdown("""
     <div class="header-container">
