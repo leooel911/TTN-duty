@@ -1448,7 +1448,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
             </div>
             """, unsafe_allow_html=True)
             
-            if st.button(f"生成並檢視完整班表：{cand['姓名']} ({cand['員編']})", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
+            if st.button(f"檢視完整班表：{cand['姓名']} ({cand['員編']})", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
                 status_placeholder = st.empty()
                 progress_bar = st.progress(0)
 
