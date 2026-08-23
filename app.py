@@ -157,24 +157,25 @@ st.markdown("""
         background: #1E293B;
     }
 
-    /* 施工中卡片樣式（取消黃色動畫，改為固定黃框與陰影） */
+    /* 施工中卡片樣式（取消黃色動畫，改為固定黃框與陰影，四邊圓角） */
     .maintenance-card-box {
         background: linear-gradient(135deg, #271C0C 0%, #171005 100%);
         border: 1.5px solid #EAB308;
         border-left: 5px solid #EAB308;
-        border-radius: 12px 12px 0 0;
-        padding: 24px 20px 18px 20px;
+        border-radius: 12px;
+        padding: 24px 20px;
         text-align: center;
         margin-top: 2rem;
         margin-bottom: 0rem;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     }
-    /* 卡片下方的紅色呼吸燈發光橫線 */
+    /* 卡片下方的紅色呼吸燈發光橫線（加入微幅上間距避免黏住） */
     .maintenance-red-glow-line {
         height: 3px;
         width: 100%;
         background-color: #EF4444;
-        border-radius: 0 0 12px 12px;
+        border-radius: 4px;
+        margin-top: 6px;
         margin-bottom: 2rem;
         animation: maintenance-red-line-pulse 3s infinite ease-in-out;
     }
