@@ -71,7 +71,6 @@ st.markdown("""
         align-items: center;
     }
     
-    /* 讓 Streamlit 按鈕徹底偽裝成高質感貼紙 */
     .clf-edition-badge-wrapper div.stButton > button { 
         background: #1E293B !important;
         border: 1px solid #334155 !important;
@@ -763,7 +762,6 @@ st.markdown(f"""
     <div class="telemetry-title">目前系統排班週期 & 伺服器資料狀態</div>
     <div class="telemetry-value" style="font-size: 22px; color: #60A5FA; margin-bottom: 8px;">{sched_range}</div>
     <div class="telemetry-sub">
-        伺服器資料狀態：<br>
         - 駕駛更新：{td_time}<br>
         - 列車長更新：{tm_time}<br>
         - 服勤員更新：{ta_time}
@@ -1417,7 +1415,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                     <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                 </div>
                 <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
-                <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近text']}</div>
+                <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
                 <div class="action-divider"></div>
             </div>
             """, unsafe_allow_html=True)
