@@ -1123,10 +1123,10 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 elif app_mode == "換假日期快篩（Alpha測試版）":
-    # 追蹤切換模式，如果剛切進來，強制重置為輸入表單狀態並清空舊查詢結果
+    # 追蹤切換模式，如果剛從其他系統切進來，強制重置狀態並徹底清空舊查詢名單
     if st.session_state.get("last_app_mode") != "換假日期快篩（Alpha測試版）":
         st.session_state["ex_sub_mode"] = "search_form"
-        st.session_state["ex_saved_candidates"] = []  # 強制清空舊名單，防止切換回來時自動顯示
+        st.session_state["ex_saved_candidates"] = []
         st.session_state["last_app_mode"] = "換假日期快篩（Alpha測試版）"
 
     # 維護模式檢查（這段絕對要保留！）
@@ -1145,6 +1145,20 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                 else:
                     st.error("管理員密碼錯誤")
         st.stop()
+
+    if st.session_state.get("admin_bypassed_exchange", False) and is_module_maintenance("exchange_filter"):
+        st.markdown("""
+        <div class="admin-bypass-banner">
+            <span>[!] ADMIN BYPASS // 「換假快篩」目前處於維護中，您正以管理員身分預覽</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # 初始化換假系統的狀態紀錄
+    if "ex_sub_mode" not in st.session_state: st.session_state["ex_sub_mode"] = "search_form"
+    if "ex_selected_emp" not in st.session_state: st.session_state["ex_selected_emp"] = None
+    if "ex_saved_candidates" not in st.session_state: st.session_state["ex_saved_candidates"] = []
+    if "ex_saved_target_date" not in st.session_state: st.session_state["ex_saved_target_date"] = ""
+    if "ex_saved_role" not in st.session_state: st.session_state["ex_saved_role"] = ""
 
     if st.session_state.get("admin_bypassed_exchange", False) and is_module_maintenance("exchange_filter"):
         st.markdown("""
