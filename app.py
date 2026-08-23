@@ -63,6 +63,32 @@ st.markdown("""
         text-transform: uppercase;
         font-family: monospace;
     }
+    
+    /* 質感貼紙按鈕樣式 (完美融合原有的 edition-badge 品味) */
+    .badge-btn-container div.stButton > button { 
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important;
+        border: 1px solid #334155 !important;
+        border-left: 4px solid #38BDF8 !important;
+        color: #38BDF8 !important; 
+        font-size: 11px !important; 
+        font-weight: 700 !important; 
+        letter-spacing: 1.5px !important; 
+        text-transform: uppercase !important; 
+        padding: 8px 14px !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+        font-family: monospace !important;
+        width: auto !important;
+        margin: 0 !important;
+        transition: all 0.25s ease !important;
+    }
+    .badge-btn-container div.stButton > button:hover {
+        border-color: #38BDF8 !important;
+        color: #FFFFFF !important;
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+        box-shadow: 0 0 16px rgba(56, 189, 248, 0.3) !important;
+        transform: translateY(-1px) !important;
+    }
 
     .maintenance-msg-box {
         background: linear-gradient(135deg, #271C0C 100%, #171005 100%);
@@ -280,13 +306,10 @@ def log_activity(input_str):
 
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
 if "admin_logged_in" not in st.session_state: st.session_state["admin_logged_in"] = False
-if "admin_bypassed_producer" not in st.session_state: st.session_state["admin_bypassed_producer"] = False
-if "admin_bypassed_window" not in st.session_state: st.session_state["admin_bypassed_window"] = False
-if "admin_bypassed_exchange" not in st.session_state: st.session_state["admin_bypassed_exchange"] = False
 if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
 if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_target"] = None
-if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home" # "home" 或 "admin_panel"
+if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 
 def get_file_mtime_str(path):
     if os.path.exists(path):
@@ -435,7 +458,7 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 🔒 最優先攔截：如果使用者點擊了「檢視完整班表」，直接在此處渲染整月圖檔並停止 ---
+# --- 🔒 最優先攔截：檢視完整班表 ---
 if st.session_state.get("inspect_emp_target") is not None:
     target_emp = st.session_state["inspect_emp_target"]
     st.markdown(f"""
@@ -596,62 +619,36 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部標頭與右上角貼紙互動區 ---
-st.markdown("""
-<style>
-    .edition-btn-wrap div.stButton > button {
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important;
-        border: 1px solid #334155 !important;
-        border-left: 4px solid #38BDF8 !important;
-        color: #38BDF8 !important;
-        font-size: 11px !important;
-        font-weight: 700 !important;
-        letter-spacing: 1.5px !important;
-        text-transform: uppercase !important;
-        padding: 8px 14px !important;
-        border-radius: 8px !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
-        width: auto !important;
-        margin: 0 !important;
-    }
-    .edition-btn-wrap div.stButton > button:hover {
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        color: #FFFFFF !important;
-        border-color: #38BDF8 !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
+# --- 頂部質感標頭與右上角精緻貼紙標籤 (Edition Badge) ---
 h_col1, h_col2 = st.columns([3, 1])
 with h_col1:
     st.markdown("""
-    <div class="header-container" style="border:none; margin-bottom:0; padding-bottom:0;">
-        <div class="title-left-group">
-            <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
-            <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
-        </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; justify-content: center; height: 100%;">
+        <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
+        <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
     </div>
     """, unsafe_allow_html=True)
 
 with h_col2:
-    st.markdown('<div class="edition-btn-wrap" style="display: flex; justify-content: flex-end; align-items: center; height: 100%;">', unsafe_allow_html=True)
-    badge_label = "ADMIN PANEL" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
-    if st.button(badge_label, key="badge_admin_toggle"):
+    st.markdown('<div class="badge-btn-container" style="display: flex; justify-content: flex-end; align-items: center; height: 100%;">', unsafe_allow_html=True)
+    # 動態調整貼紙標籤文字：如果是管理員在線，顯示 ADMIN PANEL；一般則顯示 C.L.F EDITION
+    badge_text = "ADMIN PANEL" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
+    if st.button(badge_text, key="top_right_badge_btn"):
         if st.session_state.get("admin_logged_in", False):
-            # 如果已經是管理員，點擊可以在「首頁」與「後台」之間切換
+            # 已經登入管理員：在「首頁」與「後台」之間切換
             if st.session_state["nav_mode"] == "home":
                 st.session_state["nav_mode"] = "admin_panel"
             else:
                 st.session_state["nav_mode"] = "home"
         else:
-            # 如果尚未登入管理員，點擊跳出管理員登入對話框或直接顯示登入表單
+            # 尚未登入管理員：跳出密碼輸入框
             st.session_state["show_admin_login"] = True
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown('<div style="border-bottom: 1px solid #1E293B; margin-top: 12px; margin-bottom: 1.5rem;"></div>', unsafe_allow_html=True)
+st.markdown('<div style="border-bottom: 1px solid #1E293B; margin-top: 14px; margin-bottom: 1.5rem;"></div>', unsafe_allow_html=True)
 
-# 彈出式管理員登入驗證（點擊右上角觸發）
+# 點擊右上角貼紙後彈出的密碼輸入驗證區塊
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -681,7 +678,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                 st.rerun()
     st.stop()
 
-# --- 如果目前導航模式為「管理員後台」 ---
+# --- 如果導航模式為「管理員控制台」 ---
 if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -701,7 +698,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             st.session_state["nav_mode"] = "home"
             st.rerun()
 
-    st.success("歡迎回來，管理員 LEO（目前處於管理員在線狀態，可隨時點擊上方返回首頁操作各系統）")
+    st.success("歡迎回來，管理員 LEO（目前處於管理員在線狀態，可隨時點擊右上角或上方按鈕切換回首頁）")
 
     st.markdown("---")
     st.subheader("查詢紀錄清單")
@@ -751,7 +748,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.stop()
 
-# --- 主系統介面 (導航模式為首頁) ---
+# --- 一般系統首頁介面 ---
 td_time = get_file_mtime_str(ROLE_FILES["駕駛"])
 tm_time = get_file_mtime_str(ROLE_FILES["列車長"])
 ta_time = get_file_mtime_str(ROLE_FILES["服勤員"])
@@ -770,14 +767,13 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 乾淨的三大系統選單
+# 乾淨的三大系統操作選單
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
     "指定時段報到組員快篩（Alpha測試版）",
     "換假日期快篩（Alpha測試版）"
 ], horizontal=False)
 
-# 只要切換到其他系統，立刻強制清空換假系統的暫存名單與狀態
 if app_mode != "換假日期快篩（Alpha測試版）":
     st.session_state["ex_saved_candidates"] = []
     st.session_state["ex_sub_mode"] = "search_form"
