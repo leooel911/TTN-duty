@@ -1447,7 +1447,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
     # 即時顯示錯誤訊息
     if not is_selection_valid:
-        st.error(f"⚠️ 防呆檢核未通過：{validation_error_msg}")
+        st.error(f"條件未通過：{validation_error_msg}")
 
     # 即時檢核通過才顯示查詢按鈕
     if is_selection_valid:
@@ -1560,7 +1560,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         saved_role = st.session_state.get("ex_saved_role", selected_role)
 
         # 這裡已改為您指定的標題格式
-        st.markdown(f"### 【{saved_role}】可雙向換假名單『想休 ：{saved_date}  ｜還假： {return_date} 』 （共 {len(saved_candidates)} 位）")
+        st.markdown(f"### 【{saved_role}】符合名單 想休：{saved_date} ｜還假：{return_date} 』 （共 {len(saved_candidates)} 位）")
         
         for idx, cand in enumerate(saved_candidates):
             st.markdown(f"""
