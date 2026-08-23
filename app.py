@@ -83,6 +83,22 @@ st.markdown("""
         }
     }
 
+    /* 藍色外框呼吸燈動畫定義 (首頁專用) */
+    @keyframes blue-glow-pulse {
+        0% { 
+            border-color: #0369A1; 
+            box-shadow: 0 0 6px rgba(56, 189, 248, 0.2); 
+        }
+        50% { 
+            border-color: #38BDF8; 
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.7), inset 0 0 10px rgba(56, 189, 248, 0.3); 
+        }
+        100% { 
+            border-color: #0369A1; 
+            box-shadow: 0 0 6px rgba(56, 189, 248, 0.2); 
+        }
+    }
+
     .missing-data-card {
         background: linear-gradient(135deg, #1E1B1B 0%, #0F172A 100%) !important;
         border: 2px solid #EF4444 !important;
@@ -92,50 +108,47 @@ st.markdown("""
         animation: missing-data-pulse 2.5s infinite ease-in-out;
     }
 
-    /* 頂部導航總成 (首頁專用呼吸外框) */
+    /* 頂部導航總成 (首頁專用藍色呼吸外框與置中排版) */
     .header-container { 
         display: flex; 
-        justify-content: space-between; 
+        flex-direction: column;
+        justify-content: center; 
         align-items: center; 
+        text-align: center;
         width: 100%; 
         margin-bottom: 1.5rem; 
-        padding: 16px 22px;
+        padding: 22px 20px;
         background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
         border: 2px solid #38BDF8;
-        border-radius: 12px;
-        animation: missing-data-pulse 2.5s infinite ease-in-out;
+        border-radius: 14px;
+        animation: blue-glow-pulse 2.5s infinite ease-in-out;
     }
     .title-left-group {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
     }
     .main-title { 
         color: #F8FAFC !important; 
-        font-size: 20px; 
+        font-size: 24px; 
         font-weight: 800; 
-        letter-spacing: 1.5px; 
+        letter-spacing: 2px; 
         margin: 0; 
         font-family: monospace;
         display: flex;
         align-items: center;
-        gap: 10px;
-    }
-    .status-dot {
-        width: 8px;
-        height: 8px;
-        background-color: #38BDF8;
-        border-radius: 50%;
-        display: inline-block;
-        box-shadow: 0 0 8px #38BDF8;
+        justify-content: center;
     }
     .title-subtitle {
-        color: #64748B;
-        font-size: 9.5px;
+        color: #94A3B8;
+        font-size: 11px;
         font-weight: 600;
         letter-spacing: 2px;
         text-transform: uppercase;
         font-family: monospace;
+        margin-top: 2px;
     }
     
     /* 底部低調精緻小貼紙按鈕樣式 */
@@ -761,15 +774,15 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭 (首頁專用呼吸外框與幽默灰色小字) ---
+# --- 頂部質感標頭 (首頁專用藍色呼吸外框、無光點標題、置中大字與正確小字順序) ---
 st.markdown(f"""
 <div class="header-container">
     <div class="title-left-group">
-        <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
-        <div style="color: #64748B; font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; font-family: monospace; margin-top: 2px;">
-            <span class="radar-dot" style="margin: 0 4px 0 0;"></span>C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION<span class="radar-dot" style="margin: 0 0 0 4px;"></span>
+        <div class="main-title">CREW DUTY ENGINE</div>
+        <div style="color: #94A3B8; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; font-family: monospace; margin-top: 4px;">
+            <span class="radar-dot" style="margin: 0 6px 0 0;"></span>BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION<span class="radar-dot" style="margin: 0 0 0 6px;"></span>
         </div>
-        <div class="title-subtitle" style="margin-top: 2px;">OPERATOR: {st.session_state.get("current_user_id", "A")}</div>
+        <div class="title-subtitle" style="margin-top: 4px; font-size: 11px;">OPERATOR: {st.session_state.get("current_user_id", "A")}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
