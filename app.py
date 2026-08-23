@@ -1392,6 +1392,11 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     except:
         date_cols = []
 
+    # 追蹤並記錄上一次的選擇組合，若有變動則立即清空舊搜尋結果
+    current_selection_key = f"{selected_role}_{st.session_state.get('ex_target_date_' + selected_role, '')}_{st.session_state.get('ex_return_date_' + selected_role, '')}"
+    if "last_selection_signature" not in st.session_state:
+        st.session_state["last_selection_signature"] = current_selection_key
+
     with ex_c2:
         if date_cols:
             target_date = st.selectbox("想休假的日期", date_cols, index=0, key=f"ex_target_date_{selected_role}")
@@ -1403,6 +1408,11 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             return_date = st.selectbox("可還假的日期(上班日)", date_cols, index=min(1, len(date_cols)-1), key=f"ex_return_date_{selected_role}")
         else:
             return_date = st.selectbox("可還假的日期(上班日)", ["無可用日期"], index=0, key=f"ex_return_date_{selected_role}")
+
+    new_selection_key = f"{selected_role}_{target_date}_{return_date}"
+    if st.session_state["last_selection_signature"] != new_selection_key:
+        st.session_state["ex_saved_candidates"] = []
+        st.session_state["last_selection_signature"] = new_selection_key
 
     strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True, key="ex_strict_limit")
 
@@ -1436,7 +1446,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
                 if t_sun != r_sun:
                     is_selection_valid = False
-                    validation_error_msg = "注意！『想休假日』與『可還假日』必須選擇在同一週內（週日至週六）"
+                    validation_error_msg = "注意！『想休假日』與『可還假日』必須選擇在同一週內"
                 else:
                     first_week_sun, first_week_sat = get_sun_sat_week(date_cols[0])
                     if t_sun == first_week_sun:
@@ -1451,9 +1461,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
     # 即時檢核通過才顯示查詢按鈕
     if is_selection_valid:
-        btn_search_clicked = st.button("開始識別同週雙向可換假人員", key="btn_auto_search_exchange_fixed")
+        btn_search_clicked = st.button("開始尋找可換假對象", key="btn_auto_search_exchange_fixed")
     else:
-        st.button("請先修正上述日期選擇後才能查詢", disabled=True, key="btn_auto_search_exchange_disabled")
+        st.button("修正上述日期後 開始查詢", disabled=True, key="btn_auto_search_exchange_disabled")
         btn_search_clicked = False
 
     if btn_search_clicked and is_selection_valid:
