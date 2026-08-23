@@ -23,7 +23,7 @@ st.markdown("""
     /* 調整頂部留白與整體畫面下移 */
     .block-container { padding: 4.5rem 1rem 3rem 1rem !important; }
     
-    /* 呼吸燈外框動畫定義 */
+    /* 呼吸燈外框動畫定義 (通用) */
     @keyframes header-pulse-glow {
         0% { 
             border-color: #1E293B; 
@@ -37,6 +37,32 @@ st.markdown("""
             border-color: #1E293B; 
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 rgba(56, 189, 248, 0); 
         }
+    }
+
+    /* 登入卡片專屬精緻呼吸燈動畫 */
+    @keyframes auth-card-pulse {
+        0% { 
+            border-color: #1E293B; 
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0px rgba(56, 189, 248, 0); 
+        }
+        50% { 
+            border-color: #38BDF8; 
+            box-shadow: 0 12px 40px rgba(56, 189, 248, 0.2), 0 0 20px rgba(56, 189, 248, 0.15); 
+        }
+        100% { 
+            border-color: #1E293B; 
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0px rgba(56, 189, 248, 0); 
+        }
+    }
+
+    .auth-card-container {
+        background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
+        border: 1.5px solid #1E293B;
+        border-radius: 16px;
+        padding: 32px 28px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+        animation: auth-card-pulse 4s infinite ease-in-out;
+        margin-top: 1rem;
     }
 
     /* 施工中紅色底線呼吸燈動畫定義 */
@@ -715,13 +741,19 @@ if st.session_state.get("inspect_emp_target") is not None:
 
 # --- 前置授權碼門戶檢查 ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False):
-    st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
+    st.markdown("""
+    <div style="text-align: center; margin-top: 2rem; margin-bottom: 1.5rem;">
+        <div style="font-size: 34px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
+        <div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 2.2, 1])
     with col2:
+        st.markdown('<div class="auth-card-container">', unsafe_allow_html=True)
         with st.form("auth_form"):
-            entered_emp = st.text_input("使用者員編", value="A", placeholder="例如: 023300", max_chars=10)
-            entered_key = st.text_input("授權碼", type="password", placeholder="請輸入系統授權碼...")
+            entered_emp = st.text_input("操作者員編 (僅輸入數字)", value="A", placeholder="例如: 023300", max_chars=10)
+            entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入系統授權碼...")
             btn_auth = st.form_submit_button("進入系統")
 
             if btn_auth:
@@ -740,6 +772,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.rerun()
                 else:
                     st.error("授權碼或密碼錯誤，請重新輸入")
+        st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
 # --- 頂部質感標頭 ---
