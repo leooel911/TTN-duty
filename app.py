@@ -322,6 +322,7 @@ def log_activity(input_str):
     except: pass
 
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
+if "admin_logged_in" not in st.session_state: st.session_state["admin_logged_in"] = False
 if "admin_bypassed_producer" not in st.session_state: st.session_state["admin_bypassed_producer"] = False
 if "admin_bypassed_window" not in st.session_state: st.session_state["admin_bypassed_window"] = False
 if "admin_bypassed_exchange" not in st.session_state: st.session_state["admin_bypassed_exchange"] = False
@@ -616,7 +617,7 @@ if st.session_state.get("inspect_emp_target") is not None:
     st.stop()
 
 # --- 🔒 前置授權碼門戶檢查 ---
-if not st.session_state["authenticated"] and not st.session_state.get("direct_to_admin", False):
+if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False) and not st.session_state.get("direct_to_admin", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -630,6 +631,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("direct_to
                 st.session_state["authenticated"] = True
                 st.rerun()
             elif entered_key == ADMIN_PASSWORD:
+                st.session_state["admin_logged_in"] = True
                 st.session_state["direct_to_admin"] = True
                 st.success("管理員驗證成功，正在載入後台...")
                 st.rerun()
@@ -637,7 +639,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("direct_to
                 st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-if st.session_state.get("show_admin_login", False) and not st.session_state.get("direct_to_admin", False):
+if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">管理員身分驗證</div>
@@ -648,21 +650,27 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
     col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
     with col_l2:
         adm_pwd_input = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員解鎖密碼...", key="strict_admin_pwd_box")
-        if st.button("確認解鎖進入後台", key="strict_admin_submit"):
-            if adm_pwd_input == ADMIN_PASSWORD:
-                st.session_state["direct_to_admin"] = True
-                st.session_state["show_admin_login"] = False
-                st.success("驗證成功，正在切換後台...")
-                st.rerun()
-            else:
-                st.error("管理員密碼錯誤，無法進入後台")
         
-        if st.button("返回一般首頁", key="back_from_login"):
-            st.session_state["show_admin_login"] = False
-            st.rerun()
+        # 左右並排對稱按鈕
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            if st.button("登入", key="strict_admin_submit"):
+                if adm_pwd_input == ADMIN_PASSWORD:
+                    st.session_state["admin_logged_in"] = True
+                    st.session_state["direct_to_admin"] = True
+                    st.session_state["show_admin_login"] = False
+                    st.success("驗證成功，正在切換後台...")
+                    st.rerun()
+                else:
+                    st.error("管理員密碼錯誤，無法進入後台")
+        with col_btn2:
+            if st.button("返回首頁", key="back_from_login"):
+                st.session_state["show_admin_login"] = False
+                st.rerun()
     st.stop()
 
-if st.session_state.get("direct_to_admin", False):
+# --- 🔒 已記錄為管理員身分，直接放行進入控制台 ---
+if st.session_state.get("admin_logged_in", False) or st.session_state.get("direct_to_admin", False):
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">管理員專用：Database 控制台</div>
@@ -670,7 +678,15 @@ if st.session_state.get("direct_to_admin", False):
     </div>
     """, unsafe_allow_html=True)
 
-    st.success("歡迎回來，管理員 LEO")
+    col_admin_top1, col_admin_top2 = st.columns([3, 1])
+    with col_admin_top1:
+        st.success("歡迎回來，管理員 LEO（目前為管理員在線狀態）")
+    with col_admin_top2:
+        if st.button("🔒 登出管理員"):
+            st.session_state["admin_logged_in"] = False
+            st.session_state["direct_to_admin"] = False
+            st.session_state["show_admin_login"] = False
+            st.rerun()
     
     if st.button("← 返回一般首頁"):
         st.session_state["direct_to_admin"] = False
@@ -778,6 +794,7 @@ if app_mode == "生產個人班表圖片檔":
             p_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="producer_unlock_input")
             if st.button("管理員登入", key="producer_unlock_btn"):
                 if p_unlock == ADMIN_PASSWORD:
+                    st.session_state["admin_logged_in"] = True
                     st.session_state["admin_bypassed_producer"] = True
                     st.success("解鎖成功！")
                     st.rerun()
@@ -960,6 +977,7 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
             w_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="window_unlock_input")
             if st.button("進入系統", key="window_unlock_btn"):
                 if w_unlock == ADMIN_PASSWORD:
+                    st.session_state["admin_logged_in"] = True
                     st.session_state["admin_bypassed_window"] = True
                     st.success("解鎖成功！")
                     st.rerun()
@@ -1144,6 +1162,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
             e_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="exchange_unlock_input")
             if st.button("進入系統", key="exchange_unlock_btn"):
                 if e_unlock == ADMIN_PASSWORD:
+                    st.session_state["admin_logged_in"] = True
                     st.session_state["admin_bypassed_exchange"] = True
                     st.success("解鎖成功！")
                     st.rerun()
@@ -1448,7 +1467,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
             </div>
             """, unsafe_allow_html=True)
             
-            if st.button(f"檢視完整班表：{cand['姓名']} ({cand['員編']})", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
+            if st.button(f"檢視完整班表：{cand['姓名']}", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
                 status_placeholder = st.empty()
                 progress_bar = st.progress(0)
 
