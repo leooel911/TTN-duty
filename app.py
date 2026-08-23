@@ -1087,7 +1087,7 @@ if app_mode == "繪製個人月班表圖檔":
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
+elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
     if is_module_maintenance("window_filter") and not st.session_state.get("admin_logged_in", False):
         st.markdown("""
         <div class="maintenance-card-box">
@@ -1474,7 +1474,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             return_date = st.selectbox("可還假的日期(上班日)", ["無可用日期"], index=0, key=f"ex_return_date_{selected_role}")
 
     return_time_filter = st.selectbox(
-        "還假日，可接受對方的報到時間限制（只列出 XX:XX 之後報到的班）",
+        "還假日，可接受對方の報到時間限制（只列出 XX:XX 之後報到的班）",
         options=time_filter_options,
         index=0,
         key="ex_return_time_filter"
@@ -1639,7 +1639,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                             else:
                                 shift_display = c_tr_s if c_tr_s else "特休"
                         else:
-                            # 判斷車次代號是否以 N 開頭（不分大小寫），若是以 N 開頭則顯示上下班時間，否則直接顯示車次或代號
                             main_tr_code = str(p_res["train"]).strip()
                             if main_tr_code.upper().startswith("N") and p_res["start"] and p_res["end"]:
                                 shift_display = f"{p_res['start']}->{p_res['end']}"
