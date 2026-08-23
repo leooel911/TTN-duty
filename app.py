@@ -20,7 +20,8 @@ TAIWAN_TZ = timezone(timedelta(hours=8))
 st.markdown("""
 <style>
     .stApp { background-color: #0B0F19 !important; color: #F8FAFC !important; }
-    .block-container { padding: 2.5rem 1rem !important; }
+    /* 調整頂部留白，讓整個控制台往下沉，避免呼吸燈被上方擋住 */
+    .block-container { padding: 4.5rem 1rem 3rem 1rem !important; }
     
     /* 呼吸燈外框動畫定義 */
     @keyframes header-pulse-glow {
