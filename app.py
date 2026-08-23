@@ -1569,9 +1569,35 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
 
-        # 這裡已改為您指定的標題格式
-        st.markdown(f"### 【{saved_role}】符合名單 想休：{saved_date} ｜還假：{return_date} 』 （共 {len(saved_candidates)} 位）")
-        
+        # 專業化排版：使用獨立的儀表板卡片標題，解決亂換行問題
+        st.markdown(f"""
+        <div style="
+            background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+            border: 1px solid #334155;
+            border-left: 5px solid #38BDF8;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        ">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <span style="color: #F8FAFC; font-size: 18px; font-weight: 700; font-family: monospace;">
+                    【{saved_role}】符合換假名單
+                </span>
+                <span style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38BDF8; color: #38BDF8; font-size: 12px; padding: 2px 10px; border-radius: 6px; font-weight: 600; font-family: monospace;">
+                    共 {len(saved_candidates)} 位符合
+                </span>
+            </div>
+            <div style="color: #94A3B8; font-size: 13px; font-family: monospace; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <span>想休日期：<strong style="color: #34D399;">{saved_date}</strong></span>
+                <span style="color: #475569;">|</span>
+                <span>可還假日期：<strong style="color: #60A5FA;">{return_date}</strong></span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)        
         for idx, cand in enumerate(saved_candidates):
             st.markdown(f"""
             <div class="integrated-crew-box">
