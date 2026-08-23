@@ -326,7 +326,6 @@ if "admin_logged_in" not in st.session_state: st.session_state["admin_logged_in"
 if "admin_bypassed_producer" not in st.session_state: st.session_state["admin_bypassed_producer"] = False
 if "admin_bypassed_window" not in st.session_state: st.session_state["admin_bypassed_window"] = False
 if "admin_bypassed_exchange" not in st.session_state: st.session_state["admin_bypassed_exchange"] = False
-if "direct_to_admin" not in st.session_state: st.session_state["direct_to_admin"] = False
 if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
 if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_target"] = None
@@ -617,7 +616,7 @@ if st.session_state.get("inspect_emp_target") is not None:
     st.stop()
 
 # --- 🔒 前置授權碼門戶檢查 ---
-if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False) and not st.session_state.get("direct_to_admin", False):
+if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -632,8 +631,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 st.rerun()
             elif entered_key == ADMIN_PASSWORD:
                 st.session_state["admin_logged_in"] = True
-                st.session_state["direct_to_admin"] = True
-                st.success("管理員驗證成功，正在載入後台...")
+                st.success("管理員驗證成功，正在載入系統...")
                 st.rerun()
             else:
                 st.error("授權碼或密碼錯誤，請重新輸入")
@@ -656,9 +654,8 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
             if st.button("登入", key="strict_admin_submit"):
                 if adm_pwd_input == ADMIN_PASSWORD:
                     st.session_state["admin_logged_in"] = True
-                    st.session_state["direct_to_admin"] = True
                     st.session_state["show_admin_login"] = False
-                    st.success("驗證成功，正在切換後台...")
+                    st.success("驗證成功，正在切換...")
                     st.rerun()
                 else:
                     st.error("管理員密碼錯誤，無法進入後台")
@@ -668,9 +665,56 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                 st.rerun()
     st.stop()
 
-# --- 🔒 已記錄為管理員身分，直接放行進入控制台 ---
-if st.session_state.get("admin_logged_in", False) or st.session_state.get("direct_to_admin", False):
-    # 檢查是否點擊了返回首頁（將 direct_to_admin 歸零，但保留 admin_logged_in 讓下次免密碼）
+# --- 主系統介面與模式選擇 (整合管理員選單) ---
+st.markdown("""
+<div class="header-container">
+    <div class="title-left-group">
+        <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
+        <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
+    </div>
+    <div class="edition-badge">C.L.F EDITION</div>
+</div>
+""", unsafe_allow_html=True)
+
+td_time = get_file_mtime_str(ROLE_FILES["駕駛"])
+tm_time = get_file_mtime_str(ROLE_FILES["列車長"])
+ta_time = get_file_mtime_str(ROLE_FILES["服勤員"])
+sched_range = get_schedule_range()
+
+st.markdown(f"""
+<div class="telemetry-card">
+    <div class="telemetry-title">目前系統排班週期 & 伺服器資料狀態</div>
+    <div class="telemetry-value" style="font-size: 22px; color: #60A5FA; margin-bottom: 8px;">{sched_range}</div>
+    <div class="telemetry-sub">
+        伺服器資料狀態：<br>
+        - 駕駛更新：{td_time}<br>
+        - 列車長更新：{tm_time}<br>
+        - 服勤員更新：{ta_time}
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# 建立動態選單清單：如果是管理員登入狀態，自動把「管理員專用 Database 控制台」加入選項中！
+mode_options = [
+    "生產個人班表圖片檔", 
+    "指定時段報到組員快篩（Alpha測試版）",
+    "換假日期快篩（Alpha測試版）"
+]
+
+if st.session_state.get("admin_logged_in", False):
+    mode_options.append("管理員專用 Database 控制台")
+
+app_mode = st.radio("系統操作模式選擇", mode_options, horizontal=False)
+
+# 🔒 只要切換到其他系統，立刻強制清空換假系統的暫存名單與狀態
+if app_mode != "換假日期快篩（Alpha測試版）":
+    st.session_state["ex_saved_candidates"] = []
+    st.session_state["ex_sub_mode"] = "search_form"
+    st.session_state["last_app_mode"] = ""
+
+st.markdown("---")
+
+if app_mode == "管理員專用 Database 控制台":
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">管理員專用：Database 控制台</div>
@@ -678,21 +722,9 @@ if st.session_state.get("admin_logged_in", False) or st.session_state.get("direc
     </div>
     """, unsafe_allow_html=True)
 
-    col_admin_top1, col_admin_top2 = st.columns(2)
-    with col_admin_top1:
-        if st.button("🔒 登出管理員", key="admin_logout_btn_top"):
-            st.session_state["admin_logged_in"] = False
-            st.session_state["direct_to_admin"] = False
-            st.session_state["show_admin_login"] = False
-            st.rerun()
-    with col_admin_top2:
-        if st.button("← 返回首頁", key="admin_back_home_btn_top"):
-            st.session_state["direct_to_admin"] = False
-            st.session_state["show_admin_login"] = False
-            st.rerun()
-
-    # 如果點擊了返回首頁，此時把 direct_to_admin 設為 False 並且立刻重新整理跳出後台區塊
-    if not st.session_state.get("direct_to_admin", True):
+    if st.button("🔒 登出管理員", key="admin_logout_btn_top"):
+        st.session_state["admin_logged_in"] = False
+        st.session_state["show_admin_login"] = False
         st.rerun()
 
     st.success("歡迎回來，管理員 LEO（目前為管理員在線狀態）")
@@ -743,70 +775,12 @@ if st.session_state.get("admin_logged_in", False) or st.session_state.get("direc
         with open(ROLE_FILES[selected_role], "wb") as f: f.write(uploaded_file.getbuffer())
         st.success("上傳成功")
 
-    st.stop()
-
-# --- 主系統介面 ---
-st.markdown("""
-<div class="header-container">
-    <div class="title-left-group">
-        <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
-        <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
-    </div>
-    <div class="edition-badge">C.L.F EDITION</div>
-</div>
-""", unsafe_allow_html=True)
-
-td_time = get_file_mtime_str(ROLE_FILES["駕駛"])
-tm_time = get_file_mtime_str(ROLE_FILES["列車長"])
-ta_time = get_file_mtime_str(ROLE_FILES["服勤員"])
-sched_range = get_schedule_range()
-
-st.markdown(f"""
-<div class="telemetry-card">
-    <div class="telemetry-title">目前系統排班週期 & 伺服器資料狀態</div>
-    <div class="telemetry-value" style="font-size: 22px; color: #60A5FA; margin-bottom: 8px;">{sched_range}</div>
-    <div class="telemetry-sub">
-        伺服器資料狀態：<br>
-        - 駕駛更新：{td_time}<br>
-        - 列車長更新：{tm_time}<br>
-        - 服勤員更新：{ta_time}
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-app_mode = st.radio("系統操作模式選擇", [
-    "生產個人班表圖片檔", 
-    "指定時段報到組員快篩（Alpha測試版）",
-    "換假日期快篩（Alpha測試版）"
-], horizontal=False)
-
-# 🔒 關鍵修復：只要使用者切換到其他系統，立刻強制清空換假系統的暫存名單與狀態！
-if app_mode != "換假日期快篩（Alpha測試版）":
-    st.session_state["ex_saved_candidates"] = []
-    st.session_state["ex_sub_mode"] = "search_form"
-    st.session_state["last_app_mode"] = ""
-
-st.markdown("---")
-
-if app_mode == "生產個人班表圖片檔":
-    if is_module_maintenance("producer") and not st.session_state.get("admin_bypassed_producer", False):
+elif app_mode == "生產個人班表圖片檔":
+    if is_module_maintenance("producer") and not st.session_state.get("admin_logged_in", False):
         st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 個人班表圖片檔生產系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
-        
-        col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
-        with col_m2:
-            st.markdown("""<div class="maintenance-msg-box">此功能目前正在維護中。</div>""", unsafe_allow_html=True)
-            p_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="producer_unlock_input")
-            if st.button("管理員登入", key="producer_unlock_btn"):
-                if p_unlock == ADMIN_PASSWORD:
-                    st.session_state["admin_logged_in"] = True
-                    st.session_state["admin_bypassed_producer"] = True
-                    st.success("解鎖成功！")
-                    st.rerun()
-                else:
-                    st.error("管理員密碼錯誤")
         st.stop()
 
-    if st.session_state.get("admin_bypassed_producer", False) and is_module_maintenance("producer"):
+    if st.session_state.get("admin_logged_in", False) and is_module_maintenance("producer"):
         st.markdown("""
         <div class="admin-bypass-banner">
             <span>[!] ADMIN BYPASS // 「個人班表」目前處於維護中，您正以管理員身分預覽</span>
@@ -972,24 +946,11 @@ if app_mode == "生產個人班表圖片檔":
                 except Exception as e: st.error(f"錯誤：{e}")
 
 elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
-    if is_module_maintenance("window_filter") and not st.session_state.get("admin_bypassed_window", False):
+    if is_module_maintenance("window_filter") and not st.session_state.get("admin_logged_in", False):
         st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 指定時段報到組員快篩系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
-        
-        col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
-        with col_m2:
-            st.markdown("""<div class="maintenance-msg-box">此系統目前正在維護中。</div>""", unsafe_allow_html=True)
-            w_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="window_unlock_input")
-            if st.button("進入系統", key="window_unlock_btn"):
-                if w_unlock == ADMIN_PASSWORD:
-                    st.session_state["admin_logged_in"] = True
-                    st.session_state["admin_bypassed_window"] = True
-                    st.success("解鎖成功！")
-                    st.rerun()
-                else:
-                    st.error("管理員密碼錯誤")
         st.stop()
 
-    if st.session_state.get("admin_bypassed_window", False) and is_module_maintenance("window_filter"):
+    if st.session_state.get("admin_logged_in", False) and is_module_maintenance("window_filter"):
         st.markdown("""
         <div class="admin-bypass-banner">
             <span>[!] ADMIN BYPASS // 「時段快篩」目前處於維護中，您正以管理員身分預覽</span>
@@ -1150,45 +1111,28 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 elif app_mode == "換假日期快篩（Alpha測試版）":
-    # 1. 偵測是否剛切換進來，如果是，強制重置狀態與清空舊結果
     if st.session_state.get("last_app_mode") != "換假日期快篩（Alpha測試版）":
         st.session_state["ex_sub_mode"] = "search_form"
         st.session_state["ex_saved_candidates"] = []
         st.session_state["last_app_mode"] = "換假日期快篩（Alpha測試版）"
 
-    # 2. 單一維護模式檢查（確保絕不重複顯示紅幅）
-    if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_bypassed_exchange", False):
+    if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_logged_in", False):
         st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 換假日期快篩系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
-        
-        col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
-        with col_m2:
-            st.markdown("""<div class="maintenance-msg-box">此系統目前正在維護中。</div>""", unsafe_allow_html=True)
-            e_unlock = st.text_input("管理員登入", type="password", placeholder="請輸入管理員密碼...", key="exchange_unlock_input")
-            if st.button("進入系統", key="exchange_unlock_btn"):
-                if e_unlock == ADMIN_PASSWORD:
-                    st.session_state["admin_logged_in"] = True
-                    st.session_state["admin_bypassed_exchange"] = True
-                    st.success("解鎖成功！")
-                    st.rerun()
-                else:
-                    st.error("管理員密碼錯誤")
         st.stop()
 
-    if st.session_state.get("admin_bypassed_exchange", False) and is_module_maintenance("exchange_filter"):
+    if st.session_state.get("admin_logged_in", False) and is_module_maintenance("exchange_filter"):
         st.markdown("""
         <div class="admin-bypass-banner">
             <span>[!] ADMIN BYPASS // 「換假快篩」目前處於維護中，您正以管理員身分預覽</span>
         </div>
         """, unsafe_allow_html=True)
 
-    # 3. 初始化狀態變數
     if "ex_sub_mode" not in st.session_state: st.session_state["ex_sub_mode"] = "search_form"
     if "ex_selected_emp" not in st.session_state: st.session_state["ex_selected_emp"] = None
     if "ex_saved_candidates" not in st.session_state: st.session_state["ex_saved_candidates"] = []
     if "ex_saved_target_date" not in st.session_state: st.session_state["ex_saved_target_date"] = ""
     if "ex_saved_role" not in st.session_state: st.session_state["ex_saved_role"] = ""
 
-    # --- 情境 A：處於單一組員的圖檔檢視模式 ---
     if st.session_state["ex_sub_mode"] == "inspect_image":
         target_emp = st.session_state["ex_selected_emp"]
         saved_role = st.session_state.get("ex_saved_role", "服勤員")
@@ -1335,7 +1279,6 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
 
         st.stop()
 
-    # --- 情境 B：表單輸入與條件檢索區塊 ---
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">換假日期快篩系統</div>
@@ -1450,7 +1393,6 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                     st.session_state["ex_saved_target_date"] = target_date
                     st.session_state["ex_saved_role"] = selected_role
 
-    # --- 情境 C：只有當 sub_mode 等於 "results" 且名單不為空時才顯示結果 ---
     if st.session_state["ex_sub_mode"] == "results" and st.session_state.get("ex_saved_candidates"):
         saved_candidates = st.session_state["ex_saved_candidates"]
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
@@ -1495,7 +1437,8 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
             st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
 st.markdown('<div class="footer-admin-container">', unsafe_allow_html=True)
-if st.button("系統管理員後台", key="footer_admin_btn_strict"):
-    st.session_state["show_admin_login"] = True
-    st.rerun()
+if not st.session_state.get("admin_logged_in", False):
+    if st.button("系統管理員後台", key="footer_admin_btn_strict"):
+        st.session_state["show_admin_login"] = True
+        st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
