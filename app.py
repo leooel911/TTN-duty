@@ -905,7 +905,6 @@ app_mode = st.radio("系統操作模式選擇", [
 ], horizontal=False, label_visibility="collapsed")
 
 if app_mode != "換假｜日期快篩（Alpha測試版）":
-    st.session_state["ex_saved_candidates"] = []
     st.session_state["ex_sub_mode"] = "search_form"
     st.session_state["last_app_mode"] = ""
 
@@ -1260,8 +1259,8 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
 
 elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if st.session_state.get("last_app_mode") != "換假｜日期快篩（Alpha測試版）":
-        st.session_state["ex_sub_mode"] = "search_form"
-        st.session_state["ex_saved_candidates"] = []
+        if "ex_sub_mode" not in st.session_state:
+            st.session_state["ex_sub_mode"] = "search_form"
         st.session_state["last_app_mode"] = "換假｜日期快篩（Alpha測試版）"
 
     if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_logged_in", False):
@@ -1474,7 +1473,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             return_date = st.selectbox("可還假的日期(上班日)", ["無可用日期"], index=0, key=f"ex_return_date_{selected_role}")
 
     return_time_filter = st.selectbox(
-        "還假日，可接受對方の報到時間限制（只列出 XX:XX 之後報到的班）",
+        "還假日，可接受對方的報到時間限制（只列出 XX:XX 之後報到的班）",
         options=time_filter_options,
         index=0,
         key="ex_return_time_filter"
@@ -1483,6 +1482,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     new_selection_key = f"{selected_role}_{target_date}_{return_date}_{return_time_filter}"
     if st.session_state["last_selection_signature"] != new_selection_key:
         st.session_state["ex_saved_candidates"] = []
+        st.session_state["ex_sub_mode"] = "search_form"
         st.session_state["last_selection_signature"] = new_selection_key
 
     strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True, key="ex_strict_limit")
@@ -1660,7 +1660,8 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         except Exception as e:
             st.error(f"日期計算發生錯誤: {e}")
 
-    if st.session_state["ex_sub_mode"] == "results" and st.session_state.get("ex_saved_candidates"):
+    # 如果目前狀態是結果列表，或者剛從完整班表按返回，只要 session 內有記錄就直接顯示結果
+    if (st.session_state["ex_sub_mode"] == "results" or not st.session_state.get("ex_saved_candidates") == []) and st.session_state.get("ex_saved_candidates"):
         saved_candidates = st.session_state["ex_saved_candidates"]
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
