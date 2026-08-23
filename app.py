@@ -750,8 +750,10 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
     
     col1, col2, col3 = st.columns([1, 2.2, 1])
     with col2:
+        # 用自定義的帶呼吸燈外框包覆整個登入表單
         st.markdown('<div class="auth-card-container">', unsafe_allow_html=True)
         with st.form("auth_form"):
+            st.markdown('<div style="font-size: 14px; font-weight: 700; color: #94A3B8; margin-bottom: 10px; font-family: monospace; letter-spacing: 1px;">SYSTEM LOGIN // 身分驗證</div>', unsafe_allow_html=True)
             entered_emp = st.text_input("操作者員編 (僅輸入數字)", value="A", placeholder="例如: 023300", max_chars=10)
             entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入系統授權碼...")
             btn_auth = st.form_submit_button("進入系統")
