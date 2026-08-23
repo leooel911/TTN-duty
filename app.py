@@ -142,13 +142,13 @@ st.markdown("""
         justify-content: center;
     }
     .title-subtitle {
-        color: #94A3B8;
-        font-size: 11px;
-        font-weight: 600;
+        color: #FFFFFF;
+        font-size: 13px;
+        font-weight: 700;
         letter-spacing: 2px;
         text-transform: uppercase;
         font-family: monospace;
-        margin-top: 2px;
+        margin-top: 4px;
     }
     
     /* 底部低調精緻小貼紙按鈕樣式 */
@@ -775,7 +775,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭 (第一行 BUSY DOING NOTHING PRODUCTIVE，第二行光點 C.L.F EDITION 光點) ---
+# --- 頂部質感標頭 ---
 st.markdown(f"""
 <div class="header-container">
     <div class="title-left-group">
@@ -784,7 +784,7 @@ st.markdown(f"""
             BUSY DOING NOTHING PRODUCTIVE<br>
             <span class="radar-dot" style="margin: 0 6px 0 0;"></span>C.L.F EDITION<span class="radar-dot" style="margin: 0 0 0 6px;"></span>
         </div>
-        <div class="title-subtitle" style="margin-top: 6px; font-size: 11px;">OPERATOR: {st.session_state.get("current_user_id", "A")}</div>
+        <div class="title-subtitle">OPERATOR: {st.session_state.get("current_user_id", "A")}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
