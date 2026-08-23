@@ -415,8 +415,7 @@ def log_activity(input_str):
         except: pass
         
         device_info = parse_device_info(ua_raw) if ua_raw else "未知裝置"
-        current_operator = st.session_state.get("current_user_id", "未知")
-        log_entry = f"{now_tw} | 操作者員編: {current_operator} | 裝置: {device_info} | 查詢: {input_str}\n"
+        log_entry = f"{now_tw} | 裝置: {device_info} | 查詢: {input_str}\n"
         with open(LOG_FILE, "a", encoding="utf-8") as f: f.write(log_entry)
     except: pass
 
@@ -426,7 +425,6 @@ if "user_input_field" not in st.session_state: st.session_state["user_input_fiel
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
 if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
-if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
 
 def get_file_mtime_str(path):
     if os.path.exists(path):
@@ -720,21 +718,15 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         with st.form("auth_form"):
-            entered_emp = st.text_input("操作者員編 (僅輸入數字)", value="A", placeholder="例如: 023300", max_chars=10)
-            entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入系統授權碼...")
+            entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入系統授權碼...", label_visibility="collapsed")
             btn_auth = st.form_submit_button("進入系統")
 
             if btn_auth:
-                clean_emp = entered_emp.strip()
-                if not clean_emp:
-                    st.error("請輸入有效的員編")
-                elif entered_key == CREW_ACCESS_PASSWORD:
+                if entered_key == CREW_ACCESS_PASSWORD:
                     st.session_state["authenticated"] = True
-                    st.session_state["current_user_id"] = clean_emp
                     st.rerun()
                 elif entered_key == ADMIN_PASSWORD:
                     st.session_state["admin_logged_in"] = True
-                    st.session_state["current_user_id"] = f"ADMIN_{clean_emp}"
                     st.session_state["nav_mode"] = "admin_panel"
                     st.success("管理員驗證成功，正在載入後台...")
                     st.rerun()
@@ -743,11 +735,11 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
     st.stop()
 
 # --- 頂部質感標頭 ---
-st.markdown(f"""
+st.markdown("""
 <div class="header-container">
     <div class="title-left-group">
         <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
-        <div class="title-subtitle">C.L.F // OPERATOR: {st.session_state.get("current_user_id", "A")}</div>
+        <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -1177,7 +1169,6 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
             with filter_col2: only_long_shift = st.checkbox("僅顯示長班 (>8.5h)", value=False, key="win_long_shift")
 
             if st.button("開始區間檢索符合條件人員", key="btn_window_search"):
-                log_activity(f"時段快篩 [{selected_role}] {start_date}~{end_date} {min_time}-{max_time}")
                 try:
                     s_idx = date_cols.index(start_date)
                     e_idx = date_cols.index(end_date)
@@ -1315,7 +1306,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
         try:
             current_input = target_emp
-            log_activity(f"換假檢視完整班表: {target_input}")
+            log_activity(current_input)
             
             start_dt, dates, emp_id, emp_name, cells = process_file_data(current_input)
             active_transport = parse_transport_periods(TRANSPORT_PERIODS)
@@ -1544,7 +1535,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         btn_search_clicked = False
 
     if btn_search_clicked and is_selection_valid:
-        log_activity(f"換假快篩 [{selected_role}] 想休:{target_date} 還假:{return_date}")
         st.session_state["ex_sub_mode"] = "results"
         try:
             target_path = ROLE_FILES[selected_role]
@@ -1670,7 +1660,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         except Exception as e:
             st.error(f"日期計算發生錯誤: {e}")
 
-    if st.session_state["ex_sub_mode"] == "results" and st.session_state.get("ex_saved_candidates"):        saved_candidates = st.session_state["ex_saved_candidates"]
+    # 如果目前狀態是結果列表，或者剛從完整班表按返回，只要 session 內有記錄就直接顯示結果
+    if (st.session_state["ex_sub_mode"] == "results" or not st.session_state.get("ex_saved_candidates") == []) and st.session_state.get("ex_saved_candidates"):
+        saved_candidates = st.session_state["ex_saved_candidates"]
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
 
