@@ -54,18 +54,18 @@ st.markdown("""
     /* 施工中黃色外框呼吸燈動畫定義 (選項維護專用) */
     @keyframes maintenance-yellow-glow-pulse {
         0% { 
-            border-color: #A16207; 
-            border-left-color: #EAB308;
+            border-color: #A16207 !important; 
+            border-left-color: #EAB308 !important;
             box-shadow: 0 0 6px rgba(234, 179, 8, 0.2); 
         }
         50% { 
-            border-color: #EAB308; 
-            border-left-color: #FEF08A;
+            border-color: #EAB308 !important; 
+            border-left-color: #FEF08A !important;
             box-shadow: 0 0 20px rgba(234, 179, 8, 0.7), inset 0 0 10px rgba(234, 179, 8, 0.3); 
         }
         100% { 
-            border-color: #A16207; 
-            border-left-color: #EAB308;
+            border-color: #A16207 !important; 
+            border-left-color: #EAB308 !important;
             box-shadow: 0 0 6px rgba(234, 179, 8, 0.2); 
         }
     }
@@ -348,10 +348,22 @@ st.markdown("""
         transform: translateY(-2px) !important;
     }
 
-    /* 維護中的選單項目樣式：動態黃色呼吸燈 */
-    .maint-radio-1 label:nth-child(1),
-    .maint-radio-2 label:nth-child(2),
-    .maint-radio-3 label:nth-child(3) {
+    /* 施工中：選項 1 黃色呼吸燈 */
+    .maint-opt-1 label:nth-of-type(1) {
+        border: 1.5px solid #EAB308 !important;
+        border-left: 5px solid #EAB308 !important;
+        animation: maintenance-yellow-glow-pulse 2.5s infinite ease-in-out !important;
+        background: linear-gradient(135deg, #271C0C 0%, #0F172A 100%) !important;
+    }
+    /* 施工中：選項 2 黃色呼吸燈 */
+    .maint-opt-2 label:nth-of-type(2) {
+        border: 1.5px solid #EAB308 !important;
+        border-left: 5px solid #EAB308 !important;
+        animation: maintenance-yellow-glow-pulse 2.5s infinite ease-in-out !important;
+        background: linear-gradient(135deg, #271C0C 0%, #0F172A 100%) !important;
+    }
+    /* 施工中：選項 3 黃色呼吸燈 */
+    .maint-opt-3 label:nth-of-type(3) {
         border: 1.5px solid #EAB308 !important;
         border-left: 5px solid #EAB308 !important;
         animation: maintenance-yellow-glow-pulse 2.5s infinite ease-in-out !important;
@@ -975,11 +987,11 @@ st.markdown(f"""
 
 st.markdown('<div class="mode-selection-header">Select Operation Mode // 請選擇系統模式</div>', unsafe_allow_html=True)
 
-# 動態組合維護中的按鈕樣式 class (讓被維護的選項按鈕呈現閃爍黃燈外框)
+# 動態組合維護中的按鈕樣式 class
 active_maint_classes = []
-if is_module_maintenance("producer"): active_maint_classes.append("maint-radio-1")
-if is_module_maintenance("window_filter"): active_maint_classes.append("maint-radio-2")
-if is_module_maintenance("exchange_filter"): active_maint_classes.append("maint-radio-3")
+if is_module_maintenance("producer"): active_maint_classes.append("maint-opt-1")
+if is_module_maintenance("window_filter"): active_maint_classes.append("maint-opt-2")
+if is_module_maintenance("exchange_filter"): active_maint_classes.append("maint-opt-3")
 maint_class_str = " ".join(active_maint_classes)
 
 st.markdown(f'<div class="{maint_class_str}">', unsafe_allow_html=True)
