@@ -10,7 +10,8 @@ import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 import time
 
-matplotlib.use('Agg')import streamlit as st
+matplotlib.use('Agg')
+import streamlit as st
 import os
 import re
 import io
