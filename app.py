@@ -55,6 +55,31 @@ st.markdown("""
         }
     }
 
+    /* 紅色外框呼吸燈動畫定義 */
+    @keyframes missing-data-pulse {
+        0% { 
+            border-color: #7F1D1D; 
+            box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); 
+        }
+        50% { 
+            border-color: #EF4444; 
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 0 10px rgba(239, 68, 68, 0.4); 
+        }
+        100% { 
+            border-color: #7F1D1D; 
+            box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); 
+        }
+    }
+
+    .missing-data-card {
+        background: linear-gradient(135deg, #1E1B1B 0%, #0F172A 100%) !important;
+        border: 2px solid #EF4444 !important;
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin-bottom: 16px;
+        animation: missing-data-pulse 2.5s infinite ease-in-out;
+    }
+
     /* 頂部導航總成 */
     .header-container { 
         display: flex; 
@@ -548,7 +573,7 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 🔒 最優先攔截：檢視完整班表 ---
+# --- 檢視完整班表 ---
 if st.session_state.get("inspect_emp_target") is not None:
     target_emp = st.session_state["inspect_emp_target"]
     st.markdown(f"""
@@ -686,7 +711,7 @@ if st.session_state.get("inspect_emp_target") is not None:
 
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查 ---
+# --- 前置授權碼門戶檢查 ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
     
@@ -822,15 +847,29 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.stop()
 
 # --- 一般系統首頁介面 ---
+# --- 檢查資料庫檔案狀態 ---
+missing_files = []
+for role, path in ROLE_FILES.items():
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        missing_files.append(role)
+
+if missing_files:
+    st.error("資料庫異常：請洽管理員！")
+
 td_time = get_file_mtime_str(ROLE_FILES["駕駛"])
 tm_time = get_file_mtime_str(ROLE_FILES["列車長"])
 ta_time = get_file_mtime_str(ROLE_FILES["服勤員"])
 sched_range = get_schedule_range()
 
+is_db_empty = len(missing_files) == len(ROLE_FILES)
+card_class = "missing-data-card" if missing_files else "telemetry-card"
+
 st.markdown(f"""
-<div class="telemetry-card">
+<div class="{card_class}">
     <div class="telemetry-title">目前系統排班週期 & 伺服器資料狀態</div>
-    <div class="telemetry-value" style="font-size: 22px; color: #60A5FA; margin-bottom: 8px;">{sched_range}</div>
+    <div class="telemetry-value" style="font-size: 22px; color: {"#EF4444" if missing_files else "#60A5FA"}; margin-bottom: 8px;">
+        {sched_range if not is_db_empty else "資料庫異常：請洽管理員！"}
+    </div>
     <div class="telemetry-sub">
         - 駕駛更新：{td_time}<br>
         - 列車長更新：{tm_time}<br>
@@ -1175,7 +1214,7 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                                 st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
                                 c_col1, c_col2 = st.columns(2)
                                 col_idx = 0 
-                        
+                    
                             badges_html = '<div class="badge-group">'
                             if r['長班']: badges_html += '<span class="long-badge">長班</span>'
                             if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
@@ -1392,7 +1431,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     except:
         date_cols = []
 
-    # 追蹤並記錄上一次的選擇組合，若有變動則立即清空舊搜尋結果
     current_selection_key = f"{selected_role}_{st.session_state.get('ex_target_date_' + selected_role, '')}_{st.session_state.get('ex_return_date_' + selected_role, '')}"
     if "last_selection_signature" not in st.session_state:
         st.session_state["last_selection_signature"] = current_selection_key
@@ -1416,7 +1454,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
     strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True, key="ex_strict_limit")
 
-    # --- 即時防呆檢核區（一選完日期就立刻檢查） ---
     is_selection_valid = True
     validation_error_msg = ""
 
@@ -1455,11 +1492,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 is_selection_valid = False
                 validation_error_msg = f"日期解析發生錯誤: {e}"
 
-    # 即時顯示錯誤訊息
     if not is_selection_valid:
         st.error(f"條件未通過：{validation_error_msg}")
 
-    # 即時檢核通過才顯示查詢按鈕
     if is_selection_valid:
         btn_search_clicked = st.button("開始尋找可換假對象", key="btn_auto_search_exchange_fixed")
     else:
@@ -1569,7 +1604,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
 
-        # 專業化排版：使用獨立的儀表板卡片標題，解決亂換行問題
         st.markdown(f"""
         <div style="
             background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
