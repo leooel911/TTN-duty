@@ -788,7 +788,7 @@ st.markdown(f"""
             C.L.F EDITION
         </div>
         <div class="title-subtitle">
-            <span class="online-dot"></span>OPERATOR: {st.session_state.get("current_user_id", "A")}<span class="online-dot"></span>
+            <span class="online-dot"></span>Welcom: {st.session_state.get("current_user_id", "A")}<span class="online-dot"></span>
         </div>
     </div>
 </div>
