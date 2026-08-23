@@ -687,8 +687,8 @@ if st.session_state.get("admin_logged_in", False) or st.session_state.get("direc
     with col_admin_top2:
         if st.button("← 返回首頁", key="admin_back_home_btn_top"):
             st.session_state["direct_to_admin"] = False
-            st.session_state["admin_logged_in"] = False  # 確保返回首頁時登入狀態一併重置
             st.session_state["show_admin_login"] = False
+            # 保持 st.session_state["admin_logged_in"] = True 不變，以便下次進入後台免密碼
             st.rerun()
 
     st.success("歡迎回來，管理員 LEO（目前為管理員在線狀態）")
