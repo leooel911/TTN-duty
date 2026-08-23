@@ -39,19 +39,19 @@ st.markdown("""
         }
     }
 
-    /* 施工中黃色呼吸光暈動畫定義 */
-    @keyframes maintenance-pulse-yellow {
+    /* 施工中紅色底線呼吸燈動畫定義 */
+    @keyframes maintenance-red-line-pulse {
         0% { 
-            border-color: #713F12; 
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 rgba(234, 179, 8, 0); 
+            background-color: #7F1D1D; 
+            box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); 
         }
         50% { 
-            border-color: #EAB308; 
-            box-shadow: 0 4px 28px rgba(234, 179, 8, 0.3), 0 0 18px rgba(234, 179, 8, 0.15); 
+            background-color: #EF4444; 
+            box-shadow: 0 0 16px rgba(239, 68, 68, 0.8), 0 0 25px rgba(239, 68, 68, 0.4); 
         }
         100% { 
-            border-color: #713F12; 
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 rgba(234, 179, 8, 0); 
+            background-color: #7F1D1D; 
+            box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); 
         }
     }
 
@@ -157,18 +157,26 @@ st.markdown("""
         background: #1E293B;
     }
 
-    /* 高質感施工中黃色呼吸燈提示卡片 */
+    /* 施工中卡片樣式（取消黃色動畫，改為固定黃框與陰影） */
     .maintenance-card-box {
         background: linear-gradient(135deg, #271C0C 0%, #171005 100%);
-        border: 1.5px solid #713F12;
+        border: 1.5px solid #EAB308;
         border-left: 5px solid #EAB308;
-        border-radius: 12px;
-        padding: 24px 20px;
+        border-radius: 12px 12px 0 0;
+        padding: 24px 20px 18px 20px;
         text-align: center;
         margin-top: 2rem;
-        margin-bottom: 2rem;
+        margin-bottom: 0rem;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-        animation: maintenance-pulse-yellow 3.5s infinite ease-in-out;
+    }
+    /* 卡片下方的紅色呼吸燈發光橫線 */
+    .maintenance-red-glow-line {
+        height: 3px;
+        width: 100%;
+        background-color: #EF4444;
+        border-radius: 0 0 12px 12px;
+        margin-bottom: 2rem;
+        animation: maintenance-red-line-pulse 3s infinite ease-in-out;
     }
     .maintenance-title {
         color: #FEF08A;
@@ -855,6 +863,7 @@ if app_mode == "生產個人班表圖片檔":
             <div class="maintenance-title">[ 系統維護中 ] 個人班表圖片檔生產系統</div>
             <div class="maintenance-sub">C.L.F // MAINTENANCE MODE &bull; SYSTEM UPGRADING</div>
         </div>
+        <div class="maintenance-red-glow-line"></div>
         """, unsafe_allow_html=True)
         st.stop()
 
@@ -1030,6 +1039,7 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
             <div class="maintenance-title">[ 系統維護中 ] 指定時段報到組員快篩系統</div>
             <div class="maintenance-sub">C.L.F // MAINTENANCE MODE &bull; SYSTEM UPGRADING</div>
         </div>
+        <div class="maintenance-red-glow-line"></div>
         """, unsafe_allow_html=True)
         st.stop()
 
@@ -1168,7 +1178,7 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                                 st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
                                 c_col1, c_col2 = st.columns(2)
                                 col_idx = 0 
-                            
+                        
                             badges_html = '<div class="badge-group">'
                             if r['長班']: badges_html += '<span class="long-badge">長班</span>'
                             if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
@@ -1205,6 +1215,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
             <div class="maintenance-title">[ 系統維護中 ] 換假日期快篩系統</div>
             <div class="maintenance-sub">C.L.F // MAINTENANCE MODE &bull; SYSTEM UPGRADING</div>
         </div>
+        <div class="maintenance-red-glow-line"></div>
         """, unsafe_allow_html=True)
         st.stop()
 
