@@ -39,6 +39,22 @@ st.markdown("""
         }
     }
 
+    /* 施工中黃色呼吸光暈動畫定義 */
+    @keyframes maintenance-pulse-yellow {
+        0% { 
+            border-color: #713F12; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 rgba(234, 179, 8, 0); 
+        }
+        50% { 
+            border-color: #EAB308; 
+            box-shadow: 0 4px 28px rgba(234, 179, 8, 0.3), 0 0 18px rgba(234, 179, 8, 0.15); 
+        }
+        100% { 
+            border-color: #713F12; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 rgba(234, 179, 8, 0); 
+        }
+    }
+
     /* 頂部導航總成 - 完美無瑕疵的精緻外框與整體呼吸光暈 */
     .header-container { 
         display: flex; 
@@ -118,19 +134,34 @@ st.markdown("""
         transform: translateY(-2px) !important;
     }
 
-    .maintenance-msg-box {
-        background: linear-gradient(135deg, #271C0C 100%, #171005 100%);
-        border: 1px solid #854D0E;
-        border-left: 5px solid #CA8A04;
-        padding: 16px 20px;
-        border-radius: 8px;
-        color: #FEF08A;
-        font-size: 14px;
-        font-weight: 600;
-        line-height: 1.6;
+    /* 高質感施工中黃色呼吸燈提示卡片 */
+    .maintenance-card-box {
+        background: linear-gradient(135deg, #271C0C 0%, #171005 100%);
+        border: 1.5px solid #713F12;
+        border-left: 5px solid #EAB308;
+        border-radius: 12px;
+        padding: 24px 20px;
         text-align: center;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 16px rgba(133, 77, 14, 0.2);
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        animation: maintenance-pulse-yellow 3.5s infinite ease-in-out;
+    }
+    .maintenance-title {
+        color: #FEF08A;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        margin-bottom: 8px;
+        font-family: monospace;
+    }
+    .maintenance-sub {
+        color: #CA8A04;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        font-family: monospace;
     }
 
     .admin-bypass-banner {
@@ -807,7 +838,12 @@ st.markdown("---")
 
 if app_mode == "生產個人班表圖片檔":
     if is_module_maintenance("producer") and not st.session_state.get("admin_logged_in", False):
-        st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 個人班表圖片檔生產系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="maintenance-card-box">
+            <div class="maintenance-title">[ 系統維護中 ] 個人班表圖片檔生產系統</div>
+            <div class="maintenance-sub">C.L.F // MAINTENANCE MODE &bull; SYSTEM UPGRADING</div>
+        </div>
+        """, unsafe_allow_html=True)
         st.stop()
 
     if st.session_state.get("admin_logged_in", False) and is_module_maintenance("producer"):
@@ -977,7 +1013,12 @@ if app_mode == "生產個人班表圖片檔":
 
 elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
     if is_module_maintenance("window_filter") and not st.session_state.get("admin_logged_in", False):
-        st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 指定時段報到組員快篩系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="maintenance-card-box">
+            <div class="maintenance-title">[ 系統維護中 ] 指定時段報到組員快篩系統</div>
+            <div class="maintenance-sub">C.L.F // MAINTENANCE MODE &bull; SYSTEM UPGRADING</div>
+        </div>
+        """, unsafe_allow_html=True)
         st.stop()
 
     if st.session_state.get("admin_logged_in", False) and is_module_maintenance("window_filter"):
@@ -1147,7 +1188,12 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
         st.session_state["last_app_mode"] = "換假日期快篩（Alpha測試版）"
 
     if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_logged_in", False):
-        st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 換假日期快篩系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="maintenance-card-box">
+            <div class="maintenance-title">[ 系統維護中 ] 換假日期快篩系統</div>
+            <div class="maintenance-sub">C.L.F // MAINTENANCE MODE &bull; SYSTEM UPGRADING</div>
+        </div>
+        """, unsafe_allow_html=True)
         st.stop()
 
     if st.session_state.get("admin_logged_in", False) and is_module_maintenance("exchange_filter"):
