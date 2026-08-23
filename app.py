@@ -101,7 +101,7 @@ st.markdown("""
         font-family: monospace;
     }
     
-    /* 右上角精緻貼紙按鈕 - 恢復完美水平並排與過去精緻視覺 */
+    /* 右上角精緻貼紙按鈕 - 改回原汁原味的小巧精緻貼紙外觀 */
     .clf-edition-badge-wrapper {
         display: flex;
         justify-content: flex-end;
@@ -112,26 +112,28 @@ st.markdown("""
     .clf-edition-badge-wrapper div.stButton > button { 
         background: #0B0F19 !important;
         border: 1px solid #334155 !important;
-        border-left: 3px solid #38BDF8 !important;
+        border-left: 2.5px solid #38BDF8 !important;
         color: #38BDF8 !important; 
-        font-size: 10.5px !important; 
+        font-size: 9px !important; 
         font-weight: 700 !important; 
-        letter-spacing: 1.5px !important; 
+        letter-spacing: 1.2px !important; 
         text-transform: uppercase !important; 
-        padding: 8px 12px !important;
-        border-radius: 6px !important;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4) !important;
+        padding: 4px 8px !important;
+        border-radius: 4px !important;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.6), 0 1px 4px rgba(0,0,0,0.3) !important;
         font-family: monospace !important;
         width: auto !important;
         margin: 0 !important;
+        min-height: unset !important;
+        line-height: 1.2 !important;
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
     .clf-edition-badge-wrapper div.stButton > button:hover {
         border-color: #38BDF8 !important;
         color: #FFFFFF !important;
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        box-shadow: 0 0 16px rgba(56, 189, 248, 0.4) !important;
-        transform: translateY(-2px) !important;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.4) !important;
+        transform: translateY(-1px) !important;
     }
 
     /* 高質感施工中黃色呼吸燈提示卡片 */
