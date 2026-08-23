@@ -744,7 +744,8 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
     <div style="text-align: center; margin-top: 2rem; margin-bottom: 1.5rem;">
         <div style="font-size: 34px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
         <div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace; background: transparent !important;">
-            <span class="radar-dot"></span>C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION<span class="radar-dot"></span>
+            BUSY DOING NOTHING PRODUCTIVE<br>
+            <span class="radar-dot" style="margin: 0 4px 0 0;"></span>C.L.F EDITION<span class="radar-dot" style="margin: 0 0 0 4px;"></span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -774,15 +775,16 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭 (首頁專用藍色呼吸外框、無光點標題、置中大字與正確小字順序) ---
+# --- 頂部質感標頭 (第一行 BUSY DOING NOTHING PRODUCTIVE，第二行光點 C.L.F EDITION 光點) ---
 st.markdown(f"""
 <div class="header-container">
     <div class="title-left-group">
         <div class="main-title">CREW DUTY ENGINE</div>
-        <div style="color: #94A3B8; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; font-family: monospace; margin-top: 4px;">
-            <span class="radar-dot" style="margin: 0 6px 0 0;"></span>BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION<span class="radar-dot" style="margin: 0 0 0 6px;"></span>
+        <div style="color: #94A3B8; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; font-family: monospace; margin-top: 6px; line-height: 1.6;">
+            BUSY DOING NOTHING PRODUCTIVE<br>
+            <span class="radar-dot" style="margin: 0 6px 0 0;"></span>C.L.F EDITION<span class="radar-dot" style="margin: 0 0 0 6px;"></span>
         </div>
-        <div class="title-subtitle" style="margin-top: 4px; font-size: 11px;">OPERATOR: {st.session_state.get("current_user_id", "A")}</div>
+        <div class="title-subtitle" style="margin-top: 6px; font-size: 11px;">OPERATOR: {st.session_state.get("current_user_id", "A")}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -1330,7 +1332,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if "ex_saved_target_date" not in st.session_state: st.session_state["ex_saved_target_date"] = ""
     if "ex_saved_role" not in st.session_state: st.session_state["ex_saved_role"] = ""
 
-    # 如果當前是檢視組員完整班表的模式
     if st.session_state["ex_sub_mode"] == "inspect_image":
         target_emp = st.session_state["ex_selected_emp"]
         saved_role = st.session_state.get("ex_saved_role", "服勤員")
@@ -1524,14 +1525,11 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if "last_selection_signature" not in st.session_state:
         st.session_state["last_selection_signature"] = new_selection_key
 
-    # 【關鍵修正】：只有在「不是 results 狀態」且「選擇真的被使用者手動更動」時，才清空舊清單！
-    # 這樣從圖表頁按上一頁回來（此時 ex_sub_mode == "results"）時，就絕對不會被清空。
     if st.session_state["ex_sub_mode"] != "results":
         if st.session_state["last_selection_signature"] != new_selection_key:
             st.session_state["ex_saved_candidates"] = []
             st.session_state["last_selection_signature"] = new_selection_key
     else:
-        # 如果已經在 results 狀態，同步更新 signature 保持一致，不觸發清空
         st.session_state["last_selection_signature"] = new_selection_key
 
     strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True, key="ex_strict_limit")
