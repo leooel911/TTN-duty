@@ -1330,6 +1330,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if "ex_saved_target_date" not in st.session_state: st.session_state["ex_saved_target_date"] = ""
     if "ex_saved_role" not in st.session_state: st.session_state["ex_saved_role"] = ""
 
+    # 如果當前是檢視組員完整班表的模式
     if st.session_state["ex_sub_mode"] == "inspect_image":
         target_emp = st.session_state["ex_selected_emp"]
         saved_role = st.session_state.get("ex_saved_role", "服勤員")
@@ -1500,10 +1501,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         "13:00 以後", "14:00 以後", "15:00 以後", "16:00 以後"
     ]
 
-    current_selection_key = f"{selected_role}_{st.session_state.get('ex_target_date_' + selected_role, '')}_{st.session_state.get('ex_return_date_' + selected_role, '')}"
-    if "last_selection_signature" not in st.session_state:
-        st.session_state["last_selection_signature"] = current_selection_key
-
     with ex_c2:
         if date_cols:
             target_date = st.selectbox("想休假的日期", date_cols, index=0, key=f"ex_target_date_{selected_role}")
@@ -1524,9 +1521,17 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     )
 
     new_selection_key = f"{selected_role}_{target_date}_{return_date}_{return_time_filter}"
-    if st.session_state["last_selection_signature"] != new_selection_key:
-        st.session_state["ex_saved_candidates"] = []
-        st.session_state["ex_sub_mode"] = "search_form"
+    if "last_selection_signature" not in st.session_state:
+        st.session_state["last_selection_signature"] = new_selection_key
+
+    # 【關鍵修正】：只有在「不是 results 狀態」且「選擇真的被使用者手動更動」時，才清空舊清單！
+    # 這樣從圖表頁按上一頁回來（此時 ex_sub_mode == "results"）時，就絕對不會被清空。
+    if st.session_state["ex_sub_mode"] != "results":
+        if st.session_state["last_selection_signature"] != new_selection_key:
+            st.session_state["ex_saved_candidates"] = []
+            st.session_state["last_selection_signature"] = new_selection_key
+    else:
+        # 如果已經在 results 狀態，同步更新 signature 保持一致，不觸發清空
         st.session_state["last_selection_signature"] = new_selection_key
 
     strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True, key="ex_strict_limit")
