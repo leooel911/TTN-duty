@@ -55,10 +55,11 @@ st.markdown("""
         }
     }
 
-    /* 頂部導航總成 - 完美並排絕不換行 */
+    /* 頂部導航總成 - 強制絕對不換行 (flex-wrap: nowrap) */
     .header-container { 
         display: flex !important; 
         flex-direction: row !important;
+        flex-wrap: nowrap !important;
         justify-content: space-between !important; 
         align-items: center !important; 
         width: 100% !important; 
@@ -79,7 +80,7 @@ st.markdown("""
     }
     .main-title { 
         color: #F8FAFC !important; 
-        font-size: 17px; 
+        font-size: 16px; 
         font-weight: 800; 
         letter-spacing: 1px; 
         margin: 0; 
@@ -102,7 +103,7 @@ st.markdown("""
     }
     .title-subtitle {
         color: #64748B;
-        font-size: 8.5px;
+        font-size: 8px;
         font-weight: 600;
         letter-spacing: 1px;
         text-transform: uppercase;
@@ -112,12 +113,12 @@ st.markdown("""
         text-overflow: ellipsis;
     }
     
-    /* 右上角精緻貼紙按鈕區塊 (嵌入 Header 內確保永不換行) */
+    /* 右上角精緻貼紙按鈕區塊 (與標頭完美並排絕不換行) */
     .clf-edition-badge-wrapper {
-        display: flex;
-        align-items: center;
-        flex-shrink: 0;
-        margin-left: 12px;
+        display: flex !important;
+        align-items: center !important;
+        flex-shrink: 0 !important;
+        margin-left: 10px !important;
     }
     
     .clf-edition-badge-wrapper div.stButton > button { 
@@ -125,7 +126,7 @@ st.markdown("""
         border: 1px solid #334155 !important;
         border-left: 3px solid #38BDF8 !important;
         color: #38BDF8 !important; 
-        font-size: 9.5px !important; 
+        font-size: 9px !important; 
         font-weight: 700 !important; 
         letter-spacing: 1px !important; 
         text-transform: uppercase !important; 
@@ -690,33 +691,41 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭與右上角貼紙（採用純 HTML Flexbox 確保手機絕對並排不換行） ---
+# --- 頂部標頭與右上角貼紙（採用純 HTML 容器嵌入按鈕，完美解決手機斷行問題） ---
 badge_label = "ADMIN PANEL" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
 
-# 建立點擊按鈕的觸發機制（利用 Streamlit 原生按鈕外層包覆並透過 CSS 完美對齊）
-header_html_top = f"""
+header_container_html = f"""
 <div class="header-container">
     <div class="title-left-group">
         <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
         <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
     </div>
-    <div class="clf-edition-badge-wrapper" id="badge-anchor"></div>
+    <div class="clf-edition-badge-wrapper">
+        <button onclick="window.location.reload();">{badge_label}</button>
+    </div>
 </div>
 """
-st.markdown(header_html_top, unsafe_allow_html=True)
+# 透過 Streamlit 原生按鈕渲染以確保點擊事件正常觸發，並以 HTML 包裹
+st.markdown("""
+<div class="header-container">
+    <div class="title-left-group">
+        <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
+        <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
+    </div>
+""", unsafe_allow_html=True)
 
-# 在右側按鈕區域渲染原生按鈕以確保點擊事件正常運作
-col_dummy_left, col_btn_right = st.columns([3, 1.3])
-with col_btn_right:
-    if st.button(badge_label, key="top_right_edition_badge_fixed"):
-        if st.session_state.get("admin_logged_in", False):
-            if st.session_state["nav_mode"] == "home":
-                st.session_state["nav_mode"] = "admin_panel"
-            else:
-                st.session_state["nav_mode"] = "home"
+# 右上角按鈕區塊
+st.markdown('<div class="clf-edition-badge-wrapper">', unsafe_allow_html=True)
+if st.button(badge_label, key="top_right_edition_badge_fixed"):
+    if st.session_state.get("admin_logged_in", False):
+        if st.session_state["nav_mode"] == "home":
+            st.session_state["nav_mode"] = "admin_panel"
         else:
-            st.session_state["show_admin_login"] = True
-        st.rerun()
+            st.session_state["nav_mode"] = "home"
+    else:
+        st.session_state["show_admin_login"] = True
+    st.rerun()
+st.markdown('</div></div>', unsafe_allow_html=True)
 
 # 點擊右上角貼紙後彈出的密碼輸入驗證區塊
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
