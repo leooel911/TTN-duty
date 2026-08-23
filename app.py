@@ -760,6 +760,12 @@ app_mode = st.radio("系統操作模式選擇", [
     "換假日期快篩（Alpha測試版）"
 ], horizontal=False)
 
+# 🔒 關鍵修復：只要使用者切換到其他系統，立刻強制清空換假系統的暫存名單與狀態！
+if app_mode != "換假日期快篩（Alpha測試版）":
+    st.session_state["ex_saved_candidates"] = []
+    st.session_state["ex_sub_mode"] = "search_form"
+    st.session_state["last_app_mode"] = ""
+
 st.markdown("---")
 
 if app_mode == "生產個人班表圖片檔":
