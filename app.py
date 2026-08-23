@@ -1450,8 +1450,13 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     except:
         date_cols = []
 
-    # 動態產生可還假日期的報到時間選項供過濾
-    time_filter_options = ["不限", "04:00 以後", "05:00 以後", "06:00 以後", "07:00 以後", "08:00 以後"]
+    # 優化：設定報到時間限制選項從 AM 05:00 到 PM 16:00
+    time_filter_options = [
+        "不限", 
+        "05:00 以後", "06:00 以後", "07:00 以後", "08:00 以後", 
+        "09:00 以後", "10:00 以後", "11:00 以後", "12:00 以後", 
+        "13:00 以後", "14:00 以後", "15:00 以後", "16:00 以後"
+    ]
 
     current_selection_key = f"{selected_role}_{st.session_state.get('ex_target_date_' + selected_role, '')}_{st.session_state.get('ex_return_date_' + selected_role, '')}"
     if "last_selection_signature" not in st.session_state:
@@ -1469,7 +1474,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         else:
             return_date = st.selectbox("可還假的日期(上班日)", ["無可用日期"], index=0, key=f"ex_return_date_{selected_role}")
 
-    # 新增：還假日報到時間限制過濾器
+    # 還假日報到時間限制過濾器
     return_time_filter = st.selectbox(
         "還假日對方報到時間限制（過濾太早的早班，保護休息時間）",
         options=time_filter_options,
@@ -1583,7 +1588,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         continue
 
                     # 根據還假日報到時間限制進行過濾
-                    if return_time_filter != "Not Selected" and return_time_filter != "不限":
+                    if return_time_filter != "不限":
                         min_allowed_time = return_time_filter.split(" ")[0] # 例如 "06:00"
                         return_start_time = parsed_return["start"]
                         if not return_start_time or return_start_time < min_allowed_time:
@@ -1622,16 +1627,21 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         c_val = row.iloc[p_i + 2]
                         p_res = parse_cell(c_val)
                         
-                        # 優化：將前後動態顯示為「報到->收工」或「特休/假別代碼」
+                        # 優化：精準辨識特休/假別 (如 PAY 或 帶有特休字眼的儲存格)
                         c_raw_s = str(c_val).upper()
                         c_tr_s = str(p_res["train"]).strip().upper()
                         is_c_hol = ("DO" in c_raw_s) or ("D2W" in c_raw_s)
-                        is_c_leave = (c_tr_s in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_s) or ("FAC" in c_raw_s)
+                        is_c_leave = (c_tr_s in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_s) or ("FAC" in c_raw_s) or ("特休" in c_raw_s)
                         
                         if is_c_hol and not is_c_leave:
                             shift_display = "休"
                         elif is_c_leave:
-                            shift_display = c_tr_s if c_tr_s in ["PAY", "FAC", "AL", "SL", "CL"] else "特休"
+                            if "PAY" in c_raw_s or "特休" in c_raw_s:
+                                shift_display = "PAY"
+                            elif "FAC" in c_raw_s:
+                                shift_display = "FAC"
+                            else:
+                                shift_display = c_tr_s if c_tr_s else "特休"
                         elif p_res["start"] and p_res["end"]:
                             shift_display = f"{p_res['start']}->{p_res['end']}"
                         else:
