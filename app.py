@@ -124,6 +124,27 @@ st.markdown("""
     .compact-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 4px solid #3B82F6; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5); transform: translateY(-2px); }
 
+    /* 整合式完整外框卡片 */
+    .integrated-crew-box {
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border: 1px solid #334155;
+        border-left: 4px solid #10B981;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        transition: all 0.25s ease;
+    }
+    .integrated-crew-box:hover {
+        border-color: #34D399;
+        box-shadow: 0 0 20px rgba(52, 211, 153, 0.2), 0 6px 16px rgba(0,0,0,0.5);
+    }
+    .action-divider {
+        height: 1px;
+        background: #334155;
+        margin: 12px 0 4px 0;
+    }
+
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
     .badge-group { display: flex; gap: 4px; align-items: center; }
@@ -1151,7 +1172,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("← 回到上一頁"):
+        if st.button("← 返回上一頁"):
             st.session_state["ex_sub_mode"] = "results"
             st.rerun()
 
@@ -1409,20 +1430,21 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
         
         if saved_candidates:
             for idx, cand in enumerate(saved_candidates):
+                # 採用整合式完整外框與精緻分隔線
                 st.markdown(f"""
-                <div class="compact-card" style="border-left-color: #10B981; margin-bottom: 2px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none;">
+                <div class="integrated-crew-box">
                     <div class="time-header-row">
                         <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
                         <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                     </div>
-                    <div class="compact-name">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
+                    <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
                     <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
-                    <div style="margin-top: 8px; font-size: 10px; color: #34D399; font-family: monospace; letter-spacing: 0.9px;">💡 點選下方按鈕可快速生成與查看完整班表</div>
+                    <div class="action-divider"></div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # 點擊按鈕時，加入載入進度條與狀態提示動畫
-                if st.button(f"檢視完整班表：{cand['姓名']} ({cand['員編']})", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
+                # 點擊按鈕觸發進度條與動畫，按鈕文字調整為生成並檢視完整班表
+                if st.button(f"生成並檢視完整班表：{cand['姓名']} ({cand['員編']})", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
                     status_placeholder = st.empty()
                     progress_bar = st.progress(0)
 
@@ -1443,7 +1465,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                     progress_bar.empty()
                     st.rerun()
                 
-                st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
         else:
             st.info("在該日期找不到符合「純 DO」且前後 5 天連續上班天數在安全範圍內的同職位組員可供調動。")
 
