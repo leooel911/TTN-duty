@@ -1573,14 +1573,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         st.error(f"條件未通過：{validation_error_msg}")
 
     if is_selection_valid:
-        btn_search_clicked = st.button("開始尋找可換假對象", key="btn_auto_search_exchange_fixed")
-    else:
-        st.button("修正上述日期後 開始查詢", disabled=True, key="btn_auto_search_exchange_disabled")
-        btn_search_clicked = False
-
-    # 只要點擊按鈕，或是目前狀態已經是 results 且有已儲存的候選名單，就直接進行運算或渲染
-    if (btn_search_clicked and is_selection_valid) or (st.session_state["ex_sub_mode"] == "results" and st.session_state.get("ex_saved_candidates")):
-        if btn_search_clicked and is_selection_valid:
+        if st.button("開始尋找可換假對象", key="btn_auto_search_exchange_fixed"):
             log_activity(f"換假快篩 [{selected_role}] 想休:{target_date} 還假:{return_date}")
             st.session_state["ex_sub_mode"] = "results"
             try:
@@ -1706,7 +1699,11 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                     st.session_state["ex_saved_role"] = selected_role
             except Exception as e:
                 st.error(f"日期計算發生錯誤: {e}")
+            st.rerun()
+    else:
+        st.button("修正上述日期後 開始查詢", disabled=True, key="btn_auto_search_exchange_disabled")
 
+    if st.session_state["ex_sub_mode"] == "results" and st.session_state.get("ex_saved_candidates"):
         saved_candidates = st.session_state["ex_saved_candidates"]
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
@@ -1741,6 +1738,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             </div>
         </div>
         """, unsafe_allow_html=True)        
+        
         for idx, cand in enumerate(saved_candidates):
             st.markdown(f"""
             <div class="integrated-crew-box">
