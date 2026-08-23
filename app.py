@@ -157,7 +157,7 @@ st.markdown("""
         background: #1E293B;
     }
 
-    /* 施工中卡片樣式（取消黃色動畫，改為固定黃框與陰影，四邊圓角） */
+    /* 施工中卡片樣式 */
     .maintenance-card-box {
         background: linear-gradient(135deg, #271C0C 0%, #171005 100%);
         border: 1.5px solid #EAB308;
@@ -169,7 +169,6 @@ st.markdown("""
         margin-bottom: 0rem;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     }
-    /* 卡片下方的紅色呼吸燈發光橫線（加入微幅上間距避免黏住） */
     .maintenance-red-glow-line {
         height: 3px;
         width: 100%;
@@ -687,7 +686,7 @@ if st.session_state.get("inspect_emp_target") is not None:
 
     st.stop()
 
-# --- 🔒 前置授權碼門戶檢查（使用 form 支援 Enter 鍵直接確認送出） ---
+# --- 🔒 前置授權碼門戶檢查 ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False):
     st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
     
@@ -720,7 +719,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 點擊底部貼紙後彈出的管理員身分驗證區塊
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -754,7 +752,6 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                 st.rerun()
     st.stop()
 
-# --- 如果導航模式為「管理員控制台」 ---
 if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -842,7 +839,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 帶有質感小標題的系統模式選擇區
 st.markdown('<div class="mode-selection-header">Select Operation Mode // 請選擇系統模式</div>', unsafe_allow_html=True)
 app_mode = st.radio("系統操作模式選擇", [
     "生產個人班表圖片檔", 
@@ -1385,7 +1381,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
     </div>
     """, unsafe_allow_html=True)
 
-    ex_c1, ex_c2 = st.columns(2)
+    ex_c1, ex_c2, ex_c3 = st.columns(3)
     with ex_c1:
         selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], index=0, key="ex_role_select")
     
@@ -1398,18 +1394,27 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
 
     with ex_c2:
         if date_cols:
-            target_date = st.selectbox("想休假的的日期", date_cols, index=0, key=f"ex_target_date_{selected_role}")
+            target_date = st.selectbox("想休假的日期", date_cols, index=0, key=f"ex_target_date_{selected_role}")
         else:
-            target_date = st.selectbox("想休假的的日期", ["無可用日期"], index=0, key=f"ex_target_date_{selected_role}")
+            target_date = st.selectbox("想休假的日期", ["無可用日期"], index=0, key=f"ex_target_date_{selected_role}")
+
+    with ex_c3:
+        if date_cols:
+            return_date = st.selectbox("可還假的日期(上班日)", date_cols, index=min(1, len(date_cols)-1), key=f"ex_return_date_{selected_role}")
+        else:
+            return_date = st.selectbox("可還假的日期(上班日)", ["無可用日期"], index=0, key=f"ex_return_date_{selected_role}")
 
     strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True, key="ex_strict_limit")
 
-    btn_search_clicked = st.button("開始識別可換假人員", key="btn_auto_search_exchange_fixed")
+    btn_search_clicked = st.button("開始識別雙向可換假人員", key="btn_auto_search_exchange_fixed")
 
     if btn_search_clicked:
         st.session_state["ex_sub_mode"] = "results"
-        if not date_cols or target_date == "無可用日期":
+        if not date_cols or target_date == "無可用日期" or return_date == "無可用日期":
             st.warning("目前無有效的日期資料可供檢索")
+            st.session_state["ex_saved_candidates"] = []
+        elif target_date == return_date:
+            st.warning("「想休假的日期」與「可還假的日期」不可選擇同一天！")
             st.session_state["ex_saved_candidates"] = []
         else:
             target_path = ROLE_FILES[selected_role]
@@ -1421,16 +1426,20 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                 df_ex.columns = [str(c).strip() for c in df_ex.columns]
                 
                 target_col_idx = -1
+                return_col_idx = -1
                 actual_pos = -1
                 all_cols_list = list(df_ex.columns[2:])
+                
                 for idx, col in enumerate(all_cols_list):
-                    if target_date in str(col):
+                    c_str = str(col)
+                    if target_date in c_str:
                         target_col_idx = idx + 2
                         actual_pos = idx
-                        break
+                    if return_date in c_str:
+                        return_col_idx = idx + 2
 
-                if target_col_idx == -1:
-                    st.warning("找不到該日期的欄位資料")
+                if target_col_idx == -1 or return_col_idx == -1:
+                    st.warning("找不到指定日期的欄位資料")
                     st.session_state["ex_saved_candidates"] = []
                 else:
                     candidates = []
@@ -1438,56 +1447,74 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                         emp_id = str(row.iloc[0]).strip()
                         emp_name = str(row.iloc[1]).strip()
                         
-                        cell_raw = row.iloc[target_col_idx]
-                        parsed = parse_cell(cell_raw)
-                        raw_str = str(cell_raw).upper()
-                        tr = str(parsed["train"]).strip().upper()
+                        # 1. 檢查「想休假日」是否為 DO
+                        cell_target = row.iloc[target_col_idx]
+                        parsed_target = parse_cell(cell_target)
+                        raw_target_str = str(cell_target).upper()
+                        tr_target = str(parsed_target["train"]).strip().upper()
                         
-                        is_pure_do = ("DO" in raw_str) or ("D2W" in raw_str)
-                        is_special_leave = (tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_str) or ("FAC" in raw_str)
+                        is_target_do = ("DO" in raw_target_str) or ("D2W" in raw_target_str)
+                        is_target_leave = (tr_target in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_target_str) or ("FAC" in raw_target_str)
                         
-                        if is_pure_do and not is_special_leave:
-                            s_idx = max(0, actual_pos - 5)
-                            e_idx = min(len(all_cols_list) - 1, actual_pos + 5)
-                            
-                            current_streak = 0
-                            max_streak = 0
-                            
-                            for p_i in range(s_idx, e_idx + 1):
-                                c_val = row.iloc[p_i + 2]
-                                p_res = parse_cell(c_val)
-                                c_raw_str = str(c_val).upper()
-                                c_tr = str(p_res["train"]).strip().upper()
-                                
-                                is_c_rest = ("DO" in c_raw_str) or ("D2W" in c_raw_str)
-                                is_c_special_leave = (c_tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_str) or ("FAC" in c_raw_str)
-                                
-                                if is_c_rest and not is_c_special_leave:
-                                    current_streak = 0
-                                else:
-                                    current_streak += 1
-                                    if current_streak > max_streak:
-                                        max_streak = current_streak
-                            
-                            if strict_limit and max_streak >= 6:
-                                continue
-                                
-                            disp_s = max(0, actual_pos - 4)
-                            disp_e = min(len(all_cols_list) - 1, actual_pos + 4)
-                            mini_schedule = []
-                            for p_i in range(disp_s, disp_e + 1):
-                                d_str = date_cols[p_i] if p_i < len(date_cols) else all_cols_list[p_i]
-                                c_val = row.iloc[p_i + 2]
-                                p_res = parse_cell(c_val)
-                                mini_schedule.append(f"{d_str}: {p_res['train'] if p_res['train'] else '休'}")
+                        # 必須當天是純休假，才能把假讓給使用者
+                        if not (is_target_do and not is_target_leave):
+                            continue
 
-                            candidates.append({
-                                "員編": emp_id,
-                                "姓名": emp_name,
-                                "當天狀態": "DO (可調動)",
-                                "前後連續上班最大天數": max_streak,
-                                "鄰近天數概況": " | ".join(mini_schedule)
-                            })
+                        # 2. 檢查「可還假日」是否為上班日 (非 DO 且非特休等假別)
+                        cell_return = row.iloc[return_col_idx]
+                        parsed_return = parse_cell(cell_return)
+                        raw_return_str = str(cell_return).upper()
+                        tr_return = str(parsed_return["train"]).strip().upper()
+                        
+                        is_return_do = ("DO" in raw_return_str) or ("D2W" in raw_return_str)
+                        is_return_leave = (tr_return in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_return_str) or ("FAC" in raw_return_str)
+                        
+                        # 如果對方在還假當天也是休假或請假，就無法幫忙上班，不符合雙向條件
+                        if is_return_do or is_return_leave:
+                            continue
+
+                        # 3. 計算連續上班風險與過濾
+                        s_idx = max(0, actual_pos - 5)
+                        e_idx = min(len(all_cols_list) - 1, actual_pos + 5)
+                        
+                        current_streak = 0
+                        max_streak = 0
+                        
+                        for p_i in range(s_idx, e_idx + 1):
+                            c_val = row.iloc[p_i + 2]
+                            p_res = parse_cell(c_val)
+                            c_raw_str = str(c_val).upper()
+                            c_tr = str(p_res["train"]).strip().upper()
+                            
+                            is_c_rest = ("DO" in c_raw_str) or ("D2W" in c_raw_str)
+                            is_c_special_leave = (c_tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_str) or ("FAC" in c_raw_str)
+                            
+                            if is_c_rest and not is_c_special_leave:
+                                current_streak = 0
+                            else:
+                                current_streak += 1
+                                if current_streak > max_streak:
+                                    max_streak = current_streak
+                        
+                        if strict_limit and max_streak >= 6:
+                            continue
+                            
+                        disp_s = max(0, actual_pos - 4)
+                        disp_e = min(len(all_cols_list) - 1, actual_pos + 4)
+                        mini_schedule = []
+                        for p_i in range(disp_s, disp_e + 1):
+                            d_str = date_cols[p_i] if p_i < len(date_cols) else all_cols_list[p_i]
+                            c_val = row.iloc[p_i + 2]
+                            p_res = parse_cell(c_val)
+                            mini_schedule.append(f"{d_str}: {p_res['train'] if p_res['train'] else '休'}")
+
+                        candidates.append({
+                            "員編": emp_id,
+                            "姓名": emp_name,
+                            "當天狀態": f"想休 {target_date}(DO) ｜ 還假 {return_date}({parsed_return['train'] if parsed_return['train'] else '上班'})",
+                            "前後連續上班最大天數": max_streak,
+                            "鄰近天數概況": " | ".join(mini_schedule)
+                        })
                     st.session_state["ex_saved_candidates"] = candidates
                     st.session_state["ex_saved_target_date"] = target_date
                     st.session_state["ex_saved_role"] = selected_role
@@ -1497,7 +1524,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
 
-        st.markdown(f"### 查詢結果：{saved_date} 【{saved_role}】可協調換假名單（共 {len(saved_candidates)} 位）")
+        st.markdown(f"### 查詢結果：想休 {target_date} ＋ 還假 {return_date} ｜ 【{saved_role}】雙向可換假名單（共 {len(saved_candidates)} 位）")
         
         for idx, cand in enumerate(saved_candidates):
             st.markdown(f"""
@@ -1535,7 +1562,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
             
             st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
-# --- 將底部版本/管理員貼紙統一由 state 完美同步 ---
+# --- 底部版本/管理員貼紙 ---
 st.markdown('<div class="footer-badge-container">', unsafe_allow_html=True)
 footer_badge_label = "ADMIN PANEL // C.L.F EDITION" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
 if st.button(footer_badge_label, key="bottom_footer_edition_badge"):
