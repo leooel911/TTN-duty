@@ -23,32 +23,20 @@ st.markdown("""
     /* 調整頂部留白與整體畫面下移 */
     .block-container { padding: 4.5rem 1rem 3rem 1rem !important; }
     
-    /* 雷達波呼吸光點動畫定義 */
-    @keyframes radar-pulse {
+    /* 呼吸燈外框動畫定義 */
+    @keyframes header-pulse-glow {
         0% { 
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7);
+            border-color: #1E293B; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 rgba(56, 189, 248, 0); 
         }
-        70% { 
-            transform: scale(1.05);
-            box-shadow: 0 0 0 8px rgba(56, 189, 248, 0);
+        50% { 
+            border-color: #38BDF8; 
+            box-shadow: 0 4px 28px rgba(56, 189, 248, 0.25), 0 0 15px rgba(56, 189, 248, 0.15); 
         }
         100% { 
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(56, 189, 248, 0);
+            border-color: #1E293B; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 rgba(56, 189, 248, 0); 
         }
-    }
-
-    .radar-dot {
-        width: 8px;
-        height: 8px;
-        background-color: #38BDF8;
-        border-radius: 50%;
-        display: inline-block;
-        animation: radar-pulse 2s infinite ease-in-out;
-        box-shadow: 0 0 10px #38BDF8;
-        margin: 0 8px;
-        vertical-align: middle;
     }
 
     /* 施工中紅色底線呼吸燈動畫定義 */
@@ -103,6 +91,7 @@ st.markdown("""
         background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
         border: 1.5px solid #1E293B;
         border-radius: 12px;
+        animation: header-pulse-glow 4s infinite ease-in-out;
     }
     .title-left-group {
         display: flex;
@@ -427,7 +416,7 @@ def log_activity(input_str):
         
         device_info = parse_device_info(ua_raw) if ua_raw else "未知裝置"
         current_operator = st.session_state.get("current_user_id", "未知")
-        log_entry = f"{now_tw} | 使用者員編: {current_operator} | 裝置: {device_info} | 查詢: {input_str}\n"
+        log_entry = f"{now_tw} | 操作者員編: {current_operator} | 裝置: {device_info} | 查詢: {input_str}\n"
         with open(LOG_FILE, "a", encoding="utf-8") as f: f.write(log_entry)
     except: pass
 
@@ -726,20 +715,13 @@ if st.session_state.get("inspect_emp_target") is not None:
 
 # --- 前置授權碼門戶檢查 ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False):
-    st.markdown("""
-    <div style="text-align: center; margin-top: 2rem; margin-bottom: 1.5rem;">
-        <div style="font-size: 34px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
-        <div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace;">
-            <span class="radar-dot"></span>C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION<span class="radar-dot"></span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div style="text-align: center; margin-top: 4rem; margin-bottom: 2rem;"><div style="font-size: 40px; font-weight: 900; letter-spacing: 1px; color: #F8FAFC;">CREW DUTY ENGINE</div><div style="color: #64748B; font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // BUSY DOING NOTHING PRODUCTIVE // EDITION</div></div>""", unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 2.2, 1])
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         with st.form("auth_form"):
-            entered_emp = st.text_input(" 使用者員編 ", value="A", placeholder="例如: 023300", max_chars=10)
-            entered_key = st.text_input("授權碼", type="password", placeholder="請輸入系統授權碼...")
+            entered_emp = st.text_input("操作者員編 (僅輸入數字)", value="A", placeholder="例如: 023300", max_chars=10)
+            entered_key = st.text_input("金鑰 / 密碼", type="password", placeholder="請輸入系統授權碼...")
             btn_auth = st.form_submit_button("進入系統")
 
             if btn_auth:
