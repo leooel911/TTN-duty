@@ -1450,7 +1450,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     except:
         date_cols = []
 
-    # 優化：設定報到時間限制選項從 AM 05:00 到 PM 16:00
     time_filter_options = [
         "不限", 
         "05:00 以後", "06:00 以後", "07:00 以後", "08:00 以後", 
@@ -1474,7 +1473,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         else:
             return_date = st.selectbox("可還假的日期(上班日)", ["無可用日期"], index=0, key=f"ex_return_date_{selected_role}")
 
-    # 還假日報到時間限制過濾器
     return_time_filter = st.selectbox(
         "還假日對方報到時間限制（過濾太早的早班，保護休息時間）",
         options=time_filter_options,
@@ -1587,9 +1585,8 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                     if is_return_do or is_return_leave:
                         continue
 
-                    # 根據還假日報到時間限制進行過濾
                     if return_time_filter != "不限":
-                        min_allowed_time = return_time_filter.split(" ")[0] # 例如 "06:00"
+                        min_allowed_time = return_time_filter.split(" ")[0]
                         return_start_time = parsed_return["start"]
                         if not return_start_time or return_start_time < min_allowed_time:
                             continue
@@ -1619,15 +1616,15 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                     if strict_limit and max_streak >= 6:
                         continue
                         
-                    disp_s = max(0, actual_pos - 4)
-                    disp_e = min(len(all_cols_list) - 1, actual_pos + 4)
+                    # 修改：將前後動態範圍擴大為前後各 7 天（總共 15 天）
+                    disp_s = max(0, actual_pos - 7)
+                    disp_e = min(len(all_cols_list) - 1, actual_pos + 7)
                     mini_schedule = []
                     for p_i in range(disp_s, disp_e + 1):
                         d_str = date_cols[p_i] if p_i < len(date_cols) else all_cols_list[p_i]
                         c_val = row.iloc[p_i + 2]
                         p_res = parse_cell(c_val)
                         
-                        # 優化：精準辨識特休/假別 (如 PAY 或 帶有特休字眼的儲存格)
                         c_raw_s = str(c_val).upper()
                         c_tr_s = str(p_res["train"]).strip().upper()
                         is_c_hol = ("DO" in c_raw_s) or ("D2W" in c_raw_s)
