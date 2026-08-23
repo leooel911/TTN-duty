@@ -124,7 +124,6 @@ st.markdown("""
     .compact-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 4px solid #3B82F6; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5); transform: translateY(-2px); }
 
-    /* 整合式完整外框卡片 */
     .integrated-crew-box {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
         border: 1px solid #334155;
@@ -1123,13 +1122,13 @@ elif app_mode == "指定時段報到組員快篩（Alpha測試版）":
                         st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 elif app_mode == "換假日期快篩（Alpha測試版）":
-    # 追蹤切換模式，如果剛從其他系統切進來，強制重置狀態並徹底清空舊查詢名單
+    # 1. 偵測是否剛切換進來，如果是，強制重置狀態與清空舊結果
     if st.session_state.get("last_app_mode") != "換假日期快篩（Alpha測試版）":
         st.session_state["ex_sub_mode"] = "search_form"
         st.session_state["ex_saved_candidates"] = []
         st.session_state["last_app_mode"] = "換假日期快篩（Alpha測試版）"
 
-    # 維護模式檢查（這段絕對要保留！）
+    # 2. 單一維護模式檢查（確保絕不重複顯示紅幅）
     if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_bypassed_exchange", False):
         st.markdown("""<div style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;"><div style="font-size: 26px; font-weight: 900; color: #EF4444;">[系統維護中] 換假日期快篩系統</div><div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">C.L.F // MAINTENANCE MODE</div></div>""", unsafe_allow_html=True)
         
@@ -1153,21 +1152,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
         </div>
         """, unsafe_allow_html=True)
 
-    # 初始化換假系統的狀態紀錄
-    if "ex_sub_mode" not in st.session_state: st.session_state["ex_sub_mode"] = "search_form"
-    if "ex_selected_emp" not in st.session_state: st.session_state["ex_selected_emp"] = None
-    if "ex_saved_candidates" not in st.session_state: st.session_state["ex_saved_candidates"] = []
-    if "ex_saved_target_date" not in st.session_state: st.session_state["ex_saved_target_date"] = ""
-    if "ex_saved_role" not in st.session_state: st.session_state["ex_saved_role"] = ""
-
-    if st.session_state.get("admin_bypassed_exchange", False) and is_module_maintenance("exchange_filter"):
-        st.markdown("""
-        <div class="admin-bypass-banner">
-            <span>[!] ADMIN BYPASS // 「換假快篩」目前處於維護中，您正以管理員身分預覽</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # 初始化換假系統的狀態紀錄
+    # 3. 初始化狀態變數
     if "ex_sub_mode" not in st.session_state: st.session_state["ex_sub_mode"] = "search_form"
     if "ex_selected_emp" not in st.session_state: st.session_state["ex_selected_emp"] = None
     if "ex_saved_candidates" not in st.session_state: st.session_state["ex_saved_candidates"] = []
@@ -1321,7 +1306,7 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
 
         st.stop()
 
-    # --- 情境 B & C：輸入查詢表單與結果呈現列表 ---
+    # --- 情境 B：表單輸入與條件檢索區塊 ---
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">換假日期快篩系統</div>
@@ -1436,53 +1421,49 @@ elif app_mode == "換假日期快篩（Alpha測試版）":
                     st.session_state["ex_saved_target_date"] = target_date
                     st.session_state["ex_saved_role"] = selected_role
 
-    if st.session_state["ex_sub_mode"] == "results":
-        saved_candidates = st.session_state.get("ex_saved_candidates", [])
+    # --- 情境 C：只有當 sub_mode 等於 "results" 且名單不為空時才顯示結果 ---
+    if st.session_state["ex_sub_mode"] == "results" and st.session_state.get("ex_saved_candidates"):
+        saved_candidates = st.session_state["ex_saved_candidates"]
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
 
         st.markdown(f"### 查詢結果：{saved_date} 【{saved_role}】可協調換假名單（共 {len(saved_candidates)} 位）")
         
-        if saved_candidates:
-            for idx, cand in enumerate(saved_candidates):
-                # 採用整合式完整外框與精緻分隔線
-                st.markdown(f"""
-                <div class="integrated-crew-box">
-                    <div class="time-header-row">
-                        <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
-                        <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
-                    </div>
-                    <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
-                    <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
-                    <div class="action-divider"></div>
+        for idx, cand in enumerate(saved_candidates):
+            st.markdown(f"""
+            <div class="integrated-crew-box">
+                <div class="time-header-row">
+                    <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
+                    <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                 </div>
-                """, unsafe_allow_html=True)
+                <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
+                <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
+                <div class="action-divider"></div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button(f"生成並檢視完整班表：{cand['姓名']} ({cand['員編']})", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
+                status_placeholder = st.empty()
+                progress_bar = st.progress(0)
+
+                first_name = cand['姓名'][1:] if len(cand['姓名']) > 1 else cand['姓名']
+                status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
+                progress_bar.progress(40)
+                time.sleep(0.4)
+
+                progress_bar.progress(80)
+                time.sleep(0.3)
+
+                st.session_state["ex_selected_emp"] = cand['員編']
+                st.session_state["ex_sub_mode"] = "inspect_image"
                 
-                # 點擊按鈕觸發進度條與動畫，按鈕文字調整為生成並檢視完整班表
-                if st.button(f"生成並檢視完整班表：{cand['姓名']} ({cand['員編']})", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
-                    status_placeholder = st.empty()
-                    progress_bar = st.progress(0)
-
-                    first_name = cand['姓名'][1:] if len(cand['姓名']) > 1 else cand['姓名']
-                    status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
-                    progress_bar.progress(40)
-                    time.sleep(0.4)
-
-                    progress_bar.progress(80)
-                    time.sleep(0.3)
-
-                    st.session_state["ex_selected_emp"] = cand['員編']
-                    st.session_state["ex_sub_mode"] = "inspect_image"
-                    
-                    progress_bar.progress(100)
-                    time.sleep(0.2)
-                    status_placeholder.empty()
-                    progress_bar.empty()
-                    st.rerun()
-                
-                st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
-        else:
-            st.info("在該日期找不到符合「純 DO」且前後 5 天連續上班天數在安全範圍內的同職位組員可供調動。")
+                progress_bar.progress(100)
+                time.sleep(0.2)
+                status_placeholder.empty()
+                progress_bar.empty()
+                st.rerun()
+            
+            st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
 
 st.markdown('<div class="footer-admin-container">', unsafe_allow_html=True)
 if st.button("系統管理員後台", key="footer_admin_btn_strict"):
