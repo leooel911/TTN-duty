@@ -22,19 +22,34 @@ st.markdown("""
     .stApp { background-color: #0B0F19 !important; color: #F8FAFC !important; }
     .block-container { padding: 2.5rem 1rem !important; }
     
-    /* 頂部導航總成 - 打造高質感控制台視覺 */
+    /* 呼吸燈外框動畫定義 */
+    @keyframes header-pulse-glow {
+        0% { 
+            border-color: #1E293B; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 rgba(56, 189, 248, 0); 
+        }
+        50% { 
+            border-color: #38BDF8; 
+            box-shadow: 0 4px 28px rgba(56, 189, 248, 0.25), 0 0 15px rgba(56, 189, 248, 0.15); 
+        }
+        100% { 
+            border-color: #1E293B; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 rgba(56, 189, 248, 0); 
+        }
+    }
+
+    /* 頂部導航總成 - 完美無瑕疵的精緻外框與整體呼吸光暈 */
     .header-container { 
         display: flex; 
         justify-content: space-between; 
         align-items: center; 
         width: 100%; 
         margin-bottom: 1.5rem; 
-        padding: 16px 20px;
+        padding: 16px 22px;
         background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
-        border: 1px solid #1E293B;
-        border-top: 2px solid #3B82F6;
+        border: 1.5px solid #1E293B;
         border-radius: 12px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        animation: header-pulse-glow 4s infinite ease-in-out;
     }
     .title-left-group {
         display: flex;
@@ -52,22 +67,14 @@ st.markdown("""
         align-items: center;
         gap: 12px;
     }
-    
-    /* 呼吸燈光暈特效 */
-    @keyframes pulse-glow {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
-        70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(56, 189, 248, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
-    }
     .status-dot {
-        width: 9px;
-        height: 9px;
+        width: 8px;
+        height: 8px;
         background-color: #38BDF8;
         border-radius: 50%;
         display: inline-block;
-        animation: pulse-glow 2s infinite;
+        box-shadow: 0 0 8px #38BDF8;
     }
-    
     .title-subtitle {
         color: #64748B;
         font-size: 10.5px;
@@ -638,7 +645,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭與呼吸燈光暈、高質感貼紙 (Header Box) ---
+# --- 頂部質感標頭與完整外框呼吸燈光暈 (Header Container) ---
 h_col1, h_col2 = st.columns([3, 1])
 with h_col1:
     st.markdown("""
