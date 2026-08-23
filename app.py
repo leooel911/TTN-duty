@@ -39,7 +39,7 @@ st.markdown("""
         }
     }
 
-    /* 施工中黃色呼吸燈動畫定義 */
+    /* 施工中黃色呼吸光暈動畫定義 */
     @keyframes maintenance-pulse-yellow {
         0% { 
             border-color: #713F12; 
@@ -55,70 +55,58 @@ st.markdown("""
         }
     }
 
-    /* 頂部導航總成 - 強制絕對不換行 (flex-wrap: nowrap) */
+    /* 頂部導航總成 - 完美無瑕疵的精緻外框與整體呼吸光暈 */
     .header-container { 
-        display: flex !important; 
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        justify-content: space-between !important; 
-        align-items: center !important; 
-        width: 100% !important; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        width: 100%; 
         margin-bottom: 1.5rem; 
-        padding: 14px 18px;
+        padding: 16px 22px;
         background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
         border: 1.5px solid #1E293B;
         border-radius: 12px;
         animation: header-pulse-glow 4s infinite ease-in-out;
-        box-sizing: border-box;
     }
     .title-left-group {
         display: flex;
         flex-direction: column;
-        gap: 2px;
-        flex: 1;
-        min-width: 0;
+        gap: 4px;
     }
     .main-title { 
         color: #F8FAFC !important; 
-        font-size: 16px; 
+        font-size: 20px; 
         font-weight: 800; 
-        letter-spacing: 1px; 
+        letter-spacing: 1.5px; 
         margin: 0; 
         font-family: monospace;
         display: flex;
         align-items: center;
-        gap: 8px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        gap: 10px;
     }
     .status-dot {
-        width: 7px;
-        height: 7px;
+        width: 8px;
+        height: 8px;
         background-color: #38BDF8;
         border-radius: 50%;
         display: inline-block;
         box-shadow: 0 0 8px #38BDF8;
-        flex-shrink: 0;
     }
     .title-subtitle {
         color: #64748B;
-        font-size: 8px;
+        font-size: 9.5px;
         font-weight: 600;
-        letter-spacing: 1px;
+        letter-spacing: 2px;
         text-transform: uppercase;
         font-family: monospace;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
     
-    /* 右上角精緻貼紙按鈕區塊 (與標頭完美並排絕不換行) */
+    /* 右上角精緻貼紙按鈕 - 恢復完美水平並排與過去精緻視覺 */
     .clf-edition-badge-wrapper {
-        display: flex !important;
-        align-items: center !important;
-        flex-shrink: 0 !important;
-        margin-left: 10px !important;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        width: 100%;
     }
     
     .clf-edition-badge-wrapper div.stButton > button { 
@@ -126,17 +114,16 @@ st.markdown("""
         border: 1px solid #334155 !important;
         border-left: 3px solid #38BDF8 !important;
         color: #38BDF8 !important; 
-        font-size: 9px !important; 
+        font-size: 10.5px !important; 
         font-weight: 700 !important; 
-        letter-spacing: 1px !important; 
+        letter-spacing: 1.5px !important; 
         text-transform: uppercase !important; 
-        padding: 6px 10px !important;
+        padding: 8px 12px !important;
         border-radius: 6px !important;
         box-shadow: inset 0 2px 4px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4) !important;
         font-family: monospace !important;
         width: auto !important;
         margin: 0 !important;
-        white-space: nowrap !important;
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
     .clf-edition-badge-wrapper div.stButton > button:hover {
@@ -691,41 +678,31 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部標頭與右上角貼紙（採用純 HTML 容器嵌入按鈕，完美解決手機斷行問題） ---
-badge_label = "ADMIN PANEL" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
+# --- 頂部質感標頭與完整外框呼吸燈光暈 (Header Container) - 完美比例確保手機不跳行 ---
+h_col1, h_col2 = st.columns([4, 1.6])
+with h_col1:
+    st.markdown("""
+    <div class="header-container">
+        <div class="title-left-group">
+            <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
+            <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-header_container_html = f"""
-<div class="header-container">
-    <div class="title-left-group">
-        <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
-        <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
-    </div>
-    <div class="clf-edition-badge-wrapper">
-        <button onclick="window.location.reload();">{badge_label}</button>
-    </div>
-</div>
-"""
-# 透過 Streamlit 原生按鈕渲染以確保點擊事件正常觸發，並以 HTML 包裹
-st.markdown("""
-<div class="header-container">
-    <div class="title-left-group">
-        <div class="main-title"><span class="status-dot"></span>CREW DUTY ENGINE</div>
-        <div class="title-subtitle">C.L.F // BUSY DOING NOTHING PRODUCTIVE</div>
-    </div>
-""", unsafe_allow_html=True)
-
-# 右上角按鈕區塊
-st.markdown('<div class="clf-edition-badge-wrapper">', unsafe_allow_html=True)
-if st.button(badge_label, key="top_right_edition_badge_fixed"):
-    if st.session_state.get("admin_logged_in", False):
-        if st.session_state["nav_mode"] == "home":
-            st.session_state["nav_mode"] = "admin_panel"
+with h_col2:
+    st.markdown('<div class="clf-edition-badge-wrapper" style="height: 100%; display: flex; align-items: center; padding-top: 4px;">', unsafe_allow_html=True)
+    badge_label = "ADMIN PANEL" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
+    if st.button(badge_label, key="top_right_edition_badge"):
+        if st.session_state.get("admin_logged_in", False):
+            if st.session_state["nav_mode"] == "home":
+                st.session_state["nav_mode"] = "admin_panel"
+            else:
+                st.session_state["nav_mode"] = "home"
         else:
-            st.session_state["nav_mode"] = "home"
-    else:
-        st.session_state["show_admin_login"] = True
-    st.rerun()
-st.markdown('</div></div>', unsafe_allow_html=True)
+            st.session_state["show_admin_login"] = True
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # 點擊右上角貼紙後彈出的密碼輸入驗證區塊
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
