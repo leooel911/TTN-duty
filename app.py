@@ -1474,7 +1474,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             return_date = st.selectbox("可還假的日期(上班日)", ["無可用日期"], index=0, key=f"ex_return_date_{selected_role}")
 
     return_time_filter = st.selectbox(
-        "還假日對方報到時間限制（過濾太早的早班，保護休息時間）",
+        "還假日，可接受對方的報到時間限制（只列出 XX:XX 之後報到的班）",
         options=time_filter_options,
         index=0,
         key="ex_return_time_filter"
@@ -1616,7 +1616,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                     if strict_limit and max_streak >= 6:
                         continue
                         
-                    # 修改：將前後動態範圍擴大為前後各 7 天（總共 15 天）
                     disp_s = max(0, actual_pos - 7)
                     disp_e = min(len(all_cols_list) - 1, actual_pos + 7)
                     mini_schedule = []
@@ -1639,10 +1638,13 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                                 shift_display = "FAC"
                             else:
                                 shift_display = c_tr_s if c_tr_s else "特休"
-                        elif p_res["start"] and p_res["end"]:
-                            shift_display = f"{p_res['start']}->{p_res['end']}"
                         else:
-                            shift_display = p_res["train"] if p_res["train"] else "班"
+                            # 判斷車次代號是否以 N 開頭（不分大小寫），若是以 N 開頭則顯示上下班時間，否則直接顯示車次或代號
+                            main_tr_code = str(p_res["train"]).strip()
+                            if main_tr_code.upper().startswith("N") and p_res["start"] and p_res["end"]:
+                                shift_display = f"{p_res['start']}->{p_res['end']}"
+                            else:
+                                shift_display = main_tr_code if main_tr_code and main_tr_code != "無" else (p_res["note"] if p_res["note"] else "班")
                             
                         mini_schedule.append(f"{d_str}: {shift_display}")
 
