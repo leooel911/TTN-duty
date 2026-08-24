@@ -1270,8 +1270,12 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
                                 <div class="compact-sub">隔日勤務時間: {r['隔日Sign-In']}</div>
                             </div>
                             """
-                            if col_idx % 2 == 0: with c_col1: st.markdown(card_html, unsafe_allow_html=True)
-                            else: with c_col2: st.markdown(card_html, unsafe_allow_html=True)
+                            if col_idx % 2 == 0:
+    with c_col1:
+        st.markdown(card_html, unsafe_allow_html=True)
+else:
+    with c_col2:
+        st.markdown(card_html, unsafe_allow_html=True)
                             col_idx += 1
                     else: st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
