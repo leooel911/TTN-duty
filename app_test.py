@@ -569,6 +569,7 @@ def merge_update_file_with_progress(base_path, update_df):
     
     update_df.columns = [str(c).strip() for c in update_df.columns]
     
+    # 確保兩邊欄位（日期與員編、姓名）對齊
     all_columns = list(base_df.columns)
     for col in update_df.columns:
         if col not in all_columns:
@@ -582,35 +583,50 @@ def merge_update_file_with_progress(base_path, update_df):
         emp_id = str(row.iloc[0]).strip().upper()
         base_rows[emp_id] = row
         
-    # 階段 3：批次比對員編並自動補時
-    status_text.markdown(f'<div class="loading-status-text">階段 3/4：正在逐筆比對員編並自動補時（共 {len(update_df)} 筆資料）...</div>', unsafe_allow_html=True)
+    # 階段 3：逐筆比對員編並以「新檔案的資料」強力覆蓋更新
+    status_text.markdown(f'<div class="loading-status-text">階段 3/4：正在逐筆比對員編並覆蓋更新（共 {len(update_df)} 筆資料）...</div>', unsafe_allow_html=True)
     progress_bar.progress(60)
 
+    updated_emp_ids = set()
     merged_rows = []
     total_rows = len(update_df)
-    for idx, (_, up_row) in enumerate(update_df.iterrows()):
+    
+    # 先把更新檔中有出現的人員資料整理成 dict
+    update_rows = {}
+    for _, up_row in update_df.iterrows():
         up_emp_id = str(up_row.iloc[0]).strip().upper()
-        if up_emp_id in base_rows:
-            base_row = base_rows[up_emp_id].copy()
+        if up_emp_id and up_emp_id != "NAN":
+            update_rows[up_emp_id] = up_row
+
+    # 合併邏輯：以基準檔為基底，若更新檔有該員編，則「完全以更新檔的非空值欄位覆蓋」
+    for emp_id, base_row in base_rows.items():
+        if emp_id in update_rows:
+            up_row = update_rows[emp_id]
+            new_row = base_row.copy()
+            # 從第 2 欄開始（略過員編與姓名），檢查更新檔是否有填入內容
             for col_idx in range(2, len(up_row)):
                 up_val = up_row.iloc[col_idx]
-                if not pd.isna(up_val) and str(up_val).strip():
+                if not pd.isna(up_val) and str(up_val).strip() != "":
                     up_val_str = str(up_val).strip()
+                    # 自動補時對照
                     if not re.search(r'\d{1,2}:\d{2}', up_val_str) and up_val_str.upper() in time_dict:
-                        base_row.iloc[col_idx] = time_dict[up_val_str.upper()]
+                        new_row.iloc[col_idx] = time_dict[up_val_str.upper()]
                     else:
-                        base_row.iloc[col_idx] = up_val
-            merged_rows.append(base_row)
+                        new_row.iloc[col_idx] = up_val
+            merged_rows.append(new_row)
+            updated_emp_ids.add(emp_id)
         else:
+            merged_rows.append(base_row)
+            
+    # 若更新檔中有基準檔沒有的新員編，一併加入
+    for emp_id, up_row in update_rows.items():
+        if emp_id not in base_rows:
             merged_rows.append(up_row)
-        
-        if total_rows > 0:
-            p_val = 60 + int(30 * ((idx + 1) / total_rows))
-            progress_bar.progress(min(p_val, 90))
+
+    progress_bar.progress(90)
 
     # 階段 4：寫入系統資料庫
     status_text.markdown('<div class="loading-status-text">階段 4/4：正在完成最終合併並寫入系統資料庫...</div>', unsafe_allow_html=True)
-    progress_bar.progress(95)
     time.sleep(0.2)
 
     final_df = pd.DataFrame(merged_rows, columns=all_columns)
@@ -1016,36 +1032,42 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 st.info(f"【{selected_role}】此基準檔已完成載入。")
 
     # --- 2. 更新檔上傳處理（帶進度條與防重複鎖） ---
+    import hashlib
+
+    # --- 2. 更新檔上傳處理（改用檔案內容 Hash 偵測，確保內容修改時必會重新觸發） ---
     with col_up2:
         st.markdown("##### 2. 後續異動/更新檔上傳")
         st.caption("僅含班別代碼之更新檔，系統將自動比對員編並對照基準字典補時。")
         update_uploaded_file = st.file_uploader(f"上傳【{selected_role}】更新異動檔", type=["xlsx", "xls", "csv", "txt"], key=f"up_up_{selected_role}")
         
-        update_sig_key = f"processed_update_{selected_role}_sig"
-        update_signature = f"{update_uploaded_file.name}_{update_uploaded_file.size}" if update_uploaded_file else None
-
+        update_hash_key = f"processed_update_{selected_role}_hash"
+        
         if update_uploaded_file is not None:
-            if st.session_state.get(update_sig_key) != update_signature:
+            file_bytes = update_uploaded_file.getvalue()
+            current_file_hash = hashlib.md5(file_bytes).hexdigest()
+            
+            # 只有當檔案內容改變（Hash 不同）時，才執行合併更新
+            if st.session_state.get(update_hash_key) != current_file_hash:
                 try:
                     if update_uploaded_file.name.endswith('.csv'):
-                        up_df = pd.read_csv(update_uploaded_file)
+                        up_df = pd.read_csv(io.BytesIO(file_bytes))
                     else:
-                        up_df = pd.read_excel(update_uploaded_file, header=3)
+                        up_df = pd.read_excel(io.BytesIO(file_bytes), header=3)
                     
-                    # 執行合併引擎（內含階段 1 至 4 的進度條）
+                    # 執行合併覆蓋引擎
                     merged_df = merge_update_file_with_progress(target_path, up_df)
                     merged_df.to_excel(target_path, index=False)
                     
-                    # 紀錄已處理特徵，鎖定避免重複迴圈
-                    st.session_state[update_sig_key] = update_signature
+                    # 記錄最新檔案的 Hash，避免畫面重新整理時重複執行
+                    st.session_state[update_hash_key] = current_file_hash
                     
-                    st.success(f"【{selected_role}】更新檔合併成功（已自動對照基準字典補齊時間）")
+                    st.success(f"【{selected_role}】更新檔合併成功（已強制覆蓋更新變更之欄位）")
                     time.sleep(0.5)
                     st.rerun()
                 except Exception as e:
                     st.error(f"更新檔合併失敗: {e}")
             else:
-                st.info(f"【{selected_role}】此更新檔已完成合併。")
+                st.info(f"【{selected_role}】此更新檔內容已完成合併。若修改了檔案內容並重新上傳，系統將自動套用更新。")
     st.stop()
 
 # --- 一般系統首頁介面 ---
