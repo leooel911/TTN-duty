@@ -990,32 +990,33 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.markdown("##### 2. 後續異動/更新檔上傳")
         st.caption("僅含班別代碼之更新檔，系統將自動比對員編並對照基準字典補時。")
         update_uploaded_file = st.file_uploader(f"上傳【{selected_role}】更新異動檔", type=["xlsx", "xls", "csv", "txt"], key=f"up_up_{selected_role}")
+        
+        # 使用檔案名稱與大小作為唯一識別鎖，避免重複觸發
+        file_signature = f"{update_uploaded_file.name}_{update_uploaded_file.size}" if update_uploaded_file else None
+        processed_signature_key = f"processed_{selected_role}_signature"
+
         if update_uploaded_file is not None:
-            try:
-                if update_uploaded_file.name.endswith('.csv'):
-                    up_df = pd.read_csv(update_uploaded_file)
-                else:
-                    up_df = pd.read_excel(update_uploaded_file, header=3)
-                
-                # 執行合併引擎（只執行一次 1 到 4 階段並支援欄位擴充）
-                merged_df = merge_update_file_with_progress(target_path, up_df)
-                merged_df.to_excel(target_path, index=False)
-                st.success(f"【{selected_role}】更新檔合併成功（已自動對照基準字典補齊時間）")
-                st.rerun()
-            except Exception as e:
-                st.error(f"更新檔合併失敗: {e}")
-
-    st.markdown("---")
-    file_exists = os.path.exists(target_path)
-    st.write("目前檔案狀態：" + ("已存在" if file_exists else "無檔案"))
-    if file_exists:
-        if st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案"):
-            os.remove(target_path)
-            st.success(f"已成功刪除【{selected_role}】的班表檔案")
-            st.rerun()
-    else:
-        st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案", disabled=True)
-
+            if st.session_state.get(processed_signature_key) != file_signature:
+                try:
+                    if update_uploaded_file.name.endswith('.csv'):
+                        up_df = pd.read_csv(update_uploaded_file)
+                    else:
+                        up_df = pd.read_excel(update_uploaded_file, header=3)
+                    
+                    # 執行合併引擎
+                    merged_df = merge_update_file_with_progress(target_path, up_df)
+                    merged_df.to_excel(target_path, index=False)
+                    
+                    # 紀錄已處理的檔案特徵，鎖定不再重複執行
+                    st.session_state[processed_signature_key] = file_signature
+                    
+                    st.success(f"【{selected_role}】更新檔合併成功（已自動對照基準字典補齊時間）")
+                    time.sleep(1)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"更新檔合併失敗: {e}")
+            else:
+                st.info(f"【{selected_role}】此檔案已經完成合併，若需重新上傳請重新整理頁面或更換檔名。")
     st.stop()
 
 # --- 一般系統首頁介面 ---
