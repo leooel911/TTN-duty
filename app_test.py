@@ -990,18 +990,52 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     col_up1, col_up2 = st.columns(2)
     
-    # --- 1. 基準檔上傳區塊 ---
+    # --- 1. 基準檔上傳區塊（加入進度條與狀態顯示） ---
     with col_up1:
         st.markdown("##### 1. 每月 20 號基準大表上傳")
         uploaded_file = st.file_uploader(f"上傳【{selected_role}】完整基準檔", type=["xlsx", "xls", "csv", "txt"], key=f"base_up_{selected_role}")
+        
+        base_hash_key = f"processed_base_{selected_role}_hash"
+        
         if uploaded_file is not None:
-            with open(target_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            st.success(f"【{selected_role}】基準檔上傳成功")
-            time.sleep(0.5)
-            st.rerun()
+            file_bytes = uploaded_file.getvalue()
+            current_file_hash = hashlib.md5(file_bytes).hexdigest()
+            
+            if st.session_state.get(base_hash_key) != current_file_hash:
+                status_text = st.empty()
+                progress_bar = st.progress(0)
+                
+                try:
+                    status_text.markdown('<div class="loading-status-text">階段 1/3：正在接收並解析基準大表檔案...</div>', unsafe_allow_html=True)
+                    progress_bar.progress(30)
+                    time.sleep(0.3)
+                    
+                    with open(target_path, "wb") as f:
+                        f.write(file_bytes)
+                        
+                    status_text.markdown('<div class="loading-status-text">階段 2/3：正在建立全車次與班別對照字典庫...</div>', unsafe_allow_html=True)
+                    progress_bar.progress(70)
+                    time.sleep(0.3)
+                    
+                    st.session_state[base_hash_key] = current_file_hash
+                    
+                    progress_bar.progress(100)
+                    status_text.markdown('<div class="loading-status-text">階段 3/3：基準大表上傳與系統初始化完成！</div>', unsafe_allow_html=True)
+                    time.sleep(0.5)
+                    
+                    status_text.empty()
+                    progress_bar.empty()
+                    
+                    st.success(f"【{selected_role}】基準檔上傳成功並已建置字典庫")
+                    st.rerun()
+                except Exception as e:
+                    status_text.empty()
+                    progress_bar.empty()
+                    st.error(f"基準檔上傳失敗: {e}")
+            else:
+                st.info(f"【{selected_role}】此基準檔已完成上傳與初始化。")
 
-    # --- 2. 後續異動/更新檔上傳區塊 (採用 Hash 偵測 + 智慧合併覆蓋引擎) ---
+    # --- 2. 後續異動/更新檔上傳區塊（結合完整 4 階段進度條） ---
     with col_up2:
         st.markdown("##### 2. 後續異動/更新檔上傳")
         st.caption("僅含班別代碼之更新檔，系統將自動比對並透過字典補時。")
@@ -1020,7 +1054,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     else:
                         up_df = pd.read_excel(io.BytesIO(file_bytes), header=3)
                     
-                    # 執行智慧合併覆蓋與補時引擎
+                    # 執行智慧合併覆蓋與補時引擎（內含完整的 4 階段進度條）
                     merged_df = merge_update_file_with_progress(target_path, up_df)
                     merged_df.to_excel(target_path, index=False)
                     
