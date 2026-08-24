@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import re
 
-st.set_page_config(page_title="TTN Shift 整合測試專案 (Sandbox)", layout="centered")
+st.set_page_config(page_title="TTN Shift 完整動態日期測試", layout="centered")
 
 st.markdown("""
 <style>
@@ -25,22 +25,22 @@ st.markdown("""
 
 st.markdown("""
 <div class="test-banner">
-    🧪 整合測試沙盒 (Sandbox)：模擬 21 號後每日更新異動檔，並連動查詢系統！
+    🧪 完整動態日期與字典對照沙盒 (Sandbox)：支援新檔實際天數（如 09/01 ~ 09/21）展開！
 </div>
 """, unsafe_allow_html=True)
 
-st.title("每日換班資料自動對照與系統測試")
+st.title("每日換班資料自動對照與多日展開測試")
 
 # --- 1. 資料上傳區 ---
-st.subheader("1. 匯入本月排班基準與每日異動檔")
+st.subheader("1. 匯入排班基準與每日異動檔")
 col1, col2 = st.columns(2)
 
 with col1:
     base_file = st.file_uploader("上傳 20 號基準總表 (含完整時間)", type=["xlsx", "xls"], key="base_up")
 with col2:
-    realtime_file = st.file_uploader("上傳最新換班異動檔 (純代碼)", type=["xls", "xlsx"], key="rt_up")
+    realtime_file = st.file_uploader("上傳最新換班異動檔 (純代碼，如至09/21)", type=["xls", "xlsx"], key="rt_up")
 
-# --- 2. 核心字典建立與轉換函式 ---
+# --- 2. 核心字典建立 ---
 def build_shift_dict(file_buffer):
     dict_map = {}
     try:
@@ -62,66 +62,84 @@ def build_shift_dict(file_buffer):
     return dict_map
 
 if base_file and realtime_file:
-    # 建立字典
     shift_dict = build_shift_dict(base_file)
     st.success(f"成功載入 20 號基準表，建立 {len(shift_dict)} 筆班別時間對照字典！")
 
     try:
-        # 讀取每日更新的新檔
+        # 讀取 21 號後異動檔
         df_rt = pd.read_excel(realtime_file, header=None)
         
-        # 這裡我們模擬將新檔轉換成帶有正確時間的標準格式
-        # 假設日期欄位從索引 5 開始
-        processed_rows = []
+        # 自動抓取日期列 (假設日期在第 5 行，索引 4 或 5，依照你的表結構微調)
+        # 根據你一開始提供的截圖，日期在第 5 行 (索引 4) 的 F 欄開始 (索引 5)
+        date_row_idx = 4 
+        dates = []
+        date_col_indices = []
+        
+        for c_idx in range(5, df_rt.shape[1]):
+            val = df_rt.iloc[date_row_idx, c_idx]
+            if not pd.isna(val):
+                dates.append(str(val).strip())
+                date_col_indices.append(c_idx)
+        
+        st.info(f"系統自動偵測到新檔案包含的日期範圍共 {len(dates)} 天（從 {dates[0] if dates else '未知'} 到 {dates[-1] if dates else '未知'}）")
+
+        # 將整張表的橫向日期展開為直向明細 (Melt)
+        all_records = []
         for r_idx in range(6, len(df_rt)):
             emp_id = df_rt.iloc[r_idx, 0]
             emp_name = df_rt.iloc[r_idx, 2]
             if pd.isna(emp_id): continue
             
-            # 抓取第一天作為示範欄位 (索引5)
-            code = str(df_rt.iloc[r_idx, 5]).strip().upper()
-            t_info = shift_dict.get(code, {"start": code, "end": code})
-            
-            processed_rows.append({
-                "員編": str(emp_id),
-                "姓名": str(emp_name),
-                "班別代碼": code,
-                "開始時間": t_info["start"],
-                "結束時間": t_info["end"]
-            })
+            for d, c_idx in zip(dates, date_col_indices):
+                code = str(df_rt.iloc[r_idx, c_idx]).strip().upper()
+                if code == "NAN" or code == "": continue
+                
+                t_info = shift_dict.get(code, {"start": code, "end": code})
+                
+                all_records.append({
+                    "員編": str(emp_id),
+                    "姓名": str(emp_name),
+                    "日期": d,
+                    "班別代碼": code,
+                    "開始時間": t_info["start"],
+                    "結束時間": t_info["end"]
+                })
         
-        df_processed = pd.DataFrame(processed_rows)
+        df_processed = pd.DataFrame(all_records)
 
         st.markdown("---")
-        st.subheader("2. 模擬三大系統功能測試")
+        st.subheader("2. 模擬三大系統功能測試（支援多日展開）")
         
-        tab1, tab2 = st.tabs(["🔍 個人班表快速查詢", "⏱️ 時段快篩模擬"])
+        tab1, tab2 = st.tabs(["🔍 個人完整班表查詢", "⏱️ 單日指定時段快篩"])
         
         with tab1:
-            st.markdown("##### 測試：查詢特定員工換班後的最新時間")
+            st.markdown("##### 測試：查詢特定員工在動態日期內的最新班表")
             selected_emp = st.selectbox("選擇員工姓名", df_processed["姓名"].unique())
             emp_data = df_processed[df_processed["姓名"] == selected_emp]
             st.dataframe(emp_data, use_container_width=True)
             
         with tab2:
-            st.markdown("##### 測試：輸入特定時間區段，快篩出勤組員")
+            st.markdown("##### 測試：指定「特定日期」與「時間區段」快篩組員")
+            selected_date = st.selectbox("選擇查詢日期", dates)
+            
             col_a, col_b = st.columns(2)
             with col_a:
                 filter_start = st.text_input("篩選開始時間 (例 06:00)", "06:00")
             with col_b:
                 filter_end = st.text_input("篩選結束時間 (例 16:00)", "16:00")
                 
-            # 簡單篩選出符合時間區段的班別
+            # 篩選特定日期與時間區段
             matched_shift = df_processed[
+                (df_processed["日期"] == selected_date) & 
                 (df_processed["開始時間"] >= filter_start) & 
                 (df_processed["結束時間"] <= filter_end)
             ]
-            st.write(f"符合該時段的組員共 {len(matched_shift)} 人：")
+            st.write(f"在 **{selected_date}** 符合該時段的組員共 {len(matched_shift)} 人：")
             st.dataframe(matched_shift, use_container_width=True)
 
-        st.info("💡 測試順暢！這代表每天上傳最新異動檔後，系統都能即時對照並無縫支援所有查詢功能。")
+        st.info("💡 測試成功！系統已完美支援自動抓取實際日期範圍（如 09/21 為止），並自動將每日異動對照成正確時間供系統查詢！")
 
     except Exception as e:
-        st.error(f"解析每日異動檔失敗: {e}")
+        st.error(f"解析異動檔並展開日期失敗: {e}")
 else:
-    st.info("請同時上傳【20 號基準總表】與【每日更新的換班異動檔】來啟動整合測試。")
+    st.info("請同時上傳【20 號基準總表】與【每日更新的換班異動檔】來啟動完整動態測試。")
