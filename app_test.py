@@ -174,9 +174,7 @@ NATIONAL_HOLIDAYS = {
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "TRAIN CREW DUTY CALENDAR"
 
-# 雙軌資料庫定義：
-# 20 號為基準初版檔 (完整詳細時間與車次)
-# 21 號為更新異動新檔 (每月 21 號凌晨更新)
+# 雙軌資料庫定義
 ROLE_FILES_BASE = {
     "駕駛": "TD_base20.xlsx",
     "列車長": "TM_base20.xlsx",
@@ -189,7 +187,6 @@ ROLE_FILES_UPDATE = {
     "服勤員": "TA_update21.xlsx"
 }
 
-# 相容舊版單一檔案變數
 ROLE_FILES = {
     "駕駛": "TD.xlsx",
     "列車長": "TM.xlsx",
@@ -354,108 +351,89 @@ def parse_cell(raw):
     notes = [l for l in lines if l not in times and l != real_train]
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
-# --- 雙軌融合與字典轉譯核心引擎 ---
-def get_merged_schedule_data(input_str):
-    input_clean = input_str.strip().upper()
-    matched_role = None
-    matched_row_base = None
-    matched_row_update = None
-    emp_id, emp_name = "", ""
-    df_base_found, df_update_found = None, None
-
-    # 1. 尋找對應職位與組員資料 (優先從 20 號基準表或單一表尋找)
-    for role, path_base in ROLE_FILES_BASE.items():
-        fallback_path = ROLE_FILES.get(role)
-        target_read_path = path_base if os.path.exists(path_base) else fallback_path
-        if target_read_path and os.path.exists(target_read_path):
-            df_temp = pd.read_excel(target_read_path, header=3)
-            df_temp.columns = [str(c).strip() for c in df_temp.columns]
-            for idx, row in df_temp.iterrows():
-                if str(row.iloc[0]).strip().upper() == input_clean or str(row.iloc[1]).strip().upper() == input_clean:
-                    matched_role = role
-                    matched_row_base = row
-                    emp_id = str(row.iloc[0]).strip()
-                    emp_name = str(row.iloc[1]).strip()
-                    df_base_found = df_temp
-                    break
-        if matched_role: break
-
-    if matched_role is None:
-        raise ValueError(f"找不到員編或姓名為「{input_str}」的資料。")
-
-    # 2. 建立 20 號基準字典 (將所有代碼對應到詳細格子內容，供 21 號純代碼轉譯使用)
+# --- 高效能雙軌快取合併引擎 ---
+@st.cache_data(ttl=60)
+def get_cached_merged_schedule(role):
+    path_base = ROLE_FILES_BASE.get(role, ROLE_FILES[role])
+    fallback_path = ROLE_FILES.get(role)
+    target_read_path = path_base if os.path.exists(path_base) else fallback_path
+    
+    if not target_read_path or not os.path.exists(target_read_path):
+        return None, [], {}, None, {}
+        
+    df_base = pd.read_excel(target_read_path, header=3)
+    df_base.columns = [str(c).strip() for c in df_base.columns]
+    
+    # 建立 20 號基準字典
     code_dictionary = {}
-    if df_base_found is not None:
-        for col_idx in range(2, len(df_base_found.columns)):
-            for _, r in df_base_found.iterrows():
-                cell_val = r.iloc[col_idx]
-                if not pd.isna(cell_val):
-                    parsed_c = parse_cell(cell_val)
-                    tr_code = str(parsed_c["train"]).strip().upper()
-                    if tr_code and tr_code != "無" and not tr_code.startswith("DO"):
-                        code_dictionary[tr_code] = cell_val
+    for col_idx in range(2, len(df_base.columns)):
+        for _, r in df_base.iterrows():
+            cell_val = r.iloc[col_idx]
+            if not pd.isna(cell_val):
+                parsed_c = parse_cell(cell_val)
+                tr_code = str(parsed_c["train"]).strip().upper()
+                if tr_code and tr_code != "無" and not tr_code.startswith("DO"):
+                    code_dictionary[tr_code] = cell_val
 
-    # 3. 讀取 21 號更新檔 (若存在)
-    path_update = ROLE_FILES_UPDATE.get(matched_role)
-    df_update_found = None
+    # 讀取 21 號更新檔 (若存在)
+    path_update = ROLE_FILES_UPDATE.get(role)
+    df_update = None
+    update_date_map = {}
     if path_update and os.path.exists(path_update):
         try:
-            df_update_found = pd.read_excel(path_update, header=5)
-            df_update_found.columns = [str(c).strip() for c in df_update_found.columns]
-            # 找到該員編在 21 號檔中的列
-            for idx, row in df_update_found.iterrows():
-                if str(row.iloc[0]).strip().upper() == input_clean or str(row.iloc[2]).strip().upper() == input_clean:
-                    matched_row_update = row
-                    break
+            df_update = pd.read_excel(path_update, header=5)
+            df_update.columns = [str(c).strip() for c in df_update.columns]
+            raw_u = pd.read_excel(path_update, header=None)
+            for u_col_idx in range(5, len(df_update.columns)):
+                date_in_row4 = str(raw_u.iloc[4, u_col_idx]).strip()
+                match_d = re.search(r'(\d+/\d+)', date_in_row4)
+                if match_d:
+                    update_date_map[match_d.group(1)] = u_col_idx
         except: pass
 
-    # 4. 組合日期與格子內容 (21號有變更抓21號，無變更/未覆蓋則回退20號)
-    col_names = df_base_found.columns[2:]
+    col_names = df_base.columns[2:]
     dates = []
-    start_dt = date(2026, 2, 1)
-    for i, col in enumerate(col_names):
-        col_str = str(col).strip()
-        match_d = re.search(r'(\d+/\d+)', col_str)
-        if match_d:
-            dates.append(match_d.group(1))
-            if i == 0: m, d = map(int, match_d.group(1).split("/")); start_dt = date(2026, m, d)
-        else: dates.append(col_str)
+    for col in col_names:
+        match_d = re.search(r'(\d+/\d+)', str(col))
+        if match_d: dates.append(match_d.group(1))
 
-    final_cells = []
-    for i, d_str in enumerate(dates):
-        base_val = matched_row_base.iloc[i + 2] if matched_row_base is not None else None
-        update_val = None
+    return df_base, dates, code_dictionary, df_update, update_date_map
 
-        if matched_row_update is not None and df_update_found is not None:
-            # 嘗試在 21 號欄位中尋找對應的日期欄
-            for u_col_idx in range(5, len(df_update_found.columns)):
-                u_col_name = str(df_update_found.columns[u_col_idx]).strip()
-                # 檢查 21 號原始檔的日期列 (通常在 header 4)
-                try:
-                    raw_u = pd.read_excel(path_update, header=None)
-                    date_in_row4 = str(raw_u.iloc[4, u_col_idx]).strip()
-                    if d_str in date_in_row4 or date_in_row4.endswith(d_str) or d_str.split('/')[-1] in date_in_row4:
+def get_merged_schedule_data(input_str):
+    input_clean = input_str.strip().upper()
+    for role in ROLE_FILES.keys():
+        df_base, dates, code_dict, df_update, update_date_map = get_cached_merged_schedule(role)
+        if df_base is None: continue
+        
+        for _, row in df_base.iterrows():
+            emp_id = str(row.iloc[0]).strip()
+            emp_name = str(row.iloc[1]).strip()
+            if emp_id.upper() == input_clean or emp_name.upper() == input_clean:
+                matched_row_update = None
+                if df_update is not None:
+                    for _, u_row in df_update.iterrows():
+                        if str(u_row.iloc[0]).strip().upper() == input_clean or str(u_row.iloc[2]).strip().upper() == input_clean:
+                            matched_row_update = u_row
+                            break
+                
+                final_cells = []
+                for i, d_str in enumerate(dates):
+                    base_val = row.iloc[i + 2]
+                    update_val = None
+                    if matched_row_update is not None and d_str in update_date_map:
+                        u_col_idx = update_date_map[d_str]
                         update_val = matched_row_update.iloc[u_col_idx]
-                        break
-                except: pass
-
-        # 邏輯判斷：21號新檔如果有變更異動則抓取 21 號為主，如果比對後沒有更新則顯示 20 號
-        chosen_val = base_val
-        if update_val is not None and not pd.isna(update_val) and str(update_val).strip() != "":
-            up_str = str(update_val).strip()
-            # 如果 21 號是純代碼，透過 20 號字典轉譯出完整詳細時間；若有詳細內容則直接用
-            if up_str in code_dictionary:
-                chosen_val = code_dictionary[up_str]
-            else:
-                chosen_val = update_val
-
-        final_cells.append(chosen_val)
-
-    return start_dt, dates, emp_id, emp_name, final_cells
-
-# 為了維持系統相容性，將舊的 process_file_data 指向新的雙軌融合引擎
-def process_file_data(input_str):
-    return get_merged_schedule_data(input_str)
+                    
+                    chosen_val = base_val
+                    if update_val is not None and not pd.isna(update_val) and str(update_val).strip() != "":
+                        up_str = str(update_val).strip()
+                        chosen_val = code_dict.get(up_str, update_val)
+                    final_cells.append(chosen_val)
+                
+                start_dt = date(2026, int(dates[0].split('/')[0]), int(dates[0].split('/')[1]))
+                return start_dt, dates, emp_id, emp_name, final_cells
+                
+    raise ValueError(f"找不到員編或姓名為「{input_str}」的資料。")
 
 def draw_bold_text(ax, x, y, text, **kwargs):
     ax.text(x, y, text, **kwargs)
@@ -1032,7 +1010,6 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
         else:
             dynamic_time_set = set()
             for _, r_row in df_search.iterrows():
-                # 測試抓取幾位組員的合併資料來建立時段清單
                 emp_sample_id = str(r_row.iloc[0]).strip()
                 try:
                     _, _, _, _, sample_cells = get_merged_schedule_data(emp_sample_id)
@@ -1368,22 +1345,36 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             log_activity(f"換假快篩 [{selected_role}] 想休:{target_date} 還假:{return_date}")
             st.session_state["ex_sub_mode"] = "results"
             try:
-                df_ex = pd.read_excel(sample_path, header=3)
-                df_ex.columns = [str(c).strip() for c in df_ex.columns]
-                
+                df_base, dates_list, code_dict, df_update, update_date_map = get_cached_merged_schedule(selected_role)
                 candidates = []
-                for _, row in df_ex.iterrows():
+                for _, row in df_base.iterrows():
                     emp_id = str(row.iloc[0]).strip()
                     emp_name = str(row.iloc[1]).strip()
                     try:
-                        _, dates_list, _, _, emp_cells = get_merged_schedule_data(emp_id)
+                        matched_row_update = None
+                        if df_update is not None:
+                            for _, u_row in df_update.iterrows():
+                                if str(u_row.iloc[0]).strip().upper() == emp_id.upper() or str(u_row.iloc[2]).strip().upper() == emp_name.upper():
+                                    matched_row_update = u_row
+                                    break
+                        
+                        emp_cells = []
+                        for i, d_str in enumerate(dates_list):
+                            base_val = row.iloc[i + 2]
+                            update_val = None
+                            if matched_row_update is not None and d_str in update_date_map:
+                                update_val = matched_row_update.iloc[update_date_map[d_str]]
+                            chosen_val = base_val
+                            if update_val is not None and not pd.isna(update_val) and str(update_val).strip() != "":
+                                chosen_val = code_dict.get(str(update_val).strip(), update_val)
+                            emp_cells.append(chosen_val)
+
                         if target_date not in dates_list or return_date not in dates_list:
                             continue
 
                         t_idx = dates_list.index(target_date)
                         r_idx = dates_list.index(return_date)
 
-                        # 檢查整週外支援
                         has_external_support = False
                         s_wk_idx = max(0, t_idx - 3)
                         e_wk_idx = min(len(dates_list) - 1, t_idx + 3)
