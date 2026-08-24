@@ -976,47 +976,76 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     target_path = ROLE_FILES[selected_role]
 
     col_up1, col_up2 = st.columns(2)
+    
+    # --- 1. 基準檔上傳處理（帶進度條與防重複鎖） ---
     with col_up1:
         st.markdown("##### 1. 每月 20 號基準檔上傳")
         st.caption("完整時間大表，用以建立標準答案庫與時間對照字典。")
         base_uploaded_file = st.file_uploader(f"上傳【{selected_role}】基準班表", type=["xlsx", "xls", "csv", "txt"], key=f"base_up_{selected_role}")
-        if base_uploaded_file is not None:
-            with open(target_path, "wb") as f:
-                f.write(base_uploaded_file.getbuffer())
-            st.success(f"【{selected_role}】基準檔上傳成功")
-            st.rerun()
+        
+        base_sig_key = f"processed_base_{selected_role}_sig"
+        base_signature = f"{base_uploaded_file.name}_{base_uploaded_file.size}" if base_uploaded_file else None
 
+        if base_uploaded_file is not None:
+            if st.session_state.get(base_sig_key) != base_signature:
+                try:
+                    status_text_b = st.empty()
+                    progress_bar_b = st.progress(0)
+                    
+                    status_text_b.markdown(f'<div class="loading-status-text">正在讀取並寫入【{selected_role}】基準檔...</div>', unsafe_allow_html=True)
+                    progress_bar_b.progress(40)
+                    time.sleep(0.3)
+
+                    with open(target_path, "wb") as f:
+                        f.write(base_uploaded_file.getbuffer())
+                    
+                    progress_bar_b.progress(100)
+                    time.sleep(0.3)
+                    status_text_b.empty()
+                    progress_bar_b.empty()
+
+                    # 紀錄已處理特徵，鎖定避免重複迴圈
+                    st.session_state[base_sig_key] = base_signature
+                    
+                    st.success(f"【{selected_role}】基準檔上傳成功")
+                    time.sleep(0.5)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"基準檔處理失敗: {e}")
+            else:
+                st.info(f"【{selected_role}】此基準檔已完成載入。")
+
+    # --- 2. 更新檔上傳處理（帶進度條與防重複鎖） ---
     with col_up2:
         st.markdown("##### 2. 後續異動/更新檔上傳")
         st.caption("僅含班別代碼之更新檔，系統將自動比對員編並對照基準字典補時。")
         update_uploaded_file = st.file_uploader(f"上傳【{selected_role}】更新異動檔", type=["xlsx", "xls", "csv", "txt"], key=f"up_up_{selected_role}")
         
-        # 使用檔案名稱與大小作為唯一識別鎖，避免重複觸發
-        file_signature = f"{update_uploaded_file.name}_{update_uploaded_file.size}" if update_uploaded_file else None
-        processed_signature_key = f"processed_{selected_role}_signature"
+        update_sig_key = f"processed_update_{selected_role}_sig"
+        update_signature = f"{update_uploaded_file.name}_{update_uploaded_file.size}" if update_uploaded_file else None
 
         if update_uploaded_file is not None:
-            if st.session_state.get(processed_signature_key) != file_signature:
+            if st.session_state.get(update_sig_key) != update_signature:
                 try:
                     if update_uploaded_file.name.endswith('.csv'):
                         up_df = pd.read_csv(update_uploaded_file)
                     else:
                         up_df = pd.read_excel(update_uploaded_file, header=3)
                     
-                    # 執行合併引擎
+                    # 執行合併引擎（內含階段 1 至 4 的進度條）
                     merged_df = merge_update_file_with_progress(target_path, up_df)
                     merged_df.to_excel(target_path, index=False)
                     
-                    # 紀錄已處理的檔案特徵，鎖定不再重複執行
-                    st.session_state[processed_signature_key] = file_signature
+                    # 紀錄已處理特徵，鎖定避免重複迴圈
+                    st.session_state[update_sig_key] = update_signature
                     
                     st.success(f"【{selected_role}】更新檔合併成功（已自動對照基準字典補齊時間）")
-                    time.sleep(1)
+                    time.sleep(0.5)
                     st.rerun()
                 except Exception as e:
                     st.error(f"更新檔合併失敗: {e}")
             else:
-                st.info(f"【{selected_role}】此檔案已經完成合併，若需重新上傳請重新整理頁面或更換檔名。")
+                st.info(f"【{selected_role}】此更新檔已完成合併。")
     st.stop()
 
 # --- 一般系統首頁介面 ---
