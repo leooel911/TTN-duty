@@ -407,6 +407,7 @@ def get_merged_schedule_data(input_str):
                 
     raise ValueError(f"找不到員編或姓名為「{input_str}」的資料。")
 
+# 補上 process_file_data 函數定義以修復錯誤
 def process_file_data(input_str):
     return get_merged_schedule_data(input_str)
 
@@ -1464,7 +1465,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             st.markdown(f"""
             <div class="integrated-crew-box">
                 <div class="time-header-row">
-                    <span class="compact-time" style="color: #34D399;">{cand['當天Summary']}</span>
+                    <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
                     <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                 </div>
                 <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
