@@ -174,7 +174,6 @@ NATIONAL_HOLIDAYS = {
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "TRAIN CREW DUTY CALENDAR"
 
-# 雙軌資料庫定義
 ROLE_FILES_BASE = {
     "駕駛": "TD_base20.xlsx",
     "列車長": "TM_base20.xlsx",
@@ -215,39 +214,19 @@ def is_module_maintenance(module_key):
     flag_path = MAINTENANCE_FLAGS.get(module_key)
     return os.path.exists(flag_path) if flag_path else False
 
-def parse_device_info(ua_string):
-    ua = ua_string.lower()
-    if "iphone" in ua: device = "iPhone"
-    elif "ipad" in ua: device = "iPad"
-    elif "android" in ua:
-        device = "Android Phone"
-        if "build" in ua:
-            try:
-                parts = ua_string.split(";")
-                for p in parts:
-                    if "build" in p.lower():
-                        device = f"Android ({p.split('Build')[0].strip()})"
-            except: pass
-    elif "macintosh" in ua or "mac os" in ua: device = "Mac"
-    elif "windows" in ua: device = "Windows PC"
-    else: device = "Desktop / Other"
-
-    if "safari" in ua and "chrome" not in ua and "crios" not in ua: browser = "Safari"
-    elif "chrome" in ua or "crios" in ua: browser = "Chrome"
-    elif "line" in ua: browser = "LINE App"
-    elif "edg" in ua: browser = "Edge"
-    else: browser = "Browser"
-
-    return f"{device} [{browser}]"
-
 def log_activity(input_str):
     try:
         now_tw = datetime.now(TAIWAN_TZ).strftime('%Y-%m-%d %H:%M:%S')
-        ua_raw = ""
-        try: ua_raw = st.context.headers.get("user-agent", "")
+        device_info = "Web Browser"
+        try:
+            ua_raw = st.context.headers.get("user-agent", "")
+            if ua_raw:
+                ua = ua_raw.lower()
+                if "iphone" in ua: device_info = "iPhone"
+                elif "android" in ua: device_info = "Android"
+                elif "macintosh" in ua or "windows" in ua: device_info = "Desktop PC"
         except: pass
         
-        device_info = parse_device_info(ua_raw) if ua_raw else "未知裝置"
         current_operator = st.session_state.get("current_user_id", "未知")
         log_entry = f"{now_tw} | 操作者員編: {current_operator} | 裝置: {device_info} | 查詢: {input_str}\n"
         with open(LOG_FILE, "a", encoding="utf-8") as f: f.write(log_entry)
@@ -262,29 +241,25 @@ if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
 
 def get_file_mtime_str(path):
-    if os.path.exists(path):
-        mtime = os.path.getmtime(path)
-        dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(TAIWAN_TZ)
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        if os.path.exists(path):
+            mtime = os.path.getmtime(path)
+            dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(TAIWAN_TZ)
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except: pass
     return "無檔案"
 
 def get_schedule_range():
-    for role in ROLE_FILES.keys():
-        path_base = ROLE_FILES_BASE.get(role, ROLE_FILES[role])
-        if os.path.exists(path_base):
-            try:
-                df = pd.read_excel(path_base, header=3)
+    try:
+        for role in ROLE_FILES.keys():
+            path_base = ROLE_FILES_BASE.get(role, ROLE_FILES[role])
+            target = path_base if os.path.exists(path_base) else ROLE_FILES.get(role)
+            if target and os.path.exists(target):
+                df = pd.read_excel(target, header=3)
                 cols = [str(c).strip() for c in df.columns[2:]]
                 dates = [re.search(r'(\d+/\d+)', c).group(1) for c in cols if re.search(r'(\d+/\d+)', c)]
                 if dates: return f"{dates[0]} 至 {dates[-1]}"
-            except: pass
-        elif os.path.exists(ROLE_FILES[role]):
-            try:
-                df = pd.read_excel(ROLE_FILES[role], header=3)
-                cols = [str(c).strip() for c in df.columns[2:]]
-                dates = [re.search(r'(\d+/\d+)', c).group(1) for c in cols if re.search(r'(\d+/\d+)', c)]
-                if dates: return f"{dates[0]} 至 {dates[-1]}"
-            except: pass
+    except: pass
     return "尚無資料"
 
 def pad_time(t_str):
@@ -351,7 +326,6 @@ def parse_cell(raw):
     notes = [l for l in lines if l not in times and l != real_train]
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
-# --- 高效能雙軌快取合併引擎 ---
 @st.cache_data(ttl=60)
 def get_cached_merged_schedule(role):
     path_base = ROLE_FILES_BASE.get(role, ROLE_FILES[role])
@@ -364,7 +338,6 @@ def get_cached_merged_schedule(role):
     df_base = pd.read_excel(target_read_path, header=3)
     df_base.columns = [str(c).strip() for c in df_base.columns]
     
-    # 建立 20 號基準字典
     code_dictionary = {}
     for col_idx in range(2, len(df_base.columns)):
         for _, r in df_base.iterrows():
@@ -375,7 +348,6 @@ def get_cached_merged_schedule(role):
                 if tr_code and tr_code != "無" and not tr_code.startswith("DO"):
                     code_dictionary[tr_code] = cell_val
 
-    # 讀取 21 號更新檔 (若存在)
     path_update = ROLE_FILES_UPDATE.get(role)
     df_update = None
     update_date_map = {}
@@ -435,6 +407,9 @@ def get_merged_schedule_data(input_str):
                 
     raise ValueError(f"找不到員編或姓名為「{input_str}」的資料。")
 
+def process_file_data(input_str):
+    return get_merged_schedule_data(input_str)
+
 def draw_bold_text(ax, x, y, text, **kwargs):
     ax.text(x, y, text, **kwargs)
     offset = 0.0002
@@ -474,6 +449,42 @@ C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
 C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
+
+# --- 前置授權碼門戶檢查 ---
+if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False):
+    st.markdown("""
+    <div style="text-align: center; margin-top: 2rem; margin-bottom: 1.5rem;">
+        <div style="font-size: 34px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
+        <div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace;">
+            BUSY DOING NOTHING PRODUCTIVE<br>C.L.F DUAL-DB EDITION
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2.2, 1])
+    with col2:
+        with st.form("auth_form"):
+            entered_emp = st.text_input("使用者員編", value="A", placeholder="例如: 023300", max_chars=10)
+            entered_key = st.text_input("系統授權碼", type="password", placeholder="請輸入系統授權碼...")
+            btn_auth = st.form_submit_button("進入系統")
+
+            if btn_auth:
+                clean_emp = entered_emp.strip()
+                if not clean_emp:
+                    st.error("請輸入有效的員編")
+                elif entered_key == CREW_ACCESS_PASSWORD:
+                    st.session_state["authenticated"] = True
+                    st.session_state["current_user_id"] = clean_emp
+                    st.rerun()
+                elif entered_key == ADMIN_PASSWORD:
+                    st.session_state["admin_logged_in"] = True
+                    st.session_state["current_user_id"] = f"ADMIN_{clean_emp}"
+                    st.session_state["nav_mode"] = "admin_panel"
+                    st.success("管理員驗證成功，正在載入後台...")
+                    st.rerun()
+                else:
+                    st.error("授權碼或密碼錯誤，請重新輸入")
+    st.stop()
 
 # --- 檢視完整班表 ---
 if st.session_state.get("inspect_emp_target") is not None:
@@ -585,42 +596,6 @@ if st.session_state.get("inspect_emp_target") is not None:
     except Exception as e:
         st.error(f"載入完整班表時發生錯誤: {e}")
 
-    st.stop()
-
-# --- 前置授權碼門戶檢查 ---
-if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False):
-    st.markdown("""
-    <div style="text-align: center; margin-top: 2rem; margin-bottom: 1.5rem;">
-        <div style="font-size: 34px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
-        <div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace;">
-            BUSY DOING NOTHING PRODUCTIVE<br>C.L.F DUAL-DB EDITION
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 2.2, 1])
-    with col2:
-        with st.form("auth_form"):
-            entered_emp = st.text_input("使用者員編", value="A", placeholder="例如: 023300", max_chars=10)
-            entered_key = st.text_input("系統授權碼", type="password", placeholder="請輸入系統授權碼...")
-            btn_auth = st.form_submit_button("進入系統")
-
-            if btn_auth:
-                clean_emp = entered_emp.strip()
-                if not clean_emp:
-                    st.error("請輸入有效的員編")
-                elif entered_key == CREW_ACCESS_PASSWORD:
-                    st.session_state["authenticated"] = True
-                    st.session_state["current_user_id"] = clean_emp
-                    st.rerun()
-                elif entered_key == ADMIN_PASSWORD:
-                    st.session_state["admin_logged_in"] = True
-                    st.session_state["current_user_id"] = f"ADMIN_{clean_emp}"
-                    st.session_state["nav_mode"] = "admin_panel"
-                    st.success("管理員驗證成功，正在載入後台...")
-                    st.rerun()
-                else:
-                    st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
 # --- 頂部質感標頭 ---
@@ -1489,7 +1464,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             st.markdown(f"""
             <div class="integrated-crew-box">
                 <div class="time-header-row">
-                    <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
+                    <span class="compact-time" style="color: #34D399;">{cand['當天Summary']}</span>
                     <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                 </div>
                 <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
