@@ -1261,7 +1261,7 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
                                     })
 
                     search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
-                    st.markdown(### 檢索結果：{start_date} 至 {end_date} ｜ 區間 {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）)
+                    st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ 區間 {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
                     
                     if search_results:
                         current_date_group = None
@@ -1768,14 +1768,12 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         </div>
         """, unsafe_allow_html=True)        
         
-        # 檢查是否有記錄需要捲動錨點
         scroll_idx = st.session_state.get("ex_scroll_target_idx", None)
 
         for idx, cand in enumerate(saved_candidates):
-            # 如果這張卡片是剛剛點擊的目標，注入 HTML 錨點自動對焦
             anchor_html = f'<div id="crew_card_{idx}"></div>' if scroll_idx == idx else ''
             if scroll_idx == idx:
-                st.session_state["ex_scroll_target_idx"] = None  # 用完即清除
+                st.session_state["ex_scroll_target_idx"] = None
 
             st.markdown(anchor_html + f"""
             <div class="integrated-crew-box">
@@ -1790,7 +1788,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             """, unsafe_allow_html=True)
             
             if st.button(f"檢視完整班表：{cand['姓名']} ({cand['員編']})", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
-                st.session_state["ex_scroll_target_idx"] = idx  # 記錄當前點擊的索引
+                st.session_state["ex_scroll_target_idx"] = idx
                 status_placeholder = st.empty()
                 progress_bar = st.progress(0)
 
