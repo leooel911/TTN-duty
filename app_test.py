@@ -29,7 +29,7 @@ ROLE_FILES = {
     "服勤員": os.path.join(DATA_DIR, "TA.xlsx")
 }
 
-# 班別代碼時間對應表專用路徑
+# 班別代碼時間對應表專用路徑 (窗口 3)
 SHIFT_MAPPING_FILE = os.path.join(DATA_DIR, "shift_mapping.xlsx")
 
 LOG_FILE = os.path.join(DATA_DIR, "activity_log.txt")
@@ -273,10 +273,14 @@ def get_schedule_range():
     for path in ROLE_FILES.values():
         if os.path.exists(path):
             try:
-                df = pd.read_excel(path, header=3)
-                cols = [str(c).strip() for c in df.columns[2:]]
-                dates = [re.search(r'(\d+/\d+)', c).group(1) for c in cols if re.search(r'(\d+/\d+)', c)]
-                if dates: return f"{dates[0]} 至 {dates[-1]}"
+                df = pd.read_excel(path, header=None)
+                # 動態搜尋日期範圍
+                for r_idx in range(min(6, len(df))):
+                    row_vals = [str(val).strip() for val in df.iloc[r_idx].values]
+                    date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
+                    if date_count >= 3:
+                        dates = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in df.iloc[r_idx].values if re.search(r'(\d+/\d+)', str(c))]
+                        if dates: return f"{dates[0]} 至 {dates[-1]}"
             except: pass
     return "尚無資料"
 
@@ -347,7 +351,7 @@ def parse_cell(raw):
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
 def load_shift_mapping_dict():
-    """載入全公司班別代碼時間對照表"""
+    """載入全公司班別代碼時間對照表 (窗口 3)"""
     mapping_dict = {}
     if os.path.exists(SHIFT_MAPPING_FILE):
         try:
@@ -368,12 +372,12 @@ def load_shift_mapping_dict():
     return mapping_dict
 
 def merge_update_file_with_mapping(base_path, update_df):
-    """結合「班別代碼時間對照表」與「21號更新檔」的精準合併引擎"""
+    """結合窗口3（對照表）與窗口2（更新檔）的智慧動態合併與異常容錯引擎"""
     status_text = st.empty()
     progress_bar = st.progress(0)
     
-    status_text.markdown('<div class="loading-status-text">階段 1/4：正在載入對照表與解析更新檔結構...</div>', unsafe_allow_html=True)
-    progress_bar.progress(25)
+    status_text.markdown('<div class="loading-status-text">階段 1/4：正在初始化智慧對照與容錯引擎...</div>', unsafe_allow_html=True)
+    progress_bar.progress(20)
     time.sleep(0.2)
 
     if not os.path.exists(base_path):
@@ -384,65 +388,64 @@ def merge_update_file_with_mapping(base_path, update_df):
     base_raw = pd.read_excel(base_path, header=None)
     shift_map = load_shift_mapping_dict()
     
-    status_text.markdown('<div class="loading-status-text">階段 2/4：正在進行員編與日期座標對映...</div>', unsafe_allow_html=True)
-    progress_bar.progress(50)
+    status_text.markdown('<div class="loading-status-text">階段 2/4：動態掃描基準大表與更新檔的表頭、日期欄位...</div>', unsafe_allow_html=True)
+    progress_bar.progress(45)
     time.sleep(0.2)
 
-    # 1. 尋找基準檔日期列與員編
+    # 1. 動態尋找基準檔表頭與日期欄位
     base_header_row = -1
     base_date_col_map = {}
-    for r_idx in range(len(base_raw)):
+    for r_idx in range(min(6, len(base_raw))):
         row_vals = [str(val).strip() for val in base_raw.iloc[r_idx].values]
-        for c_idx, val in enumerate(row_vals):
-            if re.search(r'\d{1,2}/\d{1,2}', val):
-                base_header_row = r_idx
-                break
-        if base_header_row != -1: break
+        date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
+        if date_count >= 3:
+            base_header_row = r_idx
+            break
+    if base_header_row == -1: base_header_row = 3
 
-    if base_header_row != -1:
-        for c_idx, val in enumerate(base_raw.iloc[base_header_row].values):
-            m = re.search(r'(\d+/\d+)', str(val))
-            if m:
-                clean_d = f"{int(m.group(1).split('/')[0])}/{int(m.group(1).split('/')[1])}"
-                base_date_col_map[clean_d] = c_idx
+    for c_idx, val in enumerate(base_raw.iloc[base_header_row].values):
+        m = re.search(r'(\d+/\d+)', str(val))
+        if m:
+            clean_d = f"{int(m.group(1).split('/')[0])}/{int(m.group(1).split('/')[1])}"
+            base_date_col_map[clean_d] = c_idx
 
+    # 建立基準檔員編對應表（純數字萃取）
     base_emp_row_map = {}
     for r_idx in range(base_header_row + 1, len(base_raw)):
         raw_emp = str(base_raw.iloc[r_idx, 0]).strip()
-        if raw_emp and raw_emp != "NAN":
+        if raw_emp and raw_emp.upper() != "NAN":
             pure_emp = re.sub(r'\D', '', raw_emp)
             if pure_emp: base_emp_row_map[pure_emp] = r_idx
 
-    # 2. 尋找更新檔日期列
+    # 2. 動態尋找更新檔表頭與日期欄位
     update_header_row = -1
     update_date_col_map = {}
-    for r_idx in range(len(update_df)):
+    for r_idx in range(min(6, len(update_df))):
         row_vals = [str(val).strip() for val in update_df.iloc[r_idx].values]
-        for c_idx, val in enumerate(row_vals):
-            if re.search(r'\d{1,2}/\d{1,2}', val):
-                update_header_row = r_idx
-                break
-        if update_header_row != -1: break
+        date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
+        if date_count >= 2:
+            update_header_row = r_idx
+            break
+    if update_header_row == -1: update_header_row = 0
 
-    if update_header_row != -1:
-        for c_idx, val in enumerate(update_df.iloc[update_header_row].values):
-            m = re.search(r'(\d+/\d+)', str(val))
-            if m:
-                clean_d = f"{int(m.group(1).split('/')[0])}/{int(m.group(1).split('/')[1])}"
-                update_date_col_map[clean_d] = c_idx
+    for c_idx, val in enumerate(update_df.iloc[update_header_row].values):
+        m = re.search(r'(\d+/\d+)', str(val))
+        if m:
+            clean_d = f"{int(m.group(1).split('/')[0])}/{int(m.group(1).split('/')[1])}"
+            update_date_col_map[clean_d] = c_idx
 
     bridge_col_mapping = {}
     for d_str, b_c_idx in base_date_col_map.items():
         if d_str in update_date_col_map:
             bridge_col_mapping[b_c_idx] = update_date_col_map[d_str]
 
-    status_text.markdown('<div class="loading-status-text">階段 3/4：正在透過對照表精準擴展班別時間並覆寫...</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 3/4：正在執行對照表查詢與異常容錯擴展...</div>', unsafe_allow_html=True)
     progress_bar.progress(75)
 
-    start_up_row = (update_header_row + 1) if update_header_row != -1 else 0
+    start_up_row = update_header_row + 1
     for r_idx in range(start_up_row, len(update_df)):
         raw_up_emp = str(update_df.iloc[r_idx, 0]).strip()
-        if not raw_up_emp or raw_up_emp == "NAN": continue
+        if not raw_up_emp or raw_up_emp.upper() == "NAN": continue
         
         pure_up_emp = re.sub(r'\D', '', raw_up_emp)
         if pure_up_emp not in base_emp_row_map: continue
@@ -453,28 +456,27 @@ def merge_update_file_with_mapping(base_path, update_df):
             up_val = update_df.iloc[r_idx, u_c_idx]
             if not pd.isna(up_val):
                 up_val_str = str(up_val).strip()
-                if not up_val_str or up_val_str in [".", "nan", "NaN", "None"]: continue
+                if not up_val_str or up_val_str.lower() in [".", "nan", "none"]: continue
                 up_val_upper = up_val_str.upper()
                 
-                # 檢查是否為對照表中的純代碼（例如 NF0001）
+                # [核心邏輯] 1. 先從對照表（窗口3）查詢完整時間與工時
                 if up_val_upper in shift_map:
                     info = shift_map[up_val_upper]
-                    # 組合出標準精美格式：上班時間 \n\n 代碼 \n 下班時間 \n 工時
                     formatted_cell = f"{info['start']}\n\n{up_val_upper}\n{info['end']}\n{info['hours']}"
                     base_raw.iloc[target_row_idx, b_c_idx] = formatted_cell
                 else:
-                    # 若為休假代碼 (DO1) 或其他已含時間之格式，直接寫入
+                    # [核心邏輯] 2. 若對照表中找不到（異常），啟動容錯機制：直接以更新檔原始字串寫入或保留
                     base_raw.iloc[target_row_idx, b_c_idx] = up_val_str
 
     progress_bar.progress(100)
-    status_text.markdown('<div class="loading-status-text">階段 4/4：合併完成，資料庫已即時更新！</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 4/4：合併與容錯對應完成！</div>', unsafe_allow_html=True)
     time.sleep(0.3)
 
     base_raw.to_excel(base_path, index=False, header=False)
     status_text.empty()
     progress_bar.empty()
     
-    return pd.read_excel(base_path, header=3)
+    return pd.read_excel(base_path, header=base_header_row)
 
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
@@ -665,7 +667,7 @@ if st.session_state.get("inspect_emp_target") is not None:
             draw_bold_text(ax, lx + badge_w_leg / 2, legend_y + badge_h_leg / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(9))
 
         now_str = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M")
-        draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
+        draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.20", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
         draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#0F172A", fontproperties=fp(12))
 
         buf = io.BytesIO()
@@ -870,7 +872,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     st.rerun()
                 except Exception as e: st.error(f"更新檔合併失敗: {e}")
 
-        # 【新增】管理者下載查核專區：合併後最新大表下載按鈕
+        # 下載合併後的最新大表供查核按鈕
         if os.path.exists(target_path):
             with open(target_path, "rb") as f:
                 excel_bytes = f.read()
@@ -1154,7 +1156,7 @@ if app_mode == "繪製個人月班表圖檔":
                         draw_bold_text(ax, lx + badge_w_leg / 2, legend_y + badge_h_leg / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(9))
 
                     now_str = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M")
-                    draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
+                    draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.20", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
                     draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#0F172A", fontproperties=fp(12))
                     
                     buf = io.BytesIO()
@@ -1499,7 +1501,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 draw_bold_text(ax, lx + badge_w_leg / 2, legend_y + badge_h_leg / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(9))
 
             now_str = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M")
-            draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
+            draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.20", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
             draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#0F172A", fontproperties=fp(12))
 
             buf = io.BytesIO()
