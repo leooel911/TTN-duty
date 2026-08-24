@@ -859,13 +859,17 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         uploaded_file_20 = st.file_uploader(f"上傳【{selected_role}】20號基準大表 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window1_up_{selected_role}")
         if uploaded_file_20 is not None:
             file_bytes = uploaded_file_20.getvalue()
-            try:
-                with open(target_path, "wb") as f: f.write(file_bytes)
-                log_activity(f"上傳 20號基準大表 [{selected_role}] 檔案大小: {len(file_bytes)} bytes")
-                st.success(f"【{selected_role}】窗口 1：20號基準大表已成功上傳並初始化完成！")
-                time.sleep(0.5)
-                st.rerun()
-            except Exception as e: st.error(f"儲存失敗: {e}")
+            current_hash = hashlib.md5(file_bytes).hexdigest()
+            hash_key = f"w1_hash_{selected_role}"
+            if st.session_state.get(hash_key) != current_hash:
+                try:
+                    with open(target_path, "wb") as f: f.write(file_bytes)
+                    st.session_state[hash_key] = current_hash
+                    log_activity(f"上傳 20號基準大表 [{selected_role}] 檔案大小: {len(file_bytes)} bytes")
+                    st.success(f"【{selected_role}】窗口 1：20號基準大表已成功上傳並初始化完成！")
+                    time.sleep(0.5)
+                    st.rerun()
+                except Exception as e: st.error(f"儲存失敗: {e}")
 
         if os.path.exists(target_path):
             if st.button(f"🗑️ 刪除目前【{selected_role}】的基準大表檔案", key=f"del_w1_{selected_role}"):
@@ -877,7 +881,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         else:
             st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 目前【{selected_role}】尚無基準大表檔案，請透過上方上傳。</p>", unsafe_allow_html=True)
 
-    # --- 窗口 2：21 號起每日更新檔 ---
+    # --- 窗口 2：21 號起每日更新檔 (已加入 Hash 防呆以杜絕無限迴圈) ---
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #10B981;">
@@ -890,19 +894,24 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         
         uploaded_file_21 = st.file_uploader(f"上傳【{selected_role}】21號起每日更新檔 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window2_up_{selected_role}")
         if uploaded_file_21 is not None:
-            try:
-                # 使用強固型 safe_read_excel 來讀取，自動相容 .xlsx 與 .xls 格式
-                if uploaded_file_21.name.endswith('.csv'):
-                    up_df = pd.read_csv(uploaded_file_21)
-                else:
-                    up_df = safe_read_excel(uploaded_file_21, header=None)
-                
-                merged_df = merge_update_file_with_mapping(target_path, up_df, selected_role)
-                log_activity(f"上傳 21號更新檔 [{selected_role}] 進行智慧對照合併")
-                st.success(f"【{selected_role}】窗口 2：21號更新檔已透過專屬對照表成功合併至大表！")
-                time.sleep(0.5)
-                st.rerun()
-            except Exception as e: st.error(f"更新檔合併失敗: {e}")
+            file_bytes_21 = uploaded_file_21.getvalue()
+            current_hash_21 = hashlib.md5(file_bytes_21).hexdigest()
+            hash_key_21 = f"w2_hash_{selected_role}"
+            
+            if st.session_state.get(hash_key_21) != current_hash_21:
+                try:
+                    if uploaded_file_21.name.endswith('.csv'):
+                        up_df = pd.read_csv(io.BytesIO(file_bytes_21))
+                    else:
+                        up_df = safe_read_excel(io.BytesIO(file_bytes_21), header=None)
+                    
+                    merged_df = merge_update_file_with_mapping(target_path, up_df, selected_role)
+                    st.session_state[hash_key_21] = current_hash_21
+                    log_activity(f"上傳 21號更新檔 [{selected_role}] 進行智慧對照合併")
+                    st.success(f"【{selected_role}】窗口 2：21號更新檔已透過專屬對照表成功合併至大表！")
+                    time.sleep(0.5)
+                    st.rerun()
+                except Exception as e: st.error(f"更新檔合併失敗: {e}")
 
         col_w2_btn1, col_w2_btn2 = st.columns(2)
         with col_w2_btn1:
@@ -938,14 +947,19 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         
         uploaded_file_map = st.file_uploader(f"上傳【{selected_role}】專屬「班別代碼時間對應表」 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window3_map_up_{selected_role}")
         if uploaded_file_map is not None:
-            file_bytes = uploaded_file_map.getvalue()
-            try:
-                with open(target_mapping_file, "wb") as f: f.write(file_bytes)
-                log_activity(f"上傳【{selected_role}】專屬班別代碼時間對應表")
-                st.success(f"窗口 3：【{selected_role}】班別代碼時間對應表已成功更新並載入記憶體！")
-                time.sleep(0.5)
-                st.rerun()
-            except Exception as e: st.error(f"對照表儲存失敗: {e}")
+            file_bytes_map = uploaded_file_map.getvalue()
+            current_hash_map = hashlib.md5(file_bytes_map).hexdigest()
+            hash_key_map = f"w3_hash_{selected_role}"
+            
+            if st.session_state.get(hash_key_map) != current_hash_map:
+                try:
+                    with open(target_mapping_file, "wb") as f: f.write(file_bytes_map)
+                    st.session_state[hash_key_map] = current_hash_map
+                    log_activity(f"上傳【{selected_role}】專屬班別代碼時間對應表")
+                    st.success(f"窗口 3：【{selected_role}】班別代碼時間對應表已成功更新並載入記憶體！")
+                    time.sleep(0.5)
+                    st.rerun()
+                except Exception as e: st.error(f"對照表儲存失敗: {e}")
 
         if os.path.exists(target_mapping_file):
             if st.button(f"🗑️ 刪除目前【{selected_role}】的對照表檔案", key=f"del_map_{selected_role}"):
