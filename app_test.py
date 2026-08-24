@@ -268,13 +268,16 @@ if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
 
 def safe_read_excel(file_source, header=None):
-    """強固型 Excel 讀取器：支援 .xls (xlrd) 與 .xlsx (openpyxl) 格式自動轉換讀取"""
+    """強固型 Excel 讀取器：支援寬幅大表、自動相容各種二進位與 OpenXML 格式"""
     try:
         if isinstance(file_source, str):
             if file_source.endswith('.xls'):
                 return pd.read_excel(file_source, header=header, engine='xlrd')
             else:
-                return pd.read_excel(file_source, header=header, engine='openpyxl')
+                try:
+                    return pd.read_excel(file_source, header=header, engine='openpyxl')
+                except:
+                    return pd.read_excel(file_source, header=header, engine='xlrd')
         else:
             file_bytes = file_source.getvalue()
             try:
@@ -282,7 +285,11 @@ def safe_read_excel(file_source, header=None):
             except:
                 return pd.read_excel(io.BytesIO(file_bytes), header=header, engine='xlrd')
     except Exception as e:
-        raise ValueError(f"無法解析 Excel 檔案格式，請確認是否為標準 .xls 或 .xlsx 檔 (錯誤: {e})")
+        # 如果遇到任何格式阻礙，嘗試當作寬幅無限制 CSV 或直接略過引發安全處理
+        try:
+            return pd.read_csv(io.BytesIO(file_bytes))
+        except:
+            raise ValueError(f"無法解析 Excel 檔案格式，請確認是否為標準 .xls 或 .xlsx 檔 (錯誤: {e})")
 
 def get_file_mtime_str(path):
     if os.path.exists(path):
@@ -409,7 +416,7 @@ def load_shift_mapping_dict(role_key="服勤員"):
 def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
     """
     以每月 20 號基準大表（窗口 1）為底稿，
-    當上傳每日更新檔（窗口 2）時，用更新檔代碼對照窗口 3 補上完整時間格式後寫入。
+    自動適應寬幅整月更新檔（窗口 2），透過窗口 3 對照補上完整時間格式後寫入。
     """
     status_text = st.empty()
     progress_bar = st.progress(0)
@@ -426,7 +433,7 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
     base_raw = safe_read_excel(base_path, header=None)
     shift_map = load_shift_mapping_dict(role_key)
     
-    status_text.markdown('<div class="loading-status-text">階段 2/4：對齊基準大表與每日更新檔的員編及日期座標...</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 2/4：智慧對齊寬幅更新檔與基準大表的員編及日期座標...</div>', unsafe_allow_html=True)
     progress_bar.progress(45)
     time.sleep(0.2)
 
@@ -455,13 +462,13 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
 
     update_header_row = -1
     update_date_col_map = {}
-    for r_idx in range(min(6, len(update_df))):
+    for r_idx in range(min(8, len(update_df))):
         row_vals = [str(val).strip() for val in update_df.iloc[r_idx].values]
         date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
         if date_count >= 2:
             update_header_row = r_idx
             break
-    if update_header_row == -1: update_header_row = 0
+    if update_header_row == -1: update_header_row = 4
 
     for c_idx, val in enumerate(update_df.iloc[update_header_row].values):
         m = re.search(r'(\d+/\d+)', str(val))
@@ -503,7 +510,7 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
                     base_raw.iloc[target_row_idx, b_c_idx] = up_val_str
 
     progress_bar.progress(100)
-    status_text.markdown('<div class="loading-status-text">階段 4/4：更新合併完成！</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 4/4：寬幅更新合併完成！</div>', unsafe_allow_html=True)
     time.sleep(0.3)
 
     base_raw.to_excel(base_path, index=False, header=False)
@@ -850,7 +857,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.markdown(f"""
         <div class="admin-card-container">
             <h4 style="color: #38BDF8; margin-top: 0;">窗口 1：每月 20 號公司基準大表（職位：{selected_role}）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">由公司發出的每月完整基準班表（包含詳細時間與完整架構），支援 .xls 與 .xlsx 格式。</p>
+            <p style="color: #94A3B8; font-size: 13px;">由公司發出的每月完整基準班表（包含詳細時間與完整架構），支援寬幅 .xls 與 .xlsx 格式。</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -881,12 +888,12 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         else:
             st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 目前【{selected_role}】尚無基準大表檔案，請透過上方上傳。</p>", unsafe_allow_html=True)
 
-    # --- 窗口 2：21 號起每日更新檔 (已加入 Hash 防呆以杜絕無限迴圈) ---
+    # --- 窗口 2：21 號起每日更新檔 (自動支援寬幅整月原始檔案) ---
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #10B981;">
             <h4 style="color: #34D399; margin-top: 0;">窗口 2：21 號起每日更新檔（職位：{selected_role}）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">管理員每日從公司系統抓取的異動檔。系統將以視窗 1 為底稿，自動對照視窗 3 補上時間格式後更新大表。</p>
+            <p style="color: #94A3B8; font-size: 13px;">管理員每日從公司系統抓取的寬幅異動檔。系統將以視窗 1 為底稿，自動對照視窗 3 補上時間格式後更新大表。</p>
         </div>
         """, unsafe_allow_html=True)
         
