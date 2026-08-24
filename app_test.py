@@ -531,7 +531,6 @@ def parse_cell(raw):
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
 def build_time_dictionary(base_df):
-    """階段 2 核心：掃描基準檔中所有包含完整時間結構的儲存格，建立車次代碼與時間對照字典"""
     time_dict = {}
     for _, row in base_df.iterrows():
         for col_idx in range(2, len(row)):
@@ -540,13 +539,12 @@ def build_time_dictionary(base_df):
                 cell_str = str(cell_val).strip()
                 parsed = parse_cell(cell_str)
                 tr_code = parsed["train"].strip().upper()
-                # 必須含有報到時間與收工時間，才視為有效車次對照標準
                 if parsed["start"] and parsed["end"] and is_valid_train_code(tr_code):
                     time_dict[tr_code] = cell_str
     return time_dict
 
 def merge_update_file_with_progress(base_path, update_df):
-    """智慧合併與強力覆蓋引擎：結合基準字典與日期模糊對齊"""
+    """智慧合併引擎：強制以新資料覆蓋原儲存格，防止舊資料與新資料重疊混淆"""
     status_text = st.empty()
     progress_bar = st.progress(0)
     
@@ -572,7 +570,6 @@ def merge_update_file_with_progress(base_path, update_df):
     base_columns = list(base_df.columns)
     update_columns = list(update_df.columns)
     
-    # 建立日期欄位模糊對齊映射（找出共同的 MM/DD）
     date_col_mapping = {}
     for up_col in update_columns[2:]:
         up_m = re.search(r'(\d+/\d+)', up_col)
@@ -584,7 +581,7 @@ def merge_update_file_with_progress(base_path, update_df):
                     date_col_mapping[up_col] = base_col
                     break
 
-    status_text.markdown(f'<div class="loading-status-text">階段 3/4：正在逐筆比對員編並強力覆蓋更新（共 {len(update_df)} 筆）...</div>', unsafe_allow_html=True)
+    status_text.markdown(f'<div class="loading-status-text">階段 3/4：正在逐筆比對員編並覆蓋更新（共 {len(update_df)} 筆）...</div>', unsafe_allow_html=True)
     progress_bar.progress(60)
 
     base_rows = {}
@@ -593,31 +590,28 @@ def merge_update_file_with_progress(base_path, update_df):
         if emp_id and emp_id != "NAN":
             base_rows[emp_id] = row.copy()
 
-    # 逐筆處理更新檔
     for _, up_row in update_df.iterrows():
         up_emp_id = str(up_row.iloc[0]).strip().upper()
         if not up_emp_id or up_emp_id == "NAN":
             continue
             
-        # 若基準檔找不到此員編，可視為新進人員加入
         if up_emp_id not in base_rows:
             base_rows[up_emp_id] = up_row.copy()
             continue
             
         target_base_row = base_rows[up_emp_id]
         
-        # 對應欄位進行覆蓋與補時
         for up_col, base_col in date_col_mapping.items():
             if up_col in up_row:
                 up_val = up_row[up_col]
                 if not pd.isna(up_val) and str(up_val).strip() != "":
                     up_val_str = str(up_val).strip().upper()
                     
-                    # 判斷是否為單純代碼（無時間格式），若是則透過字典自動補上完整時間
+                    # 判斷是否為單純代碼，若是則透過字典補齊完整時間；若非則直接覆蓋
                     if not re.search(r'\d{1,2}:\d{2}', up_val_str) and up_val_str in time_dict:
                         target_base_row[base_col] = time_dict[up_val_str]
                     else:
-                        target_base_row[base_col] = up_val
+                        target_base_row[base_col] = up_val  # 強制覆蓋舊格子，避免資料重疊
 
     progress_bar.progress(90)
 
@@ -990,7 +984,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     col_up1, col_up2 = st.columns(2)
     
-    # --- 1. 基準檔上傳區塊（加入進度條與狀態顯示） ---
+    # --- 1. 基準檔上傳區塊（帶進度條與 Hash 偵測） ---
     with col_up1:
         st.markdown("##### 1. 每月 20 號基準大表上傳")
         uploaded_file = st.file_uploader(f"上傳【{selected_role}】完整基準檔", type=["xlsx", "xls", "csv", "txt"], key=f"base_up_{selected_role}")
@@ -1035,7 +1029,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             else:
                 st.info(f"【{selected_role}】此基準檔已完成上傳與初始化。")
 
-    # --- 2. 後續異動/更新檔上傳區塊（結合完整 4 階段進度條） ---
+    # --- 2. 後續異動/更新檔上傳區塊（帶進度條與智慧覆蓋引擎） ---
     with col_up2:
         st.markdown("##### 2. 後續異動/更新檔上傳")
         st.caption("僅含班別代碼之更新檔，系統將自動比對並透過字典補時。")
@@ -1054,7 +1048,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     else:
                         up_df = pd.read_excel(io.BytesIO(file_bytes), header=3)
                     
-                    # 執行智慧合併覆蓋與補時引擎（內含完整的 4 階段進度條）
+                    # 執行智慧合併覆蓋與補時引擎
                     merged_df = merge_update_file_with_progress(target_path, up_df)
                     merged_df.to_excel(target_path, index=False)
                     
