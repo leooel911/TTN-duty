@@ -12,7 +12,7 @@ import time
 
 matplotlib.use('Agg')
 
-st.set_page_config(page_title="TTN Shift Producer (Sandbox)", page_icon="700st.png", layout="centered")
+st.set_page_config(page_title="TRAIN CREW DUTY ENGINE", page_icon="700st.png", layout="centered")
 
 TAIWAN_TZ = timezone(timedelta(hours=8))
 
@@ -118,6 +118,7 @@ if "authenticated" not in st.session_state: st.session_state["authenticated"] = 
 if "admin_logged_in" not in st.session_state: st.session_state["admin_logged_in"] = False
 if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_target"] = None
+if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
 
 def get_file_mtime_str(path):
     if os.path.exists(path):
@@ -264,8 +265,6 @@ def process_file_data(input_str):
         else: dates.append(col_str)
         
     raw_cells = matched_row.iloc[2:].values
-    parsed_cells = [parse_cell_with_dict(c, shift_dict) for c in raw_cells]
-    
     return start_dt, dates, emp_id, emp_name, raw_cells, shift_dict
 
 def draw_bold_text(ax, x, y, text, **kwargs):
@@ -307,7 +306,7 @@ C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
 C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 
-# --- 授權驗證與管理員後台 ---
+# --- 授權驗證門戶 ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div style="text-align: center; margin-top: 2rem; margin-bottom: 1.5rem;">
@@ -336,6 +335,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.error("授權碼錯誤")
     st.stop()
 
+# --- 管理員後台控制台 ---
 if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -376,7 +376,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.stop()
 
-# --- 標頭與模式選擇 ---
+# --- 標頭與操作模式 ---
 st.markdown(f"""
 <div class="header-container">
     <div class="title-left-group">
@@ -495,7 +495,7 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
     shift_dict = build_shift_dict_from_base(base_p)
 
     if not os.path.exists(target_path):
-        st.error(f"找不到【{selected_role}】的班表檔案")
+        st.error(f"找不到【{selected_role}】的班表檔案，請先至管理員後台上傳")
     else:
         df_search = pd.read_excel(target_path, header=3)
         df_search.columns = [str(c).strip() for c in df_search.columns]
@@ -506,8 +506,9 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
             with c1: start_date = st.selectbox("起始日期", date_cols, index=0)
             with c2: end_date = st.selectbox("結束日期", date_cols, index=0)
             
-            min_time = st.text_input("起始時間 (例 05:00)", "05:00")
-            max_time = st.text_input("結束時間 (例 15:00)", "15:00")
+            c3, c4 = st.columns(2)
+            with c3: min_time = st.text_input("Sign-In 從", "05:00")
+            with c4: max_time = st.text_input("Sign-In 到", "15:00")
 
             if st.button("開始區間檢索符合條件人員"):
                 s_idx, e_idx = date_cols.index(start_date), date_cols.index(end_date)
@@ -517,15 +518,14 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
                 for _, row in df_search.iterrows():
                     emp_id, emp_name = str(row.iloc[0]).strip(), str(row.iloc[1]).strip()
                     for d_str in target_dates:
-                        # 尋找該日期對應的欄位
                         for idx, col in enumerate(df_search.columns[2:]):
                             if d_str in str(col):
                                 cell_raw = row.iloc[idx + 2]
                                 parsed = parse_cell_with_dict(cell_raw, shift_dict)
                                 if parsed["start"] and min_time <= parsed["start"] <= max_time:
-                                    results.append({"日期": d_str, "員編": emp_id, "姓名": emp_name, "開始": parsed["start"], "結束": parsed["end"], "班別": parsed["train"]})
+                                    results.append({"日期": d_str, "員編": emp_id, "姓名": emp_name, "開始時間": parsed["start"], "結束時間": parsed["end"], "車次代碼": parsed["train"]})
                 
-                st.write(f"共找到 {len(results)} 筆符合條件：")
+                st.markdown(f"### 檢索結果：共符合 {len(results)} 筆")
                 if results:
                     st.dataframe(pd.DataFrame(results), use_container_width=True)
 
@@ -537,11 +537,61 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         <div class="section-subtitle">Shift Exchange Date Filter Matrix</div>
     </div>
     """, unsafe_allow_html=True)
-    st.info("換假日期快篩模組已就緒。您可以透過上方管理員後台隨時上傳與更新 20號基準表 及 21號後異動檔！")
+
+    selected_role = st.selectbox("選擇職位類別進行換假查詢", ["服勤員", "駕駛", "列車長"])
+    target_path = ROLE_FILES[selected_role]
+    base_p = BASE_FILES[selected_role]
+    shift_dict = build_shift_dict_from_base(base_p)
+
+    if not os.path.exists(target_path):
+        st.error(f"找不到【{selected_role}】的班表檔案，請先至管理員後台上傳")
+    else:
+        df_ex = pd.read_excel(target_path, header=3)
+        df_ex.columns = [str(c).strip() for c in df_ex.columns]
+        date_cols = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in df_ex.columns[2:] if re.search(r'(\d+/\d+)', str(c))]
+
+        if date_cols:
+            ex_c1, ex_c2 = st.columns(2)
+            with ex_c1: target_date = st.selectbox("想休假的日期", date_cols, index=0)
+            with ex_c2: return_date = st.selectbox("可還假的日期(上班日)", date_cols, index=min(1, len(date_cols)-1))
+
+            if st.button("開始尋找可換假對象"):
+                t_idx, r_idx = date_cols.index(target_date), date_cols.index(return_date)
+                candidates = []
+                
+                for _, row in df_ex.iterrows():
+                    emp_id, emp_name = str(row.iloc[0]).strip(), str(row.iloc[1]).strip()
+                    
+                    # 尋找目標日與還假日的儲存格
+                    t_cell, r_cell = None, None
+                    for idx, col in enumerate(df_ex.columns[2:]):
+                        col_str = str(col)
+                        if target_date in col_str: t_cell = row.iloc[idx + 2]
+                        if return_date in col_str: r_cell = row.iloc[idx + 2]
+                    
+                    p_target = parse_cell_with_dict(t_cell, shift_dict)
+                    p_return = parse_cell_with_dict(r_cell, shift_dict)
+                    
+                    # 判斷當天是否為休假 (DO) 且還假日是否有班
+                    is_rest = "DO" in str(t_cell).upper() or "D2W" in str(t_cell).upper()
+                    is_work_return = p_return["start"] != "" or is_valid_train_code(p_return["train"])
+                    
+                    if is_rest and is_work_return:
+                        candidates.append({
+                            "員編": emp_id,
+                            "姓名": emp_name,
+                            "想休日期狀態": f"{target_date} (休假)",
+                            "還假日期狀態": f"{return_date} ({p_return['start']}->{p_return['end']} {p_return['train']})"
+                        })
+                
+                st.markdown(f"### 換假對象檢索結果：共找到 {len(candidates)} 位符合條件")
+                if candidates:
+                    st.dataframe(pd.DataFrame(candidates), use_container_width=True)
 
 # --- 底部貼紙 ---
 st.markdown('<div style="text-align: center; margin-top: 3rem;"><hr style="border-color: #334155;">', unsafe_allow_html=True)
 if st.button("ADMIN PANEL // C.L.F EDITION (SANDBOX)"):
+    st.session_state["admin_logged_in"] = True
     st.session_state["nav_mode"] = "admin_panel"
     st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
