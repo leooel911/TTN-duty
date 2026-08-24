@@ -22,7 +22,7 @@ TAIWAN_TZ = timezone(timedelta(hours=8))
 # --- 確保專用資料夾存在，並使用絕對路徑避免雲端暫存遺失 ---
 DATA_DIR = os.path.join(os.getcwd(), "data")
 if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
+    os.makedirs(DATA_DIR, exist_ok=True)
 
 ROLE_FILES = {
     "駕駛": os.path.join(DATA_DIR, "TD.xlsx"),
@@ -30,7 +30,6 @@ ROLE_FILES = {
     "服勤員": os.path.join(DATA_DIR, "TA.xlsx")
 }
 
-# 針對三種職位分別獨立的班別代碼時間對應表專用路徑 (窗口 3)
 ROLE_SHIFT_MAPPING_FILES = {
     "駕駛": os.path.join(DATA_DIR, "shift_mapping_TD.xlsx"),
     "列車長": os.path.join(DATA_DIR, "shift_mapping_TM.xlsx"),
@@ -211,6 +210,8 @@ ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
 
 def set_module_maintenance(module_key, is_maint):
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR, exist_ok=True)
     flag_path = MAINTENANCE_FLAGS.get(module_key)
     if not flag_path: return
     if is_maint:
@@ -248,6 +249,8 @@ def parse_device_info(ua_string):
 
 def log_activity(input_str):
     try:
+        if not os.path.exists(DATA_DIR):
+            os.makedirs(DATA_DIR, exist_ok=True)
         now_tw = datetime.now(TAIWAN_TZ).strftime('%Y-%m-%d %H:%M:%S')
         ua_raw = ""
         try: ua_raw = st.context.headers.get("user-agent", "")
@@ -285,7 +288,6 @@ def safe_read_excel(file_source, header=None):
             except:
                 return pd.read_excel(io.BytesIO(file_bytes), header=header, engine='xlrd')
     except Exception as e:
-        # 如果遇到任何格式阻礙，嘗試當作寬幅無限制 CSV 或直接略過引發安全處理
         try:
             return pd.read_csv(io.BytesIO(file_bytes))
         except:
@@ -392,7 +394,6 @@ def parse_cell(raw):
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
 def load_shift_mapping_dict(role_key="服勤員"):
-    """載入對應職位的班別代碼時間對照表 (窗口 3)"""
     mapping_file = ROLE_SHIFT_MAPPING_FILES.get(role_key, ROLE_SHIFT_MAPPING_FILES["服勤員"])
     mapping_dict = {}
     if os.path.exists(mapping_file):
@@ -414,10 +415,6 @@ def load_shift_mapping_dict(role_key="服勤員"):
     return mapping_dict
 
 def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
-    """
-    以每月 20 號基準大表（窗口 1）為底稿，
-    自動適應寬幅整月更新檔（窗口 2），透過窗口 3 對照補上完整時間格式後寫入。
-    """
     status_text = st.empty()
     progress_bar = st.progress(0)
     
@@ -824,7 +821,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.markdown("---")
     
-    # --- 即時動態與伺服器資料狀態總覽看板 ---
     st.markdown("##### 📊 伺服器即時處理動態與檔案健康狀態")
     
     col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
@@ -870,6 +866,8 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             hash_key = f"w1_hash_{selected_role}"
             if st.session_state.get(hash_key) != current_hash:
                 try:
+                    if not os.path.exists(DATA_DIR):
+                        os.makedirs(DATA_DIR, exist_ok=True)
                     with open(target_path, "wb") as f: f.write(file_bytes)
                     st.session_state[hash_key] = current_hash
                     log_activity(f"上傳 20號基準大表 [{selected_role}] 檔案大小: {len(file_bytes)} bytes")
@@ -888,7 +886,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         else:
             st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 目前【{selected_role}】尚無基準大表檔案，請透過上方上傳。</p>", unsafe_allow_html=True)
 
-    # --- 窗口 2：21 號起每日更新檔 (自動支援寬幅整月原始檔案) ---
+    # --- 窗口 2：21 號起每日更新檔 ---
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #10B981;">
@@ -907,6 +905,8 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             
             if st.session_state.get(hash_key_21) != current_hash_21:
                 try:
+                    if not os.path.exists(DATA_DIR):
+                        os.makedirs(DATA_DIR, exist_ok=True)
                     if uploaded_file_21.name.endswith('.csv'):
                         up_df = pd.read_csv(io.BytesIO(file_bytes_21))
                     else:
@@ -960,6 +960,8 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             
             if st.session_state.get(hash_key_map) != current_hash_map:
                 try:
+                    if not os.path.exists(DATA_DIR):
+                        os.makedirs(DATA_DIR, exist_ok=True)
                     with open(target_mapping_file, "wb") as f: f.write(file_bytes_map)
                     st.session_state[hash_key_map] = current_hash_map
                     log_activity(f"上傳【{selected_role}】專屬班別代碼時間對應表")
