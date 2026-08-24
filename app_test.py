@@ -346,20 +346,25 @@ def is_town_shift(tr, note):
 def parse_cell(raw):
     if pd.isna(raw) or not str(raw).strip(): return dict(start="", train="", end="", hours="", note="")
     raw_str = str(raw).strip()
+    
+    # 支援已格式化之儲存格解析
     lines = [l.strip() for l in raw_str.split("\n") if l.strip()]
     lines = [l for l in lines if l != "."]
     
     if not lines: return dict(start="", train="", end="", hours="", note="")
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
     if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): return dict(start="", train=lines[0], end="", hours="", note="")
+    
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     hours = calculate_hours(start_time, end_time)
+    
     do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l), "")
     real_train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != do_str and "h" not in l and "m" not in l), "")
     if not real_train:
         non_time_lines = [l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l]
         if non_time_lines: real_train = non_time_lines[0]
+        
     notes = [l for l in lines if l not in times and l != real_train]
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
@@ -386,11 +391,11 @@ def load_shift_mapping_dict(role_key="服勤員"):
     return mapping_dict
 
 def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
-    """具備自動清除特殊符號（#、% 等）與智慧對照容錯的合併引擎"""
+    """智慧合併引擎：自動透過窗口 3 對照表將代碼擴展為包含上下班時間與工時的格式"""
     status_text = st.empty()
     progress_bar = st.progress(0)
     
-    status_text.markdown(f'<div class="loading-status-text">階段 1/4：正在初始化【{role_key}】符號過濾與智慧對照引擎...</div>', unsafe_allow_html=True)
+    status_text.markdown(f'<div class="loading-status-text">階段 1/4：正在初始化【{role_key}】智慧對照合併引擎...</div>', unsafe_allow_html=True)
     progress_bar.progress(20)
     time.sleep(0.2)
 
@@ -450,7 +455,7 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
         if d_str in update_date_col_map:
             bridge_col_mapping[b_c_idx] = update_date_col_map[d_str]
 
-    status_text.markdown('<div class="loading-status-text">階段 3/4：正在清除 #、% 等特殊符號並執行對照表查詢...</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 3/4：正在過濾特殊符號並對照排班時間表...</div>', unsafe_allow_html=True)
     progress_bar.progress(75)
 
     start_up_row = update_header_row + 1
@@ -469,17 +474,20 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
                 up_val_str = str(up_val).strip()
                 if not up_val_str or up_val_str.lower() in [".", "nan", "none"]: continue
                 
+                # 清除 #、% 等修飾符號以便對照
                 clean_code = re.sub(r'[#%]', '', up_val_str).strip().upper()
                 
+                # 如果對照表中有該代碼，自動組合出完整帶時間格式
                 if clean_code in shift_map:
                     info = shift_map[clean_code]
                     formatted_cell = f"{info['start']}\n\n{clean_code}\n{info['end']}\n{info['hours']}"
                     base_raw.iloc[target_row_idx, b_c_idx] = formatted_cell
                 else:
+                    # 若對照表無此代碼，保留原始字串或帶符號的代碼
                     base_raw.iloc[target_row_idx, b_c_idx] = up_val_str
 
     progress_bar.progress(100)
-    status_text.markdown('<div class="loading-status-text">階段 4/4：符號過濾與合併對應完成！</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 4/4：智慧合併對應完成！</div>', unsafe_allow_html=True)
     time.sleep(0.3)
 
     base_raw.to_excel(base_path, index=False, header=False)
@@ -813,7 +821,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.markdown("---")
     st.subheader("🎛️ 三大獨立上傳窗口控制台")
-    # 將職位選擇預設為「服勤員」 (index=2)
     selected_role = st.selectbox("選擇目前要維護的職位類別（適用於窗口 1 與 窗口 2）", ["駕駛", "列車長", "服勤員"], index=2)
     target_path = ROLE_FILES[selected_role]
     target_mapping_file = ROLE_SHIFT_MAPPING_FILES[selected_role]
@@ -831,7 +838,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         </div>
         """, unsafe_allow_html=True)
         
-        # 顯示目前上傳的檔案資訊
         st.info(get_file_info_text(target_path))
         
         uploaded_file_20 = st.file_uploader(f"上傳【{selected_role}】20號基準大表 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window1_up_{selected_role}")
@@ -850,7 +856,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     st.rerun()
                 except Exception as e: st.error(f"儲存失敗: {e}")
 
-        # 增設單獨刪除此基準大表的按鈕
         if os.path.exists(target_path):
             if st.button(f"🗑️ 刪除目前【{selected_role}】的基準大表檔案", key=f"del_w1_{selected_role}"):
                 os.remove(target_path)
@@ -889,7 +894,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     st.rerun()
                 except Exception as e: st.error(f"更新檔合併失敗: {e}")
 
-        # 下載合併後的最新大表供查核按鈕
         if os.path.exists(target_path):
             with open(target_path, "rb") as f:
                 excel_bytes = f.read()
@@ -910,7 +914,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         </div>
         """, unsafe_allow_html=True)
         
-        # 顯示目前該職位對應表的檔案資訊
         st.info(get_file_info_text(target_mapping_file))
         
         uploaded_file_map = st.file_uploader(f"上傳【{selected_role}】專屬「班別代碼時間對應表」 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window3_map_up_{selected_role}")
@@ -929,7 +932,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     st.rerun()
                 except Exception as e: st.error(f"對照表儲存失敗: {e}")
 
-        # 增設單獨刪除此對應表的按鈕
         if os.path.exists(target_mapping_file):
             if st.button(f"🗑️ 刪除目前【{selected_role}】的對照表檔案", key=f"del_map_{selected_role}"):
                 os.remove(target_mapping_file)
