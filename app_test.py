@@ -390,11 +390,17 @@ def load_shift_mapping_dict(role_key="服勤員"):
     return mapping_dict
 
 def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
-    """修正版智慧合併引擎：強制拿更新檔的純代碼去查窗口3對照表，自動補上時間與工時格式！"""
+    """
+    核心標準順序：
+    1. 以每月20號「基準大表（窗口 1）」為底稿。
+    2. 當上傳「每日更新檔（窗口 2）」時，讀取其中的純代碼。
+    3. 用該代碼去對照「窗口 3」的班別代碼時間對應表，查出正確的上下班時間與工時。
+    4. 給出如窗口 1 的標準排版格式（開始時間 \n\n 代碼 \n 結束時間 \n 工時）寫回大表中。
+    """
     status_text = st.empty()
     progress_bar = st.progress(0)
     
-    status_text.markdown(f'<div class="loading-status-text">階段 1/4：正在初始化【{role_key}】智慧時間對照補齊引擎...</div>', unsafe_allow_html=True)
+    status_text.markdown(f'<div class="loading-status-text">階段 1/4：載入【{role_key}】基準大表（窗口 1）與對照表（窗口 3）...</div>', unsafe_allow_html=True)
     progress_bar.progress(20)
     time.sleep(0.2)
 
@@ -406,7 +412,7 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
     base_raw = pd.read_excel(base_path, header=None)
     shift_map = load_shift_mapping_dict(role_key)
     
-    status_text.markdown('<div class="loading-status-text">階段 2/4：動態掃描基準大表與更新檔的表頭、日期欄位...</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 2/4：對齊基準大表與每日更新檔的員編及日期座標...</div>', unsafe_allow_html=True)
     progress_bar.progress(45)
     time.sleep(0.2)
 
@@ -454,7 +460,7 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
         if d_str in update_date_col_map:
             bridge_col_mapping[b_c_idx] = update_date_col_map[d_str]
 
-    status_text.markdown('<div class="loading-status-text">階段 3/4：正在透過對照表將純代碼補上正確的時間與工時...</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 3/4：以更新檔代碼對照窗口 3，補上完整時間格式...</div>', unsafe_allow_html=True)
     progress_bar.progress(75)
 
     start_up_row = update_header_row + 1
@@ -473,21 +479,19 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
                 up_val_str = str(up_val).strip()
                 if not up_val_str or up_val_str.lower() in [".", "nan", "none"]: continue
                 
-                # 1. 取得乾淨的代碼（去除 #、% 等修飾符號）
+                # 取得乾淨代碼（去除 #、% 等符號）
                 clean_code = re.sub(r'[#%]', '', up_val_str).strip().upper()
                 
-                # 2. 【核心修正】：強制用代碼去對照表（窗口 3）查詢時間
+                # 用代碼去對照表（窗口 3）查詢時間，組合成與窗口 1 完全相同的完整格式
                 if clean_code in shift_map:
                     info = shift_map[clean_code]
-                    # 強制格式化成：開始時間 \n\n 代碼 \n 結束時間 \n 工時
                     formatted_cell = f"{info['start']}\n\n{up_val_str}\n{info['end']}\n{info['hours']}"
                     base_raw.iloc[target_row_idx, b_c_idx] = formatted_cell
                 else:
-                    # 如果對照表中真的找不到該代碼，保留原本的值
                     base_raw.iloc[target_row_idx, b_c_idx] = up_val_str
 
     progress_bar.progress(100)
-    status_text.markdown('<div class="loading-status-text">階段 4/4：智慧對照補時合併完成！</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 4/4：更新合併完成！</div>', unsafe_allow_html=True)
     time.sleep(0.3)
 
     base_raw.to_excel(base_path, index=False, header=False)
@@ -1754,7 +1758,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         </div>
         """, unsafe_allow_html=True)        
         
-        for idx, cand inين in enumerate(saved_candidates):
+        for idx, cand in enumerate(saved_candidates):
             st.markdown(f"""
             <div class="integrated-crew-box">
                 <div class="time-header-row">
