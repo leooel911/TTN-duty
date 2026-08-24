@@ -529,15 +529,13 @@ def parse_cell(raw):
     notes = [l for l in lines if l not in times and l != real_train]
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
-# --- 核心智慧對照與更新合併引擎 (新增) ---
+# --- 核心智慧對照與更新合併引擎 (附帶進度條回報) ---
 def build_time_dictionary(df):
-    """ 從基準檔掃描並建立『班別代碼 -> 完整儲存格內容（含時間）』的對照字典 """
     time_dict = {}
     for _, row in df.iterrows():
         for val in row.iloc[2:]:
             if pd.isna(val): continue
             val_str = str(val).strip()
-            # 若格子內含有時間格式，則將抓到的班別作為key對應整格內容
             if re.search(r'\d{1,2}:\d{2}', val_str):
                 parsed = parse_cell(val_str)
                 train_code = parsed["train"].strip().upper()
@@ -546,44 +544,73 @@ def build_time_dictionary(df):
                         time_dict[train_code] = val_str
     return time_dict
 
-def merge_update_file(base_path, update_df):
-    """ 將只有代碼的更新檔（update_df）透過員編對應，並自動由基準檔字典補上時間 """
+def merge_update_file_with_progress(base_path, update_df):
+    status_text = st.empty()
+    progress_bar = st.progress(0)
+    
+    status_text.markdown('<div class="loading-status-text">階段 1/4：正在讀取基準檔與建立時間對照字典...</div>', unsafe_allow_html=True)
+    progress_bar.progress(15)
+    time.sleep(0.3)
+
     if not os.path.exists(base_path):
-        return update_df # 若沒有基準檔，直接回傳更新檔
+        status_text.empty()
+        progress_bar.empty()
+        return update_df
     
     base_df = pd.read_excel(base_path, header=3)
     base_df.columns = [str(c).strip() for c in base_df.columns]
+    
+    status_text.markdown('<div class="loading-status-text">階段 2/4：正在掃描並建立基準班別字典庫...</div>', unsafe_allow_html=True)
     time_dict = build_time_dictionary(base_df)
+    progress_bar.progress(40)
+    time.sleep(0.3)
     
     update_df.columns = [str(c).strip() for c in update_df.columns]
     
-    # 建立基準檔的對照對應表 (以員編為主鍵)
     base_rows = {}
     for _, row in base_df.iterrows():
         emp_id = str(row.iloc[0]).strip().upper()
         base_rows[emp_id] = row
         
+    status_text.markdown(f'<div class="loading-status-text">階段 3/4：正在逐筆比對員編並自動補時（共 {len(update_df)} 筆資料）...</div>', unsafe_allow_html=True)
+    progress_bar.progress(65)
+    time.sleep(0.3)
+
     merged_rows = []
-    for _, up_row in update_df.iterrows():
+    total_rows = len(update_df)
+    for idx, (_, up_row) in enumerate(update_df.iterrows()):
         up_emp_id = str(up_row.iloc[0]).strip().upper()
         if up_emp_id in base_rows:
-            # 員編存在，進行逐欄比對與智慧補時
             base_row = base_rows[up_emp_id].copy()
             for col_idx in range(2, len(up_row)):
                 up_val = up_row.iloc[col_idx]
                 if not pd.isna(up_val) and str(up_val).strip():
                     up_val_str = str(up_val).strip()
-                    # 如果更新檔該格沒有時間，但字典裡找得到該代碼的時間，則自動補上時間
                     if not re.search(r'\d{1,2}:\d{2}', up_val_str) and up_val_str.upper() in time_dict:
                         base_row.iloc[col_idx] = time_dict[up_val_str.upper()]
                     else:
                         base_row.iloc[col_idx] = up_val
             merged_rows.append(base_row)
         else:
-            # 若為全新員編，直接納入
             merged_rows.append(up_row)
-            
-    return pd.DataFrame(merged_rows, columns=update_df.columns)
+        
+        # 動態更新內迴圈進度
+        if total_rows > 0 and idx % max(1, total_rows // 5) == 0:
+            p_val = 65 + int(25 * (idx / total_rows))
+            progress_bar.progress(p_val)
+
+    status_text.markdown('<div class="loading-status-text">階段 4/4：正在完成最終合併並寫入系統資料庫...</div>', unsafe_allow_html=True)
+    progress_bar.progress(95)
+    time.sleep(0.3)
+
+    final_df = pd.DataFrame(merged_rows, columns=update_df.columns)
+    
+    progress_bar.progress(100)
+    time.sleep(0.2)
+    status_text.empty()
+    progress_bar.empty()
+    
+    return final_df
 
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
@@ -955,14 +982,13 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         update_uploaded_file = st.file_uploader(f"上傳【{selected_role}】更新異動檔", type=["xlsx", "xls", "csv", "txt"], key=f"up_up_{selected_role}")
         if update_uploaded_file is not None:
             try:
-                # 讀取上傳的更新檔
                 if update_uploaded_file.name.endswith('.csv'):
                     up_df = pd.read_csv(update_uploaded_file)
                 else:
                     up_df = pd.read_excel(update_uploaded_file, header=3)
                 
-                # 執行智慧合併與補時
-                merged_df = merge_update_file(target_path, up_df)
+                # 執行帶有即時進度條與狀態提示的智慧合併
+                merged_df = merge_update_file_with_progress(target_path, up_df)
                 merged_df.to_excel(target_path, index=False)
                 st.success(f"【{selected_role}】更新檔合併成功（已自動對照基準字典補齊時間）")
                 st.rerun()
