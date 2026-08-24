@@ -96,7 +96,8 @@ if base_file is not None and realtime_file is not None:
             if pd.isna(emp_id): continue
             
             sample_code = str(df_rt.iloc[r_idx, 5]).strip().upper()
-            matched_time = shift_dict.get(sample_code, {"start": "未知", "end": "未知"})
+            # 如果字典裡找得到這個代碼，就用對應的時間；如果找不到（例如 DO1、DO3X），就直接把代碼填進去！
+            matched_time = shift_dict.get(sample_code, {"start": sample_code, "end": sample_code})
             
             preview_data.append({
                 "員編": emp_id,
