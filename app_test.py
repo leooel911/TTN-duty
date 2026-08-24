@@ -184,10 +184,24 @@ NATIONAL_HOLIDAYS = {
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "TRAIN CREW DUTY CALENDAR"
 
+# --- 確保有一個專門存放資料的資料夾 ---
+DATA_DIR = os.path.join(os.getcwd(), "data")
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
+
 ROLE_FILES = {
-    "駕駛": "TD.xlsx",
-    "列車長": "TM.xlsx",
-    "服勤員": "TA.xlsx"
+    "駕駛": os.path.join(DATA_DIR, "TD.xlsx"),
+    "列車長": os.path.join(DATA_DIR, "TM.xlsx"),
+    "服勤員": os.path.join(DATA_DIR, "TA.xlsx")
+}
+
+LOG_FILE = os.path.join(DATA_DIR, "activity_log.txt")
+
+MAINTENANCE_FLAGS = {
+    "producer": os.path.join(DATA_DIR, "maintenance_producer.flag"),
+    "window_filter": os.path.join(DATA_DIR, "maintenance_window.flag"),
+    "exchange_filter": os.path.join(DATA_DIR, "maintenance_exchange.flag")
+}
 }
 
 ADMIN_PASSWORD = "Lf0900"
@@ -816,7 +830,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     time.sleep(0.3)
                     
                     with open(target_path, "wb") as f:
-                        f.write(file_bytes)
+                         f.write(file_bytes)
                         
                     status_text.markdown('<div class="loading-status-text">階段 2/3：正在建立全車次與班別對照字典庫...</div>', unsafe_allow_html=True)
                     progress_bar.progress(70)
