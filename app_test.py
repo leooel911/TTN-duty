@@ -336,20 +336,34 @@ def is_town_shift(tr, note):
     return any(kw in f"{tr_upper} {str(note).upper()}" for kw in keywords)
 
 def parse_cell(raw):
-    if pd.isna(raw) or not str(raw).strip(): return dict(start="", train="", end="", hours="", note="")
+    if pd.isna(raw) or not str(raw).strip(): 
+        return dict(start="", train="", end="", hours="", note="")
+    
     raw_str = str(raw).strip()
     lines = [l.strip() for l in raw_str.split("\n") if l.strip()]
-    if not lines: return dict(start="", train="", end="", hours="", note="")
+    
+    # 嚴格過濾：過濾掉單獨的點 '.' 或無意義的孤立殘留字元
+    lines = [l for l in lines if l != "."]
+    
+    if not lines: 
+        return dict(start="", train="", end="", hours="", note="")
+        
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
-    if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): return dict(start="", train=lines[0], end="", hours="", note="")
+    
+    if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): 
+        return dict(start="", train=lines[0], end="", hours="", note="")
+        
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     hours = calculate_hours(start_time, end_time)
+    
     do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l), "")
     real_train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != do_str and "h" not in l and "m" not in l), "")
+    
     if not real_train:
         non_time_lines = [l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l]
         if non_time_lines: real_train = non_time_lines[0]
+        
     notes = [l for l in lines if l not in times and l != real_train]
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
