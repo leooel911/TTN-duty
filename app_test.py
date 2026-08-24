@@ -1,3 +1,4 @@
+import streamlit as str_module
 import streamlit as st
 import os
 import re
@@ -29,8 +30,12 @@ ROLE_FILES = {
     "服勤員": os.path.join(DATA_DIR, "TA.xlsx")
 }
 
-# 班別代碼時間對應表專用路徑 (窗口 3)
-SHIFT_MAPPING_FILE = os.path.join(DATA_DIR, "shift_mapping.xlsx")
+# 針對三種職位分別獨立的班別代碼時間對應表專用路徑 (窗口 3)
+ROLE_SHIFT_MAPPING_FILES = {
+    "駕駛": os.path.join(DATA_DIR, "shift_mapping_TD.xlsx"),
+    "列車長": os.path.join(DATA_DIR, "shift_mapping_TM.xlsx"),
+    "服勤員": os.path.join(DATA_DIR, "shift_mapping_TA.xlsx")
+}
 
 LOG_FILE = os.path.join(DATA_DIR, "activity_log.txt")
 
@@ -266,15 +271,23 @@ def get_file_mtime_str(path):
     if os.path.exists(path):
         mtime = os.path.getmtime(path)
         dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(TAIWAN_TZ)
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
+        size_kb = os.path.getsize(path) / 1024
+        return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} ({size_kb:.1f} KB)"
     return "尚無檔案"
+
+def get_file_info_text(path):
+    if os.path.exists(path):
+        mtime = os.path.getmtime(path)
+        dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(TAIWAN_TZ)
+        size_kb = os.path.getsize(path) / 1024
+        return f"📁 目前檔案：{os.path.basename(path)} | 大小：{size_kb:.1f} KB | 更新時間：{dt.strftime('%Y-%m-%d %H:%M:%S')}"
+    return "📁 目前狀態：尚無上傳檔案"
 
 def get_schedule_range():
     for path in ROLE_FILES.values():
         if os.path.exists(path):
             try:
                 df = pd.read_excel(path, header=None)
-                # 動態搜尋日期範圍
                 for r_idx in range(min(6, len(df))):
                     row_vals = [str(val).strip() for val in df.iloc[r_idx].values]
                     date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
@@ -350,12 +363,13 @@ def parse_cell(raw):
     notes = [l for l in lines if l not in times and l != real_train]
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
-def load_shift_mapping_dict():
-    """載入全公司班別代碼時間對照表 (窗口 3)"""
+def load_shift_mapping_dict(role_key="服勤員"):
+    """載入對應職位的班別代碼時間對照表 (窗口 3)"""
+    mapping_file = ROLE_SHIFT_MAPPING_FILES.get(role_key, ROLE_SHIFT_MAPPING_FILES["服勤員"])
     mapping_dict = {}
-    if os.path.exists(SHIFT_MAPPING_FILE):
+    if os.path.exists(mapping_file):
         try:
-            df = pd.read_excel(SHIFT_MAPPING_FILE)
+            df = pd.read_excel(mapping_file)
             for _, row in df.iterrows():
                 code = str(row.iloc[0]).strip().upper()
                 start_t = str(row.iloc[1]).strip()
@@ -368,15 +382,15 @@ def load_shift_mapping_dict():
                         "hours": hrs
                     }
         except Exception as e:
-            print(f"載入班別對照表發生錯誤: {e}")
+            print(f"載入 {role_key} 班別對照表發生錯誤: {e}")
     return mapping_dict
 
-def merge_update_file_with_mapping(base_path, update_df):
+def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
     """具備自動清除特殊符號（#、% 等）與智慧對照容錯的合併引擎"""
     status_text = st.empty()
     progress_bar = st.progress(0)
     
-    status_text.markdown('<div class="loading-status-text">階段 1/4：正在初始化符號過濾與智慧對照引擎...</div>', unsafe_allow_html=True)
+    status_text.markdown(f'<div class="loading-status-text">階段 1/4：正在初始化【{role_key}】符號過濾與智慧對照引擎...</div>', unsafe_allow_html=True)
     progress_bar.progress(20)
     time.sleep(0.2)
 
@@ -386,13 +400,12 @@ def merge_update_file_with_mapping(base_path, update_df):
         return update_df
     
     base_raw = pd.read_excel(base_path, header=None)
-    shift_map = load_shift_mapping_dict()
+    shift_map = load_shift_mapping_dict(role_key)
     
     status_text.markdown('<div class="loading-status-text">階段 2/4：動態掃描基準大表與更新檔的表頭、日期欄位...</div>', unsafe_allow_html=True)
     progress_bar.progress(45)
     time.sleep(0.2)
 
-    # 1. 動態尋找基準檔表頭與日期欄位
     base_header_row = -1
     base_date_col_map = {}
     for r_idx in range(min(6, len(base_raw))):
@@ -409,7 +422,6 @@ def merge_update_file_with_mapping(base_path, update_df):
             clean_d = f"{int(m.group(1).split('/')[0])}/{int(m.group(1).split('/')[1])}"
             base_date_col_map[clean_d] = c_idx
 
-    # 建立基準檔員編對應表（純數字萃取）
     base_emp_row_map = {}
     for r_idx in range(base_header_row + 1, len(base_raw)):
         raw_emp = str(base_raw.iloc[r_idx, 0]).strip()
@@ -417,7 +429,6 @@ def merge_update_file_with_mapping(base_path, update_df):
             pure_emp = re.sub(r'\D', '', raw_emp)
             if pure_emp: base_emp_row_map[pure_emp] = r_idx
 
-    # 2. 動態尋找更新檔表頭與日期欄位
     update_header_row = -1
     update_date_col_map = {}
     for r_idx in range(min(6, len(update_df))):
@@ -458,19 +469,13 @@ def merge_update_file_with_mapping(base_path, update_df):
                 up_val_str = str(up_val).strip()
                 if not up_val_str or up_val_str.lower() in [".", "nan", "none"]: continue
                 
-                # 【核心修改】自動過濾並清除代碼中的 #、% 或其他特殊符號，還原純代碼
-                # 例如將 "NH5902#" 或 "NH0541%" 清理成 "NH5902" 或 "NH0541"
                 clean_code = re.sub(r'[#%]', '', up_val_str).strip().upper()
                 
-                # [核心邏輯] 1. 先從對照表（窗口3）查詢淨化後的代碼
                 if clean_code in shift_map:
                     info = shift_map[clean_code]
-                    # 即使原代碼有帶 # 或 %，我們仍可選擇在排班表中保留原始外觀或直接帶入時間
-                    # 這裡我們將格式化帶入標準完整時間結構
                     formatted_cell = f"{info['start']}\n\n{clean_code}\n{info['end']}\n{info['hours']}"
                     base_raw.iloc[target_row_idx, b_c_idx] = formatted_cell
                 else:
-                    # [核心邏輯] 2. 若對照表中找不到，直接以更新檔原始字串寫入
                     base_raw.iloc[target_row_idx, b_c_idx] = up_val_str
 
     progress_bar.progress(100)
@@ -791,14 +796,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     # --- 即時動態與伺服器資料狀態總覽看板 ---
     st.markdown("##### 📊 伺服器即時處理動態與檔案健康狀態")
     
-    mapping_time_str = get_file_mtime_str(SHIFT_MAPPING_FILE)
-    mapping_count = 0
-    if os.path.exists(SHIFT_MAPPING_FILE):
-        try:
-            m_df = pd.read_excel(SHIFT_MAPPING_FILE)
-            mapping_count = len(m_df)
-        except: pass
-
     col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
     with col_stat1:
         td_status = "🟢 已就緒" if os.path.exists(ROLE_FILES["駕駛"]) else "🔴 缺檔案"
@@ -810,13 +807,16 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         ta_status = "🟢 已就緒" if os.path.exists(ROLE_FILES["服勤員"]) else "🔴 缺檔案"
         st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">服勤員大表 (TA)</div><div class="telemetry-value" style="font-size:14px;">{ta_status}</div><div class="telemetry-sub">{get_file_mtime_str(ROLE_FILES["服勤員"])}</div></div>""", unsafe_allow_html=True)
     with col_stat4:
-        map_status = f"🟢 已載入 ({mapping_count}筆)" if os.path.exists(SHIFT_MAPPING_FILE) else "🔴 未上傳"
-        st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">班別代碼對照表</div><div class="telemetry-value" style="font-size:14px;">{map_status}</div><div class="telemetry-sub">{mapping_time_str}</div></div>""", unsafe_allow_html=True)
+        map_files_ready = sum(1 for p in ROLE_SHIFT_MAPPING_FILES.values() if os.path.exists(p))
+        map_status = f"🟢 已就緒 ({map_files_ready}/3)" if map_files_ready > 0 else "🔴 未上傳"
+        st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">職位對照表狀態</div><div class="telemetry-value" style="font-size:14px;">{map_status}</div><div class="telemetry-sub">三職位各自獨立對照表</div></div>""", unsafe_allow_html=True)
 
     st.markdown("---")
     st.subheader("🎛️ 三大獨立上傳窗口控制台")
-    selected_role = st.selectbox("選擇目前要維護的職位類別（適用於窗口 1 與 窗口 2）", ["駕駛", "列車長", "服勤員"])
+    # 將職位選擇預設為「服勤員」 (index=2)
+    selected_role = st.selectbox("選擇目前要維護的職位類別（適用於窗口 1 與 窗口 2）", ["駕駛", "列車長", "服勤員"], index=2)
     target_path = ROLE_FILES[selected_role]
+    target_mapping_file = ROLE_SHIFT_MAPPING_FILES[selected_role]
 
     st.markdown("""
     <div style="display: flex; flex-direction: column; gap: 20px; margin-top: 15px;">
@@ -826,10 +826,13 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container">
-            <h4 style="color: #38BDF8; margin-top: 0;">窗口 1：每月 20 號公司基準大表</h4>
+            <h4 style="color: #38BDF8; margin-top: 0;">窗口 1：每月 20 號公司基準大表（職位：{selected_role}）</h4>
             <p style="color: #94A3B8; font-size: 13px;">由公司發出的每月完整基準班表（包含詳細時間與完整架構），上傳後將作為該月份的基礎底稿。</p>
         </div>
         """, unsafe_allow_html=True)
+        
+        # 顯示目前上傳的檔案資訊
+        st.info(get_file_info_text(target_path))
         
         uploaded_file_20 = st.file_uploader(f"上傳【{selected_role}】20號基準大表 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window1_up_{selected_role}")
         if uploaded_file_20 is not None:
@@ -847,12 +850,21 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     st.rerun()
                 except Exception as e: st.error(f"儲存失敗: {e}")
 
+        # 增設單獨刪除此基準大表的按鈕
+        if os.path.exists(target_path):
+            if st.button(f"🗑️ 刪除目前【{selected_role}】的基準大表檔案", key=f"del_w1_{selected_role}"):
+                os.remove(target_path)
+                log_activity(f"刪除基準大表 [{selected_role}]")
+                st.success(f"已成功刪除【{selected_role}】的基準大表檔案！")
+                time.sleep(0.5)
+                st.rerun()
+
     # --- 窗口 2：21 號起每日更新檔 ---
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #10B981;">
-            <h4 style="color: #34D399; margin-top: 0;">窗口 2：21 號起每日更新檔（夜間抓取）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">管理員每日凌晨 01:30 從公司系統抓取的異動檔。系統將自動對照下方「班別代碼時間對照表」，智慧擴展並無縫更新大表。</p>
+            <h4 style="color: #34D399; margin-top: 0;">窗口 2：21 號起每日更新檔（職位：{selected_role}）</h4>
+            <p style="color: #94A3B8; font-size: 13px;">管理員每日從公司系統抓取的異動檔。系統將自動對照下方「該職位專屬的班別代碼時間對應表」，智慧擴展並無縫更新大表。</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -869,10 +881,10 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     else:
                         up_df = pd.read_excel(io.BytesIO(file_bytes), header=None)
                     
-                    merged_df = merge_update_file_with_mapping(target_path, up_df)
+                    merged_df = merge_update_file_with_mapping(target_path, up_df, selected_role)
                     st.session_state[hash_key] = current_hash
                     log_activity(f"上傳 21號更新檔 [{selected_role}] 進行智慧對照合併")
-                    st.success(f"【{selected_role}】窗口 2：21號更新檔已透過對照表成功合併至大表！")
+                    st.success(f"【{selected_role}】窗口 2：21號更新檔已透過專屬對照表成功合併至大表！")
                     time.sleep(0.5)
                     st.rerun()
                 except Exception as e: st.error(f"更新檔合併失敗: {e}")
@@ -889,56 +901,42 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 key=f"download_audit_{selected_role}"
             )
 
-    # --- 窗口 3：班別代碼時間對應表 ---
+    # --- 窗口 3：各職位專屬班別代碼時間對應表 ---
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #EAB308;">
-            <h4 style="color: #FEF08A; margin-top: 0;">窗口 3：全公司班別代碼時間對應表</h4>
-            <p style="color: #94A3B8; font-size: 13px;">上傳包含「班別代碼、上班時間、下班時間、預估工時」的對照表。當窗口 2 收到純代碼更新時，系統以此表進行精準換算。</p>
+            <h4 style="color: #FEF08A; margin-top: 0;">窗口 3：【{selected_role}】專屬班別代碼時間對應表</h4>
+            <p style="color: #94A3B8; font-size: 13px;">上傳包含「班別代碼、上班時間、下班時間、預估工時」的對照表（駕駛、列車長、服勤員可各自獨立維護對應表）。</p>
         </div>
         """, unsafe_allow_html=True)
         
-        uploaded_file_map = st.file_uploader("上傳全公司「班別代碼時間對應表」 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key="window3_map_up")
+        # 顯示目前該職位對應表的檔案資訊
+        st.info(get_file_info_text(target_mapping_file))
+        
+        uploaded_file_map = st.file_uploader(f"上傳【{selected_role}】專屬「班別代碼時間對應表」 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window3_map_up_{selected_role}")
         if uploaded_file_map is not None:
             file_bytes = uploaded_file_map.getvalue()
             current_hash = hashlib.md5(file_bytes).hexdigest()
-            hash_key = "w3_hash_mapping"
+            hash_key = f"w3_hash_mapping_{selected_role}"
             
             if st.session_state.get(hash_key) != current_hash:
                 try:
-                    with open(SHIFT_MAPPING_FILE, "wb") as f: f.write(file_bytes)
+                    with open(target_mapping_file, "wb") as f: f.write(file_bytes)
                     st.session_state[hash_key] = current_hash
-                    log_activity("上傳全公司班別代碼時間對照表")
-                    st.success("窗口 3：班別代碼時間對照表已成功更新並載入記憶體！")
+                    log_activity(f"上傳【{selected_role}】專屬班別代碼時間對應表")
+                    st.success(f"窗口 3：【{selected_role}】班別代碼時間對應表已成功更新並載入記憶體！")
                     time.sleep(0.5)
                     st.rerun()
                 except Exception as e: st.error(f"對照表儲存失敗: {e}")
 
-    st.markdown("---")
-    st.subheader("🗑️ 檔案維護與刪除區")
-    file_exists = os.path.exists(target_path)
-    st.write(f"目前【{selected_role}】檔案狀態：" + ("已存在主檔" if file_exists else "無檔案"))
-    
-    col_del1, col_del2 = st.columns(2)
-    with col_del1:
-        if file_exists:
-            if st.button(f"🗑️ 刪除【{selected_role}】現有班表主檔"):
-                os.remove(target_path)
-                log_activity(f"刪除班表主檔 [{selected_role}]")
-                st.success(f"已成功刪除【{selected_role}】的班表主檔")
+        # 增設單獨刪除此對應表的按鈕
+        if os.path.exists(target_mapping_file):
+            if st.button(f"🗑️ 刪除目前【{selected_role}】的對照表檔案", key=f"del_map_{selected_role}"):
+                os.remove(target_mapping_file)
+                log_activity(f"刪除職位對照表 [{selected_role}]")
+                st.success(f"已成功刪除【{selected_role}】的專屬代碼對照表檔案！")
+                time.sleep(0.5)
                 st.rerun()
-        else:
-            st.button(f"🗑️ 刪除【{selected_role}】現有班表主檔", disabled=True)
-            
-    with col_del2:
-        if os.path.exists(SHIFT_MAPPING_FILE):
-            if st.button("🗑️ 刪除「班別代碼時間對照表」"):
-                os.remove(SHIFT_MAPPING_FILE)
-                log_activity("刪除班別代碼時間對照表")
-                st.success("已成功刪除班別代碼時間對照表")
-                st.rerun()
-        else:
-            st.button("🗑️ 刪除「班別代碼時間對照表」", disabled=True)
 
     st.markdown("---")
     st.subheader("📋 系統操作活動紀錄日誌 (Activity Log)")
