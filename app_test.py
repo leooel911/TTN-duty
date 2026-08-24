@@ -531,21 +531,16 @@ def parse_cell(raw):
 
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
-    def process_file_data(input_str):
-    input_clean = input_str.strip().upper()
     matched_row, emp_id, emp_name, df_found = None, "", "", None
     
     for role, path in ROLE_FILES.items():
         if os.path.exists(path):
-            # 策略：先嘗試讀取不同的 header 列 (例如 3 或 5)，或者自動掃描
             df_temp = None
             header_row_found = 3
             
-            # 嘗試自動偵測在哪一列
             for h_idx in range(2, 7):
                 try:
                     df_test = pd.read_excel(path, header=h_idx)
-                    # 檢查前兩欄是否有像員工編號的資料，或者欄位是否有日期
                     cols_str = " ".join([str(c) for c in df_test.columns])
                     if re.search(r'\d+/\d+', cols_str) or '員工編號' in cols_str or '員編' in cols_str:
                         header_row_found = h_idx
@@ -555,26 +550,23 @@ def process_file_data(input_str):
                     continue
             
             if df_temp is None:
-                df_temp = pd.read_excel(path, header=3) # 預設回退到 3
+                df_temp = pd.read_excel(path, header=3)
             
-            # 清理欄位名稱（去除空白）
             df_temp.columns = [str(c).strip() for c in df_temp.columns]
             
             for idx, row in df_temp.iterrows():
-                # 取得第一欄（員工編號）與第二欄（員工姓名，可能包含英文名，如 "童志婷 Dora TUNG"）
                 col0_val = str(row.iloc[0]).strip().upper()
                 col1_val = str(row.iloc[1]).strip().upper()
                 
-                # 兼容姓名可能包含中文與英文的狀況（比對開頭或完整字串）
                 if col0_val == input_clean or input_clean in col1_val:
                     matched_row, emp_id, emp_name, df_found = row, str(row.iloc[0]).strip(), str(row.iloc[1]).strip(), df_temp
                     break
-            if matched_row is not None: break
+            if matched_row is not None: 
+                break
             
     if matched_row is None: 
         raise ValueError(f"找不到員編或姓名為「{input_str}」的資料。")
     
-    # 擷取日期欄位
     col_names = df_found.columns[2:]
     dates = []
     start_dt = date(2026, 2, 1)
