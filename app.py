@@ -20,10 +20,8 @@ TAIWAN_TZ = timezone(timedelta(hours=8))
 st.markdown("""
 <style>
     .stApp { background-color: #0B0F19 !important; color: #F8FAFC !important; }
-    /* 調整頂部留白與整體畫面下移 */
     .block-container { padding: 4.5rem 1rem 3rem 1rem !important; }
     
-    /* 綠色雷達波呼吸光點動畫定義 (在線意象) */
     @keyframes online-green-pulse {
         0% { 
             transform: scale(0.95);
@@ -51,7 +49,6 @@ st.markdown("""
         vertical-align: middle;
     }
 
-    /* 施工中紅色底線呼吸燈動畫定義 */
     @keyframes maintenance-red-line-pulse {
         0% { 
             background-color: #7F1D1D; 
@@ -67,7 +64,6 @@ st.markdown("""
         }
     }
 
-    /* 紅色外框呼吸燈動畫定義 */
     @keyframes missing-data-pulse {
         0% { 
             border-color: #7F1D1D; 
@@ -83,7 +79,6 @@ st.markdown("""
         }
     }
 
-    /* 藍色外框呼吸燈動畫定義 (首頁專用) */
     @keyframes blue-glow-pulse {
         0% { 
             border-color: #0369A1; 
@@ -108,7 +103,6 @@ st.markdown("""
         animation: missing-data-pulse 2.5s infinite ease-in-out;
     }
 
-    /* 頂部導航總成 (首頁專用藍色呼吸外框與置中排版) */
     .header-container { 
         display: flex; 
         flex-direction: column;
@@ -154,7 +148,6 @@ st.markdown("""
         justify-content: center;
     }
     
-    /* 底部低調精緻小貼紙按鈕樣式 */
     .footer-badge-container {
         display: flex;
         justify-content: center;
@@ -190,7 +183,6 @@ st.markdown("""
         transform: translateY(-1px) !important;
     }
 
-    /* 區塊小標題樣式 (已放大並改為白色) */
     .mode-selection-header {
         color: #FFFFFF;
         font-size: 13px;
@@ -210,7 +202,6 @@ st.markdown("""
         background: #334155;
     }
 
-    /* 施工中卡片樣式 */
     .maintenance-card-box {
         background: linear-gradient(135deg, #271C0C 0%, #171005 100%);
         border: 1.5px solid #EAB308;
@@ -778,7 +769,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭（已移除 C.L.F EDITION 兩側藍點，保留 OPERATOR 兩側綠點） ---
+# --- 頂部質感標頭 ---
 st.markdown(f"""
 <div class="header-container">
     <div class="title-left-group">
@@ -916,7 +907,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.stop()
 
 # --- 一般系統首頁介面 ---
-# --- 檢查資料庫檔案狀態 ---
 missing_files = []
 for role, path in ROLE_FILES.items():
     if not os.path.exists(path) or os.path.getsize(path) == 0:
@@ -1335,7 +1325,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if "ex_selected_emp" not in st.session_state: st.session_state["ex_selected_emp"] = None
     if "ex_saved_candidates" not in st.session_state: st.session_state["ex_saved_candidates"] = []
     if "ex_saved_target_date" not in st.session_state: st.session_state["ex_saved_target_date"] = ""
+    if "ex_saved_return_date" not in st.session_state: st.session_state["ex_saved_return_date"] = ""
     if "ex_saved_role" not in st.session_state: st.session_state["ex_saved_role"] = ""
+    if "ex_saved_time_filter" not in st.session_state: st.session_state["ex_saved_time_filter"] = "不限"
 
     if st.session_state["ex_sub_mode"] == "inspect_image":
         target_emp = st.session_state["ex_selected_emp"]
@@ -1491,7 +1483,10 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
     ex_c1, ex_c2, ex_c3 = st.columns(3)
     with ex_c1:
-        selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], index=0, key="ex_role_select")
+        roles_list = ["服勤員", "駕駛", "列車長"]
+        saved_role_val = st.session_state.get("ex_saved_role", "服勤員")
+        default_role_idx = roles_list.index(saved_role_val) if saved_role_val in roles_list else 0
+        selected_role = st.selectbox("選擇職位類別", roles_list, index=default_role_idx, key="ex_role_select")
     
     sample_path = ROLE_FILES[selected_role] if os.path.exists(ROLE_FILES[selected_role]) else list(ROLE_FILES.values())[0]
     try:
@@ -1509,20 +1504,26 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
     with ex_c2:
         if date_cols:
-            target_date = st.selectbox("想休假的日期", date_cols, index=0, key=f"ex_target_date_{selected_role}")
+            saved_t_date = st.session_state.get("ex_saved_target_date", "")
+            default_t_idx = date_cols.index(saved_t_date) if saved_t_date in date_cols else 0
+            target_date = st.selectbox("想休假的日期", date_cols, index=default_t_idx, key=f"ex_target_date_{selected_role}")
         else:
             target_date = st.selectbox("想休假的日期", ["無可用日期"], index=0, key=f"ex_target_date_{selected_role}")
 
     with ex_c3:
         if date_cols:
-            return_date = st.selectbox("可還假的日期(上班日)", date_cols, index=min(1, len(date_cols)-1), key=f"ex_return_date_{selected_role}")
+            saved_r_date = st.session_state.get("ex_saved_return_date", "")
+            default_r_idx = date_cols.index(saved_r_date) if saved_r_date in date_cols else min(1, len(date_cols)-1)
+            return_date = st.selectbox("可還假的日期(上班日)", date_cols, index=default_r_idx, key=f"ex_return_date_{selected_role}")
         else:
             return_date = st.selectbox("可還假的日期(上班日)", ["無可用日期"], index=0, key=f"ex_return_date_{selected_role}")
 
+    saved_time_f = st.session_state.get("ex_saved_time_filter", "不限")
+    default_time_idx = time_filter_options.index(saved_time_f) if saved_time_f in time_filter_options else 0
     return_time_filter = st.selectbox(
         "還假日，可接受對方的報到時間限制（只列出 XX:XX 之後報到的班）",
         options=time_filter_options,
-        index=0,
+        index=default_time_idx,
         key="ex_return_time_filter"
     )
 
@@ -1611,6 +1612,23 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         emp_id = str(row.iloc[0]).strip()
                         emp_name = str(row.iloc[1]).strip()
                         
+                        # --- 外支援整週鎖定檢查 (若該週內含有 I 或 E 開頭等支援班別，整人排除) ---
+                        has_external_support = False
+                        s_wk_idx = max(0, actual_pos - 3)
+                        e_wk_idx = min(len(all_cols_list) - 1, actual_pos + 3)
+                        for w_i in range(s_wk_idx, e_wk_idx + 1):
+                            cell_check = str(row.iloc[w_i + 2]).strip().upper()
+                            # 檢查是否有支援代號開頭 (例如 I, E 開頭的班別代號)
+                            for line_item in cell_check.split('\n'):
+                                line_trimmed = line_item.strip()
+                                if re.match(r'^[IE]\d+[A-Z0-9]*$', line_trimmed):
+                                    has_external_support = True
+                                    break
+                            if has_external_support: break
+                        
+                        if has_external_support:
+                            continue
+
                         cell_target = row.iloc[target_col_idx]
                         parsed_target = parse_cell(cell_target)
                         raw_target_str = str(cell_target).upper()
@@ -1704,7 +1722,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         })
                     st.session_state["ex_saved_candidates"] = candidates
                     st.session_state["ex_saved_target_date"] = target_date
+                    st.session_state["ex_saved_return_date"] = return_date
                     st.session_state["ex_saved_role"] = selected_role
+                    st.session_state["ex_saved_time_filter"] = return_time_filter
             except Exception as e:
                 st.error(f"日期計算發生錯誤: {e}")
             st.rerun()
@@ -1714,7 +1734,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if st.session_state["ex_sub_mode"] == "results" and st.session_state.get("ex_saved_candidates"):
         saved_candidates = st.session_state["ex_saved_candidates"]
         saved_date = st.session_state.get("ex_saved_target_date", target_date)
+        saved_return_date = st.session_state.get("ex_saved_return_date", return_date)
         saved_role = st.session_state.get("ex_saved_role", selected_role)
+        saved_time_f = st.session_state.get("ex_saved_time_filter", return_time_filter)
 
         st.markdown(f"""
         <div style="
@@ -1740,9 +1762,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             <div style="color: #94A3B8; font-size: 13px; font-family: monospace; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                 <span>想休日期：<strong style="color: #34D399;">{saved_date}</strong></span>
                 <span style="color: #475569;">|</span>
-                <span>可還假日期：<strong style="color: #60A5FA;">{return_date}</strong></span>
+                <span>可還假日期：<strong style="color: #60A5FA;">{saved_return_date}</strong></span>
                 <span style="color: #475569;">|</span>
-                <span>報到限制：<strong style="color: #F87171;">{return_time_filter}</strong></span>
+                <span>報到限制：<strong style="color: #F87171;">{saved_time_f}</strong></span>
             </div>
         </div>
         """, unsafe_allow_html=True)        
