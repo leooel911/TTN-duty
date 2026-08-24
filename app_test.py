@@ -16,10 +16,8 @@ matplotlib.use('Agg')
 
 st.set_page_config(page_title="TTN Shift Producer", page_icon="700st.png", layout="centered")
 
-# --- 定義台灣時區 (GMT+8) ---
 TAIWAN_TZ = timezone(timedelta(hours=8))
 
-# --- 確保專用資料夾存在，並使用絕對路徑避免雲端暫存遺失 ---
 DATA_DIR = os.path.join(os.getcwd(), "data")
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -28,6 +26,12 @@ ROLE_FILES = {
     "駕駛": os.path.join(DATA_DIR, "TD.xlsx"),
     "列車長": os.path.join(DATA_DIR, "TM.xlsx"),
     "服勤員": os.path.join(DATA_DIR, "TA.xlsx")
+}
+
+ROLE_UPDATE_FILES = {
+    "駕駛": os.path.join(DATA_DIR, "TD_update.xlsx"),
+    "列車長": os.path.join(DATA_DIR, "TM_update.xlsx"),
+    "服勤員": os.path.join(DATA_DIR, "TA_update.xlsx")
 }
 
 ROLE_SHIFT_MAPPING_FILES = {
@@ -301,13 +305,13 @@ def get_file_mtime_str(path):
         return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} ({size_kb:.1f} KB)"
     return "尚無檔案"
 
-def get_file_info_text(path):
+def get_file_info_text(path, label_prefix="目前檔案"):
     if os.path.exists(path):
         mtime = os.path.getmtime(path)
         dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(TAIWAN_TZ)
         size_kb = os.path.getsize(path) / 1024
-        return f"📁 目前檔案：{os.path.basename(path)} | 大小：{size_kb:.1f} KB | 更新時間：{dt.strftime('%Y-%m-%d %H:%M:%S')}"
-    return "📁 目前狀態：尚無上傳檔案"
+        return f"📁 {label_prefix}：{os.path.basename(path)} | 大小：{size_kb:.1f} KB | 更新時間：{dt.strftime('%Y-%m-%d %H:%M:%S')}"
+    return f"📁 {label_prefix}：尚無上傳檔案"
 
 def get_schedule_range():
     for path in ROLE_FILES.values():
@@ -839,118 +843,26 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">職位對照表狀態</div><div class="telemetry-value" style="font-size:14px;">{map_status}</div><div class="telemetry-sub">三職位各自獨立對照表</div></div>""", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.subheader("🎛️ 三大獨立上傳窗口控制台")
-    selected_role = st.selectbox("選擇目前要維護的職位類別（適用於窗口 1 與 窗口 2）", ["駕駛", "列車長", "服勤員"], index=2)
+    st.subheader("🎛️ 三大獨立上傳窗口控制台（請依序：窗口3 ➔ 窗口1 ➔ 窗口2）")
+    selected_role = st.selectbox("選擇目前要維護的職位類別", ["駕駛", "列車長", "服勤員"], index=2)
     target_path = ROLE_FILES[selected_role]
+    target_update_path = ROLE_UPDATE_FILES[selected_role]
     target_mapping_file = ROLE_SHIFT_MAPPING_FILES[selected_role]
 
     st.markdown("""
     <div style="display: flex; flex-direction: column; gap: 20px; margin-top: 15px;">
     """, unsafe_allow_html=True)
 
-    # --- 窗口 1：每月 20 號基準大表 ---
-    with st.container():
-        st.markdown(f"""
-        <div class="admin-card-container">
-            <h4 style="color: #38BDF8; margin-top: 0;">窗口 1：每月 20 號公司基準大表（職位：{selected_role}）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">由公司發出的每月完整基準班表（包含詳細時間與完整架構），支援寬幅 .xls 與 .xlsx 格式。</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.info(get_file_info_text(target_path))
-        
-        uploaded_file_20 = st.file_uploader(f"上傳【{selected_role}】20號基準大表 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window1_up_{selected_role}")
-        if uploaded_file_20 is not None:
-            file_bytes = uploaded_file_20.getvalue()
-            current_hash = hashlib.md5(file_bytes).hexdigest()
-            hash_key = f"w1_hash_{selected_role}"
-            if st.session_state.get(hash_key) != current_hash:
-                try:
-                    if not os.path.exists(DATA_DIR):
-                        os.makedirs(DATA_DIR, exist_ok=True)
-                    with open(target_path, "wb") as f: f.write(file_bytes)
-                    st.session_state[hash_key] = current_hash
-                    log_activity(f"上傳 20號基準大表 [{selected_role}] 檔案大小: {len(file_bytes)} bytes")
-                    st.success(f"【{selected_role}】窗口 1：20號基準大表已成功上傳並初始化完成！")
-                    time.sleep(0.5)
-                    st.rerun()
-                except Exception as e: st.error(f"儲存失敗: {e}")
-
-        if os.path.exists(target_path):
-            if st.button(f"🗑️ 刪除目前【{selected_role}】的基準大表檔案", key=f"del_w1_{selected_role}"):
-                os.remove(target_path)
-                log_activity(f"刪除基準大表 [{selected_role}]")
-                st.success(f"已成功刪除【{selected_role}】的基準大表檔案！")
-                time.sleep(0.5)
-                st.rerun()
-        else:
-            st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 目前【{selected_role}】尚無基準大表檔案，請透過上方上傳。</p>", unsafe_allow_html=True)
-
-    # --- 窗口 2：21 號起每日更新檔 ---
-    with st.container():
-        st.markdown(f"""
-        <div class="admin-card-container" style="border-left-color: #10B981;">
-            <h4 style="color: #34D399; margin-top: 0;">窗口 2：21 號起每日更新檔（職位：{selected_role}）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">管理員每日從公司系統抓取的寬幅異動檔。系統將以視窗 1 為底稿，自動對照視窗 3 補上時間格式後更新大表。</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.info(get_file_info_text(target_path).replace("目前檔案", "目前大表狀態"))
-        
-        uploaded_file_21 = st.file_uploader(f"上傳【{selected_role}】21號起每日更新檔 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window2_up_{selected_role}")
-        if uploaded_file_21 is not None:
-            file_bytes_21 = uploaded_file_21.getvalue()
-            current_hash_21 = hashlib.md5(file_bytes_21).hexdigest()
-            hash_key_21 = f"w2_hash_{selected_role}"
-            
-            if st.session_state.get(hash_key_21) != current_hash_21:
-                try:
-                    if not os.path.exists(DATA_DIR):
-                        os.makedirs(DATA_DIR, exist_ok=True)
-                    if uploaded_file_21.name.endswith('.csv'):
-                        up_df = pd.read_csv(io.BytesIO(file_bytes_21))
-                    else:
-                        up_df = safe_read_excel(io.BytesIO(file_bytes_21), header=None)
-                    
-                    merged_df = merge_update_file_with_mapping(target_path, up_df, selected_role)
-                    st.session_state[hash_key_21] = current_hash_21
-                    log_activity(f"上傳 21號更新檔 [{selected_role}] 進行智慧對照合併")
-                    st.success(f"【{selected_role}】窗口 2：21號更新檔已透過專屬對照表成功合併至大表！")
-                    time.sleep(0.5)
-                    st.rerun()
-                except Exception as e: st.error(f"更新檔合併失敗: {e}")
-
-        col_w2_btn1, col_w2_btn2 = st.columns(2)
-        with col_w2_btn1:
-            if os.path.exists(target_path):
-                with open(target_path, "rb") as f:
-                    excel_bytes = f.read()
-                st.download_button(
-                    label=f"📥 下載【{selected_role}】合併後大表 (.xlsx)",
-                    data=excel_bytes,
-                    file_name=f"{selected_role}_merged_audit_{datetime.now(TAIWAN_TZ).strftime('%m%d_%H%M')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key=f"download_audit_{selected_role}"
-                )
-        with col_w2_btn2:
-            if os.path.exists(target_path):
-                if st.button(f"🗑️ 重設/清除【{selected_role}】合併狀態", key=f"reset_w2_{selected_role}"):
-                    os.remove(target_path)
-                    log_activity(f"重設合併大表 [{selected_role}]")
-                    st.success(f"已清除【{selected_role}】的合併大表檔案！")
-                    time.sleep(0.5)
-                    st.rerun()
-
-    # --- 窗口 3：各職位專屬班別代碼時間對應表 ---
+    # ==================== 窗口 3：班別代碼時間對應表（優先順序 1） ====================
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #EAB308;">
-            <h4 style="color: #FEF08A; margin-top: 0;">窗口 3：【{selected_role}】專屬班別代碼時間對應表</h4>
-            <p style="color: #94A3B8; font-size: 13px;">上傳包含「班別代碼、上班時間、下班時間、預估工時」的對照表（支援 .xls 與 .xlsx）。</p>
+            <h4 style="color: #FEF08A; margin-top: 0;">窗口 3（優先）：【{selected_role}】專屬班別代碼時間對應表</h4>
+            <p style="color: #94A3B8; font-size: 13px;">必須先上傳此對照表，系統才能夠正確翻譯後續更新檔中的代碼時間。</p>
         </div>
         """, unsafe_allow_html=True)
         
-        st.info(get_file_info_text(target_mapping_file))
+        st.info(get_file_info_text(target_mapping_file, label_prefix="窗口3 對照表狀態"))
         
         uploaded_file_map = st.file_uploader(f"上傳【{selected_role}】專屬「班別代碼時間對應表」 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window3_map_up_{selected_role}")
         if uploaded_file_map is not None:
@@ -965,7 +877,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     with open(target_mapping_file, "wb") as f: f.write(file_bytes_map)
                     st.session_state[hash_key_map] = current_hash_map
                     log_activity(f"上傳【{selected_role}】專屬班別代碼時間對應表")
-                    st.success(f"窗口 3：【{selected_role}】班別代碼時間對應表已成功更新並載入記憶體！")
+                    st.success(f"窗口 3：【{selected_role}】班別代碼時間對應表已成功更新！")
                     time.sleep(0.5)
                     st.rerun()
                 except Exception as e: st.error(f"對照表儲存失敗: {e}")
@@ -978,7 +890,114 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 time.sleep(0.5)
                 st.rerun()
         else:
-            st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 目前【{selected_role}】尚無對照表檔案，請透過上方上傳。</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 尚未上傳對照表，請先上傳窗口 3。</p>", unsafe_allow_html=True)
+
+    # ==================== 窗口 1：每月 20 號基準大表（優先順序 2） ====================
+    with st.container():
+        st.markdown(f"""
+        <div class="admin-card-container">
+            <h4 style="color: #38BDF8; margin-top: 0;">窗口 1：每月 20 號公司基準大表（職位：{selected_role}）</h4>
+            <p style="color: #94A3B8; font-size: 13px;">由公司發出的每月完整基準班表底稿。</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.info(get_file_info_text(target_path, label_prefix="窗口1 基準大表狀態"))
+        
+        uploaded_file_20 = st.file_uploader(f"上傳【{selected_role}】20號基準大表 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window1_up_{selected_role}")
+        if uploaded_file_20 is not None:
+            file_bytes = uploaded_file_20.getvalue()
+            current_hash = hashlib.md5(file_bytes).hexdigest()
+            hash_key = f"w1_hash_{selected_role}"
+            if st.session_state.get(hash_key) != current_hash:
+                try:
+                    if not os.path.exists(DATA_DIR):
+                        os.makedirs(DATA_DIR, exist_ok=True)
+                    with open(target_path, "wb") as f: f.write(file_bytes)
+                    st.session_state[hash_key] = current_hash
+                    log_activity(f"上傳 20號基準大表 [{selected_role}] 檔案大小: {len(file_bytes)} bytes")
+                    st.success(f"【{selected_role}】窗口 1：20號基準大表已成功上傳！")
+                    time.sleep(0.5)
+                    st.rerun()
+                except Exception as e: st.error(f"儲存失敗: {e}")
+
+        if os.path.exists(target_path):
+            if st.button(f"🗑️ 刪除目前【{selected_role}】的基準大表檔案", key=f"del_w1_{selected_role}"):
+                os.remove(target_path)
+                log_activity(f"刪除基準大表 [{selected_role}]")
+                st.success(f"已成功刪除【{selected_role}】的基準大表檔案！")
+                time.sleep(0.5)
+                st.rerun()
+        else:
+            st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 目前【{selected_role}】尚無基準大表檔案。</p>", unsafe_allow_html=True)
+
+    # ==================== 窗口 2：21 號起每日更新檔（優先順序 3） ====================
+    with st.container():
+        st.markdown(f"""
+        <div class="admin-card-container" style="border-left-color: #10B981;">
+            <h4 style="color: #34D399; margin-top: 0;">窗口 2：21 號起每日更新檔（職位：{selected_role}）</h4>
+            <p style="color: #94A3B8; font-size: 13px;">管理員每日從公司系統抓取的寬幅異動檔。會自動對照窗口 3 與窗口 1 進行合併。</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.info(get_file_info_text(target_update_path, label_prefix="窗口2 每日更新檔狀態"))
+        
+        # 檢查是否已具備窗口 3 與窗口 1
+        is_mapping_ready = os.path.exists(target_mapping_file)
+        is_base_ready = os.path.exists(target_path)
+
+        if not is_mapping_ready:
+            st.warning("⚠️ 系統偵測：尚未上傳「窗口 3 班別代碼時間對應表」，請先完成窗口 3 上傳才能順利執行更新合併！")
+
+        uploaded_file_21 = st.file_uploader(f"上傳【{selected_role}】21號起每日更新檔 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window2_up_{selected_role}")
+        if uploaded_file_21 is not None:
+            if not is_mapping_ready:
+                st.error("錯誤：無法合併更新檔，因為尚未上傳窗口 3 專屬班別對照表！")
+            elif not is_base_ready:
+                st.error("錯誤：無法合併更新檔，因為尚未上傳窗口 1 基準大表底稿！")
+            else:
+                file_bytes_21 = uploaded_file_21.getvalue()
+                current_hash_21 = hashlib.md5(file_bytes_21).hexdigest()
+                hash_key_21 = f"w2_hash_{selected_role}"
+                
+                if st.session_state.get(hash_key_21) != current_hash_21:
+                    try:
+                        if not os.path.exists(DATA_DIR):
+                            os.makedirs(DATA_DIR, exist_ok=True)
+                        with open(target_update_path, "wb") as f_up: f_up.write(file_bytes_21)
+                        
+                        if uploaded_file_21.name.endswith('.csv'):
+                            up_df = pd.read_csv(io.BytesIO(file_bytes_21))
+                        else:
+                            up_df = safe_read_excel(io.BytesIO(file_bytes_21), header=None)
+                        
+                        merged_df = merge_update_file_with_mapping(target_path, up_df, selected_role)
+                        st.session_state[hash_key_21] = current_hash_21
+                        log_activity(f"上傳 21號更新檔 [{selected_role}] 進行智慧對照合併")
+                        st.success(f"【{selected_role}】窗口 2：21號更新檔已透過窗口 3 成功合併！")
+                        time.sleep(0.5)
+                        st.rerun()
+                    except Exception as e: st.error(f"更新檔合併失敗: {e}")
+
+        col_w2_btn1, col_w2_btn2 = st.columns(2)
+        with col_w2_btn1:
+            if os.path.exists(target_path):
+                with open(target_path, "rb") as f:
+                    excel_bytes = f.read()
+                st.download_button(
+                    label=f"📥 下載【{selected_role}】合併後大表 (.xlsx)",
+                    data=excel_bytes,
+                    file_name=f"{selected_role}_merged_audit_{datetime.now(TAIWAN_TZ).strftime('%m%d_%H%M')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"download_audit_{selected_role}"
+                )
+        with col_w2_btn2:
+            if os.path.exists(target_update_path):
+                if st.button(f"🗑️ 清除【{selected_role}】的每日更新檔紀錄", key=f"reset_w2_{selected_role}"):
+                    os.remove(target_update_path)
+                    log_activity(f"重設更新檔紀錄 [{selected_role}]")
+                    st.success(f"已清除【{selected_role}】的每日更新檔檔案！")
+                    time.sleep(0.5)
+                    st.rerun()
 
     st.markdown("---")
     st.subheader("📋 系統操作活動紀錄日誌 (Activity Log)")
