@@ -65,6 +65,19 @@ st.markdown("""
         box-shadow: 0 0 10px #4ADE80; margin: 0 8px; vertical-align: middle;
     }
 
+    @keyframes test-env-breathe {
+        0% { border-color: #D97706; box-shadow: 0 0 5px rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, #271C0C 0%, #171005 100%); }
+        50% { border-color: #F59E0B; box-shadow: 0 0 18px rgba(245, 158, 11, 0.8), inset 0 0 10px rgba(245, 158, 11, 0.2); background: linear-gradient(135deg, #3B270C 0%, #1F1404 100%); }
+        100% { border-color: #D97706; box-shadow: 0 0 5px rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, #271C0C 0%, #171005 100%); }
+    }
+
+    .test-env-banner {
+        border: 2px solid #F59E0B; border-radius: 12px; padding: 12px 18px; margin-bottom: 1.5rem;
+        text-align: center; animation: test-env-breathe 3s infinite ease-in-out; font-family: monospace;
+    }
+    .test-env-title { color: #FDE68A; font-size: 14px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 2px; text-transform: uppercase; }
+    .test-env-sub { color: #FCD34D; font-size: 11px; font-weight: 600; letter-spacing: 1px; }
+
     @keyframes maintenance-red-line-pulse {
         0% { background-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
         50% { background-color: #EF4444; box-shadow: 0 0 16px rgba(239, 68, 68, 0.8), 0 0 25px rgba(239, 68, 68, 0.4); }
@@ -91,7 +104,7 @@ st.markdown("""
 
     .header-container { 
         display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
-        width: 100%; margin-bottom: 1.5rem; padding: 22px 20px;
+        width: 100%; margin-bottom: 1rem; padding: 22px 20px;
         background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
         border: 2px solid #38BDF8; border-radius: 14px; animation: blue-glow-pulse 2.5s infinite ease-in-out;
     }
@@ -275,7 +288,6 @@ if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
 
 def safe_read_excel(file_source, header=None):
-    """強固型 Excel 讀取器：支援寬幅大表、自動相容各種二進位與 OpenXML 格式"""
     try:
         if isinstance(file_source, str):
             if file_source.endswith('.xls'):
@@ -422,7 +434,7 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
     status_text = st.empty()
     progress_bar = st.progress(0)
     
-    status_text.markdown(f'<div class="loading-status-text">階段 1/4：載入【{role_key}】基準大表（窗口 1）與對照表（窗口 3）...</div>', unsafe_allow_html=True)
+    status_text.markdown(f'<div class="loading-status-text">階段 1/4：載入【{role_key}】基準大表與代碼時間對照表...</div>', unsafe_allow_html=True)
     progress_bar.progress(20)
     time.sleep(0.2)
 
@@ -434,7 +446,7 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
     base_raw = safe_read_excel(base_path, header=None)
     shift_map = load_shift_mapping_dict(role_key)
     
-    status_text.markdown('<div class="loading-status-text">階段 2/4：智慧對齊寬幅更新檔與基準大表的員編及日期座標...</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 2/4：智慧對齊更新檔與基準大表的員編及日期座標...</div>', unsafe_allow_html=True)
     progress_bar.progress(45)
     time.sleep(0.2)
 
@@ -482,7 +494,7 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
         if d_str in update_date_col_map:
             bridge_col_mapping[b_c_idx] = update_date_col_map[d_str]
 
-    status_text.markdown('<div class="loading-status-text">階段 3/4：以更新檔代碼對照窗口 3，補上完整時間格式...</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 3/4：以更新檔代碼對照時間對照表，補上完整時間格式...</div>', unsafe_allow_html=True)
     progress_bar.progress(75)
 
     start_up_row = update_header_row + 1
@@ -774,6 +786,14 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# --- 測試環境呼吸燈警示橫幅 ---
+st.markdown("""
+<div class="test-env-banner">
+    <div class="test-env-title">⚠️ 測試環境運行中（TEST ENVIRONMENT）</div>
+    <div class="test-env-sub">目前為內部測試階段，每日班表更新與換班/換假快篩功能測試中</div>
+</div>
+""", unsafe_allow_html=True)
+
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -808,7 +828,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.markdown("""
     <div class="section-header-box">
         <div class="section-title">管理員專用：Database 智慧控制台</div>
-        <div class="section-subtitle">Advanced Crew Duty Management & Three-Window Control Center</div>
+        <div class="section-subtitle">Advanced Crew Duty Management & Data Maintenance Center</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -843,7 +863,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">職位對照表狀態</div><div class="telemetry-value" style="font-size:14px;">{map_status}</div><div class="telemetry-sub">三職位各自獨立對照表</div></div>""", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.subheader("🎛️ 三大獨立上傳窗口控制台（請依序：窗口3 ➔ 窗口1 ➔ 窗口2）")
+    st.subheader("🎛️ 班表維護控制台（建議維護順序：1 ➔ 2 ➔ 3）")
     selected_role = st.selectbox("選擇目前要維護的職位類別", ["駕駛", "列車長", "服勤員"], index=2)
     target_path = ROLE_FILES[selected_role]
     target_update_path = ROLE_UPDATE_FILES[selected_role]
@@ -853,16 +873,16 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     <div style="display: flex; flex-direction: column; gap: 20px; margin-top: 15px;">
     """, unsafe_allow_html=True)
 
-    # ==================== 窗口 3：班別代碼時間對應表（優先順序 1） ====================
+    # ==================== 區塊 1：班別代碼時間對照表（最優先） ====================
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #EAB308;">
-            <h4 style="color: #FEF08A; margin-top: 0;">窗口 3（優先）：【{selected_role}】專屬班別代碼時間對應表</h4>
-            <p style="color: #94A3B8; font-size: 13px;">必須先上傳此對照表，系統才能夠正確翻譯後續更新檔中的代碼時間。</p>
+            <h4 style="color: #FEF08A; margin-top: 0;">1. 【{selected_role}】班別代碼時間對照表（必先上傳）</h4>
+            <p style="color: #94A3B8; font-size: 13px;">提供系統翻譯字典，讓後續的每日更新檔能夠正確對應上班時間與工時。</p>
         </div>
         """, unsafe_allow_html=True)
         
-        st.info(get_file_info_text(target_mapping_file, label_prefix="窗口3 對照表狀態"))
+        st.info(get_file_info_text(target_mapping_file, label_prefix="對照表檔案狀態"))
         
         uploaded_file_map = st.file_uploader(f"上傳【{selected_role}】專屬「班別代碼時間對應表」 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window3_map_up_{selected_role}")
         if uploaded_file_map is not None:
@@ -877,7 +897,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     with open(target_mapping_file, "wb") as f: f.write(file_bytes_map)
                     st.session_state[hash_key_map] = current_hash_map
                     log_activity(f"上傳【{selected_role}】專屬班別代碼時間對應表")
-                    st.success(f"窗口 3：【{selected_role}】班別代碼時間對應表已成功更新！")
+                    st.success(f"【{selected_role}】班別代碼時間對照表已成功更新！")
                     time.sleep(0.5)
                     st.rerun()
                 except Exception as e: st.error(f"對照表儲存失敗: {e}")
@@ -890,18 +910,18 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 time.sleep(0.5)
                 st.rerun()
         else:
-            st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 尚未上傳對照表，請先上傳窗口 3。</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 尚未上傳對照表，請先上傳此項。</p>", unsafe_allow_html=True)
 
-    # ==================== 窗口 1：每月 20 號基準大表（優先順序 2） ====================
+    # ==================== 區塊 2：每月 20 號基準大表 ====================
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container">
-            <h4 style="color: #38BDF8; margin-top: 0;">窗口 1：每月 20 號公司基準大表（職位：{selected_role}）</h4>
+            <h4 style="color: #38BDF8; margin-top: 0;">2. 每月 20 號公司基準大表（職位：{selected_role}）</h4>
             <p style="color: #94A3B8; font-size: 13px;">由公司發出的每月完整基準班表底稿。</p>
         </div>
         """, unsafe_allow_html=True)
         
-        st.info(get_file_info_text(target_path, label_prefix="窗口1 基準大表狀態"))
+        st.info(get_file_info_text(target_path, label_prefix="基準大表檔案狀態"))
         
         uploaded_file_20 = st.file_uploader(f"上傳【{selected_role}】20號基準大表 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window1_up_{selected_role}")
         if uploaded_file_20 is not None:
@@ -915,7 +935,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     with open(target_path, "wb") as f: f.write(file_bytes)
                     st.session_state[hash_key] = current_hash
                     log_activity(f"上傳 20號基準大表 [{selected_role}] 檔案大小: {len(file_bytes)} bytes")
-                    st.success(f"【{selected_role}】窗口 1：20號基準大表已成功上傳！")
+                    st.success(f"【{selected_role}】20號基準大表已成功上傳！")
                     time.sleep(0.5)
                     st.rerun()
                 except Exception as e: st.error(f"儲存失敗: {e}")
@@ -930,30 +950,29 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         else:
             st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 目前【{selected_role}】尚無基準大表檔案。</p>", unsafe_allow_html=True)
 
-    # ==================== 窗口 2：21 號起每日更新檔（優先順序 3） ====================
+    # ==================== 區塊 3：21 號起每日異動更新檔 ====================
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #10B981;">
-            <h4 style="color: #34D399; margin-top: 0;">窗口 2：21 號起每日更新檔（職位：{selected_role}）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">管理員每日從公司系統抓取的寬幅異動檔。會自動對照窗口 3 與窗口 1 進行合併。</p>
+            <h4 style="color: #34D399; margin-top: 0;">3. 21 號起每日異動更新檔（職位：{selected_role}）</h4>
+            <p style="color: #94A3B8; font-size: 13px;">管理員每日從公司系統抓取的寬幅異動檔。上傳後自動套用對照表進行合併運算。</p>
         </div>
         """, unsafe_allow_html=True)
         
-        st.info(get_file_info_text(target_update_path, label_prefix="窗口2 每日更新檔狀態"))
+        st.info(get_file_info_text(target_update_path, label_prefix="每日更新檔檔案狀態"))
         
-        # 檢查是否已具備窗口 3 與窗口 1
         is_mapping_ready = os.path.exists(target_mapping_file)
         is_base_ready = os.path.exists(target_path)
 
         if not is_mapping_ready:
-            st.warning("⚠️ 系統偵測：尚未上傳「窗口 3 班別代碼時間對應表」，請先完成窗口 3 上傳才能順利執行更新合併！")
+            st.warning("⚠️ 系統提示：尚未上傳「班別代碼時間對照表」，請先完成上方第 1 項上傳才能進行更新合併！")
 
         uploaded_file_21 = st.file_uploader(f"上傳【{selected_role}】21號起每日更新檔 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window2_up_{selected_role}")
         if uploaded_file_21 is not None:
             if not is_mapping_ready:
-                st.error("錯誤：無法合併更新檔，因為尚未上傳窗口 3 專屬班別對照表！")
+                st.error("錯誤：無法合併更新檔，因為尚未上傳班別代碼時間對照表！")
             elif not is_base_ready:
-                st.error("錯誤：無法合併更新檔，因為尚未上傳窗口 1 基準大表底稿！")
+                st.error("錯誤：無法合併更新檔，因為尚未上傳 20 號基準大表底稿！")
             else:
                 file_bytes_21 = uploaded_file_21.getvalue()
                 current_hash_21 = hashlib.md5(file_bytes_21).hexdigest()
@@ -973,7 +992,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                         merged_df = merge_update_file_with_mapping(target_path, up_df, selected_role)
                         st.session_state[hash_key_21] = current_hash_21
                         log_activity(f"上傳 21號更新檔 [{selected_role}] 進行智慧對照合併")
-                        st.success(f"【{selected_role}】窗口 2：21號更新檔已透過窗口 3 成功合併！")
+                        st.success(f"【{selected_role}】21號更新檔已透過對照表成功合併！")
                         time.sleep(0.5)
                         st.rerun()
                     except Exception as e: st.error(f"更新檔合併失敗: {e}")
