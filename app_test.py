@@ -529,7 +529,7 @@ def parse_cell(raw):
     notes = [l for l in lines if l not in times and l != real_train]
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
-# --- 核心智慧對照與更新合併引擎 (附帶進度條回報) ---
+# --- 核心智慧對照與更新合併引擎 (修復欄位擴充報錯) ---
 def build_time_dictionary(df):
     time_dict = {}
     for _, row in df.iterrows():
@@ -567,6 +567,15 @@ def merge_update_file_with_progress(base_path, update_df):
     
     update_df.columns = [str(c).strip() for c in update_df.columns]
     
+    # 確保更新檔與基準檔的欄位完全對齊（聯集所有欄位，防止 iloc 擴充報錯）
+    all_columns = list(base_df.columns)
+    for col in update_df.columns:
+        if col not in all_columns:
+            all_columns.append(col)
+            
+    base_df = base_df.reindex(columns=all_columns)
+    update_df = update_df.reindex(columns=all_columns)
+    
     base_rows = {}
     for _, row in base_df.iterrows():
         emp_id = str(row.iloc[0]).strip().upper()
@@ -594,7 +603,6 @@ def merge_update_file_with_progress(base_path, update_df):
         else:
             merged_rows.append(up_row)
         
-        # 動態更新內迴圈進度
         if total_rows > 0 and idx % max(1, total_rows // 5) == 0:
             p_val = 65 + int(25 * (idx / total_rows))
             progress_bar.progress(p_val)
@@ -603,7 +611,7 @@ def merge_update_file_with_progress(base_path, update_df):
     progress_bar.progress(95)
     time.sleep(0.3)
 
-    final_df = pd.DataFrame(merged_rows, columns=update_df.columns)
+    final_df = pd.DataFrame(merged_rows, columns=all_columns)
     
     progress_bar.progress(100)
     time.sleep(0.2)
@@ -987,7 +995,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 else:
                     up_df = pd.read_excel(update_uploaded_file, header=3)
                 
-                # 執行帶有即時進度條與狀態提示的智慧合併
+                # 執行具備欄位自動對齊擴充的合併引擎
                 merged_df = merge_update_file_with_progress(target_path, up_df)
                 merged_df.to_excel(target_path, index=False)
                 st.success(f"【{selected_role}】更新檔合併成功（已自動對照基準字典補齊時間）")
