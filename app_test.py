@@ -271,13 +271,11 @@ def safe_read_excel(file_source, header=None):
     """強固型 Excel 讀取器：支援 .xls (xlrd) 與 .xlsx (openpyxl) 格式自動轉換讀取"""
     try:
         if isinstance(file_source, str):
-            # 若為檔案路徑
             if file_source.endswith('.xls'):
                 return pd.read_excel(file_source, header=header, engine='xlrd')
             else:
                 return pd.read_excel(file_source, header=header, engine='openpyxl')
         else:
-            # 若為上傳的 BytesIO 物件
             file_bytes = file_source.getvalue()
             try:
                 return pd.read_excel(io.BytesIO(file_bytes), header=header, engine='openpyxl')
@@ -891,6 +889,9 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         </div>
         """, unsafe_allow_html=True)
         
+        # 顯示更新檔目前的狀態資訊（以基準大表的更新時間與大小作為追蹤依據）
+        st.info(get_file_info_text(target_path).replace("目前檔案", "目前大表狀態"))
+        
         uploaded_file_21 = st.file_uploader(f"上傳【{selected_role}】21號起每日更新檔 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window2_up_{selected_role}")
         if uploaded_file_21 is not None:
             file_bytes = uploaded_file_21.getvalue()
@@ -915,16 +916,26 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     st.rerun()
                 except Exception as e: st.error(f"更新檔合併失敗: {e}")
 
-        if os.path.exists(target_path):
-            with open(target_path, "rb") as f:
-                excel_bytes = f.read()
-            st.download_button(
-                label=f"📥 下載【{selected_role}】合併對應後的最新大表供查核 (.xlsx)",
-                data=excel_bytes,
-                file_name=f"{selected_role}_merged_audit_{datetime.now(TAIWAN_TZ).strftime('%m%d_%H%M')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"download_audit_{selected_role}"
-            )
+        col_w2_btn1, col_w2_btn2 = st.columns(2)
+        with col_w2_btn1:
+            if os.path.exists(target_path):
+                with open(target_path, "rb") as f:
+                    excel_bytes = f.read()
+                st.download_button(
+                    label=f"📥 下載【{selected_role}】合併後大表 (.xlsx)",
+                    data=excel_bytes,
+                    file_name=f"{selected_role}_merged_audit_{datetime.now(TAIWAN_TZ).strftime('%m%d_%H%M')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"download_audit_{selected_role}"
+                )
+        with col_w2_btn2:
+            if os.path.exists(target_path):
+                if st.button(f"🗑️ 重設/清除【{selected_role}】合併狀態", key=f"reset_w2_{selected_role}"):
+                    os.remove(target_path)
+                    log_activity(f"重設合併大表 [{selected_role}]")
+                    st.success(f"已清除【{selected_role}】的合併大表檔案！")
+                    time.sleep(0.5)
+                    st.rerun()
 
     # --- 窗口 3：各職位專屬班別代碼時間對應表 ---
     with st.container():
