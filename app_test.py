@@ -529,7 +529,7 @@ def parse_cell(raw):
     notes = [l for l in lines if l not in times and l != real_train]
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
-# --- 核心智慧對照與更新合併引擎 (修復欄位擴充報錯) ---
+# --- 核心智慧對照與更新合併引擎 (修復進度條重複迴圈與欄位擴充) ---
 def build_time_dictionary(df):
     time_dict = {}
     for _, row in df.iterrows():
@@ -548,9 +548,10 @@ def merge_update_file_with_progress(base_path, update_df):
     status_text = st.empty()
     progress_bar = st.progress(0)
     
+    # 階段 1：讀取基準檔與建立時間對照字典
     status_text.markdown('<div class="loading-status-text">階段 1/4：正在讀取基準檔與建立時間對照字典...</div>', unsafe_allow_html=True)
-    progress_bar.progress(15)
-    time.sleep(0.3)
+    progress_bar.progress(20)
+    time.sleep(0.2)
 
     if not os.path.exists(base_path):
         status_text.empty()
@@ -560,14 +561,14 @@ def merge_update_file_with_progress(base_path, update_df):
     base_df = pd.read_excel(base_path, header=3)
     base_df.columns = [str(c).strip() for c in base_df.columns]
     
+    # 階段 2：建立基準班別字典庫
     status_text.markdown('<div class="loading-status-text">階段 2/4：正在掃描並建立基準班別字典庫...</div>', unsafe_allow_html=True)
     time_dict = build_time_dictionary(base_df)
     progress_bar.progress(40)
-    time.sleep(0.3)
+    time.sleep(0.2)
     
     update_df.columns = [str(c).strip() for c in update_df.columns]
     
-    # 確保更新檔與基準檔的欄位完全對齊（聯集所有欄位，防止 iloc 擴充報錯）
     all_columns = list(base_df.columns)
     for col in update_df.columns:
         if col not in all_columns:
@@ -581,9 +582,9 @@ def merge_update_file_with_progress(base_path, update_df):
         emp_id = str(row.iloc[0]).strip().upper()
         base_rows[emp_id] = row
         
+    # 階段 3：批次比對員編並自動補時
     status_text.markdown(f'<div class="loading-status-text">階段 3/4：正在逐筆比對員編並自動補時（共 {len(update_df)} 筆資料）...</div>', unsafe_allow_html=True)
-    progress_bar.progress(65)
-    time.sleep(0.3)
+    progress_bar.progress(60)
 
     merged_rows = []
     total_rows = len(update_df)
@@ -603,13 +604,14 @@ def merge_update_file_with_progress(base_path, update_df):
         else:
             merged_rows.append(up_row)
         
-        if total_rows > 0 and idx % max(1, total_rows // 5) == 0:
-            p_val = 65 + int(25 * (idx / total_rows))
-            progress_bar.progress(p_val)
+        if total_rows > 0:
+            p_val = 60 + int(30 * ((idx + 1) / total_rows))
+            progress_bar.progress(min(p_val, 90))
 
+    # 階段 4：寫入系統資料庫
     status_text.markdown('<div class="loading-status-text">階段 4/4：正在完成最終合併並寫入系統資料庫...</div>', unsafe_allow_html=True)
     progress_bar.progress(95)
-    time.sleep(0.3)
+    time.sleep(0.2)
 
     final_df = pd.DataFrame(merged_rows, columns=all_columns)
     
@@ -995,7 +997,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 else:
                     up_df = pd.read_excel(update_uploaded_file, header=3)
                 
-                # 執行具備欄位自動對齊擴充的合併引擎
+                # 執行合併引擎（只執行一次 1 到 4 階段並支援欄位擴充）
                 merged_df = merge_update_file_with_progress(target_path, up_df)
                 merged_df.to_excel(target_path, index=False)
                 st.success(f"【{selected_role}】更新檔合併成功（已自動對照基準字典補齊時間）")
