@@ -372,11 +372,11 @@ def load_shift_mapping_dict():
     return mapping_dict
 
 def merge_update_file_with_mapping(base_path, update_df):
-    """結合窗口3（對照表）與窗口2（更新檔）的智慧動態合併與異常容錯引擎"""
+    """具備自動清除特殊符號（#、% 等）與智慧對照容錯的合併引擎"""
     status_text = st.empty()
     progress_bar = st.progress(0)
     
-    status_text.markdown('<div class="loading-status-text">階段 1/4：正在初始化智慧對照與容錯引擎...</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 1/4：正在初始化符號過濾與智慧對照引擎...</div>', unsafe_allow_html=True)
     progress_bar.progress(20)
     time.sleep(0.2)
 
@@ -439,7 +439,7 @@ def merge_update_file_with_mapping(base_path, update_df):
         if d_str in update_date_col_map:
             bridge_col_mapping[b_c_idx] = update_date_col_map[d_str]
 
-    status_text.markdown('<div class="loading-status-text">階段 3/4：正在執行對照表查詢與異常容錯擴展...</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 3/4：正在清除 #、% 等特殊符號並執行對照表查詢...</div>', unsafe_allow_html=True)
     progress_bar.progress(75)
 
     start_up_row = update_header_row + 1
@@ -457,19 +457,24 @@ def merge_update_file_with_mapping(base_path, update_df):
             if not pd.isna(up_val):
                 up_val_str = str(up_val).strip()
                 if not up_val_str or up_val_str.lower() in [".", "nan", "none"]: continue
-                up_val_upper = up_val_str.upper()
                 
-                # [核心邏輯] 1. 先從對照表（窗口3）查詢完整時間與工時
-                if up_val_upper in shift_map:
-                    info = shift_map[up_val_upper]
-                    formatted_cell = f"{info['start']}\n\n{up_val_upper}\n{info['end']}\n{info['hours']}"
+                # 【核心修改】自動過濾並清除代碼中的 #、% 或其他特殊符號，還原純代碼
+                # 例如將 "NH5902#" 或 "NH0541%" 清理成 "NH5902" 或 "NH0541"
+                clean_code = re.sub(r'[#%]', '', up_val_str).strip().upper()
+                
+                # [核心邏輯] 1. 先從對照表（窗口3）查詢淨化後的代碼
+                if clean_code in shift_map:
+                    info = shift_map[clean_code]
+                    # 即使原代碼有帶 # 或 %，我們仍可選擇在排班表中保留原始外觀或直接帶入時間
+                    # 這裡我們將格式化帶入標準完整時間結構
+                    formatted_cell = f"{info['start']}\n\n{clean_code}\n{info['end']}\n{info['hours']}"
                     base_raw.iloc[target_row_idx, b_c_idx] = formatted_cell
                 else:
-                    # [核心邏輯] 2. 若對照表中找不到（異常），啟動容錯機制：直接以更新檔原始字串寫入或保留
+                    # [核心邏輯] 2. 若對照表中找不到，直接以更新檔原始字串寫入
                     base_raw.iloc[target_row_idx, b_c_idx] = up_val_str
 
     progress_bar.progress(100)
-    status_text.markdown('<div class="loading-status-text">階段 4/4：合併與容錯對應完成！</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 4/4：符號過濾與合併對應完成！</div>', unsafe_allow_html=True)
     time.sleep(0.3)
 
     base_raw.to_excel(base_path, index=False, header=False)
