@@ -24,18 +24,9 @@ st.markdown("""
     .block-container { padding: 4.5rem 1rem 3rem 1rem !important; }
     
     @keyframes online-green-pulse {
-        0% { 
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
-        }
-        70% { 
-            transform: scale(1.05);
-            box-shadow: 0 0 0 8px rgba(74, 222, 128, 0);
-        }
-        100% { 
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
-        }
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+        70% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
     }
 
     .online-dot {
@@ -51,48 +42,21 @@ st.markdown("""
     }
 
     @keyframes maintenance-red-line-pulse {
-        0% { 
-            background-color: #7F1D1D; 
-            box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); 
-        }
-        50% { 
-            background-color: #EF4444; 
-            box-shadow: 0 0 16px rgba(239, 68, 68, 0.8), 0 0 25px rgba(239, 68, 68, 0.4); 
-        }
-        100% { 
-            background-color: #7F1D1D; 
-            box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); 
-        }
+        0% { background-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
+        50% { background-color: #EF4444; box-shadow: 0 0 16px rgba(239, 68, 68, 0.8), 0 0 25px rgba(239, 68, 68, 0.4); }
+        100% { background-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
     }
 
     @keyframes missing-data-pulse {
-        0% { 
-            border-color: #7F1D1D; 
-            box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); 
-        }
-        50% { 
-            border-color: #EF4444; 
-            box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 0 10px rgba(239, 68, 68, 0.4); 
-        }
-        100% { 
-            border-color: #7F1D1D; 
-            box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); 
-        }
+        0% { border-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
+        50% { border-color: #EF4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 0 10px rgba(239, 68, 68, 0.4); }
+        100% { border-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
     }
 
     @keyframes blue-glow-pulse {
-        0% { 
-            border-color: #0369A1; 
-            box-shadow: 0 0 6px rgba(56, 189, 248, 0.2); 
-        }
-        50% { 
-            border-color: #38BDF8; 
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.7), inset 0 0 10px rgba(56, 189, 248, 0.3); 
-        }
-        100% { 
-            border-color: #0369A1; 
-            box-shadow: 0 0 6px rgba(56, 189, 248, 0.2); 
-        }
+        0% { border-color: #0369A1; box-shadow: 0 0 6px rgba(56, 189, 248, 0.2); }
+        50% { border-color: #38BDF8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.7), inset 0 0 10px rgba(56, 189, 248, 0.3); }
+        100% { border-color: #0369A1; box-shadow: 0 0 6px rgba(56, 189, 248, 0.2); }
     }
 
     .missing-data-card {
@@ -105,156 +69,44 @@ st.markdown("""
     }
 
     .header-container { 
-        display: flex; 
-        flex-direction: column;
-        justify-content: center; 
-        align-items: center; 
-        text-align: center;
-        width: 100%; 
-        margin-bottom: 1.5rem; 
-        padding: 22px 20px;
+        display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+        width: 100%; margin-bottom: 1.5rem; padding: 22px 20px;
         background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
-        border: 2px solid #38BDF8;
-        border-radius: 14px;
+        border: 2px solid #38BDF8; border-radius: 14px;
         animation: blue-glow-pulse 2.5s infinite ease-in-out;
     }
-    .title-left-group {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        width: 100%;
-    }
-    .main-title { 
-        color: #F8FAFC !important; 
-        font-size: 24px; 
-        font-weight: 800; 
-        letter-spacing: 2px; 
-        margin: 0; 
-        font-family: monospace;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .title-subtitle {
-        color: #FFFFFF;
-        font-size: 13px;
-        font-weight: 700;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        font-family: monospace;
-        margin-top: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+    .title-left-group { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+    .main-title { color: #F8FAFC !important; font-size: 24px; font-weight: 800; letter-spacing: 2px; margin: 0; font-family: monospace; display: flex; align-items: center; justify-content: center; }
+    .title-subtitle { color: #FFFFFF; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; font-family: monospace; margin-top: 4px; display: flex; align-items: center; justify-content: center; }
     
-    .footer-badge-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
-        margin-top: 3rem;
-        margin-bottom: 1rem;
-    }
-    
+    .footer-badge-container { display: flex; justify-content: center; align-items: center; width: 100%; margin-top: 3rem; margin-bottom: 1rem; }
     .footer-badge-container div.stButton > button { 
-        background: #0B0F19 !important;
-        border: 1px solid #1E293B !important;
-        border-left: 2px solid #38BDF8 !important;
-        color: #64748B !important; 
-        font-size: 9px !important; 
-        font-weight: 600 !important; 
-        letter-spacing: 1.5px !important; 
-        text-transform: uppercase !important; 
-        padding: 4px 12px !important;
-        border-radius: 4px !important;
-        box-shadow: none !important;
-        font-family: monospace !important;
-        width: auto !important;
-        margin: 0 auto !important;
-        min-height: unset !important;
-        transition: all 0.2s ease !important;
+        background: #0B0F19 !important; border: 1px solid #1E293B !important; border-left: 2px solid #38BDF8 !important;
+        color: #64748B !important; font-size: 9px !important; font-weight: 600 !important; letter-spacing: 1.5px !important; 
+        text-transform: uppercase !important; padding: 4px 12px !important; border-radius: 4px !important; box-shadow: none !important;
+        font-family: monospace !important; width: auto !important; margin: 0 auto !important; min-height: unset !important; transition: all 0.2s ease !important;
     }
     .footer-badge-container div.stButton > button:hover {
-        border-color: #38BDF8 !important;
-        color: #38BDF8 !important;
-        background: #131C31 !important;
-        box-shadow: 0 0 10px rgba(56, 189, 248, 0.15) !important;
-        transform: translateY(-1px) !important;
+        border-color: #38BDF8 !important; color: #38BDF8 !important; background: #131C31 !important;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.15) !important; transform: translateY(-1px) !important;
     }
 
-    .mode-selection-header {
-        color: #FFFFFF;
-        font-size: 13px;
-        font-weight: 800;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin-bottom: 10px;
-        font-family: monospace;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .mode-selection-header::after {
-        content: '';
-        flex: 1;
-        height: 1px;
-        background: #334155;
-    }
+    .mode-selection-header { color: #FFFFFF; font-size: 13px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; font-family: monospace; display: flex; align-items: center; gap: 8px; }
+    .mode-selection-header::after { content: ''; flex: 1; height: 1px; background: #334155; }
 
     .maintenance-card-box {
         background: linear-gradient(135deg, #271C0C 0%, #171005 100%);
-        border: 1.5px solid #EAB308;
-        border-left: 5px solid #EAB308;
-        border-radius: 12px;
-        padding: 24px 20px;
-        text-align: center;
-        margin-top: 2rem;
-        margin-bottom: 0rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        border: 1.5px solid #EAB308; border-left: 5px solid #EAB308; border-radius: 12px;
+        padding: 24px 20px; text-align: center; margin-top: 2rem; margin-bottom: 0rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     }
-    .maintenance-red-glow-line {
-        height: 3px;
-        width: 100%;
-        background-color: #EF4444;
-        border-radius: 4px;
-        margin-top: 6px;
-        margin-bottom: 2rem;
-        animation: maintenance-red-line-pulse 3s infinite ease-in-out;
-    }
-    .maintenance-title {
-        color: #FEF08A;
-        font-size: 20px;
-        font-weight: 800;
-        letter-spacing: 1.5px;
-        margin-bottom: 8px;
-        font-family: monospace;
-    }
-    .maintenance-sub {
-        color: #CA8A04;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        font-family: monospace;
-    }
+    .maintenance-red-glow-line { height: 3px; width: 100%; background-color: #EF4444; border-radius: 4px; margin-top: 6px; margin-bottom: 2rem; animation: maintenance-red-line-pulse 3s infinite ease-in-out; }
+    .maintenance-title { color: #FEF08A; font-size: 20px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 8px; font-family: monospace; }
+    .maintenance-sub { color: #CA8A04; font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; font-family: monospace; }
 
     .admin-bypass-banner {
-        background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);
-        border: 1px solid #EF4444;
-        border-left: 5px solid #F87171;
-        color: #FEE2E2;
-        padding: 10px 16px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        font-family: monospace;
-        font-size: 13px;
-        font-weight: 700;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%); border: 1px solid #EF4444; border-left: 5px solid #F87171;
+        color: #FEE2E2; padding: 10px 16px; border-radius: 8px; margin-bottom: 20px; font-family: monospace; font-size: 13px; font-weight: 700;
+        display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
     }
 
     .telemetry-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); position: relative; overflow: hidden; }
@@ -273,24 +125,11 @@ st.markdown("""
     .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5); transform: translateY(-2px); }
 
     .integrated-crew-box {
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        border: 1px solid #334155;
-        border-left: 4px solid #10B981;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 16px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-        transition: all 0.25s ease;
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 4px solid #10B981; border-radius: 12px;
+        padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); transition: all 0.25s ease;
     }
-    .integrated-crew-box:hover {
-        border-color: #34D399;
-        box-shadow: 0 0 20px rgba(52, 211, 153, 0.2), 0 6px 16px rgba(0,0,0,0.5);
-    }
-    .action-divider {
-        height: 1px;
-        background: #334155;
-        margin: 12px 0 4px 0;
-    }
+    .integrated-crew-box:hover { border-color: #34D399; box-shadow: 0 0 20px rgba(52, 211, 153, 0.2), 0 6px 16px rgba(0,0,0,0.5); }
+    .action-divider { height: 1px; background: #334155; margin: 12px 0 4px 0; }
 
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
@@ -305,61 +144,32 @@ st.markdown("""
     .stRadio > label { display: none !important; }
     .stRadio > div { background: transparent !important; display: flex; flex-direction: column; gap: 12px; }
     .stRadio label { 
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
-        border: 1px solid #334155 !important; 
-        border-left: 4px solid #3B82F6 !important; 
-        border-radius: 10px !important; 
-        padding: 16px 20px !important; 
-        width: 100% !important; 
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-        transition: all 0.25s ease !important;
-        cursor: pointer !important;
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; 
+        border-left: 4px solid #3B82F6 !important; border-radius: 10px !important; padding: 16px 20px !important; width: 100% !important; 
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important; transition: all 0.25s ease !important; cursor: pointer !important;
     }
     .stRadio label:hover {
-        border-color: #38BDF8 !important;
-        border-left-color: #38BDF8 !important;
-        box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5) !important;
-        transform: translateY(-2px) !important;
+        border-color: #38BDF8 !important; border-left-color: #38BDF8 !important;
+        box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5) !important; transform: translateY(-2px) !important;
     }
 
     .stProgress > div > div > div > div {
         background: linear-gradient(90deg, #3B82F6 0%, #60A5FA 50%, #93C5FD 100%) !important;
-        box-shadow: 0 0 16px rgba(59, 130, 246, 0.9), 0 0 8px rgba(96, 165, 250, 0.7) !important;
-        border-radius: 6px;
+        box-shadow: 0 0 16px rgba(59, 130, 246, 0.9), 0 0 8px rgba(96, 165, 250, 0.7) !important; border-radius: 6px;
     }
-    .loading-status-text {
-        font-family: monospace;
-        font-size: 14px;
-        color: #FB923C;
-        letter-spacing: 0.5px;
-        margin-bottom: 6px;
-        font-weight: 700;
-        text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
-    }
+    .loading-status-text { font-family: monospace; font-size: 14px; color: #FB923C; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 700; text-shadow: 0 0 10px rgba(251, 146, 60, 0.5); }
 
     div.stButton > button, div.stFormSubmitButton > button { 
-        font-weight: 700 !important; 
-        padding: 12px 18px !important; 
-        border-radius: 10px !important; 
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
-        border: 1px solid #334155 !important;
-        border-left: 4px solid #38BDF8 !important;
-        color: #F8FAFC !important; 
-        width: 100% !important; 
-        margin-top: 6px !important;
-        margin-bottom: 6px !important;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        letter-spacing: 1.5px;
-        font-family: monospace;
+        font-weight: 700 !important; padding: 12px 18px !important; border-radius: 10px !important; 
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important;
+        border-left: 4px solid #38BDF8 !important; color: #F8FAFC !important; width: 100% !important; 
+        margin-top: 6px !important; margin-bottom: 6px !important; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important; letter-spacing: 1.5px; font-family: monospace;
     }
     div.stButton > button:hover, div.stFormSubmitButton > button:hover {
-        border-color: #38BDF8 !important;
-        border-left-color: #38BDF8 !important;
-        color: #FFFFFF !important;
+        border-color: #38BDF8 !important; border-left-color: #38BDF8 !important; color: #FFFFFF !important;
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), 0 6px 16px rgba(0,0,0,0.5) !important;
-        transform: translateY(-2px) !important;
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), 0 6px 16px rgba(0,0,0,0.5) !important; transform: translateY(-2px) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -412,8 +222,7 @@ def parse_device_info(ua_string):
             try:
                 parts = ua_string.split(";")
                 for p in parts:
-                    if "build" in p.lower():
-                        device = f"Android ({p.split('Build')[0].strip()})"
+                    if "build" in p.lower(): device = f"Android ({p.split('Build')[0].strip()})"
             except: pass
     elif "macintosh" in ua or "mac os" in ua: device = "Mac"
     elif "windows" in ua: device = "Windows PC"
@@ -544,7 +353,7 @@ def build_time_dictionary(base_df):
     return time_dict
 
 def merge_update_file_with_progress(base_path, update_df):
-    """智慧合併引擎：強制以新資料覆蓋原儲存格，防止舊資料與新資料重疊混淆"""
+    """智慧合併與嚴格清洗覆蓋引擎：結合時間字典、欄位對齊與無效字元過濾"""
     status_text = st.empty()
     progress_bar = st.progress(0)
     
@@ -581,7 +390,7 @@ def merge_update_file_with_progress(base_path, update_df):
                     date_col_mapping[up_col] = base_col
                     break
 
-    status_text.markdown(f'<div class="loading-status-text">階段 3/4：正在逐筆比對員編並覆蓋更新（共 {len(update_df)} 筆）...</div>', unsafe_allow_html=True)
+    status_text.markdown(f'<div class="loading-status-text">階段 3/4：正在逐筆比對員編並進行嚴格清洗覆蓋（共 {len(update_df)} 筆）...</div>', unsafe_allow_html=True)
     progress_bar.progress(60)
 
     base_rows = {}
@@ -604,14 +413,19 @@ def merge_update_file_with_progress(base_path, update_df):
         for up_col, base_col in date_col_mapping.items():
             if up_col in up_row:
                 up_val = up_row[up_col]
-                if not pd.isna(up_val) and str(up_val).strip() != "":
-                    up_val_str = str(up_val).strip().upper()
+                if not pd.isna(up_val):
+                    up_val_str = str(up_val).strip()
                     
-                    # 判斷是否為單純代碼，若是則透過字典補齊完整時間；若非則直接覆蓋
-                    if not re.search(r'\d{1,2}:\d{2}', up_val_str) and up_val_str in time_dict:
-                        target_base_row[base_col] = time_dict[up_val_str]
+                    # 防呆過濾：若更新檔格子為空白、NaN或單獨殘留符號（如 .），直接跳過
+                    if not up_val_str or up_val_str in [".", "nan", "NaN", "None"]:
+                        continue
+                        
+                    up_val_upper = up_val_str.upper()
+                    
+                    if not re.search(r'\d{1,2}:\d{2}', up_val_upper) and up_val_upper in time_dict:
+                        target_base_row[base_col] = time_dict[up_val_upper]
                     else:
-                        target_base_row[base_col] = up_val  # 強制覆蓋舊格子，避免資料重疊
+                        target_base_row[base_col] = up_val_str
 
     progress_bar.progress(90)
 
@@ -898,10 +712,8 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
             adm_pwd_input = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員解鎖密碼...", key="badge_admin_pwd_box")
             
             col_btn1, col_btn2 = st.columns(2)
-            with col_btn1:
-                btn_submit_adm = st.form_submit_button("登入後台")
-            with col_btn2:
-                btn_cancel_adm = st.form_submit_button("取消")
+            with col_btn1: btn_submit_adm = st.form_submit_button("登入後台")
+            with col_btn2: btn_cancel_adm = st.form_submit_button("取消")
 
             if btn_submit_adm:
                 if adm_pwd_input == ADMIN_PASSWORD:
@@ -910,8 +722,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                     st.session_state["show_admin_login"] = False
                     st.success("驗證成功，正在進入後台...")
                     st.rerun()
-                else:
-                    st.error("管理員密碼錯誤")
+                else: st.error("管理員密碼錯誤")
             elif btn_cancel_adm:
                 st.session_state["show_admin_login"] = False
                 st.rerun()
@@ -936,7 +747,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             st.session_state["nav_mode"] = "home"
             st.rerun()
 
-    st.success("歡迎回來，管理員 LEO（目前處於管理員在線狀態，可隨時點擊頁面最下方的版本貼紙切換回首頁）")
+    st.success("歡迎回來，管理員（目前處於管理員在線狀態，可隨時點擊頁面最下方的版本貼紙切換回首頁）")
 
     st.markdown("---")
     st.subheader("查詢紀錄清單")
@@ -984,7 +795,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     col_up1, col_up2 = st.columns(2)
     
-    # --- 1. 基準檔上傳區塊（帶進度條與 Hash 偵測） ---
+    # --- 1. 基準檔上傳區塊（帶完整進度條） ---
     with col_up1:
         st.markdown("##### 1. 每月 20 號基準大表上傳")
         uploaded_file = st.file_uploader(f"上傳【{selected_role}】完整基準檔", type=["xlsx", "xls", "csv", "txt"], key=f"base_up_{selected_role}")
@@ -1029,7 +840,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             else:
                 st.info(f"【{selected_role}】此基準檔已完成上傳與初始化。")
 
-    # --- 2. 後續異動/更新檔上傳區塊（帶進度條與智慧覆蓋引擎） ---
+    # --- 2. 後續異動/更新檔上傳區塊（帶完整進度條與智慧清洗引擎） ---
     with col_up2:
         st.markdown("##### 2. 後續異動/更新檔上傳")
         st.caption("僅含班別代碼之更新檔，系統將自動比對並透過字典補時。")
@@ -1048,7 +859,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     else:
                         up_df = pd.read_excel(io.BytesIO(file_bytes), header=3)
                     
-                    # 執行智慧合併覆蓋與補時引擎
                     merged_df = merge_update_file_with_progress(target_path, up_df)
                     merged_df.to_excel(target_path, index=False)
                     
@@ -1470,8 +1280,7 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
 
 elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if st.session_state.get("last_app_mode") != "換假｜日期快篩（Alpha測試版）":
-        if "ex_sub_mode" not in st.session_state:
-            st.session_state["ex_sub_mode"] = "search_form"
+        if "ex_sub_mode" not in st.session_state: st.session_state["ex_sub_mode"] = "search_form"
         st.session_state["last_app_mode"] = "換假｜日期快篩（Alpha測試版）"
 
     if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_logged_in", False):
@@ -1794,8 +1603,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                                     break
                             if has_external_support: break
                         
-                        if has_external_support:
-                            continue
+                        if has_external_support: continue
 
                         cell_target = row.iloc[target_col_idx]
                         parsed_target = parse_cell(cell_target)
@@ -1805,8 +1613,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         is_target_do = ("DO" in raw_target_str) or ("D2W" in raw_target_str)
                         is_target_leave = (tr_target in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_target_str) or ("FAC" in raw_target_str)
                         
-                        if not (is_target_do and not is_target_leave):
-                            continue
+                        if not (is_target_do and not is_target_leave): continue
 
                         cell_return = row.iloc[return_col_idx]
                         parsed_return = parse_cell(cell_return)
@@ -1816,14 +1623,12 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         is_return_do = ("DO" in raw_return_str) or ("D2W" in raw_return_str)
                         is_return_leave = (tr_return in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_return_str) or ("FAC" in raw_return_str)
                         
-                        if is_return_do or is_return_leave:
-                            continue
+                        if is_return_do or is_return_leave: continue
 
                         if return_time_filter != "不限":
                             min_allowed_time = return_time_filter.split(" ")[0]
                             return_start_time = parsed_return["start"]
-                            if not return_start_time or return_start_time < min_allowed_time:
-                                continue
+                            if not return_start_time or return_start_time < min_allowed_time: continue
 
                         s_idx = max(0, actual_pos - 5)
                         e_idx = min(len(all_cols_list) - 1, actual_pos + 5)
@@ -1844,11 +1649,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                                 current_streak = 0
                             else:
                                 current_streak += 1
-                                if current_streak > max_streak:
-                                    max_streak = current_streak
+                                if current_streak > max_streak: max_streak = current_streak
                         
-                        if strict_limit and max_streak >= 6:
-                            continue
+                        if strict_limit and max_streak >= 6: continue
                             
                         disp_s = max(0, actual_pos - 7)
                         disp_e = min(len(all_cols_list) - 1, actual_pos + 7)
@@ -1866,12 +1669,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                             if is_c_hol and not is_c_leave:
                                 shift_display = "休"
                             elif is_c_leave:
-                                if "PAY" in c_raw_s or "特休" in c_raw_s:
-                                    shift_display = "PAY"
-                                elif "FAC" in c_raw_s:
-                                    shift_display = "FAC"
-                                else:
-                                    shift_display = c_tr_s if c_tr_s else "特休"
+                                if "PAY" in c_raw_s or "特休" in c_raw_s: shift_display = "PAY"
+                                elif "FAC" in c_raw_s: shift_display = "FAC"
+                                else: shift_display = c_tr_s if c_tr_s else "特休"
                             else:
                                 main_tr_code = str(p_res["train"]).strip()
                                 if main_tr_code.upper().startswith("N") and p_res["start"] and p_res["end"]:
@@ -1882,8 +1682,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                             mini_schedule.append(f"{d_str}: {shift_display}")
 
                         candidates.append({
-                            "員編": emp_id,
-                            "姓名": emp_name,
+                            "員編": emp_id, "姓名": emp_name,
                             "當天狀態": f"想休 {target_date}(DO) ｜ 還假 {return_date}({parsed_return['start']+'->'+parsed_return['end'] if parsed_return['start'] else parsed_return['train']})",
                             "前後連續上班最大天數": max_streak,
                             "鄰近天數概況": " | ".join(mini_schedule)
@@ -1909,15 +1708,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         st.markdown(f"""
         <div style="
             background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-            border: 1px solid #334155;
-            border-left: 5px solid #38BDF8;
-            border-radius: 12px;
-            padding: 16px 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            border: 1px solid #334155; border-left: 5px solid #38BDF8; border-radius: 12px;
+            padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column; gap: 8px;
         ">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <span style="color: #F8FAFC; font-size: 18px; font-weight: 700; font-family: monospace;">
@@ -1978,10 +1771,8 @@ st.markdown('<div class="footer-badge-container">', unsafe_allow_html=True)
 footer_badge_label = "ADMIN PANEL // C.L.F EDITION" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
 if st.button(footer_badge_label, key="bottom_footer_edition_badge"):
     if st.session_state.get("admin_logged_in", False):
-        if st.session_state["nav_mode"] == "home":
-            st.session_state["nav_mode"] = "admin_panel"
-        else:
-            st.session_state["nav_mode"] = "home"
+        if st.session_state["nav_mode"] == "home": st.session_state["nav_mode"] = "admin_panel"
+        else: st.session_state["nav_mode"] = "home"
     else:
         st.session_state["show_admin_login"] = True
     st.rerun()
