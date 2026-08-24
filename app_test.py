@@ -267,6 +267,25 @@ if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_t
 if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
 
+def safe_read_excel(file_source, header=None):
+    """強固型 Excel 讀取器：支援 .xls (xlrd) 與 .xlsx (openpyxl) 格式自動轉換讀取"""
+    try:
+        if isinstance(file_source, str):
+            # 若為檔案路徑
+            if file_source.endswith('.xls'):
+                return pd.read_excel(file_source, header=header, engine='xlrd')
+            else:
+                return pd.read_excel(file_source, header=header, engine='openpyxl')
+        else:
+            # 若為上傳的 BytesIO 物件
+            file_bytes = file_source.getvalue()
+            try:
+                return pd.read_excel(io.BytesIO(file_bytes), header=header, engine='openpyxl')
+            except:
+                return pd.read_excel(io.BytesIO(file_bytes), header=header, engine='xlrd')
+    except Exception as e:
+        raise ValueError(f"無法解析 Excel 檔案格式，請確認是否為標準 .xls 或 .xlsx 檔 (錯誤: {e})")
+
 def get_file_mtime_str(path):
     if os.path.exists(path):
         mtime = os.path.getmtime(path)
@@ -287,7 +306,7 @@ def get_schedule_range():
     for path in ROLE_FILES.values():
         if os.path.exists(path):
             try:
-                df = pd.read_excel(path, header=None)
+                df = safe_read_excel(path, header=None)
                 for r_idx in range(min(6, len(df))):
                     row_vals = [str(val).strip() for val in df.iloc[r_idx].values]
                     date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
@@ -373,7 +392,7 @@ def load_shift_mapping_dict(role_key="服勤員"):
     mapping_dict = {}
     if os.path.exists(mapping_file):
         try:
-            df = pd.read_excel(mapping_file)
+            df = safe_read_excel(mapping_file)
             for _, row in df.iterrows():
                 code = str(row.iloc[0]).strip().upper()
                 start_t = str(row.iloc[1]).strip()
@@ -391,11 +410,8 @@ def load_shift_mapping_dict(role_key="服勤員"):
 
 def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
     """
-    核心標準順序：
-    1. 以每月20號「基準大表（窗口 1）」為底稿。
-    2. 當上傳「每日更新檔（窗口 2）」時，讀取其中的純代碼。
-    3. 用該代碼去對照「窗口 3」的班別代碼時間對應表，查出正確的上下班時間與工時。
-    4. 給出如窗口 1 的標準排版格式（開始時間 \n\n 代碼 \n 結束時間 \n 工時）寫回大表中。
+    以每月 20 號基準大表（窗口 1）為底稿，
+    當上傳每日更新檔（窗口 2）時，用更新檔代碼對照窗口 3 補上完整時間格式後寫入。
     """
     status_text = st.empty()
     progress_bar = st.progress(0)
@@ -409,7 +425,7 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
         progress_bar.empty()
         return update_df
     
-    base_raw = pd.read_excel(base_path, header=None)
+    base_raw = safe_read_excel(base_path, header=None)
     shift_map = load_shift_mapping_dict(role_key)
     
     status_text.markdown('<div class="loading-status-text">階段 2/4：對齊基準大表與每日更新檔的員編及日期座標...</div>', unsafe_allow_html=True)
@@ -479,10 +495,8 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
                 up_val_str = str(up_val).strip()
                 if not up_val_str or up_val_str.lower() in [".", "nan", "none"]: continue
                 
-                # 取得乾淨代碼（去除 #、% 等符號）
                 clean_code = re.sub(r'[#%]', '', up_val_str).strip().upper()
                 
-                # 用代碼去對照表（窗口 3）查詢時間，組合成與窗口 1 完全相同的完整格式
                 if clean_code in shift_map:
                     info = shift_map[clean_code]
                     formatted_cell = f"{info['start']}\n\n{up_val_str}\n{info['end']}\n{info['hours']}"
@@ -498,14 +512,14 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
     status_text.empty()
     progress_bar.empty()
     
-    return pd.read_excel(base_path, header=base_header_row)
+    return safe_read_excel(base_path, header=base_header_row)
 
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
     matched_row, emp_id, emp_name, df_found = None, "", "", None
     for role, path in ROLE_FILES.items():
         if os.path.exists(path):
-            df_temp = pd.read_excel(path, header=3)
+            df_temp = safe_read_excel(path, header=3)
             df_temp.columns = [str(c).strip() for c in df_temp.columns]
             for idx, row in df_temp.iterrows():
                 if str(row.iloc[0]).strip().upper() == input_clean or str(row.iloc[1]).strip().upper() == input_clean:
@@ -838,7 +852,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.markdown(f"""
         <div class="admin-card-container">
             <h4 style="color: #38BDF8; margin-top: 0;">窗口 1：每月 20 號公司基準大表（職位：{selected_role}）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">由公司發出的每月完整基準班表（包含詳細時間與完整架構），上傳後將作為該月份的基礎底稿。</p>
+            <p style="color: #94A3B8; font-size: 13px;">由公司發出的每月完整基準班表（包含詳細時間與完整架構），支援 .xls 與 .xlsx 格式。</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -873,7 +887,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #10B981;">
             <h4 style="color: #34D399; margin-top: 0;">窗口 2：21 號起每日更新檔（職位：{selected_role}）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">管理員每日從公司系統抓取的異動檔。系統將自動對照下方「該職位專屬的班別代碼時間對應表」，智慧擴展並無縫更新大表。</p>
+            <p style="color: #94A3B8; font-size: 13px;">管理員每日從公司系統抓取的異動檔。系統將以視窗 1 為底稿，自動對照視窗 3 補上時間格式後更新大表。</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -888,7 +902,10 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     if uploaded_file_21.name.endswith('.csv'):
                         up_df = pd.read_csv(io.BytesIO(file_bytes))
                     else:
-                        up_df = pd.read_excel(io.BytesIO(file_bytes), header=None)
+                        try:
+                            up_df = pd.read_excel(io.BytesIO(file_bytes), header=None, engine='openpyxl')
+                        except:
+                            up_df = pd.read_excel(io.BytesIO(file_bytes), header=None, engine='xlrd')
                     
                     merged_df = merge_update_file_with_mapping(target_path, up_df, selected_role)
                     st.session_state[hash_key] = current_hash
@@ -914,7 +931,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #EAB308;">
             <h4 style="color: #FEF08A; margin-top: 0;">窗口 3：【{selected_role}】專屬班別代碼時間對應表</h4>
-            <p style="color: #94A3B8; font-size: 13px;">上傳包含「班別代碼、上班時間、下班時間、預估工時」的對照表（駕駛、列車長、服勤員可各自獨立維護對應表）。</p>
+            <p style="color: #94A3B8; font-size: 13px;">上傳包含「班別代碼、上班時間、下班時間、預估工時」的對照表（支援 .xls 與 .xlsx）。</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1211,7 +1228,7 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
     if not os.path.exists(target_path):
         st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請先至管理員後台上傳")
     else:
-        df_search = pd.read_excel(target_path, header=3)
+        df_search = safe_read_excel(target_path, header=3)
         df_search.columns = [str(c).strip() for c in df_search.columns]
         
         date_cols = []
@@ -1538,7 +1555,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     
     sample_path = ROLE_FILES[selected_role] if os.path.exists(ROLE_FILES[selected_role]) else list(ROLE_FILES.values())[0]
     try:
-        temp_df_dates = pd.read_excel(sample_path, header=3)
+        temp_df_dates = safe_read_excel(sample_path, header=3)
         date_cols = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in temp_df_dates.columns[2:] if re.search(r'(\d+/\d+)', str(c))]
     except: date_cols = []
 
@@ -1616,7 +1633,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             st.session_state["ex_sub_mode"] = "results"
             try:
                 target_path = ROLE_FILES[selected_role]
-                df_ex = pd.read_excel(target_path, header=3)
+                df_ex = safe_read_excel(target_path, header=3)
                 df_ex.columns = [str(c).strip() for c in df_ex.columns]
                 
                 target_col_idx = -1
