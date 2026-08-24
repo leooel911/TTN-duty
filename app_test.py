@@ -25,7 +25,7 @@ st.markdown("""
 
 st.markdown("""
 <div class="test-banner">
-    🧪 完整動態日期與字典對照沙盒 (Sandbox)：支援新檔實際天數（如 09/01 ~ 09/21）展開！
+    🧪 完整動態日期與字典對照沙盒 (Sandbox)：已優化表格索引，畫面更乾淨！
 </div>
 """, unsafe_allow_html=True)
 
@@ -69,8 +69,7 @@ if base_file and realtime_file:
         # 讀取 21 號後異動檔
         df_rt = pd.read_excel(realtime_file, header=None)
         
-        # 自動抓取日期列 (假設日期在第 5 行，索引 4 或 5，依照你的表結構微調)
-        # 根據你一開始提供的截圖，日期在第 5 行 (索引 4) 的 F 欄開始 (索引 5)
+        # 自動抓取日期列 (假設日期在第 5 行，索引 4)
         date_row_idx = 4 
         dates = []
         date_col_indices = []
@@ -115,7 +114,8 @@ if base_file and realtime_file:
         with tab1:
             st.markdown("##### 測試：查詢特定員工在動態日期內的最新班表")
             selected_emp = st.selectbox("選擇員工姓名", df_processed["姓名"].unique())
-            emp_data = df_processed[df_processed["姓名"] == selected_emp]
+            # 過濾並重設索引，去掉左側雜亂的大數字編號
+            emp_data = df_processed[df_processed["姓名"] == selected_emp].reset_index(drop=True)
             st.dataframe(emp_data, use_container_width=True)
             
         with tab2:
@@ -128,16 +128,17 @@ if base_file and realtime_file:
             with col_b:
                 filter_end = st.text_input("篩選結束時間 (例 16:00)", "16:00")
                 
-            # 篩選特定日期與時間區段
+            # 篩選特定日期與時間區段，並重設索引
             matched_shift = df_processed[
                 (df_processed["日期"] == selected_date) & 
                 (df_processed["開始時間"] >= filter_start) & 
                 (df_processed["結束時間"] <= filter_end)
-            ]
+            ].reset_index(drop=True)
+            
             st.write(f"在 **{selected_date}** 符合該時段的組員共 {len(matched_shift)} 人：")
             st.dataframe(matched_shift, use_container_width=True)
 
-        st.info("💡 測試成功！系統已完美支援自動抓取實際日期範圍（如 09/21 為止），並自動將每日異動對照成正確時間供系統查詢！")
+        st.info("💡 測試成功！畫面已完美過濾並重設索引編號。")
 
     except Exception as e:
         st.error(f"解析異動檔並展開日期失敗: {e}")
