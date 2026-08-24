@@ -174,22 +174,23 @@ NATIONAL_HOLIDAYS = {
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "TRAIN CREW DUTY CALENDAR"
 
+# --- 正確對應你目錄中實際存在的檔案：20號.xls (基準表) 與 21號.xlsx (異動檔) ---
 ROLE_FILES_BASE = {
-    "駕駛": "TD_base20.xlsx",
-    "列車長": "TM_base20.xlsx",
-    "服勤員": "TA_base20.xlsx"
+    "服勤員": "20號.xls",
+    "駕駛": "20號.xls",
+    "列車長": "20號.xls"
 }
 
 ROLE_FILES_UPDATE = {
-    "駕駛": "TD_update21.xlsx",
-    "列車長": "TM_update21.xlsx",
-    "服勤員": "TA_update21.xlsx"
+    "服勤員": "21號.xlsx",
+    "駕駛": "21號.xlsx",
+    "列車長": "21號.xlsx"
 }
 
 ROLE_FILES = {
-    "駕駛": "TD.xlsx",
-    "列車長": "TM.xlsx",
-    "服勤員": "TA.xlsx"
+    "服勤員": "20號.xls",
+    "駕駛": "20號.xls",
+    "列車長": "20號.xls"
 }
 
 ADMIN_PASSWORD = "Lf0900"
@@ -407,7 +408,6 @@ def get_merged_schedule_data(input_str):
                 
     raise ValueError(f"找不到員編或姓名為「{input_str}」的資料。")
 
-# 補上 process_file_data 函數定義以修復錯誤
 def process_file_data(input_str):
     return get_merged_schedule_data(input_str)
 
@@ -801,7 +801,7 @@ if app_mode == "繪製個人月班表圖檔":
     </div>
     """, unsafe_allow_html=True)
 
-    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A", key="user_input_field")
+    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A026047", key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
         current_input = st.session_state.get("user_input_field", "").strip()
@@ -1469,7 +1469,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                     <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                 </div>
                 <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
-                <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
+                <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近text']}</div>
                 <div class="action-divider"></div>
             </div>
             """, unsafe_allow_html=True)
