@@ -202,7 +202,7 @@ MAINTENANCE_FLAGS = {
     "window_filter": os.path.join(DATA_DIR, "maintenance_window.flag"),
     "exchange_filter": os.path.join(DATA_DIR, "maintenance_exchange.flag")
 }
-}
+
 
 ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
