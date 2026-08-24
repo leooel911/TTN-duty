@@ -272,23 +272,23 @@ st.markdown("""
     .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5); transform: translateY(-2px); }
 
     .integrated-crew-box {
-        background: linear-gradient(135deg, #1A233A 0%, #0F172A 100%);
-        border: 1.5px solid #334155;
-        border-left: 5px solid #38BDF8;
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border: 1px solid #334155;
+        border-left: 4px solid #10B981;
         border-radius: 12px;
-        padding: 16px 18px;
+        padding: 16px;
         margin-bottom: 16px;
         box-shadow: 0 4px 16px rgba(0,0,0,0.4);
         transition: all 0.25s ease;
     }
     .integrated-crew-box:hover {
-        border-color: #38BDF8;
-        box-shadow: 0 0 20px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5);
+        border-color: #34D399;
+        box-shadow: 0 0 20px rgba(52, 211, 153, 0.2), 0 6px 16px rgba(0,0,0,0.5);
     }
     .action-divider {
         height: 1px;
         background: #334155;
-        margin: 12px 0 12px 0;
+        margin: 12px 0 4px 0;
     }
 
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -298,7 +298,7 @@ st.markdown("""
     .long-badge { background: rgba(153, 27, 27, 0.4); border: 1px solid #EF4444; color: #FCA5A5; font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
     .non-line-badge { background: rgba(76, 29, 149, 0.4); border: 1px solid #8B5CF6; color: #C4B5FD; font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600; box-shadow: 0 0 8px rgba(139, 92, 246, 0.4); }
     
-    .compact-name { font-size: 16px; font-weight: 700; color: #F8FAFC; }
+    .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
     .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
 
     .stRadio > label { display: none !important; }
@@ -1328,7 +1328,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if "ex_saved_return_date" not in st.session_state: st.session_state["ex_saved_return_date"] = ""
     if "ex_saved_role" not in st.session_state: st.session_state["ex_saved_role"] = ""
     if "ex_saved_time_filter" not in st.session_state: st.session_state["ex_saved_time_filter"] = "不限"
-    if "ex_scroll_target_idx" not in st.session_state: st.session_state["ex_scroll_target_idx"] = None
 
     if st.session_state["ex_sub_mode"] == "inspect_image":
         target_emp = st.session_state["ex_selected_emp"]
@@ -1613,11 +1612,13 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         emp_id = str(row.iloc[0]).strip()
                         emp_name = str(row.iloc[1]).strip()
                         
+                        # --- 外支援整週鎖定檢查 (若該週內含有 I 或 E 開頭等支援班別，整人排除) ---
                         has_external_support = False
                         s_wk_idx = max(0, actual_pos - 3)
                         e_wk_idx = min(len(all_cols_list) - 1, actual_pos + 3)
                         for w_i in range(s_wk_idx, e_wk_idx + 1):
                             cell_check = str(row.iloc[w_i + 2]).strip().upper()
+                            # 檢查是否有支援代號開頭 (例如 I, E 開頭的班別代號)
                             for line_item in cell_check.split('\n'):
                                 line_trimmed = line_item.strip()
                                 if re.match(r'^[IE]\d+[A-Z0-9]*$', line_trimmed):
@@ -1768,27 +1769,20 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         </div>
         """, unsafe_allow_html=True)        
         
-        scroll_idx = st.session_state.get("ex_scroll_target_idx", None)
-
         for idx, cand in enumerate(saved_candidates):
-            anchor_html = f'<div id="crew_card_{idx}"></div>' if scroll_idx == idx else ''
-            if scroll_idx == idx:
-                st.session_state["ex_scroll_target_idx"] = None
-
-            st.markdown(anchor_html + f"""
+            st.markdown(f"""
             <div class="integrated-crew-box">
                 <div class="time-header-row">
                     <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
                     <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                 </div>
-                <div class="compact-name" style="margin-top: 6px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
+                <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
                 <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
                 <div class="action-divider"></div>
             </div>
             """, unsafe_allow_html=True)
             
-            if st.button(f"檢視完整班表：{cand['姓名']} ({cand['員編']})", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
-                st.session_state["ex_scroll_target_idx"] = idx
+            if st.button(f"檢視完整班表：{cand['姓名']}", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
                 status_placeholder = st.empty()
                 progress_bar = st.progress(0)
 
