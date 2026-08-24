@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 import time
+import hashlib
 
 matplotlib.use('Agg')
 
@@ -339,7 +340,7 @@ st.markdown("""
     div.stButton > button, div.stFormSubmitButton > button { 
         font-weight: 700 !important; 
         padding: 12px 18px !important; 
-        radius: 10px !important; 
+        border-radius: 10px !important; 
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
         border: 1px solid #334155 !important;
         border-left: 4px solid #38BDF8 !important;
@@ -529,26 +530,26 @@ def parse_cell(raw):
     notes = [l for l in lines if l not in times and l != real_train]
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
-# --- 核心智慧對照與更新合併引擎 (修復進度條重複迴圈與欄位擴充) ---
-def build_time_dictionary(df):
+def build_time_dictionary(base_df):
+    """階段 2 核心：掃描基準檔中所有包含完整時間結構的儲存格，建立車次代碼與時間對照字典"""
     time_dict = {}
-    for _, row in df.iterrows():
-        for val in row.iloc[2:]:
-            if pd.isna(val): continue
-            val_str = str(val).strip()
-            if re.search(r'\d{1,2}:\d{2}', val_str):
-                parsed = parse_cell(val_str)
-                train_code = parsed["train"].strip().upper()
-                if train_code and train_code not in ["無", "DO", "D2W", "PAY", "FAC"]:
-                    if train_code not in time_dict:
-                        time_dict[train_code] = val_str
+    for _, row in base_df.iterrows():
+        for col_idx in range(2, len(row)):
+            cell_val = row.iloc[col_idx]
+            if not pd.isna(cell_val):
+                cell_str = str(cell_val).strip()
+                parsed = parse_cell(cell_str)
+                tr_code = parsed["train"].strip().upper()
+                # 必須含有報到時間與收工時間，才視為有效車次對照標準
+                if parsed["start"] and parsed["end"] and is_valid_train_code(tr_code):
+                    time_dict[tr_code] = cell_str
     return time_dict
 
 def merge_update_file_with_progress(base_path, update_df):
+    """智慧合併與強力覆蓋引擎：結合基準字典與日期模糊對齊"""
     status_text = st.empty()
     progress_bar = st.progress(0)
     
-    # 階段 1：讀取基準檔與建立時間對照字典
     status_text.markdown('<div class="loading-status-text">階段 1/4：正在讀取基準檔與建立時間對照字典...</div>', unsafe_allow_html=True)
     progress_bar.progress(20)
     time.sleep(0.2)
@@ -561,75 +562,70 @@ def merge_update_file_with_progress(base_path, update_df):
     base_df = pd.read_excel(base_path, header=3)
     base_df.columns = [str(c).strip() for c in base_df.columns]
     
-    # 階段 2：建立基準班別字典庫
-    status_text.markdown('<div class="loading-status-text">階段 2/4：正在掃描並建立基準班別字典庫...</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">階段 2/4：正在掃描並建立基準班別時間字典庫...</div>', unsafe_allow_html=True)
     time_dict = build_time_dictionary(base_df)
     progress_bar.progress(40)
     time.sleep(0.2)
     
     update_df.columns = [str(c).strip() for c in update_df.columns]
     
-    # 確保兩邊欄位（日期與員編、姓名）對齊
-    all_columns = list(base_df.columns)
-    for col in update_df.columns:
-        if col not in all_columns:
-            all_columns.append(col)
-            
-    base_df = base_df.reindex(columns=all_columns)
-    update_df = update_df.reindex(columns=all_columns)
+    base_columns = list(base_df.columns)
+    update_columns = list(update_df.columns)
     
+    # 建立日期欄位模糊對齊映射（找出共同的 MM/DD）
+    date_col_mapping = {}
+    for up_col in update_columns[2:]:
+        up_m = re.search(r'(\d+/\d+)', up_col)
+        if up_m:
+            up_date_key = up_m.group(1)
+            for base_col in base_columns[2:]:
+                base_m = re.search(r'(\d+/\d+)', base_col)
+                if base_m and base_m.group(1) == up_date_key:
+                    date_col_mapping[up_col] = base_col
+                    break
+
+    status_text.markdown(f'<div class="loading-status-text">階段 3/4：正在逐筆比對員編並強力覆蓋更新（共 {len(update_df)} 筆）...</div>', unsafe_allow_html=True)
+    progress_bar.progress(60)
+
     base_rows = {}
     for _, row in base_df.iterrows():
         emp_id = str(row.iloc[0]).strip().upper()
-        base_rows[emp_id] = row
-        
-    # 階段 3：逐筆比對員編並以「新檔案的資料」強力覆蓋更新
-    status_text.markdown(f'<div class="loading-status-text">階段 3/4：正在逐筆比對員編並覆蓋更新（共 {len(update_df)} 筆資料）...</div>', unsafe_allow_html=True)
-    progress_bar.progress(60)
+        if emp_id and emp_id != "NAN":
+            base_rows[emp_id] = row.copy()
 
-    updated_emp_ids = set()
-    merged_rows = []
-    total_rows = len(update_df)
-    
-    # 先把更新檔中有出現的人員資料整理成 dict
-    update_rows = {}
+    # 逐筆處理更新檔
     for _, up_row in update_df.iterrows():
         up_emp_id = str(up_row.iloc[0]).strip().upper()
-        if up_emp_id and up_emp_id != "NAN":
-            update_rows[up_emp_id] = up_row
-
-    # 合併邏輯：以基準檔為基底，若更新檔有該員編，則「完全以更新檔的非空值欄位覆蓋」
-    for emp_id, base_row in base_rows.items():
-        if emp_id in update_rows:
-            up_row = update_rows[emp_id]
-            new_row = base_row.copy()
-            # 從第 2 欄開始（略過員編與姓名），檢查更新檔是否有填入內容
-            for col_idx in range(2, len(up_row)):
-                up_val = up_row.iloc[col_idx]
-                if not pd.isna(up_val) and str(up_val).strip() != "":
-                    up_val_str = str(up_val).strip()
-                    # 自動補時對照
-                    if not re.search(r'\d{1,2}:\d{2}', up_val_str) and up_val_str.upper() in time_dict:
-                        new_row.iloc[col_idx] = time_dict[up_val_str.upper()]
-                    else:
-                        new_row.iloc[col_idx] = up_val
-            merged_rows.append(new_row)
-            updated_emp_ids.add(emp_id)
-        else:
-            merged_rows.append(base_row)
+        if not up_emp_id or up_emp_id == "NAN":
+            continue
             
-    # 若更新檔中有基準檔沒有的新員編，一併加入
-    for emp_id, up_row in update_rows.items():
-        if emp_id not in base_rows:
-            merged_rows.append(up_row)
+        # 若基準檔找不到此員編，可視為新進人員加入
+        if up_emp_id not in base_rows:
+            base_rows[up_emp_id] = up_row.copy()
+            continue
+            
+        target_base_row = base_rows[up_emp_id]
+        
+        # 對應欄位進行覆蓋與補時
+        for up_col, base_col in date_col_mapping.items():
+            if up_col in up_row:
+                up_val = up_row[up_col]
+                if not pd.isna(up_val) and str(up_val).strip() != "":
+                    up_val_str = str(up_val).strip().upper()
+                    
+                    # 判斷是否為單純代碼（無時間格式），若是則透過字典自動補上完整時間
+                    if not re.search(r'\d{1,2}:\d{2}', up_val_str) and up_val_str in time_dict:
+                        target_base_row[base_col] = time_dict[up_val_str]
+                    else:
+                        target_base_row[base_col] = up_val
 
     progress_bar.progress(90)
 
-    # 階段 4：寫入系統資料庫
     status_text.markdown('<div class="loading-status-text">階段 4/4：正在完成最終合併並寫入系統資料庫...</div>', unsafe_allow_html=True)
     time.sleep(0.2)
 
-    final_df = pd.DataFrame(merged_rows, columns=all_columns)
+    final_rows = list(base_rows.values())
+    final_df = pd.DataFrame(final_rows, columns=base_columns)
     
     progress_bar.progress(100)
     time.sleep(0.2)
@@ -946,7 +942,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             st.session_state["nav_mode"] = "home"
             st.rerun()
 
-    st.success("歡迎回來，管理員（目前處於管理員在線狀態，可隨時點擊頁面最下方的版本貼紙切換回首頁）")
+    st.success("歡迎回來，管理員 LEO（目前處於管理員在線狀態，可隨時點擊頁面最下方的版本貼紙切換回首頁）")
 
     st.markdown("---")
     st.subheader("查詢紀錄清單")
@@ -987,57 +983,28 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.rerun()
 
     st.markdown("---")
-    st.subheader("管理員檔案上傳與管理區（分流雙窗口）")
-    selected_role = st.selectbox("選擇要操作的職位類別", ["駕駛", "列車長", "服勤員"])
+    st.subheader("管理員檔案上傳與刪除區")
+    selected_role = st.selectbox("選擇要上傳或刪除的職位類別", ["駕駛", "列車長", "服勤員"])
+    
     target_path = ROLE_FILES[selected_role]
 
     col_up1, col_up2 = st.columns(2)
     
-    # --- 1. 基準檔上傳處理（帶進度條與防重複鎖） ---
+    # --- 1. 基準檔上傳區塊 ---
     with col_up1:
-        st.markdown("##### 1. 每月 20 號基準檔上傳")
-        st.caption("完整時間大表，用以建立標準答案庫與時間對照字典。")
-        base_uploaded_file = st.file_uploader(f"上傳【{selected_role}】基準班表", type=["xlsx", "xls", "csv", "txt"], key=f"base_up_{selected_role}")
-        
-        base_sig_key = f"processed_base_{selected_role}_sig"
-        base_signature = f"{base_uploaded_file.name}_{base_uploaded_file.size}" if base_uploaded_file else None
+        st.markdown("##### 1. 每月 20 號基準大表上傳")
+        uploaded_file = st.file_uploader(f"上傳【{selected_role}】完整基準檔", type=["xlsx", "xls", "csv", "txt"], key=f"base_up_{selected_role}")
+        if uploaded_file is not None:
+            with open(target_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            st.success(f"【{selected_role}】基準檔上傳成功")
+            time.sleep(0.5)
+            st.rerun()
 
-        if base_uploaded_file is not None:
-            if st.session_state.get(base_sig_key) != base_signature:
-                try:
-                    status_text_b = st.empty()
-                    progress_bar_b = st.progress(0)
-                    
-                    status_text_b.markdown(f'<div class="loading-status-text">正在讀取並寫入【{selected_role}】基準檔...</div>', unsafe_allow_html=True)
-                    progress_bar_b.progress(40)
-                    time.sleep(0.3)
-
-                    with open(target_path, "wb") as f:
-                        f.write(base_uploaded_file.getbuffer())
-                    
-                    progress_bar_b.progress(100)
-                    time.sleep(0.3)
-                    status_text_b.empty()
-                    progress_bar_b.empty()
-
-                    # 紀錄已處理特徵，鎖定避免重複迴圈
-                    st.session_state[base_sig_key] = base_signature
-                    
-                    st.success(f"【{selected_role}】基準檔上傳成功")
-                    time.sleep(0.5)
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"基準檔處理失敗: {e}")
-            else:
-                st.info(f"【{selected_role}】此基準檔已完成載入。")
-
-    # --- 2. 更新檔上傳處理（帶進度條與防重複鎖） ---
-    import hashlib
-
-    # --- 2. 更新檔上傳處理（改用檔案內容 Hash 偵測，確保內容修改時必會重新觸發） ---
+    # --- 2. 後續異動/更新檔上傳區塊 (採用 Hash 偵測 + 智慧合併覆蓋引擎) ---
     with col_up2:
         st.markdown("##### 2. 後續異動/更新檔上傳")
-        st.caption("僅含班別代碼之更新檔，系統將自動比對員編並對照基準字典補時。")
+        st.caption("僅含班別代碼之更新檔，系統將自動比對並透過字典補時。")
         update_uploaded_file = st.file_uploader(f"上傳【{selected_role}】更新異動檔", type=["xlsx", "xls", "csv", "txt"], key=f"up_up_{selected_role}")
         
         update_hash_key = f"processed_update_{selected_role}_hash"
@@ -1046,7 +1013,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             file_bytes = update_uploaded_file.getvalue()
             current_file_hash = hashlib.md5(file_bytes).hexdigest()
             
-            # 只有當檔案內容改變（Hash 不同）時，才執行合併更新
             if st.session_state.get(update_hash_key) != current_file_hash:
                 try:
                     if update_uploaded_file.name.endswith('.csv'):
@@ -1054,20 +1020,32 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     else:
                         up_df = pd.read_excel(io.BytesIO(file_bytes), header=3)
                     
-                    # 執行合併覆蓋引擎
+                    # 執行智慧合併覆蓋與補時引擎
                     merged_df = merge_update_file_with_progress(target_path, up_df)
                     merged_df.to_excel(target_path, index=False)
                     
-                    # 記錄最新檔案的 Hash，避免畫面重新整理時重複執行
                     st.session_state[update_hash_key] = current_file_hash
                     
-                    st.success(f"【{selected_role}】更新檔合併成功（已強制覆蓋更新變更之欄位）")
+                    st.success(f"【{selected_role}】更新檔合併成功（已自動覆蓋變更欄位並補上時間）")
                     time.sleep(0.5)
                     st.rerun()
                 except Exception as e:
                     st.error(f"更新檔合併失敗: {e}")
             else:
-                st.info(f"【{selected_role}】此更新檔內容已完成合併。若修改了檔案內容並重新上傳，系統將自動套用更新。")
+                st.info(f"【{selected_role}】此更新檔內容已完成合併。若內容有修改並重新上傳，系統將自動套用更新。")
+
+    st.markdown("---")
+    file_exists = os.path.exists(target_path)
+    st.write("目前檔案狀態：" + ("已存在" if file_exists else "無檔案"))
+    
+    if file_exists:
+        if st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案"):
+            os.remove(target_path)
+            st.success(f"已成功刪除【{selected_role}】的班表檔案")
+            st.rerun()
+    else:
+        st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案", disabled=True)
+
     st.stop()
 
 # --- 一般系統首頁介面 ---
