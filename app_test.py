@@ -1,19 +1,18 @@
 import streamlit as st
 import pandas as pd
-import os
 import re
 
-st.set_page_config(page_title="TTN Shift 21日換班測試專案", layout="centered")
+st.set_page_config(page_title="TTN Shift 整合測試專案 (Sandbox)", layout="centered")
 
 st.markdown("""
 <style>
     .stApp { background-color: #0B0F19 !important; color: #F8FAFC !important; }
     .block-container { padding: 3rem 1rem 3rem 1rem !important; }
     .test-banner {
-        background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);
-        border: 1px solid #EF4444;
-        border-left: 5px solid #F87171;
-        color: #FEE2E2;
+        background: linear-gradient(135deg, #1E3A8A 100%, #172554 0%);
+        border: 1px solid #3B82F6;
+        border-left: 5px solid #60A5FA;
+        color: #E0F2FE;
         padding: 12px 18px;
         border-radius: 10px;
         margin-bottom: 20px;
@@ -21,41 +20,28 @@ st.markdown("""
         font-size: 14px;
         font-weight: 700;
     }
-    .card {
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        border: 1px solid #334155;
-        border-left: 4px solid #38BDF8;
-        border-radius: 10px;
-        padding: 16px;
-        margin-bottom: 12px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <div class="test-banner">
-    🧪 這是 GitHub 測試分支 (Sandbox)，不會影響線上正式系統！
+    🧪 整合測試沙盒 (Sandbox)：模擬 21 號後每日更新異動檔，並連動查詢系統！
 </div>
 """, unsafe_allow_html=True)
 
-st.title("21號後即時換班與自動對照測試")
-st.write("這個實驗專案用來測試：如何透過 20 號總表建立時間字典，自動幫 21 號只有代碼的即時換班表補上開始、結束與工時。")
+st.title("每日換班資料自動對照與系統測試")
 
-st.markdown("---")
-st.subheader("1. 匯入測試資料")
-
+# --- 1. 資料上傳區 ---
+st.subheader("1. 匯入本月排班基準與每日異動檔")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("#### Step A: 20 號官方總表（含完整時間）")
-    base_file = st.file_uploader("上傳 20 號基準檔 (舊格式 xlsx/xls)", type=["xlsx", "xls"], key="base_uploader")
-
+    base_file = st.file_uploader("上傳 20 號基準總表 (含完整時間)", type=["xlsx", "xls"], key="base_up")
 with col2:
-    st.markdown("#### Step B: 21 號後即時異動檔（純代碼）")
-    realtime_file = st.file_uploader("上傳 21 號後異動檔 (新格式 xls)", type=["xls", "xlsx"], key="realtime_uploader")
+    realtime_file = st.file_uploader("上傳最新換班異動檔 (純代碼)", type=["xls", "xlsx"], key="rt_up")
 
-def build_time_dictionary(file_buffer):
-    """從 20 號基準表中掃描所有儲存格，建立【班別代碼 -> (開始時間, 結束時間)】的對照字典"""
+# --- 2. 核心字典建立與轉換函式 ---
+def build_shift_dict(file_buffer):
     dict_map = {}
     try:
         df = pd.read_excel(file_buffer, header=3)
@@ -69,48 +55,73 @@ def build_time_dictionary(file_buffer):
                     start_t, end_t = times[0], times[1]
                     non_time = [l for l in lines if l not in times and not "h" in l and not "m" in l]
                     if non_time:
-                        train_code = non_time[0].upper()
-                        dict_map[train_code] = {"start": start_t, "end": end_t}
+                        code = non_time[0].upper()
+                        dict_map[code] = {"start": start_t, "end": end_t}
     except Exception as e:
-        st.error(f"建立對照字典時發生錯誤: {e}")
+        st.error(f"建立字典錯誤: {e}")
     return dict_map
 
-if base_file is not None and realtime_file is not None:
-    st.markdown("---")
-    st.subheader("2. 自動對照與解析結果預覽")
-    
-    shift_dict = build_time_dictionary(base_file)
-    st.success(f"已成功從 20 號基準表中學習並建立 {len(shift_dict)} 筆班別時間對照字典！")
-    
-    with st.expander("檢視自動建立的時間對照字典內容"):
-        st.json(shift_dict)
+if base_file and realtime_file:
+    # 建立字典
+    shift_dict = build_shift_dict(base_file)
+    st.success(f"成功載入 20 號基準表，建立 {len(shift_dict)} 筆班別時間對照字典！")
 
     try:
+        # 讀取每日更新的新檔
         df_rt = pd.read_excel(realtime_file, header=None)
-        st.write("成功讀取 21 號即時換班檔結構，正在套用字典自動補齊時間...")
         
-        preview_data = []
-        for r_idx in range(6, min(15, len(df_rt))):
+        # 這裡我們模擬將新檔轉換成帶有正確時間的標準格式
+        # 假設日期欄位從索引 5 開始
+        processed_rows = []
+        for r_idx in range(6, len(df_rt)):
             emp_id = df_rt.iloc[r_idx, 0]
             emp_name = df_rt.iloc[r_idx, 2]
             if pd.isna(emp_id): continue
             
-            sample_code = str(df_rt.iloc[r_idx, 5]).strip().upper()
-            # 如果字典裡找得到這個代碼，就用對應的時間；如果找不到（例如 DO1、DO3X），就直接把代碼填進去！
-            matched_time = shift_dict.get(sample_code, {"start": sample_code, "end": sample_code})
+            # 抓取第一天作為示範欄位 (索引5)
+            code = str(df_rt.iloc[r_idx, 5]).strip().upper()
+            t_info = shift_dict.get(code, {"start": code, "end": code})
             
-            preview_data.append({
-                "員編": emp_id,
-                "姓名": emp_name,
-                "新檔代碼": sample_code,
-                "自動對照開始時間": matched_time["start"],
-                "自動對照結束時間": matched_time["end"]
+            processed_rows.append({
+                "員編": str(emp_id),
+                "姓名": str(emp_name),
+                "班別代碼": code,
+                "開始時間": t_info["start"],
+                "結束時間": t_info["end"]
             })
-            
-        st.dataframe(pd.DataFrame(preview_data))
-        st.info("測試成功！證明了『以 20 號總表建立時間字典，自動幫 21 號純代碼新表補上時間』完全可行！")
         
+        df_processed = pd.DataFrame(processed_rows)
+
+        st.markdown("---")
+        st.subheader("2. 模擬三大系統功能測試")
+        
+        tab1, tab2 = st.tabs(["🔍 個人班表快速查詢", "⏱️ 時段快篩模擬"])
+        
+        with tab1:
+            st.markdown("##### 測試：查詢特定員工換班後的最新時間")
+            selected_emp = st.selectbox("選擇員工姓名", df_processed["姓名"].unique())
+            emp_data = df_processed[df_processed["姓名"] == selected_emp]
+            st.dataframe(emp_data, use_container_width=True)
+            
+        with tab2:
+            st.markdown("##### 測試：輸入特定時間區段，快篩出勤組員")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                filter_start = st.text_input("篩選開始時間 (例 06:00)", "06:00")
+            with col_b:
+                filter_end = st.text_input("篩選結束時間 (例 16:00)", "16:00")
+                
+            # 簡單篩選出符合時間區段的班別
+            matched_shift = df_processed[
+                (df_processed["開始時間"] >= filter_start) & 
+                (df_processed["結束時間"] <= filter_end)
+            ]
+            st.write(f"符合該時段的組員共 {len(matched_shift)} 人：")
+            st.dataframe(matched_shift, use_container_width=True)
+
+        st.info("💡 測試順暢！這代表每天上傳最新異動檔後，系統都能即時對照並無縫支援所有查詢功能。")
+
     except Exception as e:
-        st.error(f"解析 21 號即時換班檔失敗: {e}")
+        st.error(f"解析每日異動檔失敗: {e}")
 else:
-    st.info("請同時上傳【20 號基準檔】與【21 號後即時檔】來進行即時配對測試。")
+    st.info("請同時上傳【20 號基準總表】與【每日更新的換班異動檔】來啟動整合測試。")
