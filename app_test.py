@@ -339,7 +339,7 @@ st.markdown("""
     div.stButton > button, div.stFormSubmitButton > button { 
         font-weight: 700 !important; 
         padding: 12px 18px !important; 
-        border-radius: 10px !important; 
+        radius: 10px !important; 
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
         border: 1px solid #334155 !important;
         border-left: 4px solid #38BDF8 !important;
@@ -529,44 +529,75 @@ def parse_cell(raw):
     notes = [l for l in lines if l not in times and l != real_train]
     return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
 
+# --- 核心智慧對照與更新合併引擎 (新增) ---
+def build_time_dictionary(df):
+    """ 從基準檔掃描並建立『班別代碼 -> 完整儲存格內容（含時間）』的對照字典 """
+    time_dict = {}
+    for _, row in df.iterrows():
+        for val in row.iloc[2:]:
+            if pd.isna(val): continue
+            val_str = str(val).strip()
+            # 若格子內含有時間格式，則將抓到的班別作為key對應整格內容
+            if re.search(r'\d{1,2}:\d{2}', val_str):
+                parsed = parse_cell(val_str)
+                train_code = parsed["train"].strip().upper()
+                if train_code and train_code not in ["無", "DO", "D2W", "PAY", "FAC"]:
+                    if train_code not in time_dict:
+                        time_dict[train_code] = val_str
+    return time_dict
+
+def merge_update_file(base_path, update_df):
+    """ 將只有代碼的更新檔（update_df）透過員編對應，並自動由基準檔字典補上時間 """
+    if not os.path.exists(base_path):
+        return update_df # 若沒有基準檔，直接回傳更新檔
+    
+    base_df = pd.read_excel(base_path, header=3)
+    base_df.columns = [str(c).strip() for c in base_df.columns]
+    time_dict = build_time_dictionary(base_df)
+    
+    update_df.columns = [str(c).strip() for c in update_df.columns]
+    
+    # 建立基準檔的對照對應表 (以員編為主鍵)
+    base_rows = {}
+    for _, row in base_df.iterrows():
+        emp_id = str(row.iloc[0]).strip().upper()
+        base_rows[emp_id] = row
+        
+    merged_rows = []
+    for _, up_row in update_df.iterrows():
+        up_emp_id = str(up_row.iloc[0]).strip().upper()
+        if up_emp_id in base_rows:
+            # 員編存在，進行逐欄比對與智慧補時
+            base_row = base_rows[up_emp_id].copy()
+            for col_idx in range(2, len(up_row)):
+                up_val = up_row.iloc[col_idx]
+                if not pd.isna(up_val) and str(up_val).strip():
+                    up_val_str = str(up_val).strip()
+                    # 如果更新檔該格沒有時間，但字典裡找得到該代碼的時間，則自動補上時間
+                    if not re.search(r'\d{1,2}:\d{2}', up_val_str) and up_val_str.upper() in time_dict:
+                        base_row.iloc[col_idx] = time_dict[up_val_str.upper()]
+                    else:
+                        base_row.iloc[col_idx] = up_val
+            merged_rows.append(base_row)
+        else:
+            # 若為全新員編，直接納入
+            merged_rows.append(up_row)
+            
+    return pd.DataFrame(merged_rows, columns=update_df.columns)
+
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
     matched_row, emp_id, emp_name, df_found = None, "", "", None
-    
     for role, path in ROLE_FILES.items():
         if os.path.exists(path):
-            df_temp = None
-            header_row_found = 3
-            
-            for h_idx in range(2, 7):
-                try:
-                    df_test = pd.read_excel(path, header=h_idx)
-                    cols_str = " ".join([str(c) for c in df_test.columns])
-                    if re.search(r'\d+/\d+', cols_str) or '員工編號' in cols_str or '員編' in cols_str:
-                        header_row_found = h_idx
-                        df_temp = df_test
-                        break
-                except:
-                    continue
-            
-            if df_temp is None:
-                df_temp = pd.read_excel(path, header=3)
-            
+            df_temp = pd.read_excel(path, header=3)
             df_temp.columns = [str(c).strip() for c in df_temp.columns]
-            
             for idx, row in df_temp.iterrows():
-                col0_val = str(row.iloc[0]).strip().upper()
-                col1_val = str(row.iloc[1]).strip().upper()
-                
-                if col0_val == input_clean or input_clean in col1_val:
+                if str(row.iloc[0]).strip().upper() == input_clean or str(row.iloc[1]).strip().upper() == input_clean:
                     matched_row, emp_id, emp_name, df_found = row, str(row.iloc[0]).strip(), str(row.iloc[1]).strip(), df_temp
                     break
-            if matched_row is not None: 
-                break
-            
-    if matched_row is None: 
-        raise ValueError(f"找不到員編或姓名為「{input_str}」的資料。")
-    
+        if matched_row is not None: break
+    if matched_row is None: raise ValueError(f"找不到員編或姓名為「{input_str}」的資料。")
     col_names = df_found.columns[2:]
     dates = []
     start_dt = date(2026, 2, 1)
@@ -575,16 +606,25 @@ def process_file_data(input_str):
         match_d = re.search(r'(\d+/\d+)', col_str)
         if match_d:
             dates.append(match_d.group(1))
-            if i == 0: 
-                try:
-                    m, d = map(int, match_d.group(1).split("/"))
-                    start_dt = date(2026, m, d)
-                except: 
-                    pass
-        else: 
-            dates.append(col_str)
-            
+            if i == 0: m, d = map(int, match_d.group(1).split("/")); start_dt = date(2026, m, d)
+        else: dates.append(col_str)
     return start_dt, dates, emp_id, emp_name, matched_row.iloc[2:].values
+
+def draw_bold_text(ax, x, y, text, **kwargs):
+    ax.text(x, y, text, **kwargs)
+    offset = 0.0002
+    ax.text(x + offset, y, text, **kwargs); ax.text(x, y + offset, text, **kwargs); ax.text(x - offset, y, text, **kwargs); ax.text(x, y - offset, text, **kwargs)
+
+def parse_transport_periods(raw_periods, year=2026):
+    expanded = {}
+    for k, v in raw_periods.items():
+        if "-" in k:
+            parts = k.split("-")
+            s_m, s_d = map(int, parts[0].strip().split("/")); e_m, e_d = map(int, parts[1].strip().split("/"))
+            cur = date(year, s_m, s_d); end_dt = date(year, e_m, e_d)
+            while cur <= end_dt: expanded[f"{cur.month}/{cur.day}"] = v; cur += timedelta(days=1)
+        else: expanded[k.strip()] = v
+    return expanded
 
 def build_weeks(start_dt, dates, cells):
     first_wd = (start_dt.weekday() + 1) % 7
@@ -853,7 +893,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             st.session_state["nav_mode"] = "home"
             st.rerun()
 
-    st.success("歡迎回來，管理員 LEO（目前處於管理員在線狀態，可隨時點擊頁面最下方的版本貼紙切換回首頁）")
+    st.success("歡迎回來，管理員（目前處於管理員在線狀態，可隨時點擊頁面最下方的版本貼紙切換回首頁）")
 
     st.markdown("---")
     st.subheader("查詢紀錄清單")
@@ -894,31 +934,51 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.rerun()
 
     st.markdown("---")
-    st.subheader("管理員檔案上傳與刪除區")
-    selected_role = st.selectbox("選擇要上傳或刪除的職位類別", ["駕駛", "列車長", "服勤員"])
-    
+    st.subheader("管理員檔案上傳與管理區（分流雙窗口）")
+    selected_role = st.selectbox("選擇要操作的職位類別", ["駕駛", "列車長", "服勤員"])
     target_path = ROLE_FILES[selected_role]
 
-    col_up, col_del = st.columns(2)
-    with col_up:
-        uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
-        if uploaded_file is not None:
+    col_up1, col_up2 = st.columns(2)
+    with col_up1:
+        st.markdown("##### 1. 每月 20 號基準檔上傳")
+        st.caption("完整時間大表，用以建立標準答案庫與時間對照字典。")
+        base_uploaded_file = st.file_uploader(f"上傳【{selected_role}】基準班表", type=["xlsx", "xls", "csv", "txt"], key=f"base_up_{selected_role}")
+        if base_uploaded_file is not None:
             with open(target_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            st.success("上傳成功")
+                f.write(base_uploaded_file.getbuffer())
+            st.success(f"【{selected_role}】基準檔上傳成功")
             st.rerun()
 
-    with col_del:
-        file_exists = os.path.exists(target_path)
-        st.write("目前檔案狀態：" + ("已存在" if file_exists else "無檔案"))
-        
-        if file_exists:
-            if st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案"):
-                os.remove(target_path)
-                st.success(f"已成功刪除【{selected_role}】的班表檔案")
+    with col_up2:
+        st.markdown("##### 2. 後續異動/更新檔上傳")
+        st.caption("僅含班別代碼之更新檔，系統將自動比對員編並對照基準字典補時。")
+        update_uploaded_file = st.file_uploader(f"上傳【{selected_role}】更新異動檔", type=["xlsx", "xls", "csv", "txt"], key=f"up_up_{selected_role}")
+        if update_uploaded_file is not None:
+            try:
+                # 讀取上傳的更新檔
+                if update_uploaded_file.name.endswith('.csv'):
+                    up_df = pd.read_csv(update_uploaded_file)
+                else:
+                    up_df = pd.read_excel(update_uploaded_file, header=3)
+                
+                # 執行智慧合併與補時
+                merged_df = merge_update_file(target_path, up_df)
+                merged_df.to_excel(target_path, index=False)
+                st.success(f"【{selected_role}】更新檔合併成功（已自動對照基準字典補齊時間）")
                 st.rerun()
-        else:
-            st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案", disabled=True)
+            except Exception as e:
+                st.error(f"更新檔合併失敗: {e}")
+
+    st.markdown("---")
+    file_exists = os.path.exists(target_path)
+    st.write("目前檔案狀態：" + ("已存在" if file_exists else "無檔案"))
+    if file_exists:
+        if st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案"):
+            os.remove(target_path)
+            st.success(f"已成功刪除【{selected_role}】的班表檔案")
+            st.rerun()
+    else:
+        st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案", disabled=True)
 
     st.stop()
 
@@ -1628,13 +1688,11 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         emp_id = str(row.iloc[0]).strip()
                         emp_name = str(row.iloc[1]).strip()
                         
-                        # --- 外支援整週鎖定檢查 (若該週內含有 I 或 E 開頭等支援班別，整人排除) ---
                         has_external_support = False
                         s_wk_idx = max(0, actual_pos - 3)
                         e_wk_idx = min(len(all_cols_list) - 1, actual_pos + 3)
                         for w_i in range(s_wk_idx, e_wk_idx + 1):
                             cell_check = str(row.iloc[w_i + 2]).strip().upper()
-                            # 檢查是否有支援代號開頭 (例如 I, E 開頭的班別代號)
                             for line_item in cell_check.split('\n'):
                                 line_trimmed = line_item.strip()
                                 if re.match(r'^[IE]\d+[A-Z0-9]*$', line_trimmed):
