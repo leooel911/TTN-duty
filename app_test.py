@@ -235,35 +235,6 @@ st.markdown("""
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
         box-shadow: 0 0 22px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-1px) !important;
     }
-
-    .custom-zoom-container {
-        position: relative;
-        cursor: pointer;
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid rgba(56, 189, 248, 0.4);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-        transition: all 0.2s ease;
-    }
-    .custom-zoom-container:hover {
-        border-color: #38BDF8;
-        box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
-    }
-    .custom-zoom-hint {
-        position: absolute;
-        bottom: 10px;
-        right: 10px;
-        background: rgba(15, 23, 42, 0.85);
-        color: #38BDF8;
-        padding: 6px 12px;
-        font-size: 11px;
-        font-family: monospace;
-        border-radius: 6px;
-        border: 1px solid rgba(56, 189, 248, 0.5);
-        pointer-events: none;
-        letter-spacing: 1px;
-        backdrop-filter: blur(4px);
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -334,27 +305,29 @@ def log_activity(input_str):
     except: pass
 
 def render_zoomable_image(image_buf, caption=""):
-    """使用安全的獨立命名空間 HTML/JS 彈跳視窗，支援兩指縮放與拖曳平移"""
+    """使用完全相容手機點擊彈出全螢幕燈箱，支援兩指縮放與拖曳平移"""
     modal_id = f"modal_{int(time.time()*1000)}"
     img_id = f"img_{int(time.time()*1000)}"
     b64_img = base64.b64encode(image_buf.getvalue()).decode("utf-8")
     
     img_html = f"""
-    <div id="{modal_id}" style="display:none; position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; background-color:rgba(0,0,0,0.92); overflow:hidden; touch-action:none; align-items:center; justify-content:center;">
+    <div id="{modal_id}" style="display:none; position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; background-color:rgba(0,0,0,0.95); overflow:hidden; touch-action:none; align-items:center; justify-content:center;">
         <div style="position:absolute; top:20px; right:20px; z-index:100000;">
-            <button onclick="close_{modal_id}()" style="background:#EF4444; color:white; border:none; padding:10px 18px; font-size:16px; font-weight:bold; border-radius:8px; cursor:pointer; font-family:monospace; box-shadow:0 4px 12px rgba(239,68,68,0.5);">關閉 ✕</button>
+            <button onclick="close_{modal_id}()" style="background:#EF4444; color:white; border:none; padding:12px 20px; font-size:16px; font-weight:bold; border-radius:8px; cursor:pointer; font-family:monospace; box-shadow:0 4px 12px rgba(239,68,68,0.5);">關閉 ✕</button>
         </div>
-        <div style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); color:#94A3B8; font-size:12px; font-family:monospace; pointer-events:none; background:rgba(15,23,42,0.8); padding:6px 14px; border-radius:6px; border:1px solid rgba(56,189,248,0.3);">
-            💡 支援手機兩指開合縮放與雙擊放大
+        <div style="position:absolute; bottom:25px; left:50%; transform:translateX(-50%); color:#38BDF8; font-size:13px; font-family:monospace; pointer-events:none; background:rgba(15,23,42,0.85); padding:8px 16px; border-radius:8px; border:1px solid rgba(56,189,248,0.4); text-align:center;">
+            💡 提示：請直接用「兩指開合」縮放圖片，單指可拖曳移動
         </div>
         <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-            <img id="{img_id}" src="data:image/png;base64,{b64_img}" style="max-width:95%; max-height:90%; object-fit:contain; transition:transform 0.05s ease; transform-origin:center center; cursor:grab; touch-action:none;" />
+            <img id="{img_id}" src="data:image/png;base64,{b64_img}" style="max-width:98%; max-height:85%; object-fit:contain; transition:transform 0.05s ease; transform-origin:center center; cursor:grab; touch-action:none;" />
         </div>
     </div>
 
-    <div class="custom-zoom-container" onclick="open_{modal_id}()">
-        <img src="data:image/png;base64,{b64_img}" style="width:100%; display:block;" />
-        <div class="custom-zoom-hint">🔍 點擊進行兩指縮放檢視</div>
+    <div onclick="open_{modal_id}()" style="cursor:pointer; border-radius:12px; overflow:hidden; border:2px solid rgba(56, 189, 248, 0.5); box-shadow:0 8px 24px rgba(0,0,0,0.6); position:relative; background:#1E293B; transition:all 0.2s ease;">
+        <img src="data:image/png;base64,{b64_img}" style="width:100%; display:block; pointer-events:none;" />
+        <div style="position:absolute; bottom:12px; right:12px; background:rgba(15,23,42,0.9); color:#38BDF8; padding:8px 14px; font-size:12px; font-family:monospace; border-radius:6px; border:1px solid rgba(56,189,248,0.6); letter-spacing:1px; font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,0.4);">
+            🔍 點擊此處展開全螢幕兩指縮放
+        </div>
     </div>
 
     <script>
@@ -922,7 +895,7 @@ if st.session_state.get("inspect_emp_target") is not None:
 
         st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
         
-        # 使用安全獨立命名的兩指縮放檢視器
+        # 使用點擊區塊完全相容手機端的燈箱檢視器
         render_zoomable_image(buf)
         
         st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
@@ -1444,7 +1417,7 @@ if app_mode == "繪製個人月班表圖檔":
 
                     st.success("個人班表圖片生成成功")
                     
-                    # 使用安全獨立命名的兩指縮放檢視器
+                    # 使用相容手機點擊的燈箱檢視器
                     render_zoomable_image(buf)
                     
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
@@ -1788,7 +1761,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
             st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
             
-            # 使用安全獨立命名的兩指縮放檢視器
+            # 使用相容手機點擊的燈箱檢視器
             render_zoomable_image(buf)
             
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
