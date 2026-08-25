@@ -165,9 +165,8 @@ st.markdown("""
 
     .integrated-crew-box {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 4px solid #10B981; border-radius: 12px;
-        padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); transition: all 0.25s ease; cursor: pointer;
+        padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
     }
-    .integrated-crew-box:hover { border-color: #34D399; box-shadow: 0 0 20px rgba(52, 211, 153, 0.2), 0 6px 16px rgba(0,0,0,0.5); transform: translateY(-2px); }
     .action-divider { height: 1px; background: #334155; margin: 12px 0 4px 0; }
 
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -198,17 +197,18 @@ st.markdown("""
     }
     .loading-status-text { font-family: monospace; font-size: 14px; color: #FB923C; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 700; text-shadow: 0 0 10px rgba(251, 146, 60, 0.5); }
 
+    /* 讓下方按鈕完美融入卡片底部，呈現精美卡片按鈕風格 */
     div.stButton > button, div.stFormSubmitButton > button { 
-        font-weight: 700 !important; padding: 12px 18px !important; border-radius: 10px !important; 
+        font-weight: 700 !important; padding: 12px 18px !important; border-radius: 0 0 12px 12px !important; 
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important;
-        border-left: 4px solid #38BDF8 !important; color: #F8FAFC !important; width: 100% !important; 
-        margin-top: 6px !important; margin-bottom: 6px !important; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important; letter-spacing: 1.5px; font-family: monospace;
+        border-top: 1px solid #334155 !important; color: #38BDF8 !important; width: 100% !important; 
+        margin-top: -14px !important; margin-bottom: 16px !important; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important; letter-spacing: 1px; font-family: monospace;
     }
     div.stButton > button:hover, div.stFormSubmitButton > button:hover {
-        border-color: #38BDF8 !important; border-left-color: #38BDF8 !important; color: #FFFFFF !important;
+        border-color: #38BDF8 !important; color: #FFFFFF !important;
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), 0 6px 16px rgba(0,0,0,0.5) !important; transform: translateY(-2px) !important;
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), 0 6px 16px rgba(0,0,0,0.5) !important; transform: translateY(-1px) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -1835,11 +1835,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         for idx, cand in enumerate(saved_candidates):
             card_container = st.container()
             with card_container:
-                # 這裡改用完整的 HTML 區塊包裝，並透過 Streamlit 的按鈕疊加或觸發機制 (或利用隱形按鈕技巧) 來達成整張卡片點擊
-                # 由於 Streamlit 原生不支援直接給 HTML 綁定 onClick 事件，我們在這邊直接用一個全寬的隱形按鈕覆蓋在卡片上方，或維持乾淨的按鈕點擊體驗
-                # 為了確保最完美且 100% 穩定的點擊體驗，我們使用精美設計的專屬按鈕代替原本笨重的文字按鈕
+                # 資訊上半部：精美卡片標頭與資訊
                 st.markdown(f"""
-                <div class="integrated-crew-box">
+                <div class="integrated-crew-box" style="border-radius: 12px 12px 0 0; margin-bottom: 0;">
                     <div class="time-header-row">
                         <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
                         <div style="display: flex; gap: 8px; align-items: center;">
@@ -1852,6 +1850,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 </div>
                 """, unsafe_allow_html=True)
                 
+                # 下半部按鈕無縫接軌，成為完美的一體式互動卡片
                 if st.button(f"查看 {cand['姓名']} ({cand['員編']}) 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True):
                     status_placeholder = st.empty()
                     progress_bar = st.progress(0)
