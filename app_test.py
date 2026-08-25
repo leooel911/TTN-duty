@@ -880,6 +880,31 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.markdown("---")
     
+    # 【已恢復】三大系統各自獨立維護的維護開關選單
+    st.subheader("🛠️ 各大系統模組維護開關控制")
+    st.markdown("<p style='color:#94A3B8; font-size:13px;'>在此可獨立切換三大系統模組的維護狀態（開啟後一般組員端會顯示維護中畫面）。</p>", unsafe_allow_html=True)
+    
+    col_m1, col_m2, col_m3 = st.columns(3)
+    with col_m1:
+        m_prod = st.checkbox("【個人月班表圖檔】維護中", value=is_module_maintenance("producer"), key="m_prod_chk")
+        if m_prod != is_module_maintenance("producer"):
+            set_module_maintenance("producer", m_prod)
+            log_activity(f"切換個人月班表系統維護狀態: {m_prod}")
+            st.rerun()
+    with col_m2:
+        m_win = st.checkbox("【換班時段快篩】維護中", value=is_module_maintenance("window_filter"), key="m_win_chk")
+        if m_win != is_module_maintenance("window_filter"):
+            set_module_maintenance("window_filter", m_win)
+            log_activity(f"切換換班時段快篩系統維護狀態: {m_win}")
+            st.rerun()
+    with col_m3:
+        m_ex = st.checkbox("【換假日期快篩】維護中", value=is_module_maintenance("exchange_filter"), key="m_ex_chk")
+        if m_ex != is_module_maintenance("exchange_filter"):
+            set_module_maintenance("exchange_filter", m_ex)
+            log_activity(f"切換換假日期快篩系統維護狀態: {m_ex}")
+            st.rerun()
+
+    st.markdown("---")
     st.markdown("##### 📊 伺服器即時處理動態與檔案健康狀態")
     
     col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
