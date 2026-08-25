@@ -1343,13 +1343,12 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
     </div>
     """, unsafe_allow_html=True)
 
-    selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2)
+    selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2, key="win_selected_role")
     target_path = ROLE_FILES[selected_role]
 
     if not os.path.exists(target_path):
         st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請先至管理員後台上傳")
     else:
-        # 動態偵測標頭列
         raw_df_preview = safe_read_excel(target_path, header=None)
         header_row_idx = 3
         for r_idx in range(min(6, len(raw_df_preview))):
@@ -1386,32 +1385,49 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
 
             default_min_idx = TIME_OPTIONS.index(earliest_default) if earliest_default in TIME_OPTIONS else 0
 
-            # 初始化 Session State 紀錄日期變更
-            if "last_selected_start_date" not in st.session_state:
-                st.session_state["last_selected_start_date"] = date_cols[0]
+            # 初始化 Session State 狀態管理以達成日期連動
+            if "win_start_date_val" not in st.session_state:
+                st.session_state["win_start_date_val"] = date_cols[0]
+            if "win_end_date_val" not in st.session_state:
+                st.session_state["win_end_date_val"] = date_cols[0]
+
+            def on_start_date_change():
+                current_start = st.session_state["win_start_date_widget"]
+                st.session_state["win_start_date_val"] = current_start
+                if date_cols.index(current_start) > date_cols.index(st.session_state.get("win_end_date_val", current_start)):
+                    st.session_state["win_end_date_val"] = current_start
 
             c1, c2 = st.columns(2)
             with c1: 
-                start_date = st.selectbox("起始日期", date_cols, index=0, key="win_start_date")
-            
-            # 智慧自動跟進邏輯：若使用者更動了起始日期，結束日期自動跟著同步
-            if start_date != st.session_state["last_selected_start_date"]:
-                st.session_state["last_selected_start_date"] = start_date
-                st.session_state["win_end_date_idx"] = date_cols.index(start_date) if start_date in date_cols else 0
-
-            start_date_idx = date_cols.index(start_date) if start_date in date_cols else 0
+                start_date = st.selectbox(
+                    "起始日期", 
+                    date_cols, 
+                    index=date_cols.index(st.session_state["win_start_date_val"]) if st.session_state["win_start_date_val"] in date_cols else 0,
+                    key="win_start_date_widget",
+                    on_change=on_start_date_change
+                )
             
             with c2: 
-                default_end_idx = st.session_state.get("win_end_date_idx", start_date_idx)
-                if default_end_idx < start_date_idx: default_end_idx = start_date_idx
-                end_date = st.selectbox("結束日期", date_cols, index=default_end_idx, key="win_end_date")
+                current_start_idx = date_cols.index(start_date) if start_date in date_cols else 0
+                current_end_val = st.session_state.get("win_end_date_val", start_date)
+                if date_cols.index(current_end_val) < current_start_idx:
+                    current_end_val = start_date
+                    st.session_state["win_end_date_val"] = start_date
+
+                end_date = st.selectbox(
+                    "結束日期", 
+                    date_cols, 
+                    index=date_cols.index(current_end_val) if current_end_val in date_cols else current_start_idx,
+                    key="win_end_date_widget"
+                )
+                st.session_state["win_end_date_val"] = end_date
 
             c3, c4 = st.columns(2)
             with c3: 
                 min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
             with c4: 
-                # 時間「到」增加預選項，留空則代表僅抓取該時間點
-                to_time_options = ["-- (不限 / 僅該時間點)"] + TIME_OPTIONS
+                # 專業的時間「到」選項名稱
+                to_time_options = ["-- (不限 / 僅查該時間點)"] + TIME_OPTIONS
                 max_time_sel = st.selectbox("Sign-In Time 區間：到", options=to_time_options, index=0, key="max_time_selectbox")
 
             filter_col1, filter_col2 = st.columns(2)
@@ -1451,7 +1467,6 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
                                 start_t = parsed["start"]
                                 
                                 if start_t:
-                                    # 智慧時間過濾邏輯：若「到」未選擇或選了不限，則只比對是否等於 min_time；若有選則為區間範圍
                                     matched_time_cond = False
                                     if max_time_sel.startswith("--"):
                                         matched_time_cond = (start_t == min_time)
