@@ -1407,7 +1407,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                 min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
             with c4: 
                 # 專業的時間「到」選項名稱
-                to_time_options = ["-- (不限 / 僅查該時間點)"] + TIME_OPTIONS
+                to_time_options = ["-- (僅查單一時間點)"] + TIME_OPTIONS
                 max_time_sel = st.selectbox("Sign-In Time 區間：到", options=to_time_options, index=0, key="max_time_selectbox")
 
             filter_col1, filter_col2 = st.columns(2)
