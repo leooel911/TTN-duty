@@ -407,7 +407,11 @@ def parse_cell(raw):
         if non_time_lines: real_train = non_time_lines[0]
         
     notes = [l for l in lines if l not in times and l != real_train]
-    return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
+    
+    # 過濾掉代碼中的 # 或 % 符號，確保畫面上只顯示純代碼
+    clean_real_train = re.sub(r'[#%]', '', real_train).strip() if real_train else "無"
+
+    return dict(start=start_time, end=end_time, train=clean_real_train if clean_real_train else "無", hours=hours, note=" ".join(notes))
 
 def load_shift_mapping_dict(role_key="服勤員"):
     mapping_file = ROLE_SHIFT_MAPPING_FILES.get(role_key, ROLE_SHIFT_MAPPING_FILES["服勤員"])
@@ -517,10 +521,10 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
                 
                 if clean_code in shift_map:
                     info = shift_map[clean_code]
-                    formatted_cell = f"{info['start']}\n\n{up_val_str}\n{info['end']}\n{info['hours']}"
+                    formatted_cell = f"{info['start']}\n\n{clean_code}\n{info['end']}\n{info['hours']}"
                     base_raw.iloc[target_row_idx, b_c_idx] = formatted_cell
                 else:
-                    base_raw.iloc[target_row_idx, b_c_idx] = up_val_str
+                    base_raw.iloc[target_row_idx, b_c_idx] = re.sub(r'[#%]', '', up_val_str).strip()
 
     progress_bar.progress(100)
     status_text.markdown('<div class="loading-status-text">階段 4/4：寬幅更新合併完成！</div>', unsafe_allow_html=True)
@@ -1833,35 +1837,38 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         """, unsafe_allow_html=True)        
         
         for idx, cand in enumerate(saved_candidates):
-            st.markdown(f"""
-            <div class="integrated-crew-box">
-                <div class="time-header-row">
-                    <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
-                    <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
+            card_container = st.container()
+            with card_container:
+                st.markdown(f"""
+                <div class="integrated-crew-box">
+                    <div class="time-header-row">
+                        <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span style="color: #38BDF8; font-size: 11px; font-family: monospace; font-weight: 600;">點選可查看完整班表 ↗</span>
+                            <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
+                        </div>
+                    </div>
+                    <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
+                    <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
                 </div>
-                <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
-                <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
-                <div class="action-divider"></div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if st.button(f"檢視完整班表：{cand['姓名']}", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
-                status_placeholder = st.empty()
-                progress_bar = st.progress(0)
-                first_name = cand['姓名'][1:] if len(cand['姓名']) > 1 else cand['姓名']
-                status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
-                progress_bar.progress(40)
-                time.sleep(0.4)
-                progress_bar.progress(80)
-                time.sleep(0.3)
-                st.session_state["ex_selected_emp"] = cand['員編']
-                st.session_state["ex_sub_mode"] = "inspect_image"
-                progress_bar.progress(100)
-                time.sleep(0.2)
-                status_placeholder.empty()
-                progress_bar.empty()
-                st.rerun()
-            st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+                
+                if st.button(f"點選查看 {cand['姓名']} 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True):
+                    status_placeholder = st.empty()
+                    progress_bar = st.progress(0)
+                    first_name = cand['姓名'][1:] if len(cand['姓名']) > 1 else cand['姓名']
+                    status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
+                    progress_bar.progress(40)
+                    time.sleep(0.4)
+                    progress_bar.progress(80)
+                    time.sleep(0.3)
+                    st.session_state["ex_selected_emp"] = cand['員編']
+                    st.session_state["ex_sub_mode"] = "inspect_image"
+                    progress_bar.progress(100)
+                    time.sleep(0.2)
+                    status_placeholder.empty()
+                    progress_bar.empty()
+                    st.rerun()
 
 # --- 底部版本/管理員貼紙 ---
 st.markdown('<div class="footer-badge-container">', unsafe_allow_html=True)
