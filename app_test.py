@@ -1919,7 +1919,18 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # 只有這個「查看完整班表」的按鈕帶有 kind="secondary" 與指定外型
+                # 專屬針對這顆「查看完整班表」按鈕設定上方直角、下方圓角
+                st.markdown(f"""
+                <style>
+                    div.stButton > button[kind="secondary"] {{
+                        border-radius: 0 0 12px 12px !important;
+                        border-top: none !important;
+                        margin-top: -14px !important;
+                        margin-bottom: 16px !important;
+                    }}
+                </style>
+                """, unsafe_allow_html=True)
+                
                 if st.button(f"查看 {cand['姓名']} ({cand['員編']}) 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True, type="secondary"):
                     status_placeholder = st.empty()
                     progress_bar = st.progress(0)
