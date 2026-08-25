@@ -187,8 +187,8 @@ st.markdown("""
     .integrated-crew-box {
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.88) 0%, rgba(15, 23, 42, 0.88) 100%);
         backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 4px solid #10B981; border-radius: 12px;
-        padding: 16px; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 4px solid #10B981; border-radius: 12px 12px 0 0 !important;
+        padding: 16px; margin-bottom: 0px !important; box-shadow: none !important;
     }
 
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -235,6 +235,15 @@ st.markdown("""
         border-color: #38BDF8 !important; color: #FFFFFF !important;
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
         box-shadow: 0 0 22px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-1px) !important;
+    }
+
+    /* 專門針對換假名單下方帶有 kind="secondary" 的「查看完整班表」按鈕：與上方卡片完美密合為一塊方框 */
+    div.stButton > button[kind="secondary"] { 
+        border-radius: 0 0 12px 12px !important; 
+        border-top: none !important;
+        margin-top: -14px !important; 
+        margin-bottom: 16px !important;
+        box-shadow: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -1889,7 +1898,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             card_container = st.container()
             with card_container:
                 st.markdown(f"""
-                <div class="integrated-crew-box" style="border-radius: 14px 14px 0 0; margin-bottom: 0;">
+                <div class="integrated-crew-box">
                     <div class="time-header-row">
                         <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
                         <div style="display: flex; gap: 8px; align-items: center;">
@@ -1899,18 +1908,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                     <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
                     <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
                 </div>
-                """, unsafe_allow_html=True)
-                
-                # 局部專屬樣式：確保只有「查看完整班表」按鈕呈現與上方卡片密合、上方直角下方圓角的造型
-                st.markdown(f"""
-                <style>
-                    div.stButton > button[kind="secondary"] {{ 
-                        border-radius: 0 0 12px 12px !important; 
-                        border-top: none !important;
-                        margin-top: -14px !important; 
-                        margin-bottom: 16px !important;
-                    }}
-                </style>
                 """, unsafe_allow_html=True)
                 
                 if st.button(f"查看 {cand['姓名']} ({cand['員編']}) 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True, type="secondary"):
