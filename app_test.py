@@ -469,110 +469,82 @@ def load_shift_mapping_dict(role_key="服勤員"):
             print(f"載入 {role_key} 班別對照表發生錯誤: {e}")
     return mapping_dict
 
-def merge_update_files_with_mapping(base_path, update_file_sources, role_key="服勤員"):
+def rebuild_database_from_update_files(base_path, update_file_sources, role_key="服勤員"):
+    """
+    全新核心邏輯：直接以更新檔為主體，透過對應表翻譯並重建出乾淨、標準的主資料庫。
+    """
     status_text = st.empty()
     progress_bar = st.progress(0)
     
-    status_text.markdown(f'<div class="loading-status-text">階段 1/4：載入【{role_key}】基準大表與代碼時間對照表...</div>', unsafe_allow_html=True)
-    progress_bar.progress(15)
+    status_text.markdown(f'<div class="loading-status-text">階段 1/3：載入【{role_key}】班別代碼時間對照表...</div>', unsafe_allow_html=True)
+    progress_bar.progress(20)
     time.sleep(0.2)
 
-    if not os.path.exists(base_path):
+    shift_map = load_shift_mapping_dict(role_key)
+    
+    status_text.markdown(f'<div class="loading-status-text">階段 2/3：解析更新檔結構與骨架...</div>', unsafe_allow_html=True)
+    progress_bar.progress(50)
+    time.sleep(0.2)
+
+    if not update_file_sources:
         status_text.empty()
         progress_bar.empty()
         return None
-    
-    base_raw = safe_read_excel(base_path, header=None)
-    shift_map = load_shift_mapping_dict(role_key)
-    
-    status_text.markdown('<div class="loading-status-text">階段 2/4：解析基準大表的員編及日期座標對應...</div>', unsafe_allow_html=True)
-    progress_bar.progress(30)
-    time.sleep(0.2)
 
-    base_header_row = -1
-    base_date_col_map = {}
-    for r_idx in range(min(6, len(base_raw))):
-        row_vals = [str(val).strip() for val in base_raw.iloc[r_idx].values]
+    # 取最後一份更新檔作為主骨架
+    latest_src = update_file_sources[-1]
+    if hasattr(latest_src, 'name') and latest_src.name.endswith('.csv'):
+        master_df = pd.read_csv(io.BytesIO(latest_src.getvalue()))
+    else:
+        master_df = safe_read_excel(latest_src, header=None)
+
+    status_text.markdown(f'<div class="loading-status-text">階段 3/3：執行對照表智慧翻譯，重構全新資料庫...</div>', unsafe_allow_html=True)
+    progress_bar.progress(80)
+
+    # 尋找標頭列（包含日期的列）
+    header_row_idx = -1
+    for r_idx in range(min(6, len(master_df))):
+        row_vals = [str(val).strip() for val in master_df.iloc[r_idx].values]
         date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
         if date_count >= 3:
-            base_header_row = r_idx
+            header_row_idx = r_idx
             break
-    if base_header_row == -1: base_header_row = 3
+    if header_row_idx == -1: header_row_idx = 3
 
-    for c_idx, val in enumerate(base_raw.iloc[base_header_row].values):
-        m = re.search(r'(\d+/\d+)', str(val))
-        if m:
-            clean_d = f"{int(m.group(1).split('/')[0])}/{int(m.group(1).split('/')[1])}"
-            base_date_col_map[clean_d] = c_idx
+    # 開始逐格掃描並翻譯
+    for r_idx in range(header_row_idx + 1, len(master_df)):
+        raw_emp = str(master_df.iloc[r_idx, 0]).strip()
+        if not raw_emp or raw_emp.upper() == "NAN": continue
 
-    base_emp_row_map = {}
-    for r_idx in range(base_header_row + 1, len(base_raw)):
-        raw_emp = str(base_raw.iloc[r_idx, 0]).strip()
-        if raw_emp and raw_emp.upper() != "NAN":
-            pure_emp = re.sub(r'\D', '', raw_emp)
-            if pure_emp: base_emp_row_map[pure_emp] = r_idx
-
-    status_text.markdown('<div class="loading-status-text">階段 3/4：自動掃描多份更新檔（支援跨月份與上下跳行斷開區間）...</div>', unsafe_allow_html=True)
-    progress_bar.progress(60)
-
-    for f_idx, up_src in enumerate(update_file_sources):
-        try:
-            if hasattr(up_src, 'name') and up_src.name.endswith('.csv'):
-                up_df = pd.read_csv(io.BytesIO(up_src.getvalue()))
-            else:
-                up_df = safe_read_excel(up_src, header=None)
+        for c_idx in range(2, master_df.shape[1]):
+            cell_val = master_df.iloc[r_idx, c_idx]
+            if pd.isna(cell_val): continue
             
-            for up_r_idx in range(len(up_df)):
-                date_matches = [(c_i, re.search(r'(\d+/\d+)', str(val))) for c_i, val in enumerate(up_df.iloc[up_r_idx].values)]
-                valid_date_cols = [(c_i, m.group(1)) for c_i, m in date_matches if m]
-                
-                if len(valid_date_cols) >= 2:
-                    update_date_col_map = {}
-                    for c_i, d_str in valid_date_cols:
-                        parts = d_str.split('/')
-                        clean_d = f"{int(parts[0])}/{int(parts[1])}"
-                        update_date_col_map[clean_d] = c_i
+            cell_str = str(cell_val).strip()
+            if not cell_str or cell_str.lower() in [".", "nan", "none"]: continue
 
-                    bridge_col_mapping = {}
-                    for d_str, b_c_idx in base_date_col_map.items():
-                        if d_str in update_date_col_map:
-                            bridge_col_mapping[b_c_idx] = update_date_col_map[d_str]
+            # 清理代碼格式
+            clean_code = re.sub(r'[#%]', '', cell_str).strip().upper()
 
-                    for data_r_idx in range(up_r_idx + 1, len(up_df)):
-                        raw_up_emp = str(up_df.iloc[data_r_idx, 0]).strip()
-                        if not raw_up_emp or raw_up_emp.upper() == "NAN": continue
-                        
-                        pure_up_emp = re.sub(r'\D', '', raw_up_emp)
-                        if pure_up_emp not in base_emp_row_map: continue
-                            
-                        target_row_idx = base_emp_row_map[pure_up_emp]
-                        
-                        for b_c_idx, u_c_idx in bridge_col_mapping.items():
-                            up_val = up_df.iloc[data_r_idx, u_c_idx]
-                            if not pd.isna(up_val):
-                                up_val_str = str(up_val).strip()
-                                if not up_val_str or up_val_str.lower() in [(".", "nan", "none")]: continue
-                                
-                                clean_code = re.sub(r'[#%]', '', up_val_str).strip().upper()
-                                
-                                if clean_code in shift_map:
-                                    info = shift_map[clean_code]
-                                    formatted_cell = f"{info['start']}\n\n{clean_code}\n{info['end']}\n{info['hours']}"
-                                    base_raw.iloc[target_row_idx, b_c_idx] = formatted_cell
-                                else:
-                                    base_raw.iloc[target_row_idx, b_c_idx] = re.sub(r'[#%]', '', up_val_str).strip()
-        except Exception as e:
-            print(f"解析其中一份更新檔發生錯誤: {e}")
+            # 若代碼存在於對應表中，直接翻譯成標準帶時間與工時的格式
+            if clean_code in shift_map:
+                info = shift_map[clean_code]
+                formatted_cell = f"{info['start']}\n\n{clean_code}\n{info['end']}\n{info['hours']}"
+                master_df.iloc[r_idx, c_idx] = formatted_cell
+            else:
+                # 保留非對應表內的代碼（如 DO, PAY, FAC 等）
+                master_df.iloc[r_idx, c_idx] = clean_code
 
-    progress_bar.progress(90)
-    status_text.markdown('<div class="loading-status-text">階段 4/4：多檔智慧合併完成，寫入大表...</div>', unsafe_allow_html=True)
+    progress_bar.progress(100)
+    status_text.markdown('<div class="loading-status-text">新資料庫重構完成，寫入系統...</div>', unsafe_allow_html=True)
     time.sleep(0.3)
 
-    base_raw.to_excel(base_path, index=False, header=False)
+    # 寫入目標基準大表路徑
+    master_df.to_excel(base_path, index=False, header=False)
     status_text.empty()
     progress_bar.empty()
-    
-    return safe_read_excel(base_path, header=base_header_row)
+
+    return safe_read_excel(base_path, header=header_row_idx)
 
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
@@ -929,7 +901,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">職位對照表狀態</div><div class="telemetry-value" style="font-size:14px;">{map_status}</div><div class="telemetry-sub">三職位各自獨立對照表</div></div>""", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.subheader("🎛️ 班表維護控制台（建議維護順序：1 ➔ 2 ➔ 3）")
+    st.subheader("🎛️ 班表維護控制台（建議維護順序：1 ➔ 2）")
     selected_role = st.selectbox("選擇目前要維護的職位類別", ["駕駛", "列車長", "服勤員"], index=2)
     target_path = ROLE_FILES[selected_role]
     target_update_path = ROLE_UPDATE_FILES[selected_role]
@@ -943,7 +915,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #EAB308;">
             <h4 style="color: #FEF08A; margin-top: 0;">1. 【{selected_role}】班別代碼時間對照表（必先上傳）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">提供系統翻譯字典，讓後續的每日更新檔能夠正確對應上班時間與工時。</p>
+            <p style="color: #94A3B8; font-size: 13px;">提供系統翻譯字典，讓後續更新檔能夠正確對應上班時間與工時。</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -961,7 +933,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                         os.makedirs(DATA_DIR, exist_ok=True)
                     with open(target_mapping_file, "wb") as f: f.write(file_bytes_map)
                     st.session_state[hash_key_map] = current_hash_map
-                    log_activity(f"上傳【{selected_role}】專屬班別代碼時間對應表")
+                    log_activity(f"上傳【{selected_role}】專屬班別代碼時間對照表")
                     st.success(f"【{selected_role}】班別代碼時間對照表已成功更新！")
                     time.sleep(0.5)
                     st.rerun()
@@ -979,106 +951,66 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     with st.container():
         st.markdown(f"""
-        <div class="admin-card-container">
-            <h4 style="color: #38BDF8; margin-top: 0;">2. 每月 20 號公司基準大表（職位：{selected_role}）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">由公司發出的每月完整基準班表底稿。</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.info(get_file_info_text(target_path, label_prefix="基準大表檔案狀態"))
-        
-        uploaded_file_20 = st.file_uploader(f"上傳【{selected_role}】20號基準大表 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window1_up_{selected_role}")
-        if uploaded_file_20 is not None:
-            file_bytes = uploaded_file_20.getvalue()
-            current_hash = hashlib.md5(file_bytes).hexdigest()
-            hash_key = f"w1_hash_{selected_role}"
-            if st.session_state.get(hash_key) != current_hash:
-                try:
-                    if not os.path.exists(DATA_DIR):
-                        os.makedirs(DATA_DIR, exist_ok=True)
-                    with open(target_path, "wb") as f: f.write(file_bytes)
-                    st.session_state[hash_key] = current_hash
-                    log_activity(f"上傳 20號基準大表 [{selected_role}] 檔案大小: {len(file_bytes)} bytes")
-                    st.success(f"【{selected_role}】20號基準大表已成功上傳！")
-                    time.sleep(0.5)
-                    st.rerun()
-                except Exception as e: st.error(f"儲存失敗: {e}")
-
-        if os.path.exists(target_path):
-            if st.button(f"🗑️ 刪除目前【{selected_role}】的基準大表檔案", key=f"del_w1_{selected_role}"):
-                os.remove(target_path)
-                log_activity(f"刪除基準大表 [{selected_role}]")
-                st.success(f"已成功刪除【{selected_role}】的基準大表檔案！")
-                time.sleep(0.5)
-                st.rerun()
-        else:
-            st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 目前【{selected_role}】尚無基準大表檔案。</p>", unsafe_allow_html=True)
-
-    with st.container():
-        st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #10B981;">
-            <h4 style="color: #34D399; margin-top: 0;">3. 21 號起每日異動更新檔（支援多檔同時上傳，職位：{selected_role}）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">可**同時選取多份檔案**（如跨月份第一週、或原封不動帶上下斷行跳行的原始下載檔），系統將自動多檔聯集與智慧斷行合併！</p>
+            <h4 style="color: #34D399; margin-top: 0;">2. 班表更新檔 / 基準大表（支援多檔同時上傳，職位：{selected_role}）</h4>
+            <p style="color: #94A3B8; font-size: 13px;">直接上傳您的最新班表檔（系統將透過對照表自動翻譯並重建出乾淨完整的全新資料庫）。</p>
         </div>
         """, unsafe_allow_html=True)
         
-        st.info(get_file_info_text(target_update_path, label_prefix="每日更新檔檔案狀態"))
+        st.info(get_file_info_text(target_path, label_prefix="目前系統運作資料庫狀態"))
         
         is_mapping_ready = os.path.exists(target_mapping_file)
-        is_base_ready = os.path.exists(target_path)
 
         if not is_mapping_ready:
-            st.warning("⚠️ 系統提示：尚未上傳「班別代碼時間對照表」，請先完成上方第 1 項上傳才能進行更新合併！")
+            st.warning("⚠️ 系統提示：尚未上傳「班別代碼時間對照表」，請先完成上方第 1 項上傳才能進行重建！")
 
-        uploaded_files_21 = st.file_uploader(f"上傳【{selected_role}】每日更新檔（可同時選取多份檔案，如跨月份檔案） (.xlsx / .xls)", type=["xlsx", "xls", "csv"], accept_multiple_files=True, key=f"window2_up_multi_{selected_role}")
+        uploaded_files_new = st.file_uploader(f"上傳【{selected_role}】班表檔（可同時選取多份） (.xlsx / .xls)", type=["xlsx", "xls", "csv"], accept_multiple_files=True, key=f"new_rebuild_up_{selected_role}")
         
-        if uploaded_files_21:
+        if uploaded_files_new:
             if not is_mapping_ready:
-                st.error("錯誤：無法合併更新檔，因為尚未上傳班別代碼時間對照表！")
-            elif not is_base_ready:
-                st.error("錯誤：無法合併更新檔，因為尚未上傳 20 號基準大表底稿！")
+                st.error("錯誤：無法重建資料庫，因為尚未上傳班別代碼時間對照表！")
             else:
-                combined_hashes = "".join([hashlib.md5(f.getvalue()).hexdigest() for f in uploaded_files_21])
-                hash_key_21 = f"w2_hash_multi_{selected_role}"
+                combined_hashes = "".join([hashlib.md5(f.getvalue()).hexdigest() for f in uploaded_files_new])
+                hash_key_rebuild = f"rebuild_hash_{selected_role}"
                 
-                if st.session_state.get(hash_key_21) != combined_hashes:
+                if st.session_state.get(hash_key_rebuild) != combined_hashes:
                     try:
                         if not os.path.exists(DATA_DIR):
                             os.makedirs(DATA_DIR, exist_ok=True)
                         
                         with open(target_update_path, "wb") as f_up: 
-                            f_up.write(uploaded_files_21[-1].getvalue())
+                            f_up.write(uploaded_files_new[-1].getvalue())
                         
-                        merged_df = merge_update_files_with_mapping(target_path, uploaded_files_21, selected_role)
+                        rebuilt_df = rebuild_database_from_update_files(target_path, uploaded_files_new, selected_role)
                         
-                        if merged_df is not None:
-                            st.session_state[hash_key_21] = combined_hashes
-                            log_activity(f"同時上傳 {len(uploaded_files_21)} 份更新檔 [{selected_role}] 進行多檔智慧斷行與跨月合併")
-                            st.success(f"【{selected_role}】多份更新檔已透過自動斷行與跨月聯集引擎成功合併！")
+                        if rebuilt_df is not None:
+                            st.session_state[hash_key_rebuild] = combined_hashes
+                            log_activity(f"透過更新檔重建 [{selected_role}] 完整資料庫")
+                            st.success(f"【{selected_role}】已成功透過更新檔與對照表重建全新資料庫！")
                             time.sleep(0.5)
                             st.rerun()
                         else:
-                            st.error("合併失敗：基準大表路徑不存在")
-                    except Exception as e: st.error(f"多檔更新合併失敗: {e}")
+                            st.error("重建失敗：無效的檔案內容")
+                    except Exception as e: st.error(f"資料庫重建失敗: {e}")
 
-        col_w2_btn1, col_w2_btn2 = st.columns(2)
-        with col_w2_btn1:
+        col_rb_btn1, col_rb_btn2 = st.columns(2)
+        with col_rb_btn1:
             if os.path.exists(target_path):
                 with open(target_path, "rb") as f:
                     excel_bytes = f.read()
                 st.download_button(
-                    label=f"📥 下載【{selected_role}】合併後大表 (.xlsx)",
+                    label=f"📥 下載【{selected_role}】現行資料庫 (.xlsx)",
                     data=excel_bytes,
-                    file_name=f"{selected_role}_merged_audit_{datetime.now(TAIWAN_TZ).strftime('%m%d_%H%M')}.xlsx",
+                    file_name=f"{selected_role}_database_{datetime.now(TAIWAN_TZ).strftime('%m%d_%H%M')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key=f"download_audit_{selected_role}"
+                    key=f"download_db_{selected_role}"
                 )
-        with col_w2_btn2:
-            if os.path.exists(target_update_path):
-                if st.button(f"🗑️ 清除【{selected_role}】的每日更新檔紀錄", key=f"reset_w2_{selected_role}"):
-                    os.remove(target_update_path)
-                    log_activity(f"重設更新檔紀錄 [{selected_role}]")
-                    st.success(f"已清除【{selected_role}】的每日更新檔檔案！")
+        with col_rb_btn2:
+            if os.path.exists(target_path):
+                if st.button(f"🗑️ 清除【{selected_role}】的資料庫檔案", key=f"del_db_{selected_role}"):
+                    os.remove(target_path)
+                    log_activity(f"清除資料庫 [{selected_role}]")
+                    st.success(f"已成功清除【{selected_role}】的資料庫檔案！")
                     time.sleep(0.5)
                     st.rerun()
 
@@ -1407,7 +1339,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                 min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
             with c4: 
                 # 專業的時間「到」選項名稱
-                to_time_options = ["-- (僅查單一時間點)"] + TIME_OPTIONS
+                to_time_options = ["-- (不限 / 僅查該時間點)"] + TIME_OPTIONS
                 max_time_sel = st.selectbox("Sign-In Time 區間：到", options=to_time_options, index=0, key="max_time_selectbox")
 
             filter_col1, filter_col2 = st.columns(2)
