@@ -471,7 +471,8 @@ def load_shift_mapping_dict(role_key="服勤員"):
 
 def rebuild_database_from_update_files(base_path, update_file_sources, role_key="服勤員"):
     """
-    全新核心邏輯：直接以更新檔為主體，透過對應表翻譯並重建出乾淨、標準的主資料庫。
+    全新跨月份智慧聯集引擎：同時讀取所有上傳的更新檔（如 9 月與 10 月），
+    提取各自的日期欄位與組員資料進行聯集合併，並透過對照表翻譯後重建出完整的資料庫。
     """
     status_text = st.empty()
     progress_bar = st.progress(0)
@@ -482,7 +483,7 @@ def rebuild_database_from_update_files(base_path, update_file_sources, role_key=
 
     shift_map = load_shift_mapping_dict(role_key)
     
-    status_text.markdown(f'<div class="loading-status-text">階段 2/3：解析更新檔結構與骨架...</div>', unsafe_allow_html=True)
+    status_text.markdown(f'<div class="loading-status-text">階段 2/3：解析並聯集多個月份更新檔...</div>', unsafe_allow_html=True)
     progress_bar.progress(50)
     time.sleep(0.2)
 
@@ -491,60 +492,130 @@ def rebuild_database_from_update_files(base_path, update_file_sources, role_key=
         progress_bar.empty()
         return None
 
-    # 取最後一份更新檔作為主骨架
-    latest_src = update_file_sources[-1]
-    if hasattr(latest_src, 'name') and latest_src.name.endswith('.csv'):
-        master_df = pd.read_csv(io.BytesIO(latest_src.getvalue()))
-    else:
-        master_df = safe_read_excel(latest_src, header=None)
+    parsed_files_data = []
+    for f_src in update_file_sources:
+        try:
+            if hasattr(f_src, 'name') and f_src.name.endswith('.csv'):
+                f_df = pd.read_csv(io.BytesIO(f_src.getvalue()))
+            else:
+                f_df = safe_read_excel(f_src, header=None)
+            
+            # 尋找該檔案的標頭列與日期欄位
+            h_row = -1
+            date_map = {}
+            for r_idx in range(min(6, len(f_df))):
+                row_vals = [str(val).strip() for val in f_df.iloc[r_idx].values]
+                date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
+                if date_count >= 3:
+                    h_row = r_idx
+                    break
+            if h_row == -1: h_row = 3
 
-    status_text.markdown(f'<div class="loading-status-text">階段 3/3：執行對照表智慧翻譯，重構全新資料庫...</div>', unsafe_allow_html=True)
+            for c_idx, val in enumerate(f_df.iloc[h_row].values):
+                m = re.search(r'(\d+/\d+)', str(val))
+                if m:
+                    d_str = f"{int(m.group(1).split('/')[0])}/{int(m.group(1).split('/')[1])}"
+                    date_map[d_str] = c_idx
+
+            parsed_files_data.append({"df": f_df, "header_row": h_row, "date_map": date_map})
+        except Exception as e:
+            print(f"解析其中一份更新檔發生錯誤: {e}")
+
+    if not parsed_files_data:
+        status_text.empty()
+        progress_bar.empty()
+        return None
+
+    # 以第一份檔案作為基準骨架
+    master_data = parsed_files_data[0]
+    master_df = master_data["df"]
+    master_h_row = master_data["header_row"]
+
+    # 收集所有檔案出現過的所有不重複日期，並依時間排序
+    all_dates_set = set()
+    for p_data in parsed_files_data:
+        all_dates_set.update(p_data["date_map"].keys())
+
+    def date_sort_key(d_str):
+        parts = d_str.split('/')
+        m, d = int(parts[0]), int(parts[1])
+        # 假設跨年或跨月排序 (9月到10月)
+        return (0 if m >= 9 else 1, m, d)
+
+    sorted_all_dates = sorted(list(all_dates_set), key=date_sort_key)
+
+    # 建立組員編號對應到列索引的字典
+    master_emp_row_map = {}
+    for r_idx in range(master_h_row + 1, len(master_df)):
+        raw_emp = str(master_df.iloc[r_idx, 0]).strip()
+        if raw_emp and raw_emp.upper() != "NAN":
+            pure_emp = re.sub(r'\D', '', raw_emp)
+            if pure_emp: master_emp_row_map[pure_emp] = r_idx
+
+    status_text.markdown(f'<div class="loading-status-text">階段 3/3：執行跨檔案資料聯集與對照表翻譯...</div>', unsafe_allow_html=True)
     progress_bar.progress(80)
 
-    # 尋找標頭列（包含日期的列）
-    header_row_idx = -1
-    for r_idx in range(min(6, len(master_df))):
-        row_vals = [str(val).strip() for val in master_df.iloc[r_idx].values]
-        date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
-        if date_count >= 3:
-            header_row_idx = r_idx
-            break
-    if header_row_idx == -1: header_row_idx = 3
+    # 遍歷所有更新檔，將資料填入 master_df 中
+    for p_data in parsed_files_data:
+        p_df = p_data["df"]
+        p_h_row = p_data["header_row"]
+        p_date_map = p_data["date_map"]
 
-    # 開始逐格掃描並翻譯
-    for r_idx in range(header_row_idx + 1, len(master_df)):
-        raw_emp = str(master_df.iloc[r_idx, 0]).strip()
-        if not raw_emp or raw_emp.upper() == "NAN": continue
+        for r_idx in range(p_h_row + 1, len(p_df)):
+            raw_emp = str(p_df.iloc[r_idx, 0]).strip()
+            if not raw_emp or raw_emp.upper() == "NAN": continue
+            pure_emp = re.sub(r'\D', '', raw_emp)
+            if not pure_emp: continue
 
-        for c_idx in range(2, master_df.shape[1]):
-            cell_val = master_df.iloc[r_idx, c_idx]
-            if pd.isna(cell_val): continue
-            
-            cell_str = str(cell_val).strip()
-            if not cell_str or cell_str.lower() in [".", "nan", "none"]: continue
+            # 若組員不在 master 中，可擴充加入
+            if pure_emp not in master_emp_row_map:
+                new_row = pd.Series([None] * master_df.shape[1])
+                new_row.iloc[0] = p_df.iloc[r_idx, 0]
+                if p_df.shape[1] > 1: new_row.iloc[1] = p_df.iloc[r_idx, 1]
+                master_df = pd.concat([master_df, pd.DataFrame([new_row])], ignore_index=True)
+                master_emp_row_map[pure_emp] = len(master_df) - 1
 
-            # 清理代碼格式
-            clean_code = re.sub(r'[#%]', '', cell_str).strip().upper()
+            target_row_idx = master_emp_row_map[pure_emp]
 
-            # 若代碼存在於對應表中，直接翻譯成標準帶時間與工時的格式
-            if clean_code in shift_map:
-                info = shift_map[clean_code]
-                formatted_cell = f"{info['start']}\n\n{clean_code}\n{info['end']}\n{info['hours']}"
-                master_df.iloc[r_idx, c_idx] = formatted_cell
-            else:
-                # 保留非對應表內的代碼（如 DO, PAY, FAC 等）
-                master_df.iloc[r_idx, c_idx] = clean_code
+            # 針對該組員在該檔案中的每個日期欄位進行資料同步
+            for d_str, src_c_idx in p_date_map.items():
+                val = p_df.iloc[r_idx, src_c_idx]
+                if pd.isna(val): continue
+                val_str = str(val).strip()
+                if not val_str or val_str.lower() in [".", "nan", "none"]: continue
+
+                # 尋找 master 中對應的日期欄位
+                # 若 master 標頭列沒有這個日期，則自動在右側新增一欄日期
+                dest_c_idx = -1
+                for c_i, h_val in enumerate(master_df.iloc[master_h_row].values):
+                    if d_str in str(h_val):
+                        dest_c_idx = c_i
+                        break
+                
+                if dest_c_idx == -1:
+                    # 動新增加一欄
+                    dest_c_idx = master_df.shape[1]
+                    master_df[dest_c_idx] = None
+                    master_df.iloc[master_h_row, dest_c_idx] = d_str
+
+                # 翻譯代碼
+                clean_code = re.sub(r'[#%]', '', val_str).strip().upper()
+                if clean_code in shift_map:
+                    info = shift_map[clean_code]
+                    formatted_cell = f"{info['start']}\n\n{clean_code}\n{info['end']}\n{info['hours']}"
+                    master_df.iloc[target_row_idx, dest_c_idx] = formatted_cell
+                else:
+                    master_df.iloc[target_row_idx, dest_c_idx] = clean_code
 
     progress_bar.progress(100)
-    status_text.markdown('<div class="loading-status-text">新資料庫重構完成，寫入系統...</div>', unsafe_allow_html=True)
+    status_text.markdown('<div class="loading-status-text">跨月份多檔聯集與資料庫重建完成！</div>', unsafe_allow_html=True)
     time.sleep(0.3)
 
-    # 寫入目標基準大表路徑
     master_df.to_excel(base_path, index=False, header=False)
     status_text.empty()
     progress_bar.empty()
 
-    return safe_read_excel(base_path, header=header_row_idx)
+    return safe_read_excel(base_path, header=master_h_row)
 
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
@@ -933,7 +1004,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                         os.makedirs(DATA_DIR, exist_ok=True)
                     with open(target_mapping_file, "wb") as f: f.write(file_bytes_map)
                     st.session_state[hash_key_map] = current_hash_map
-                    log_activity(f"上傳【{selected_role}】專屬班別代碼時間對照表")
+                    log_activity(f"上傳【{selected_role}】專屬班別代碼時間對應表")
                     st.success(f"【{selected_role}】班別代碼時間對照表已成功更新！")
                     time.sleep(0.5)
                     st.rerun()
@@ -952,8 +1023,8 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #10B981;">
-            <h4 style="color: #34D399; margin-top: 0;">2. 班表更新檔 / 基準大表（支援多檔同時上傳，職位：{selected_role}）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">直接上傳您的最新班表檔（系統將透過對照表自動翻譯並重建出乾淨完整的全新資料庫）。</p>
+            <h4 style="color: #34D399; margin-top: 0;">2. 跨月份班表更新檔（支援多檔同時選取，職位：{selected_role}）</h4>
+            <p style="color: #94A3B8; font-size: 13px;">請**同時選取 9 月與 10 月等多份更新檔**一起上傳，系統將自動進行多檔日期聯集與對照表翻譯，重建出完整的資料庫！</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -964,7 +1035,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         if not is_mapping_ready:
             st.warning("⚠️ 系統提示：尚未上傳「班別代碼時間對照表」，請先完成上方第 1 項上傳才能進行重建！")
 
-        uploaded_files_new = st.file_uploader(f"上傳【{selected_role}】班表檔（可同時選取多份） (.xlsx / .xls)", type=["xlsx", "xls", "csv"], accept_multiple_files=True, key=f"new_rebuild_up_{selected_role}")
+        uploaded_files_new = st.file_uploader(f"上傳【{selected_role}】更新檔（請框選多個月份檔案，如 9月與10月） (.xlsx / .xls)", type=["xlsx", "xls", "csv"], accept_multiple_files=True, key=f"new_rebuild_up_{selected_role}")
         
         if uploaded_files_new:
             if not is_mapping_ready:
@@ -985,8 +1056,8 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                         
                         if rebuilt_df is not None:
                             st.session_state[hash_key_rebuild] = combined_hashes
-                            log_activity(f"透過更新檔重建 [{selected_role}] 完整資料庫")
-                            st.success(f"【{selected_role}】已成功透過更新檔與對照表重建全新資料庫！")
+                            log_activity(f"同時上傳 {len(uploaded_files_new)} 份跨月份更新檔 [{selected_role}] 進行聯集重建資料庫")
+                            st.success(f"【{selected_role}】跨月份更新檔已成功聯集並重建完整資料庫！")
                             time.sleep(0.5)
                             st.rerun()
                         else:
@@ -1339,7 +1410,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                 min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
             with c4: 
                 # 專業的時間「到」選項名稱
-                to_time_options = ["-- (不限 / 僅查該時間點)"] + TIME_OPTIONS
+                to_time_options = ["-- (僅查單一時間點)"] + TIME_OPTIONS
                 max_time_sel = st.selectbox("Sign-In Time 區間：到", options=to_time_options, index=0, key="max_time_selectbox")
 
             filter_col1, filter_col2 = st.columns(2)
