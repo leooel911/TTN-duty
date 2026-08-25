@@ -1349,7 +1349,7 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
     if not os.path.exists(target_path):
         st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請先至管理員後台上傳")
     else:
-        # 動態偵測標頭列（與月班表邏輯一致，確保時段快篩也能抓到最新合併資料）
+        # 動態偵測標頭列
         raw_df_preview = safe_read_excel(target_path, header=None)
         header_row_idx = 3
         for r_idx in range(min(6, len(raw_df_preview))):
@@ -1385,31 +1385,41 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
                 earliest_default = target_default if target_default in TIME_OPTIONS else min(TIME_OPTIONS, key=lambda x: abs(datetime.strptime(x, "%H:%M") - datetime.strptime("05:26", "%H:%M")))
 
             default_min_idx = TIME_OPTIONS.index(earliest_default) if earliest_default in TIME_OPTIONS else 0
-            try:
-                h, m = map(int, earliest_default.split(":"))
-                target_mins = h * 60 + m + 120
-                target_h = (target_mins // 60) % 24
-                target_m = target_mins % 60
-                suggested_end = f"{target_h:02d}:{target_m:02d}"
-                default_max_idx = TIME_OPTIONS.index(suggested_end) if suggested_end in TIME_OPTIONS else min(range(len(TIME_OPTIONS)), key=lambda i: abs(datetime.strptime(TIME_OPTIONS[i], "%H:%M") - datetime.strptime(suggested_end, "%H:%M")))
-            except:
-                default_max_idx = min(default_min_idx + 4, len(TIME_OPTIONS) - 1)
+
+            # 初始化 Session State 紀錄日期變更
+            if "last_selected_start_date" not in st.session_state:
+                st.session_state["last_selected_start_date"] = date_cols[0]
 
             c1, c2 = st.columns(2)
-            with c1: start_date = st.selectbox("起始日期", date_cols, index=0, key="win_start_date")
+            with c1: 
+                start_date = st.selectbox("起始日期", date_cols, index=0, key="win_start_date")
+            
+            # 智慧自動跟進邏輯：若使用者更動了起始日期，結束日期自動跟著同步
+            if start_date != st.session_state["last_selected_start_date"]:
+                st.session_state["last_selected_start_date"] = start_date
+                st.session_state["win_end_date_idx"] = date_cols.index(start_date) if start_date in date_cols else 0
+
             start_date_idx = date_cols.index(start_date) if start_date in date_cols else 0
-            with c2: end_date = st.selectbox("結束日期", date_cols, index=start_date_idx, key="win_end_date")
+            
+            with c2: 
+                default_end_idx = st.session_state.get("win_end_date_idx", start_date_idx)
+                if default_end_idx < start_date_idx: default_end_idx = start_date_idx
+                end_date = st.selectbox("結束日期", date_cols, index=default_end_idx, key="win_end_date")
 
             c3, c4 = st.columns(2)
-            with c3: min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
-            with c4: max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx, key="max_time_selectbox")
+            with c3: 
+                min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
+            with c4: 
+                # 時間「到」增加預選項，留空則代表僅抓取該時間點
+                to_time_options = ["-- (不限 / 僅該時間點)"] + TIME_OPTIONS
+                max_time_sel = st.selectbox("Sign-In Time 區間：到", options=to_time_options, index=0, key="max_time_selectbox")
 
             filter_col1, filter_col2 = st.columns(2)
             with filter_col1: only_main_line = st.checkbox("僅顯示正線勤務", value=False, key="win_main_line")
             with filter_col2: only_long_shift = st.checkbox("僅顯示長班 (>8.5h)", value=False, key="win_long_shift")
 
             if st.button("開始區間檢索符合條件人員", key="btn_window_search"):
-                log_activity(f"時段快篩 [{selected_role}] {start_date}~{end_date} {min_time}-{max_time}")
+                log_activity(f"時段快篩 [{selected_role}] {start_date}~{end_date} 從:{min_time} 到:{max_time_sel}")
                 try:
                     s_idx = date_cols.index(start_date)
                     e_idx = date_cols.index(end_date)
@@ -1440,29 +1450,39 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
                                 parsed = parse_cell(cell_raw)
                                 start_t = parsed["start"]
                                 
-                                if start_t and min_time <= start_t <= max_time:
-                                    is_non_line = is_town_shift(parsed["train"], parsed["note"])
-                                    is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
-                                    
-                                    if only_main_line and is_non_line: continue
-                                    if only_long_shift and not is_long: continue
+                                if start_t:
+                                    # 智慧時間過濾邏輯：若「到」未選擇或選了不限，則只比對是否等於 min_time；若有選則為區間範圍
+                                    matched_time_cond = False
+                                    if max_time_sel.startswith("--"):
+                                        matched_time_cond = (start_t == min_time)
+                                    else:
+                                        matched_time_cond = (min_time <= start_t <= max_time_sel)
 
-                                    next_day_sign_in = "無記錄"
-                                    if actual_col_pos + 1 < len(all_cols_list):
-                                        next_cell_raw = row.iloc[target_col_idx + 1]
-                                        next_parsed = parse_cell(next_cell_raw)
-                                        if next_parsed["start"]: next_day_sign_in = next_parsed["start"]
-                                        elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
-                                    
-                                    search_results.append({
-                                        "日期": d_str, "員編": emp_id, "姓名": emp_name,
-                                        "Sign-In": start_t, "收工時間": parsed["end"],
-                                        "車次": translate_train_code(parsed["train"]),
-                                        "隔日Sign-In": next_day_sign_in, "長班": is_long, "非正線": is_non_line
-                                    })
+                                    if matched_time_cond:
+                                        is_non_line = is_town_shift(parsed["train"], parsed["note"])
+                                        is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
+                                        
+                                        if only_main_line and is_non_line: continue
+                                        if only_long_shift and not is_long: continue
+
+                                        next_day_sign_in = "無記錄"
+                                        if actual_col_pos + 1 < len(all_cols_list):
+                                            next_cell_raw = row.iloc[target_col_idx + 1]
+                                            next_parsed = parse_cell(next_cell_raw)
+                                            if next_parsed["start"]: next_day_sign_in = next_parsed["start"]
+                                            elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
+                                        
+                                        search_results.append({
+                                            "日期": d_str, "員編": emp_id, "姓名": emp_name,
+                                            "Sign-In": start_t, "收工時間": parsed["end"],
+                                            "車次": translate_train_code(parsed["train"]),
+                                            "隔日Sign-In": next_day_sign_in, "長班": is_long, "非正線": is_non_line
+                                        })
 
                     search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
-                    st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ 區間 {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
+                    range_label_str = f"{start_date} 至 {end_date}" if start_date != end_date else start_date
+                    time_label_str = f"時間 {min_time}" if max_time_sel.startswith("--") else f"區間 {min_time} ~ {max_time_sel}"
+                    st.markdown(f"### 檢索結果：{range_label_str} ｜ {time_label_str}（共符合 {len(search_results)} 筆）")
                     
                     if search_results:
                         current_date_group = None
