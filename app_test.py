@@ -11,6 +11,7 @@ import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 import time
 import hashlib
+import base64
 
 matplotlib.use('Agg')
 
@@ -66,13 +67,13 @@ st.markdown("""
     }
 
     @keyframes test-env-breathe {
-        0% { border-color: #D97706; box-shadow: 0 0 5px rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, #271C0C 0%, #171005 100%); }
-        50% { border-color: #F59E0B; box-shadow: 0 0 18px rgba(245, 158, 11, 0.8), inset 0 0 10px rgba(245, 158, 11, 0.2); background: linear-gradient(135deg, #3B270C 0%, #1F1404 100%); }
-        100% { border-color: #D97706; box-shadow: 0 0 5px rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, #271C0C 0%, #171005 100%); }
+        0% { border-color: #D97706; box-shadow: 0 0 5px rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, rgba(39, 28, 12, 0.85) 0%, rgba(23, 16, 5, 0.85) 100%); backdrop-filter: blur(12px); }
+        50% { border-color: #F59E0B; box-shadow: 0 0 18px rgba(245, 158, 11, 0.8), inset 0 0 10px rgba(245, 158, 11, 0.2); background: linear-gradient(135deg, rgba(59, 39, 12, 0.9) 0%, rgba(31, 20, 4, 0.9) 100%); backdrop-filter: blur(16px); }
+        100% { border-color: #D97706; box-shadow: 0 0 5px rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, rgba(39, 28, 12, 0.85) 0%, rgba(23, 16, 5, 0.85) 100%); backdrop-filter: blur(12px); }
     }
 
     .test-env-banner {
-        border: 2px solid #F59E0B; border-radius: 12px; padding: 12px 18px; margin-bottom: 1.5rem;
+        border: 2px solid #F59E0B; border-radius: 14px; padding: 12px 18px; margin-bottom: 1.5rem;
         text-align: center; animation: test-env-breathe 3s infinite ease-in-out; font-family: monospace;
     }
     .test-env-title { color: #FDE68A; font-size: 14px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 2px; text-transform: uppercase; }
@@ -85,89 +86,130 @@ st.markdown("""
     }
 
     @keyframes missing-data-pulse {
-        0% { border-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
-        50% { border-color: #EF4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 0 10px rgba(239, 68, 68, 0.4); }
-        100% { border-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
+        0% { border-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); background: rgba(30, 27, 27, 0.75); }
+        50% { border-color: #EF4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 0 10px rgba(239, 68, 68, 0.4); background: rgba(45, 20, 20, 0.85); }
+        100% { border-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); background: rgba(30, 27, 27, 0.75); }
     }
 
     @keyframes blue-glow-pulse {
-        0% { border-color: #0369A1; box-shadow: 0 0 6px rgba(56, 189, 248, 0.2); }
-        50% { border-color: #38BDF8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.7), inset 0 0 10px rgba(56, 189, 248, 0.3); }
-        100% { border-color: #0369A1; box-shadow: 0 0 6px rgba(56, 189, 248, 0.2); }
+        0% { border-color: rgba(3, 105, 161, 0.8); box-shadow: 0 0 8px rgba(56, 189, 248, 0.25); background: linear-gradient(135deg, rgba(19, 28, 49, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); }
+        50% { border-color: rgba(56, 189, 248, 1); box-shadow: 0 0 22px rgba(56, 189, 248, 0.6), inset 0 0 12px rgba(56, 189, 248, 0.25); background: linear-gradient(135deg, rgba(25, 38, 68, 0.9) 0%, rgba(19, 30, 56, 0.9) 100%); }
+        100% { border-color: rgba(3, 105, 161, 0.8); box-shadow: 0 0 8px rgba(56, 189, 248, 0.25); background: linear-gradient(135deg, rgba(19, 28, 49, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); }
     }
 
     .missing-data-card {
-        background: linear-gradient(135deg, #1E1B1B 0%, #0F172A 100%) !important;
-        border: 2px solid #EF4444 !important; border-radius: 12px;
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 2px solid #EF4444 !important; border-radius: 14px;
         padding: 14px 18px; margin-bottom: 16px; animation: missing-data-pulse 2.5s infinite ease-in-out;
     }
 
     .header-container { 
         display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
         width: 100%; margin-bottom: 1rem; padding: 22px 20px;
-        background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
-        border: 2px solid #38BDF8; border-radius: 14px; animation: blue-glow-pulse 2.5s infinite ease-in-out;
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 2px solid rgba(56, 189, 248, 0.7); border-radius: 16px; animation: blue-glow-pulse 2.5s infinite ease-in-out;
     }
     .title-left-group { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
-    .main-title { color: #F8FAFC !important; font-size: 24px; font-weight: 800; letter-spacing: 2px; margin: 0; font-family: monospace; display: flex; align-items: center; justify-content: center; }
+    .main-title { color: #F8FAFC !important; font-size: 24px; font-weight: 800; letter-spacing: 2px; margin: 0; font-family: monospace; display: flex; align-items: center; justify-content: center; text-shadow: 0 2px 10px rgba(56,189,248,0.3); }
     .title-subtitle { color: #FFFFFF; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; font-family: monospace; margin-top: 4px; display: flex; align-items: center; justify-content: center; }
     
     .footer-badge-container { display: flex; justify-content: center; align-items: center; width: 100%; margin-top: 3rem; margin-bottom: 1rem; }
     .footer-badge-container div.stButton > button { 
-        background: #0B0F19 !important; border: 1px solid #1E293B !important; border-left: 2px solid #38BDF8 !important;
+        background: rgba(11, 15, 25, 0.8) !important; backdrop-filter: blur(8px) !important;
+        border: 1px solid rgba(30, 41, 59, 0.8) !important; border-left: 2px solid #38BDF8 !important;
         color: #64748B !important; font-size: 9px !important; font-weight: 600 !important; letter-spacing: 1.5px !important; 
         text-transform: uppercase !important; padding: 4px 12px !important; border-radius: 4px !important; box-shadow: none !important;
         font-family: monospace !important; width: auto !important; margin: 0 auto !important; min-height: unset !important; transition: all 0.2s ease !important;
     }
     .footer-badge-container div.stButton > button:hover {
-        border-color: #38BDF8 !important; color: #38BDF8 !important; background: #131C31 !important;
-        box-shadow: 0 0 10px rgba(56, 189, 248, 0.15) !important; transform: translateY(-1px) !important;
+        border-color: #38BDF8 !important; color: #38BDF8 !important; background: rgba(19, 28, 49, 0.9) !important;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.2) !important; transform: translateY(-1px) !important;
     }
 
     .mode-selection-header { color: #FFFFFF; font-size: 13px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; font-family: monospace; display: flex; align-items: center; gap: 8px; }
-    .mode-selection-header::after { content: ''; flex: 1; height: 1px; background: #334155; }
+    .mode-selection-header::after { content: ''; flex: 1; height: 1px; background: rgba(51, 65, 85, 0.8); }
 
     .maintenance-card-box {
-        background: linear-gradient(135deg, #271C0C 0%, #171005 100%);
-        border: 1.5px solid #EAB308; border-left: 5px solid #EAB308; border-radius: 12px;
-        padding: 24px 20px; text-align: center; margin-top: 2rem; margin-bottom: 0rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        background: linear-gradient(135deg, rgba(39, 28, 12, 0.85) 0%, rgba(23, 16, 5, 0.85) 100%);
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1.5px solid rgba(234, 179, 8, 0.8); border-left: 5px solid #EAB308; border-radius: 14px;
+        padding: 24px 20px; text-align: center; margin-top: 2rem; margin-bottom: 0rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
     }
     .maintenance-red-glow-line { height: 3px; width: 100%; background-color: #EF4444; border-radius: 4px; margin-top: 6px; margin-bottom: 2rem; animation: maintenance-red-line-pulse 3s infinite ease-in-out; }
     .maintenance-title { color: #FEF08A; font-size: 20px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 8px; font-family: monospace; }
     .maintenance-sub { color: #CA8A04; font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; font-family: monospace; }
 
     .admin-bypass-banner {
-        background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%); border: 1px solid #EF4444; border-left: 5px solid #F87171;
-        color: #FEE2E2; padding: 10px 16px; border-radius: 8px; margin-bottom: 20px; font-family: monospace; font-size: 13px; font-weight: 700;
-        display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        background: linear-gradient(135deg, rgba(127, 29, 29, 0.9) 0%, rgba(69, 10, 10, 0.9) 100%);
+        backdrop-filter: blur(12px); border: 1px solid rgba(239, 68, 68, 0.8); border-left: 5px solid #F87171;
+        color: #FEE2E2; padding: 10px 16px; border-radius: 10px; margin-bottom: 20px; font-family: monospace; font-size: 13px; font-weight: 700;
+        display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
     }
 
     .admin-card-container {
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        border: 1px solid #334155; border-left: 5px solid #38BDF8; border-radius: 12px;
-        padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%);
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 5px solid #38BDF8; border-radius: 14px;
+        padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
     
-    .telemetry-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); position: relative; overflow: hidden; }
+    .telemetry-card { 
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%) !important; 
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; 
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden; 
+    }
     .telemetry-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #3B82F6; }
     .telemetry-title { color: #94A3B8 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
     .telemetry-value { color: #F8FAFC !important; font-size: 18px; font-weight: 700; font-family: monospace; }
-    .telemetry-sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid #334155; font-size: 13px; color: #94A3B8; }
+    .telemetry-sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(51, 65, 85, 0.7); font-size: 13px; color: #94A3B8; }
     
-    .section-header-box { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 5px solid #3B82F6; border-radius: 10px; padding: 16px 20px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .section-header-box { 
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); 
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 5px solid #3B82F6; border-radius: 12px; padding: 16px 20px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); 
+    }
     .section-title { color: #F8FAFC; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin: 0; }
     .section-subtitle { color: #94A3B8; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
 
-    .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+    .date-banner { 
+        background: linear-gradient(135deg, rgba(30, 64, 175, 0.9) 0%, rgba(30, 58, 138, 0.9) 100%); 
+        backdrop-filter: blur(12px); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 10px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); 
+    }
     
-    .compact-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 4px solid #3B82F6; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-    .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5); transform: translateY(-2px); }
+    .compact-card { 
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); 
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 4px solid #3B82F6; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 8px 20px rgba(0,0,0,0.4); 
+    }
+    .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.3), 0 8px 24px rgba(0,0,0,0.6); transform: translateY(-2px); }
 
     .integrated-crew-box {
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 4px solid #10B981; border-radius: 12px;
-        padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.88) 0%, rgba(15, 23, 42, 0.88) 100%);
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 4px solid #10B981; border-radius: 12px;
+        padding: 16px; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     }
-    .action-divider { height: 1px; background: #334155; margin: 12px 0 4px 0; }
+    
+    .schedule-image-container {
+        background: rgba(15, 23, 42, 0.75);
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        border-radius: 14px;
+        padding: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+    .schedule-image-container img {
+        width: 100% !important;
+        height: auto !important;
+        max-width: 100% !important;
+        border-radius: 8px;
+        display: block;
+        margin: 0 auto;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    }
 
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
@@ -182,13 +224,15 @@ st.markdown("""
     .stRadio > label { display: none !important; }
     .stRadio > div { background: transparent !important; display: flex; flex-direction: column; gap: 12px; }
     .stRadio label { 
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; 
-        border-left: 4px solid #3B82F6 !important; border-radius: 10px !important; padding: 16px 20px !important; width: 100% !important; 
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important; transition: all 0.25s ease !important; cursor: pointer !important;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%) !important; 
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(51, 65, 85, 0.8) !important; 
+        border-left: 4px solid #3B82F6 !important; border-radius: 12px !important; padding: 16px 20px !important; width: 100% !important; 
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important; transition: all 0.25s ease !important; cursor: pointer !important;
     }
     .stRadio label:hover {
         border-color: #38BDF8 !important; border-left-color: #38BDF8 !important;
-        box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5) !important; transform: translateY(-2px) !important;
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.3), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-2px) !important;
     }
 
     .stProgress > div > div > div > div {
@@ -197,18 +241,19 @@ st.markdown("""
     }
     .loading-status-text { font-family: monospace; font-size: 14px; color: #FB923C; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 700; text-shadow: 0 0 10px rgba(251, 146, 60, 0.5); }
 
-    /* 讓下方按鈕完美融入卡片底部，呈現精美卡片按鈕風格 */
     div.stButton > button, div.stFormSubmitButton > button { 
         font-weight: 700 !important; padding: 12px 18px !important; border-radius: 0 0 12px 12px !important; 
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important;
-        border-top: 1px solid #334155 !important; color: #38BDF8 !important; width: 100% !important; 
-        margin-top: -14px !important; margin-bottom: 16px !important; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%) !important; 
+        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(51, 65, 85, 0.8) !important;
+        border-top: 1px solid rgba(51, 65, 85, 0.8) !important; color: #38BDF8 !important; width: 100% !important; 
+        margin-top: -14px !important; margin-bottom: 16px !important; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important; letter-spacing: 1px; font-family: monospace;
     }
     div.stButton > button:hover, div.stFormSubmitButton > button:hover {
         border-color: #38BDF8 !important; color: #FFFFFF !important;
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), 0 6px 16px rgba(0,0,0,0.5) !important; transform: translateY(-1px) !important;
+        box-shadow: 0 0 22px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-1px) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -731,7 +776,15 @@ if st.session_state.get("inspect_emp_target") is not None:
         plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
 
         st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
-        st.image(buf, use_container_width=True)
+        
+        # 手機版高解析防失真/可放大容器包裝
+        img_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        st.markdown(f"""
+        <div class="schedule-image-container">
+            <img src="data:image/png;base64,{img_b64}" alt="月班表圖檔" />
+        </div>
+        """, unsafe_allow_html=True)
+        
         st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
     except Exception as e:
         st.error(f"載入完整班表時發生錯誤: {e}")
@@ -1250,7 +1303,15 @@ if app_mode == "繪製個人月班表圖檔":
                     progress_bar.empty()
 
                     st.success("個人班表圖片生成成功")
-                    st.image(buf, use_container_width=True)
+                    
+                    # 手機版高解析防失真/可放大容器包裝
+                    img_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                    st.markdown(f"""
+                    <div class="schedule-image-container">
+                        <img src="data:image/png;base64,{img_b64}" alt="個人月班表圖檔" />
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
@@ -1591,7 +1652,15 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
 
             st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
-            st.image(buf, use_container_width=True)
+            
+            # 手機版高解析防失真/可放大容器包裝
+            img_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+            st.markdown(f"""
+            <div class="schedule-image-container">
+                <img src="data:image/png;base64,{img_b64}" alt="換假組員月班表圖檔" />
+            </div>
+            """, unsafe_allow_html=True)
+            
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
         except Exception as e: st.error(f"載入完整班表時發生錯誤: {e}")
         st.stop()
@@ -1817,7 +1886,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         saved_time_f = st.session_state.get("ex_saved_time_filter", return_time_filter)
 
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 5px solid #38BDF8; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); display: flex; flex-direction: column; gap: 8px;">
+        <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(51, 65, 85, 0.8); border-left: 5px solid #38BDF8; border-radius: 14px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <span style="color: #F8FAFC; font-size: 18px; font-weight: 700; font-family: monospace;">【{saved_role}】符合換假名單</span>
                 <span style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38BDF8; color: #38BDF8; font-size: 12px; padding: 2px 10px; border-radius: 6px; font-weight: 600; font-family: monospace;">共 {len(saved_candidates)} 位符合</span>
@@ -1835,13 +1904,12 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         for idx, cand in enumerate(saved_candidates):
             card_container = st.container()
             with card_container:
-                # 資訊上半部：精美卡片標頭與資訊
+                # 資訊上半部：完美毛玻璃卡片（已移除右上角重複的小字，並維持連續上班風險度標籤）
                 st.markdown(f"""
-                <div class="integrated-crew-box" style="border-radius: 12px 12px 0 0; margin-bottom: 0;">
+                <div class="integrated-crew-box" style="border-radius: 14px 14px 0 0; margin-bottom: 0;">
                     <div class="time-header-row">
                         <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <span style="color: #38BDF8; font-size: 11px; font-family: monospace; font-weight: 600;">點選可查看完整班表 ↗</span>
                             <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                         </div>
                     </div>
@@ -1850,7 +1918,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # 下半部按鈕無縫接軌，成為完美的一體式互動卡片
+                # 下半部按鈕無縫接軌，成為完美的一體式互動卡片按鈕
                 if st.button(f"查看 {cand['姓名']} ({cand['員編']}) 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True):
                     status_placeholder = st.empty()
                     progress_bar = st.progress(0)
