@@ -236,7 +236,6 @@ st.markdown("""
         box-shadow: 0 0 22px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-1px) !important;
     }
 
-    /* 專屬兩指縮放與全螢幕檢視 Modal 樣式 */
     .custom-zoom-container {
         position: relative;
         cursor: pointer;
@@ -335,136 +334,137 @@ def log_activity(input_str):
     except: pass
 
 def render_zoomable_image(image_buf, caption=""):
-    """使用自訂 HTML/JS 彈跳視窗，支援手機兩指縮放 (Pinch-to-Zoom) 與平移檢視"""
+    """使用安全的獨立命名空間 HTML/JS 彈跳視窗，支援兩指縮放與拖曳平移"""
+    modal_id = f"modal_{int(time.time()*1000)}"
+    img_id = f"img_{int(time.time()*1000)}"
     b64_img = base64.b64encode(image_buf.getvalue()).decode("utf-8")
+    
     img_html = f"""
-    <div id="zoomModal" style="display:none; position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; background-color:rgba(0,0,0,0.92); overflow:auto; touch-action:none; align-items:center; justify-content:center;">
+    <div id="{modal_id}" style="display:none; position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; background-color:rgba(0,0,0,0.92); overflow:hidden; touch-action:none; align-items:center; justify-content:center;">
         <div style="position:absolute; top:20px; right:20px; z-index:100000;">
-            <button onclick="closeZoomModal()" style="background:#EF4444; color:white; border:none; padding:10px 18px; font-size:16px; font-weight:bold; border-radius:8px; cursor:pointer; font-family:monospace; box-shadow:0 4px 12px rgba(239,68,68,0.5);">關閉 ✕</button>
+            <button onclick="close_{modal_id}()" style="background:#EF4444; color:white; border:none; padding:10px 18px; font-size:16px; font-weight:bold; border-radius:8px; cursor:pointer; font-family:monospace; box-shadow:0 4px 12px rgba(239,68,68,0.5);">關閉 ✕</button>
         </div>
         <div style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); color:#94A3B8; font-size:12px; font-family:monospace; pointer-events:none; background:rgba(15,23,42,0.8); padding:6px 14px; border-radius:6px; border:1px solid rgba(56,189,248,0.3);">
             💡 支援手機兩指開合縮放與雙擊放大
         </div>
         <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-            <img id="modalImg" src="data:image/png;base64,{b64_img}" style="max-width:95%; max-height:90%; object-fit:contain; transition:transform 0.1s ease; transform-origin:center center; cursor:grab; touch-action:none;" />
+            <img id="{img_id}" src="data:image/png;base64,{b64_img}" style="max-width:95%; max-height:90%; object-fit:contain; transition:transform 0.05s ease; transform-origin:center center; cursor:grab; touch-action:none;" />
         </div>
     </div>
 
-    <div class="custom-zoom-container" onclick="openZoomModal()">
+    <div class="custom-zoom-container" onclick="open_{modal_id}()">
         <img src="data:image/png;base64,{b64_img}" style="width:100%; display:block;" />
         <div class="custom-zoom-hint">🔍 點擊進行兩指縮放檢視</div>
     </div>
 
     <script>
-        const modal = document.getElementById("zoomModal");
-        const modalImg = document.getElementById("modalImg");
-        let scale = 1;
-        let panning = false;
-        let startX = 0, startY = 0;
-        let translateX = 0, translateY = 0;
-        let lastDist = 0;
+        (function() {{
+            const modal = document.getElementById("{modal_id}");
+            const modalImg = document.getElementById("{img_id}");
+            let scale = 1;
+            let panning = false;
+            let startX = 0, startY = 0;
+            let translateX = 0, translateY = 0;
+            let lastDist = 0;
 
-        function openZoomModal() {{
-            modal.style.display = "flex";
-            scale = 1;
-            translateX = 0;
-            translateY = 0;
-            updateTransform();
-        }}
+            window.open_{modal_id} = function() {{
+                modal.style.display = "flex";
+                scale = 1;
+                translateX = 0;
+                translateY = 0;
+                updateTransform();
+            }}
 
-        function closeZoomModal() {{
-            modal.style.display = "none";
-        }}
+            window.close_{modal_id} = function() {{
+                modal.style.display = "none";
+            }}
 
-        function updateTransform() {{
-            modalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-        }}
+            function updateTransform() {{
+                modalImg.style.transform = `translate(${{translateX}}px, ${{translateY}}px) scale(${{scale}})`;
+            }}
 
-        // 桌面端拖曳平移
-        modalImg.addEventListener('mousedown', (e) => {{
-            panning = true;
-            startX = e.clientX - translateX;
-            startY = e.clientY - translateY;
-            modalImg.style.cursor = 'grabbing';
-            e.preventDefault();
-        }});
-
-        window.addEventListener('mousemove', (e) => {{
-            if (!panning) return;
-            translateX = e.clientX - startX;
-            translateY = e.clientY - startY;
-            updateTransform();
-        }});
-
-        window.addEventListener('mouseup', () => {{
-            panning = false;
-            modalImg.style.cursor = 'grab';
-        }});
-
-        // 手機端觸控事件 (支援單指拖曳平移 & 兩指縮放)
-        modalImg.addEventListener('touchstart', (e) => {{
-            if (e.touches.length === 1) {{
+            modalImg.addEventListener('mousedown', (e) => {{
                 panning = true;
-                startX = e.touches[0].clientX - translateX;
-                startY = e.touches[0].clientY - translateY;
-            }} else if (e.touches.length === 2) {{
+                startX = e.clientX - translateX;
+                startY = e.clientY - translateY;
+                modalImg.style.cursor = 'grabbing';
+                e.preventDefault();
+            }});
+
+            window.addEventListener('mousemove', (e) => {{
+                if (!panning) return;
+                translateX = e.clientX - startX;
+                translateY = e.clientY - startY;
+                updateTransform();
+            }});
+
+            window.addEventListener('mouseup', () => {{
                 panning = false;
-                lastDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-            }}
-        }}, {{ passive: true }});
+                modalImg.style.cursor = 'grab';
+            }});
 
-        modalImg.addEventListener('touchmove', (e) => {{
-            if (panning && e.touches.length === 1) {{
-                translateX = e.touches[0].clientX - startX;
-                translateY = e.touches[0].clientY - startY;
-                updateTransform();
-            }} else if (e.touches.length === 2) {{
-                let dist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-                let factor = dist / lastDist;
-                scale = Math.min(Math.max(1, scale * factor), 5);
-                lastDist = dist;
-                updateTransform();
-            }}
-        }}, {{ passive: true }});
+            modalImg.addEventListener('touchstart', (e) => {{
+                if (e.touches.length === 1) {{
+                    panning = true;
+                    startX = e.touches[0].clientX - translateX;
+                    startY = e.touches[0].clientY - translateY;
+                }} else if (e.touches.length === 2) {{
+                    panning = false;
+                    lastDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                }}
+            }}, {{ passive: true }});
 
-        modalImg.addEventListener('touchend', () => {{
-            panning = false;
-        }});
+            modalImg.addEventListener('touchmove', (e) => {{
+                if (panning && e.touches.length === 1) {{
+                    translateX = e.touches[0].clientX - startX;
+                    translateY = e.touches[0].clientY - startY;
+                    updateTransform();
+                }} else if (e.touches.length === 2) {{
+                    let dist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    let factor = dist / lastDist;
+                    scale = Math.min(Math.max(1, scale * factor), 5);
+                    lastDist = dist;
+                    updateTransform();
+                }}
+            }}, {{ passive: true }});
 
-        // 滾輪縮放
-        modalImg.addEventListener('wheel', (e) => {{
-            e.preventDefault();
-            let zoomIntensity = 0.15;
-            if (e.deltaY < 0) {{
-                scale = Math.min(scale * (1 + zoomIntensity), 5);
-            }} else {{
-                scale = Math.max(1, scale * (1 - zoomIntensity));
-                if (scale === 1) {{ translateX = 0; translateY = 0; }}
-            }}
-            updateTransform();
-        }});
+            modalImg.addEventListener('touchend', () => {{
+                panning = false;
+            }});
 
-        // 雙擊重置或放大
-        let lastTap = 0;
-        modalImg.addEventListener('touchend', (e) => {{
-            let currentTime = new Date().getTime();
-            let tapLength = currentTime - lastTap;
-            if (tapLength < 300 && tapLength > 0) {{
-                if (scale > 1) {{
-                    scale = 1; translateX = 0; translateY = 0;
+            modalImg.addEventListener('wheel', (e) => {{
+                e.preventDefault();
+                let zoomIntensity = 0.15;
+                if (e.deltaY < 0) {{
+                    scale = Math.min(scale * (1 + zoomIntensity), 5);
                 }} else {{
-                    scale = 2.5;
+                    scale = Math.max(1, scale * (1 - zoomIntensity));
+                    if (scale === 1) {{ translateX = 0; translateY = 0; }}
                 }}
                 updateTransform();
-            }}
-            lastTap = currentTime;
-        }});
+            }});
+
+            let lastTap = 0;
+            modalImg.addEventListener('touchend', (e) => {{
+                let currentTime = new Date().getTime();
+                let tapLength = currentTime - lastTap;
+                if (tapLength < 300 && tapLength > 0) {{
+                    if (scale > 1) {{
+                        scale = 1; translateX = 0; translateY = 0;
+                    }} else {{
+                        scale = 2.5;
+                    }}
+                    updateTransform();
+                }}
+                lastTap = currentTime;
+            }});
+        }})();
     </script>
     """
     st.markdown(img_html, unsafe_allow_html=True)
@@ -922,7 +922,7 @@ if st.session_state.get("inspect_emp_target") is not None:
 
         st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
         
-        # 使用自訂的支援兩指縮放 Modal 檢視器
+        # 使用安全獨立命名的兩指縮放檢視器
         render_zoomable_image(buf)
         
         st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
@@ -1444,7 +1444,7 @@ if app_mode == "繪製個人月班表圖檔":
 
                     st.success("個人班表圖片生成成功")
                     
-                    # 使用自訂的支援兩指縮放 Modal 檢視器
+                    # 使用安全獨立命名的兩指縮放檢視器
                     render_zoomable_image(buf)
                     
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
@@ -1788,7 +1788,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
             st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
             
-            # 使用自訂的支援兩指縮放 Modal 檢視器
+            # 使用安全獨立命名的兩指縮放檢視器
             render_zoomable_image(buf)
             
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
