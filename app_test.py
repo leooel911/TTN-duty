@@ -191,14 +191,6 @@ st.markdown("""
         padding: 16px; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     }
 
-    /* 讓 Streamlit 圖片右上角的「全螢幕/放大按鈕」在手機版常駐顯示，不需 hover 即可點擊 */
-    button[title*="View fullscreen"], button[title*="fullscreen"] {
-        opacity: 1 !important;
-        transform: scale(1.1) !important;
-        background-color: rgba(30, 41, 59, 0.9) !important;
-        border: 1px solid rgba(56, 189, 248, 0.6) !important;
-    }
-
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
     .badge-group { display: flex; gap: 4px; align-items: center; }
@@ -242,6 +234,36 @@ st.markdown("""
         border-color: #38BDF8 !important; color: #FFFFFF !important;
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
         box-shadow: 0 0 22px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-1px) !important;
+    }
+
+    /* 專屬兩指縮放與全螢幕檢視 Modal 樣式 */
+    .custom-zoom-container {
+        position: relative;
+        cursor: pointer;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        transition: all 0.2s ease;
+    }
+    .custom-zoom-container:hover {
+        border-color: #38BDF8;
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+    }
+    .custom-zoom-hint {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(15, 23, 42, 0.85);
+        color: #38BDF8;
+        padding: 6px 12px;
+        font-size: 11px;
+        font-family: monospace;
+        border-radius: 6px;
+        border: 1px solid rgba(56, 189, 248, 0.5);
+        pointer-events: none;
+        letter-spacing: 1px;
+        backdrop-filter: blur(4px);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -311,6 +333,141 @@ def log_activity(input_str):
         log_entry = f"{now_tw} | 操作者員編: {current_operator} | 裝置: {device_info} | 動作: {input_str}\n"
         with open(LOG_FILE, "a", encoding="utf-8") as f: f.write(log_entry)
     except: pass
+
+def render_zoomable_image(image_buf, caption=""):
+    """使用自訂 HTML/JS 彈跳視窗，支援手機兩指縮放 (Pinch-to-Zoom) 與平移檢視"""
+    b64_img = base64.b64encode(image_buf.getvalue()).decode("utf-8")
+    img_html = f"""
+    <div id="zoomModal" style="display:none; position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; background-color:rgba(0,0,0,0.92); overflow:auto; touch-action:none; align-items:center; justify-content:center;">
+        <div style="position:absolute; top:20px; right:20px; z-index:100000;">
+            <button onclick="closeZoomModal()" style="background:#EF4444; color:white; border:none; padding:10px 18px; font-size:16px; font-weight:bold; border-radius:8px; cursor:pointer; font-family:monospace; box-shadow:0 4px 12px rgba(239,68,68,0.5);">關閉 ✕</button>
+        </div>
+        <div style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); color:#94A3B8; font-size:12px; font-family:monospace; pointer-events:none; background:rgba(15,23,42,0.8); padding:6px 14px; border-radius:6px; border:1px solid rgba(56,189,248,0.3);">
+            💡 支援手機兩指開合縮放與雙擊放大
+        </div>
+        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+            <img id="modalImg" src="data:image/png;base64,{b64_img}" style="max-width:95%; max-height:90%; object-fit:contain; transition:transform 0.1s ease; transform-origin:center center; cursor:grab; touch-action:none;" />
+        </div>
+    </div>
+
+    <div class="custom-zoom-container" onclick="openZoomModal()">
+        <img src="data:image/png;base64,{b64_img}" style="width:100%; display:block;" />
+        <div class="custom-zoom-hint">🔍 點擊進行兩指縮放檢視</div>
+    </div>
+
+    <script>
+        const modal = document.getElementById("zoomModal");
+        const modalImg = document.getElementById("modalImg");
+        let scale = 1;
+        let panning = false;
+        let startX = 0, startY = 0;
+        let translateX = 0, translateY = 0;
+        let lastDist = 0;
+
+        function openZoomModal() {{
+            modal.style.display = "flex";
+            scale = 1;
+            translateX = 0;
+            translateY = 0;
+            updateTransform();
+        }}
+
+        function closeZoomModal() {{
+            modal.style.display = "none";
+        }}
+
+        function updateTransform() {{
+            modalImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        }}
+
+        // 桌面端拖曳平移
+        modalImg.addEventListener('mousedown', (e) => {{
+            panning = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+            modalImg.style.cursor = 'grabbing';
+            e.preventDefault();
+        }});
+
+        window.addEventListener('mousemove', (e) => {{
+            if (!panning) return;
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            updateTransform();
+        }});
+
+        window.addEventListener('mouseup', () => {{
+            panning = false;
+            modalImg.style.cursor = 'grab';
+        }});
+
+        // 手機端觸控事件 (支援單指拖曳平移 & 兩指縮放)
+        modalImg.addEventListener('touchstart', (e) => {{
+            if (e.touches.length === 1) {{
+                panning = true;
+                startX = e.touches[0].clientX - translateX;
+                startY = e.touches[0].clientY - translateY;
+            }} else if (e.touches.length === 2) {{
+                panning = false;
+                lastDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            }}
+        }}, {{ passive: true }});
+
+        modalImg.addEventListener('touchmove', (e) => {{
+            if (panning && e.touches.length === 1) {{
+                translateX = e.touches[0].clientX - startX;
+                translateY = e.touches[0].clientY - startY;
+                updateTransform();
+            }} else if (e.touches.length === 2) {{
+                let dist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                let factor = dist / lastDist;
+                scale = Math.min(Math.max(1, scale * factor), 5);
+                lastDist = dist;
+                updateTransform();
+            }}
+        }}, {{ passive: true }});
+
+        modalImg.addEventListener('touchend', () => {{
+            panning = false;
+        }});
+
+        // 滾輪縮放
+        modalImg.addEventListener('wheel', (e) => {{
+            e.preventDefault();
+            let zoomIntensity = 0.15;
+            if (e.deltaY < 0) {{
+                scale = Math.min(scale * (1 + zoomIntensity), 5);
+            }} else {{
+                scale = Math.max(1, scale * (1 - zoomIntensity));
+                if (scale === 1) {{ translateX = 0; translateY = 0; }}
+            }}
+            updateTransform();
+        }});
+
+        // 雙擊重置或放大
+        let lastTap = 0;
+        modalImg.addEventListener('touchend', (e) => {{
+            let currentTime = new Date().getTime();
+            let tapLength = currentTime - lastTap;
+            if (tapLength < 300 && tapLength > 0) {{
+                if (scale > 1) {{
+                    scale = 1; translateX = 0; translateY = 0;
+                }} else {{
+                    scale = 2.5;
+                }}
+                updateTransform();
+            }}
+            lastTap = currentTime;
+        }});
+    </script>
+    """
+    st.markdown(img_html, unsafe_allow_html=True)
 
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
 if "admin_logged_in" not in st.session_state: st.session_state["admin_logged_in"] = False
@@ -765,8 +922,8 @@ if st.session_state.get("inspect_emp_target") is not None:
 
         st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
         
-        # 使用 Streamlit 原生 st.image，並透過上方 CSS 讓手機版右上角放大按鈕常駐顯示
-        st.image(buf, use_container_width=True)
+        # 使用自訂的支援兩指縮放 Modal 檢視器
+        render_zoomable_image(buf)
         
         st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
     except Exception as e:
@@ -1287,8 +1444,8 @@ if app_mode == "繪製個人月班表圖檔":
 
                     st.success("個人班表圖片生成成功")
                     
-                    # 使用 Streamlit 原生 st.image，並透過上方 CSS 讓手機版右上角放大按鈕常駐顯示
-                    st.image(buf, use_container_width=True)
+                    # 使用自訂的支援兩指縮放 Modal 檢視器
+                    render_zoomable_image(buf)
                     
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
@@ -1631,8 +1788,8 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
             st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
             
-            # 使用 Streamlit 原生 st.image，並透過上方 CSS 讓手機版右上角放大按鈕常駐顯示
-            st.image(buf, use_container_width=True)
+            # 使用自訂的支援兩指縮放 Modal 檢視器
+            render_zoomable_image(buf)
             
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
         except Exception as e: st.error(f"載入完整班表時發生錯誤: {e}")
@@ -1877,7 +2034,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         for idx, cand in enumerate(saved_candidates):
             card_container = st.container()
             with card_container:
-                # 資訊上半部：完美毛玻璃卡片（已移除右上角重複的小字，並維持連續上班風險度標籤）
                 st.markdown(f"""
                 <div class="integrated-crew-box" style="border-radius: 14px 14px 0 0; margin-bottom: 0;">
                     <div class="time-header-row">
@@ -1891,7 +2047,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # 下半部按鈕無縫接軌，成為完美的一體式互動卡片按鈕
                 if st.button(f"查看 {cand['姓名']} ({cand['員編']}) 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True):
                     status_placeholder = st.empty()
                     progress_bar = st.progress(0)
