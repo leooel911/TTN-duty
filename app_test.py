@@ -221,7 +221,7 @@ st.markdown("""
     }
     .loading-status-text { font-family: monospace; font-size: 14px; color: #FB923C; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 700; text-shadow: 0 0 10px rgba(251, 146, 60, 0.5); }
 
-    /* 恢復一般 Streamlit 預設按鈕的外觀（不影響其他按鈕） */
+    /* 一般按鈕維持預設標準外型（四邊圓角），絕對不影響其他按鈕 */
     div.stButton > button, div.stFormSubmitButton > button { 
         font-weight: 700 !important; padding: 0.5rem 1rem !important; border-radius: 0.5rem !important; 
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%) !important; 
@@ -235,14 +235,6 @@ st.markdown("""
         border-color: #38BDF8 !important; color: #FFFFFF !important;
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
         box-shadow: 0 0 22px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-1px) !important;
-    }
-
-    /* 專門針對「查看完整班表」按鈕套用上方直角、下方圓角與專屬樣式 */
-    div.stButton > button[kind="secondary"] { 
-        border-radius: 0 0 12px 12px !important; 
-        border-top: none !important;
-        margin-top: -14px !important; 
-        margin-bottom: 16px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -314,7 +306,6 @@ def log_activity(input_str):
     except: pass
 
 def render_zoomable_image(image_buf, caption=""):
-    """使用最穩健的 Streamlit 原生圖片渲染，確保手機瀏覽器 100% 正常顯示"""
     st.image(image_buf, use_container_width=True)
 
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
@@ -769,10 +760,7 @@ if st.session_state.get("inspect_emp_target") is not None:
         plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
 
         st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
-        
-        # 使用穩定呈現的圖片渲染
         render_zoomable_image(buf)
-        
         st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
     except Exception as e:
         st.error(f"載入完整班表時發生錯誤: {e}")
@@ -1315,10 +1303,7 @@ if app_mode == "繪製個人月班表圖檔":
                     progress_bar.empty()
 
                     st.success("個人班表圖片生成成功")
-                    
-                    # 使用穩定呈現的圖片渲染
                     render_zoomable_image(buf)
-                    
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
@@ -1659,10 +1644,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
 
             st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
-            
-            # 使用穩定呈現的圖片渲染
             render_zoomable_image(buf)
-            
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
         except Exception as e: st.error(f"載入完整班表時發生錯誤: {e}")
         st.stop()
@@ -1919,13 +1901,13 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # 專屬針對這顆「查看完整班表」按鈕設定上方直角、下方圓角
+                # 局部專屬樣式：確保只有「查看完整班表」按鈕呈現與上方卡片密合、上方直角下方圓角的造型
                 st.markdown(f"""
                 <style>
-                    div.stButton > button[kind="secondary"] {{
-                        border-radius: 0 0 12px 12px !important;
+                    div.stButton > button[kind="secondary"] {{ 
+                        border-radius: 0 0 12px 12px !important; 
                         border-top: none !important;
-                        margin-top: -14px !important;
+                        margin-top: -14px !important; 
                         margin-bottom: 16px !important;
                     }}
                 </style>
