@@ -1318,7 +1318,7 @@ if app_mode == "繪製個人月班表圖檔":
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
+elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
     if is_module_maintenance("window_filter") and not st.session_state.get("admin_logged_in", False):
         st.markdown("""
         <div class="maintenance-card-box">
@@ -1385,42 +1385,22 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
 
             default_min_idx = TIME_OPTIONS.index(earliest_default) if earliest_default in TIME_OPTIONS else 0
 
-            # 初始化 Session State 狀態管理以達成日期連動
-            if "win_start_date_val" not in st.session_state:
-                st.session_state["win_start_date_val"] = date_cols[0]
-            if "win_end_date_val" not in st.session_state:
-                st.session_state["win_end_date_val"] = date_cols[0]
-
-            def on_start_date_change():
-                current_start = st.session_state["win_start_date_widget"]
-                st.session_state["win_start_date_val"] = current_start
-                if date_cols.index(current_start) > date_cols.index(st.session_state.get("win_end_date_val", current_start)):
-                    st.session_state["win_end_date_val"] = current_start
+            # 初始化日期 state
+            if "win_start_date" not in st.session_state:
+                st.session_state["win_start_date"] = date_cols[0]
+            if "win_end_date" not in st.session_state:
+                st.session_state["win_end_date"] = date_cols[0]
 
             c1, c2 = st.columns(2)
             with c1: 
-                start_date = st.selectbox(
-                    "起始日期", 
-                    date_cols, 
-                    index=date_cols.index(st.session_state["win_start_date_val"]) if st.session_state["win_start_date_val"] in date_cols else 0,
-                    key="win_start_date_widget",
-                    on_change=on_start_date_change
-                )
+                start_date = st.selectbox("起始日期", date_cols, key="win_start_date")
             
-            with c2: 
-                current_start_idx = date_cols.index(start_date) if start_date in date_cols else 0
-                current_end_val = st.session_state.get("win_end_date_val", start_date)
-                if date_cols.index(current_end_val) < current_start_idx:
-                    current_end_val = start_date
-                    st.session_state["win_end_date_val"] = start_date
+            # 強制連動邏輯：只要起始日期變更，或者結束日期小於起始日期，就把結束日期直接同步為起始日期
+            if st.session_state["win_end_date"] not in date_cols or date_cols.index(st.session_state["win_end_date"]) < date_cols.index(start_date):
+                st.session_state["win_end_date"] = start_date
 
-                end_date = st.selectbox(
-                    "結束日期", 
-                    date_cols, 
-                    index=date_cols.index(current_end_val) if current_end_val in date_cols else current_start_idx,
-                    key="win_end_date_widget"
-                )
-                st.session_state["win_end_date_val"] = end_date
+            with c2: 
+                end_date = st.selectbox("結束日期", date_cols, key="win_end_date")
 
             c3, c4 = st.columns(2)
             with c3: 
