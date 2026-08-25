@@ -221,19 +221,28 @@ st.markdown("""
     }
     .loading-status-text { font-family: monospace; font-size: 14px; color: #FB923C; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 700; text-shadow: 0 0 10px rgba(251, 146, 60, 0.5); }
 
+    /* 恢復一般 Streamlit 預設按鈕的外觀（不影響其他按鈕） */
     div.stButton > button, div.stFormSubmitButton > button { 
-        font-weight: 700 !important; padding: 12px 18px !important; border-radius: 0 0 12px 12px !important; 
+        font-weight: 700 !important; padding: 0.5rem 1rem !important; border-radius: 0.5rem !important; 
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%) !important; 
         backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(51, 65, 85, 0.8) !important;
-        border-top: 1px solid rgba(51, 65, 85, 0.8) !important; color: #38BDF8 !important; width: 100% !important; 
-        margin-top: -14px !important; margin-bottom: 16px !important; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
+        color: #38BDF8 !important; width: 100% !important; 
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important; letter-spacing: 1px; font-family: monospace;
     }
     div.stButton > button:hover, div.stFormSubmitButton > button:hover {
         border-color: #38BDF8 !important; color: #FFFFFF !important;
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
         box-shadow: 0 0 22px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-1px) !important;
+    }
+
+    /* 專門針對「查看完整班表」按鈕套用上方直角、下方圓角與專屬樣式 */
+    div.stButton > button[kind="secondary"] { 
+        border-radius: 0 0 12px 12px !important; 
+        border-top: none !important;
+        margin-top: -14px !important; 
+        margin-bottom: 16px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -880,7 +889,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.markdown("---")
     
-    # 【已恢復】三大系統各自獨立維護的維護開關選單
     st.subheader("🛠️ 各大系統模組維護開關控制")
     st.markdown("<p style='color:#94A3B8; font-size:13px;'>在此可獨立切換三大系統模組的維護狀態（開啟後一般組員端會顯示維護中畫面）。</p>", unsafe_allow_html=True)
     
@@ -1911,7 +1919,8 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                if st.button(f"查看 {cand['姓名']} ({cand['員編']}) 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True):
+                # 只有這個「查看完整班表」的按鈕帶有 kind="secondary" 與指定外型
+                if st.button(f"查看 {cand['姓名']} ({cand['員編']}) 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True, type="secondary"):
                     status_placeholder = st.empty()
                     progress_bar = st.progress(0)
                     first_name = cand['姓名'][1:] if len(cand['姓名']) > 1 else cand['姓名']
