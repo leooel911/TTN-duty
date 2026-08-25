@@ -305,142 +305,8 @@ def log_activity(input_str):
     except: pass
 
 def render_zoomable_image(image_buf, caption=""):
-    """使用完全相容手機點擊彈出全螢幕燈箱，支援兩指縮放與拖曳平移"""
-    modal_id = f"modal_{int(time.time()*1000)}"
-    img_id = f"img_{int(time.time()*1000)}"
-    b64_img = base64.b64encode(image_buf.getvalue()).decode("utf-8")
-    
-    img_html = f"""
-    <div id="{modal_id}" style="display:none; position:fixed; z-index:99999; left:0; top:0; width:100%; height:100%; background-color:rgba(0,0,0,0.95); overflow:hidden; touch-action:none; align-items:center; justify-content:center;">
-        <div style="position:absolute; top:20px; right:20px; z-index:100000;">
-            <button onclick="close_{modal_id}()" style="background:#EF4444; color:white; border:none; padding:12px 20px; font-size:16px; font-weight:bold; border-radius:8px; cursor:pointer; font-family:monospace; box-shadow:0 4px 12px rgba(239,68,68,0.5);">關閉 ✕</button>
-        </div>
-        <div style="position:absolute; bottom:25px; left:50%; transform:translateX(-50%); color:#38BDF8; font-size:13px; font-family:monospace; pointer-events:none; background:rgba(15,23,42,0.85); padding:8px 16px; border-radius:8px; border:1px solid rgba(56,189,248,0.4); text-align:center;">
-            💡 提示：請直接用「兩指開合」縮放圖片，單指可拖曳移動
-        </div>
-        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-            <img id="{img_id}" src="data:image/png;base64,{b64_img}" style="max-width:98%; max-height:85%; object-fit:contain; transition:transform 0.05s ease; transform-origin:center center; cursor:grab; touch-action:none;" />
-        </div>
-    </div>
-
-    <div onclick="open_{modal_id}()" style="cursor:pointer; border-radius:12px; overflow:hidden; border:2px solid rgba(56, 189, 248, 0.5); box-shadow:0 8px 24px rgba(0,0,0,0.6); position:relative; background:#1E293B; transition:all 0.2s ease;">
-        <img src="data:image/png;base64,{b64_img}" style="width:100%; display:block; pointer-events:none;" />
-        <div style="position:absolute; bottom:12px; right:12px; background:rgba(15,23,42,0.9); color:#38BDF8; padding:8px 14px; font-size:12px; font-family:monospace; border-radius:6px; border:1px solid rgba(56,189,248,0.6); letter-spacing:1px; font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,0.4);">
-            🔍 點擊此處展開全螢幕兩指縮放
-        </div>
-    </div>
-
-    <script>
-        (function() {{
-            const modal = document.getElementById("{modal_id}");
-            const modalImg = document.getElementById("{img_id}");
-            let scale = 1;
-            let panning = false;
-            let startX = 0, startY = 0;
-            let translateX = 0, translateY = 0;
-            let lastDist = 0;
-
-            window.open_{modal_id} = function() {{
-                modal.style.display = "flex";
-                scale = 1;
-                translateX = 0;
-                translateY = 0;
-                updateTransform();
-            }}
-
-            window.close_{modal_id} = function() {{
-                modal.style.display = "none";
-            }}
-
-            function updateTransform() {{
-                modalImg.style.transform = `translate(${{translateX}}px, ${{translateY}}px) scale(${{scale}})`;
-            }}
-
-            modalImg.addEventListener('mousedown', (e) => {{
-                panning = true;
-                startX = e.clientX - translateX;
-                startY = e.clientY - translateY;
-                modalImg.style.cursor = 'grabbing';
-                e.preventDefault();
-            }});
-
-            window.addEventListener('mousemove', (e) => {{
-                if (!panning) return;
-                translateX = e.clientX - startX;
-                translateY = e.clientY - startY;
-                updateTransform();
-            }});
-
-            window.addEventListener('mouseup', () => {{
-                panning = false;
-                modalImg.style.cursor = 'grab';
-            }});
-
-            modalImg.addEventListener('touchstart', (e) => {{
-                if (e.touches.length === 1) {{
-                    panning = true;
-                    startX = e.touches[0].clientX - translateX;
-                    startY = e.touches[0].clientY - translateY;
-                }} else if (e.touches.length === 2) {{
-                    panning = false;
-                    lastDist = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                }}
-            }}, {{ passive: true }});
-
-            modalImg.addEventListener('touchmove', (e) => {{
-                if (panning && e.touches.length === 1) {{
-                    translateX = e.touches[0].clientX - startX;
-                    translateY = e.touches[0].clientY - startY;
-                    updateTransform();
-                }} else if (e.touches.length === 2) {{
-                    let dist = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                    let factor = dist / lastDist;
-                    scale = Math.min(Math.max(1, scale * factor), 5);
-                    lastDist = dist;
-                    updateTransform();
-                }}
-            }}, {{ passive: true }});
-
-            modalImg.addEventListener('touchend', () => {{
-                panning = false;
-            }});
-
-            modalImg.addEventListener('wheel', (e) => {{
-                e.preventDefault();
-                let zoomIntensity = 0.15;
-                if (e.deltaY < 0) {{
-                    scale = Math.min(scale * (1 + zoomIntensity), 5);
-                }} else {{
-                    scale = Math.max(1, scale * (1 - zoomIntensity));
-                    if (scale === 1) {{ translateX = 0; translateY = 0; }}
-                }}
-                updateTransform();
-            }});
-
-            let lastTap = 0;
-            modalImg.addEventListener('touchend', (e) => {{
-                let currentTime = new Date().getTime();
-                let tapLength = currentTime - lastTap;
-                if (tapLength < 300 && tapLength > 0) {{
-                    if (scale > 1) {{
-                        scale = 1; translateX = 0; translateY = 0;
-                    }} else {{
-                        scale = 2.5;
-                    }}
-                    updateTransform();
-                }}
-                lastTap = currentTime;
-            }});
-        }})();
-    </script>
-    """
-    st.markdown(img_html, unsafe_allow_html=True)
+    """使用最穩健的 Streamlit 原生圖片渲染，確保手機瀏覽器 100% 正常顯示"""
+    st.image(image_buf, use_container_width=True)
 
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
 if "admin_logged_in" not in st.session_state: st.session_state["admin_logged_in"] = False
@@ -895,7 +761,7 @@ if st.session_state.get("inspect_emp_target") is not None:
 
         st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
         
-        # 使用點擊區塊完全相容手機端的燈箱檢視器
+        # 使用穩定呈現的圖片渲染
         render_zoomable_image(buf)
         
         st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
@@ -1417,7 +1283,7 @@ if app_mode == "繪製個人月班表圖檔":
 
                     st.success("個人班表圖片生成成功")
                     
-                    # 使用相容手機點擊的燈箱檢視器
+                    # 使用穩定呈現的圖片渲染
                     render_zoomable_image(buf)
                     
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
@@ -1761,7 +1627,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
             st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
             
-            # 使用相容手機點擊的燈箱檢視器
+            # 使用穩定呈現的圖片渲染
             render_zoomable_image(buf)
             
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
