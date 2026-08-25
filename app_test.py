@@ -190,26 +190,6 @@ st.markdown("""
         border: 1px solid rgba(51, 65, 85, 0.8); border-left: 4px solid #10B981; border-radius: 12px;
         padding: 16px; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     }
-    
-    .schedule-image-container {
-        background: rgba(15, 23, 42, 0.75);
-        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(56, 189, 248, 0.4);
-        border-radius: 14px;
-        padding: 12px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-        margin-bottom: 1rem;
-        text-align: center;
-    }
-    .schedule-image-container img {
-        width: 100% !important;
-        height: auto !important;
-        max-width: 100% !important;
-        border-radius: 8px;
-        display: block;
-        margin: 0 auto;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-    }
 
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
@@ -777,13 +757,8 @@ if st.session_state.get("inspect_emp_target") is not None:
 
         st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
         
-        # 手機版高解析防失真/可放大容器包裝
-        img_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-        st.markdown(f"""
-        <div class="schedule-image-container">
-            <img src="data:image/png;base64,{img_b64}" alt="月班表圖檔" />
-        </div>
-        """, unsafe_allow_html=True)
+        # 使用 Streamlit 原生 st.image 內建完整放大、燈箱與工具列支援
+        st.image(buf, use_container_width=True)
         
         st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
     except Exception as e:
@@ -1304,13 +1279,8 @@ if app_mode == "繪製個人月班表圖檔":
 
                     st.success("個人班表圖片生成成功")
                     
-                    # 手機版高解析防失真/可放大容器包裝
-                    img_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-                    st.markdown(f"""
-                    <div class="schedule-image-container">
-                        <img src="data:image/png;base64,{img_b64}" alt="個人月班表圖檔" />
-                    </div>
-                    """, unsafe_allow_html=True)
+                    # 使用 Streamlit 原生 st.image 內建完整放大、燈箱與工具列支援
+                    st.image(buf, use_container_width=True)
                     
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
@@ -1653,13 +1623,8 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
             st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
             
-            # 手機版高解析防失真/可放大容器包裝
-            img_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-            st.markdown(f"""
-            <div class="schedule-image-container">
-                <img src="data:image/png;base64,{img_b64}" alt="換假組員月班表圖檔" />
-            </div>
-            """, unsafe_allow_html=True)
+            # 使用 Streamlit 原生 st.image 內建完整放大、燈箱與工具列支援
+            st.image(buf, use_container_width=True)
             
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
         except Exception as e: st.error(f"載入完整班表時發生錯誤: {e}")
