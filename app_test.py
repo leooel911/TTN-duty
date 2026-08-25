@@ -191,6 +191,14 @@ st.markdown("""
         padding: 16px; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     }
 
+    /* 讓 Streamlit 圖片右上角的「全螢幕/放大按鈕」在手機版常駐顯示，不需 hover 即可點擊 */
+    button[title*="View fullscreen"], button[title*="fullscreen"] {
+        opacity: 1 !important;
+        transform: scale(1.1) !important;
+        background-color: rgba(30, 41, 59, 0.9) !important;
+        border: 1px solid rgba(56, 189, 248, 0.6) !important;
+    }
+
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
     .badge-group { display: flex; gap: 4px; align-items: center; }
@@ -757,7 +765,7 @@ if st.session_state.get("inspect_emp_target") is not None:
 
         st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
         
-        # 使用 Streamlit 原生 st.image 內建完整放大、燈箱與工具列支援
+        # 使用 Streamlit 原生 st.image，並透過上方 CSS 讓手機版右上角放大按鈕常駐顯示
         st.image(buf, use_container_width=True)
         
         st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
@@ -1279,7 +1287,7 @@ if app_mode == "繪製個人月班表圖檔":
 
                     st.success("個人班表圖片生成成功")
                     
-                    # 使用 Streamlit 原生 st.image 內建完整放大、燈箱與工具列支援
+                    # 使用 Streamlit 原生 st.image，並透過上方 CSS 讓手機版右上角放大按鈕常駐顯示
                     st.image(buf, use_container_width=True)
                     
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
@@ -1623,7 +1631,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
             st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
             
-            # 使用 Streamlit 原生 st.image 內建完整放大、燈箱與工具列支援
+            # 使用 Streamlit 原生 st.image，並透過上方 CSS 讓手機版右上角放大按鈕常駐顯示
             st.image(buf, use_container_width=True)
             
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
