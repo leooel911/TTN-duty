@@ -471,24 +471,24 @@ def load_shift_mapping_dict(role_key="服勤員"):
             print(f"載入 {role_key} 班別對照表發生錯誤: {e}")
     return mapping_dict
 
-def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
+def merge_update_files_with_mapping(base_path, update_file_sources, role_key="服勤員"):
     status_text = st.empty()
     progress_bar = st.progress(0)
     
     status_text.markdown(f'<div class="loading-status-text">階段 1/4：載入【{role_key}】基準大表與代碼時間對照表...</div>', unsafe_allow_html=True)
-    progress_bar.progress(20)
+    progress_bar.progress(15)
     time.sleep(0.2)
 
     if not os.path.exists(base_path):
         status_text.empty()
         progress_bar.empty()
-        return update_df
+        return None
     
     base_raw = safe_read_excel(base_path, header=None)
     shift_map = load_shift_mapping_dict(role_key)
     
-    status_text.markdown('<div class="loading-status-text">階段 2/4：智慧對齊更新檔與基準大表的員編及日期座標...</div>', unsafe_allow_html=True)
-    progress_bar.progress(45)
+    status_text.markdown('<div class="loading-status-text">階段 2/4：解析基準大表的員編及日期座標對應...</div>', unsafe_allow_html=True)
+    progress_bar.progress(30)
     time.sleep(0.2)
 
     base_header_row = -1
@@ -514,57 +514,65 @@ def merge_update_file_with_mapping(base_path, update_df, role_key="服勤員"):
             pure_emp = re.sub(r'\D', '', raw_emp)
             if pure_emp: base_emp_row_map[pure_emp] = r_idx
 
-    update_header_row = -1
-    update_date_col_map = {}
-    for r_idx in range(min(8, len(update_df))):
-        row_vals = [str(val).strip() for val in update_df.iloc[r_idx].values]
-        date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
-        if date_count >= 2:
-            update_header_row = r_idx
-            break
-    if update_header_row == -1: update_header_row = 4
+    status_text.markdown('<div class="loading-status-text">階段 3/4：自動掃描多份更新檔（支援跨月份與上下跳行斷開區間）...</div>', unsafe_allow_html=True)
+    progress_bar.progress(60)
 
-    for c_idx, val in enumerate(update_df.iloc[update_header_row].values):
-        m = re.search(r'(\d+/\d+)', str(val))
-        if m:
-            clean_d = f"{int(m.group(1).split('/')[0])}/{int(m.group(1).split('/')[1])}"
-            update_date_col_map[clean_d] = c_idx
-
-    bridge_col_mapping = {}
-    for d_str, b_c_idx in base_date_col_map.items():
-        if d_str in update_date_col_map:
-            bridge_col_mapping[b_c_idx] = update_date_col_map[d_str]
-
-    status_text.markdown('<div class="loading-status-text">階段 3/4：以更新檔代碼對照時間對照表，補上完整時間格式...</div>', unsafe_allow_html=True)
-    progress_bar.progress(75)
-
-    start_up_row = update_header_row + 1
-    for r_idx in range(start_up_row, len(update_df)):
-        raw_up_emp = str(update_df.iloc[r_idx, 0]).strip()
-        if not raw_up_emp or raw_up_emp.upper() == "NAN": continue
-        
-        pure_up_emp = re.sub(r'\D', '', raw_up_emp)
-        if pure_up_emp not in base_emp_row_map: continue
+    total_files = len(update_file_sources)
+    for f_idx, up_src in enumerate(update_file_sources):
+        try:
+            if hasattr(up_src, 'name') and up_src.name.endswith('.csv'):
+                up_df = pd.read_csv(io.BytesIO(up_src.getvalue()))
+            else:
+                up_df = safe_read_excel(up_src, header=None)
             
-        target_row_idx = base_emp_row_map[pure_up_emp]
-        
-        for b_c_idx, u_c_idx in bridge_col_mapping.items():
-            up_val = update_df.iloc[r_idx, u_c_idx]
-            if not pd.isna(up_val):
-                up_val_str = str(up_val).strip()
-                if not up_val_str or up_val_str.lower() in [(".", "nan", "none")]: continue
+            # 智慧掃描整張更新檔內「所有」出現日期的橫排（支援上下跳行斷開、跨月份等各種格式）
+            for up_r_idx in range(len(up_df)):
+                r_vals = [str(val).strip() for val in up_df.iloc[up_r_idx].values]
+                date_matches = [(c_i, re.search(r'(\d+/\d+)', str(val))) for c_i, val in enumerate(up_df.iloc[up_r_idx].values)]
+                valid_date_cols = [(c_i, m.group(1)) for c_i, m in date_matches if m]
                 
-                clean_code = re.sub(r'[#%]', '', up_val_str).strip().upper()
-                
-                if clean_code in shift_map:
-                    info = shift_map[clean_code]
-                    formatted_cell = f"{info['start']}\n\n{clean_code}\n{info['end']}\n{info['hours']}"
-                    base_raw.iloc[target_row_idx, b_c_idx] = formatted_cell
-                else:
-                    base_raw.iloc[target_row_idx, b_c_idx] = re.sub(r'[#%]', '', up_val_str).strip()
+                if len(valid_date_cols) >= 2: # 只要這一列有兩個以上的日期，就是日期標頭列
+                    update_date_col_map = {}
+                    for c_i, d_str in valid_date_cols:
+                        parts = d_str.split('/')
+                        clean_d = f"{int(parts[0])}/{int(parts[1])}"
+                        update_date_col_map[clean_d] = c_i
 
-    progress_bar.progress(100)
-    status_text.markdown('<div class="loading-status-text">階段 4/4：寬幅更新合併完成！</div>', unsafe_allow_html=True)
+                    # 建立此區段的欄位對應橋樑
+                    bridge_col_mapping = {}
+                    for d_str, b_c_idx in base_date_col_map.items():
+                        if d_str in update_date_col_map:
+                            bridge_col_mapping[b_c_idx] = update_date_col_map[d_str]
+
+                    # 開始讀取該標頭列下方的員工資料
+                    for data_r_idx in range(up_r_idx + 1, len(up_df)):
+                        raw_up_emp = str(up_df.iloc[data_r_idx, 0]).strip()
+                        if not raw_up_emp or raw_up_emp.upper() == "NAN": continue
+                        
+                        pure_up_emp = re.sub(r'\D', '', raw_up_emp)
+                        if pure_up_emp not in base_emp_row_map: continue
+                            
+                        target_row_idx = base_emp_row_map[pure_up_emp]
+                        
+                        for b_c_idx, u_c_idx in bridge_col_mapping.items():
+                            up_val = up_df.iloc[data_r_idx, u_c_idx]
+                            if not pd.isna(up_val):
+                                up_val_str = str(up_val).strip()
+                                if not up_val_str or up_val_str.lower() in [(".", "nan", "none")]: continue
+                                
+                                clean_code = re.sub(r'[#%]', '', up_val_str).strip().upper()
+                                
+                                if clean_code in shift_map:
+                                    info = shift_map[clean_code]
+                                    formatted_cell = f"{info['start']}\n\n{clean_code}\n{info['end']}\n{info['hours']}"
+                                    base_raw.iloc[target_row_idx, b_c_idx] = formatted_cell
+                                else:
+                                    base_raw.iloc[target_row_idx, b_c_idx] = re.sub(r'[#%]', '', up_val_str).strip()
+        except Exception as e:
+            print(f"解析其中一份更新檔發生錯誤: {e}")
+
+    progress_bar.progress(90)
+    status_text.markdown('<div class="loading-status-text">階段 4/4：多檔智慧合併完成，寫入大表...</div>', unsafe_allow_html=True)
     time.sleep(0.3)
 
     base_raw.to_excel(base_path, index=False, header=False)
@@ -1016,8 +1024,8 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #10B981;">
-            <h4 style="color: #34D399; margin-top: 0;">3. 21 號起每日異動更新檔（職位：{selected_role}）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">管理員每日從公司系統抓取的寬幅異動檔。上傳後自動套用對照表進行合併運算。</p>
+            <h4 style="color: #34D399; margin-top: 0;">3. 21 號起每日異動更新檔（支援多檔同時上傳，職位：{selected_role}）</h4>
+            <p style="color: #94A3B8; font-size: 13px;">可**同時選取多份檔案**（如跨月份第一週、或原封不動帶上下斷行跳行的原始下載檔），系統將自動多檔聯集與智慧斷行合併！</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1029,35 +1037,40 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         if not is_mapping_ready:
             st.warning("⚠️ 系統提示：尚未上傳「班別代碼時間對照表」，請先完成上方第 1 項上傳才能進行更新合併！")
 
-        uploaded_file_21 = st.file_uploader(f"上傳【{selected_role}】21號起每日更新檔 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"window2_up_{selected_role}")
-        if uploaded_file_21 is not None:
+        # 升級為 accept_multiple_files=True，支援同時上傳多份更新檔
+        uploaded_files_21 = st.file_uploader(f"上傳【{selected_role}】每日更新檔（可同時選取多份檔案，如跨月份檔案） (.xlsx / .xls)", type=["xlsx", "xls", "csv"], accept_multiple_files=True, key=f"window2_up_multi_{selected_role}")
+        
+        if uploaded_files_21:
             if not is_mapping_ready:
                 st.error("錯誤：無法合併更新檔，因為尚未上傳班別代碼時間對照表！")
             elif not is_base_ready:
                 st.error("錯誤：無法合併更新檔，因為尚未上傳 20 號基準大表底稿！")
             else:
-                file_bytes_21 = uploaded_file_21.getvalue()
-                current_hash_21 = hashlib.md5(file_bytes_21).hexdigest()
-                hash_key_21 = f"w2_hash_{selected_role}"
+                # 組合多檔的 Hash 確保有新檔案才觸發
+                combined_hashes = "".join([hashlib.md5(f.getvalue()).hexdigest() for f in uploaded_files_21])
+                hash_key_21 = f"w2_hash_multi_{selected_role}"
                 
-                if st.session_state.get(hash_key_21) != current_hash_21:
+                if st.session_state.get(hash_key_21) != combined_hashes:
                     try:
                         if not os.path.exists(DATA_DIR):
                             os.makedirs(DATA_DIR, exist_ok=True)
-                        with open(target_update_path, "wb") as f_up: f_up.write(file_bytes_21)
                         
-                        if uploaded_file_21.name.endswith('.csv'):
-                            up_df = pd.read_csv(io.BytesIO(file_bytes_21))
+                        # 儲存最後一份作為代表更新檔紀錄
+                        with open(target_update_path, "wb") as f_up: 
+                            f_up.write(uploaded_files_21[-1].getvalue())
+                        
+                        # 呼叫升級後的多檔智慧合併引擎
+                        merged_df = merge_update_files_with_mapping(target_path, uploaded_files_21, selected_role)
+                        
+                        if merged_df is not None:
+                            st.session_state[hash_key_21] = combined_hashes
+                            log_activity(f"同時上傳 {len(uploaded_files_21)} 份更新檔 [{selected_role}] 進行多檔智慧斷行與跨月合併")
+                            st.success(f"【{selected_role}】多份更新檔已透過自動斷行與跨月聯集引擎成功合併！")
+                            time.sleep(0.5)
+                            st.rerun()
                         else:
-                            up_df = safe_read_excel(io.BytesIO(file_bytes_21), header=None)
-                        
-                        merged_df = merge_update_file_with_mapping(target_path, up_df, selected_role)
-                        st.session_state[hash_key_21] = current_hash_21
-                        log_activity(f"上傳 21號更新檔 [{selected_role}] 進行智慧對照合併")
-                        st.success(f"【{selected_role}】21號更新檔已透過對照表成功合併！")
-                        time.sleep(0.5)
-                        st.rerun()
-                    except Exception as e: st.error(f"更新檔合併失敗: {e}")
+                            st.error("合併失敗：基準大表路徑不存在")
+                    except Exception as e: st.error(f"多檔更新合併失敗: {e}")
 
         col_w2_btn1, col_w2_btn2 = st.columns(2)
         with col_w2_btn1:
