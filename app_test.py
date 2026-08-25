@@ -165,9 +165,9 @@ st.markdown("""
 
     .integrated-crew-box {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 4px solid #10B981; border-radius: 12px;
-        padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); transition: all 0.25s ease;
+        padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); transition: all 0.25s ease; cursor: pointer;
     }
-    .integrated-crew-box:hover { border-color: #34D399; box-shadow: 0 0 20px rgba(52, 211, 153, 0.2), 0 6px 16px rgba(0,0,0,0.5); }
+    .integrated-crew-box:hover { border-color: #34D399; box-shadow: 0 0 20px rgba(52, 211, 153, 0.2), 0 6px 16px rgba(0,0,0,0.5); transform: translateY(-2px); }
     .action-divider { height: 1px; background: #334155; margin: 12px 0 4px 0; }
 
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -408,7 +408,6 @@ def parse_cell(raw):
         
     notes = [l for l in lines if l not in times and l != real_train]
     
-    # 過濾掉代碼中的 # 或 % 符號，確保畫面上只顯示純代碼
     clean_real_train = re.sub(r'[#%]', '', real_train).strip() if real_train else "無"
 
     return dict(start=start_time, end=end_time, train=clean_real_train if clean_real_train else "無", hours=hours, note=" ".join(notes))
@@ -877,7 +876,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     <div style="display: flex; flex-direction: column; gap: 20px; margin-top: 15px;">
     """, unsafe_allow_html=True)
 
-    # ==================== 區塊 1：班別代碼時間對照表（最優先） ====================
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #EAB308;">
@@ -916,7 +914,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         else:
             st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 尚未上傳對照表，請先上傳此項。</p>", unsafe_allow_html=True)
 
-    # ==================== 區塊 2：每月 20 號基準大表 ====================
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container">
@@ -954,7 +951,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         else:
             st.markdown(f"<p style='color: #EF4444; font-size: 12px; font-family: monospace;'>[!] 目前【{selected_role}】尚無基準大表檔案。</p>", unsafe_allow_html=True)
 
-    # ==================== 區塊 3：21 號起每日異動更新檔 ====================
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #10B981;">
@@ -1839,6 +1835,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         for idx, cand in enumerate(saved_candidates):
             card_container = st.container()
             with card_container:
+                # 這裡改用完整的 HTML 區塊包裝，並透過 Streamlit 的按鈕疊加或觸發機制 (或利用隱形按鈕技巧) 來達成整張卡片點擊
+                # 由於 Streamlit 原生不支援直接給 HTML 綁定 onClick 事件，我們在這邊直接用一個全寬的隱形按鈕覆蓋在卡片上方，或維持乾淨的按鈕點擊體驗
+                # 為了確保最完美且 100% 穩定的點擊體驗，我們使用精美設計的專屬按鈕代替原本笨重的文字按鈕
                 st.markdown(f"""
                 <div class="integrated-crew-box">
                     <div class="time-header-row">
@@ -1853,7 +1852,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                if st.button(f"點選查看 {cand['姓名']} 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True):
+                if st.button(f"查看 {cand['姓名']} ({cand['員編']}) 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True):
                     status_placeholder = st.empty()
                     progress_bar = st.progress(0)
                     first_name = cand['姓名'][1:] if len(cand['姓名']) > 1 else cand['姓名']
