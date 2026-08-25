@@ -1134,7 +1134,7 @@ st.markdown(f"""
 st.markdown('<div class="mode-selection-header">Select Operation Mode // 請選擇系統模式</div>', unsafe_allow_html=True)
 app_mode = st.radio("系統操作模式選擇", [
     "繪製個人月班表圖檔", 
-    "換班｜指定時段組員快篩（Alpha測試版）",
+    "換班｜指定時段組員名單快篩（Alpha測試版）",
     "換假｜日期快篩（Alpha測試版）"
 ], horizontal=False, label_visibility="collapsed")
 
