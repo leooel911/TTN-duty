@@ -221,7 +221,6 @@ st.markdown("""
     }
     .loading-status-text { font-family: monospace; font-size: 14px; color: #FB923C; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 700; text-shadow: 0 0 10px rgba(251, 146, 60, 0.5); }
 
-    /* 一般按鈕維持預設標準外型（四邊圓角），絕對不影響其他按鈕 */
     div.stButton > button, div.stFormSubmitButton > button { 
         font-weight: 700 !important; padding: 0.5rem 1rem !important; border-radius: 0.5rem !important; 
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%) !important; 
@@ -237,7 +236,6 @@ st.markdown("""
         box-shadow: 0 0 22px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-1px) !important;
     }
 
-    /* 專門針對換假名單下方帶有 kind="secondary" 的「查看完整班表」按鈕：與上方卡片完美密合為一塊方框 */
     div.stButton > button[kind="secondary"] { 
         border-radius: 0 0 12px 12px !important; 
         border-top: none !important;
@@ -517,7 +515,6 @@ def merge_update_files_with_mapping(base_path, update_file_sources, role_key="�
     status_text.markdown('<div class="loading-status-text">階段 3/4：自動掃描多份更新檔（支援跨月份與上下跳行斷開區間）...</div>', unsafe_allow_html=True)
     progress_bar.progress(60)
 
-    total_files = len(update_file_sources)
     for f_idx, up_src in enumerate(update_file_sources):
         try:
             if hasattr(up_src, 'name') and up_src.name.endswith('.csv'):
@@ -525,26 +522,22 @@ def merge_update_files_with_mapping(base_path, update_file_sources, role_key="�
             else:
                 up_df = safe_read_excel(up_src, header=None)
             
-            # 智慧掃描整張更新檔內「所有」出現日期的橫排（支援上下跳行斷開、跨月份等各種格式）
             for up_r_idx in range(len(up_df)):
-                r_vals = [str(val).strip() for val in up_df.iloc[up_r_idx].values]
                 date_matches = [(c_i, re.search(r'(\d+/\d+)', str(val))) for c_i, val in enumerate(up_df.iloc[up_r_idx].values)]
                 valid_date_cols = [(c_i, m.group(1)) for c_i, m in date_matches if m]
                 
-                if len(valid_date_cols) >= 2: # 只要這一列有兩個以上的日期，就是日期標頭列
+                if len(valid_date_cols) >= 2:
                     update_date_col_map = {}
                     for c_i, d_str in valid_date_cols:
                         parts = d_str.split('/')
                         clean_d = f"{int(parts[0])}/{int(parts[1])}"
                         update_date_col_map[clean_d] = c_i
 
-                    # 建立此區段的欄位對應橋樑
                     bridge_col_mapping = {}
                     for d_str, b_c_idx in base_date_col_map.items():
                         if d_str in update_date_col_map:
                             bridge_col_mapping[b_c_idx] = update_date_col_map[d_str]
 
-                    # 開始讀取該標頭列下方的員工資料
                     for data_r_idx in range(up_r_idx + 1, len(up_df)):
                         raw_up_emp = str(up_df.iloc[data_r_idx, 0]).strip()
                         if not raw_up_emp or raw_up_emp.upper() == "NAN": continue
@@ -1037,7 +1030,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         if not is_mapping_ready:
             st.warning("⚠️ 系統提示：尚未上傳「班別代碼時間對照表」，請先完成上方第 1 項上傳才能進行更新合併！")
 
-        # 升級為 accept_multiple_files=True，支援同時上傳多份更新檔
         uploaded_files_21 = st.file_uploader(f"上傳【{selected_role}】每日更新檔（可同時選取多份檔案，如跨月份檔案） (.xlsx / .xls)", type=["xlsx", "xls", "csv"], accept_multiple_files=True, key=f"window2_up_multi_{selected_role}")
         
         if uploaded_files_21:
@@ -1046,7 +1038,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             elif not is_base_ready:
                 st.error("錯誤：無法合併更新檔，因為尚未上傳 20 號基準大表底稿！")
             else:
-                # 組合多檔的 Hash 確保有新檔案才觸發
                 combined_hashes = "".join([hashlib.md5(f.getvalue()).hexdigest() for f in uploaded_files_21])
                 hash_key_21 = f"w2_hash_multi_{selected_role}"
                 
@@ -1055,11 +1046,9 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                         if not os.path.exists(DATA_DIR):
                             os.makedirs(DATA_DIR, exist_ok=True)
                         
-                        # 儲存最後一份作為代表更新檔紀錄
                         with open(target_update_path, "wb") as f_up: 
                             f_up.write(uploaded_files_21[-1].getvalue())
                         
-                        # 呼叫升級後的多檔智慧合併引擎
                         merged_df = merge_update_files_with_mapping(target_path, uploaded_files_21, selected_role)
                         
                         if merged_df is not None:
@@ -1360,7 +1349,17 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
     if not os.path.exists(target_path):
         st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請先至管理員後台上傳")
     else:
-        df_search = safe_read_excel(target_path, header=3)
+        # 動態偵測標頭列（與月班表邏輯一致，確保時段快篩也能抓到最新合併資料）
+        raw_df_preview = safe_read_excel(target_path, header=None)
+        header_row_idx = 3
+        for r_idx in range(min(6, len(raw_df_preview))):
+            row_vals = [str(val).strip() for val in raw_df_preview.iloc[r_idx].values]
+            date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
+            if date_count >= 3:
+                header_row_idx = r_idx
+                break
+
+        df_search = safe_read_excel(target_path, header=header_row_idx)
         df_search.columns = [str(c).strip() for c in df_search.columns]
         
         date_cols = []
@@ -1425,6 +1424,8 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
                     for _, row in df_search.iterrows():
                         emp_id = str(row.iloc[0]).strip()
                         emp_name = str(row.iloc[1]).strip()
+                        if not emp_id or emp_id.upper() == "NAN": continue
+
                         for d_str in target_dates:
                             target_col_idx = -1
                             actual_col_pos = -1
