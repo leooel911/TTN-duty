@@ -23,9 +23,9 @@ DATA_DIR = os.path.join(os.getcwd(), "data")
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR, exist_ok=True)
 
-# 擴充為支援北、中、南三單位獨立檔案對應
+# 支援北、中、南三單位獨立檔案對應（統一以英文質感代號為主）
 UNITS = {
-    "北 (TTN)": {
+    "TTN": {
         "駕駛": os.path.join(DATA_DIR, "TTN_TD.xlsx"),
         "列車長": os.path.join(DATA_DIR, "TTN_TM.xlsx"),
         "服勤員": os.path.join(DATA_DIR, "TTN_TA.xlsx"),
@@ -35,7 +35,7 @@ UNITS = {
             "服勤員": os.path.join(DATA_DIR, "TTN_shift_mapping_TA.xlsx")
         }
     },
-    "中 (TTC)": {
+    "TTC": {
         "駕駛": os.path.join(DATA_DIR, "TTC_TD.xlsx"),
         "列車長": os.path.join(DATA_DIR, "TTC_TM.xlsx"),
         "服勤員": os.path.join(DATA_DIR, "TTC_TA.xlsx"),
@@ -45,7 +45,7 @@ UNITS = {
             "服勤員": os.path.join(DATA_DIR, "TTC_shift_mapping_TA.xlsx")
         }
     },
-    "南 (TTS)": {
+    "TTS": {
         "駕駛": os.path.join(DATA_DIR, "TTS_TD.xlsx"),
         "列車長": os.path.join(DATA_DIR, "TTS_TM.xlsx"),
         "服勤員": os.path.join(DATA_DIR, "TTS_TA.xlsx"),
@@ -324,7 +324,7 @@ def log_activity(input_str):
         
         device_info = parse_device_info(ua_raw) if ua_raw else "未知裝置"
         current_operator = st.session_state.get("current_user_id", "未知")
-        current_unit = st.session_state.get("current_unit", "北 (TTN)")
+        current_unit = st.session_state.get("current_unit", "TTN")
         log_entry = f"{now_tw} | 單位: {current_unit} | 操作者員編: {current_operator} | 裝置: {device_info} | 動作: {input_str}\n"
         with open(LOG_FILE, "a", encoding="utf-8") as f: f.write(log_entry)
     except: pass
@@ -339,11 +339,11 @@ if "show_admin_login" not in st.session_state: st.session_state["show_admin_logi
 if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
-if "current_unit" not in st.session_state: st.session_state["current_unit"] = "北 (TTN)"
+if "current_unit" not in st.session_state: st.session_state["current_unit"] = "TTN"
 
 def get_current_role_files():
-    unit = st.session_state.get("current_unit", "北 (TTN)")
-    return UNITS.get(unit, UNITS["北 (TTN)"])
+    unit = st.session_state.get("current_unit", "TTN")
+    return UNITS.get(unit, UNITS["TTN"])
 
 def safe_read_excel(file_source, header=None):
     try:
@@ -565,7 +565,7 @@ C_TOWN_TXT = "#000000"
 # --- 檢視完整班表 ---
 if st.session_state.get("inspect_emp_target") is not None:
     target_emp = st.session_state["inspect_emp_target"]
-    current_unit = st.session_state.get("current_unit", "北 (TTN)")
+    current_unit = st.session_state.get("current_unit", "TTN")
     st.markdown(f"""
     <div class="section-header-box">
         <div class="section-title">[{current_unit}] 組員完整班表檢視: {target_emp}</div>
@@ -594,7 +594,7 @@ if st.session_state.get("inspect_emp_target") is not None:
         ax.add_patch(FancyBboxPatch((ML, ty), TW, TH, boxstyle="square,pad=0", linewidth=0, facecolor=C_HDR))
 
         draw_bold_text(ax, ML + 0.008, ty + TH * 0.58, TITLE, ha="left", va="center", color="#FFFFFF", fontproperties=fp(16))
-        draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"UNIT // {current_unit}   CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]}", ha="left", va="center", color="#CBD5E1", fontproperties=fp(11))
+        draw_bold_text(ax, ML + 0.008, ty + TH * 0.25, f"UNIT // {current_unit}    CREW ID // {emp_id}    OPERATOR // {emp_name}    TIMELINE // {dates[0]} ~ {dates[-1]}", ha="left", va="center", color="#CBD5E1", fontproperties=fp(11))
 
         badge_w = CW * 0.90
         badge_x = (1.0 - MR) - CW + (CW - badge_w) / 2
@@ -716,7 +716,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
     col1, col2, col3 = st.columns([1, 2.2, 1])
     with col2:
         with st.form("auth_form"):
-            selected_unit = st.selectbox("選擇所屬單位", ["北 (TTN)", "中 (TTC)", "南 (TTS)"])
+            selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
             entered_emp = st.text_input("使用者員編", value="A", placeholder="例如: 023300", max_chars=10)
             entered_key = st.text_input("系統授權碼", type="password", placeholder="請輸入系統授權碼...")
             btn_auth = st.form_submit_button("進入系統")
@@ -740,7 +740,8 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
     st.stop()
 
 # --- 頂部質感標頭 ---
-current_unit_label = st.session_state.get("current_unit", "北 (TTN)")
+current_unit_label = st.session_state.get("current_unit", "TTN")
+current_operator_id = st.session_state.get("current_user_id", "A")
 st.markdown(f"""
 <div class="header-container">
     <div class="title-left-group">
@@ -750,7 +751,7 @@ st.markdown(f"""
             C.L.F EDITION
         </div>
         <div class="title-subtitle">
-            <span class="online-dot"></span>Hello welcome: {st.session_state.get("current_user_id", "A")}<span class="online-dot"></span>
+            <span class="online-dot"></span>HELLO WELCOME: {current_operator_id}<span class="online-dot"></span>
         </div>
     </div>
 </div>
@@ -803,7 +804,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     """, unsafe_allow_html=True)
 
     # 管理員後台單位切換器
-    admin_target_unit = st.selectbox("選擇要維護的營運單位", ["北 (TTN)", "中 (TTC)", "南 (TTS)"], index=["北 (TTN)", "中 (TTC)", "南 (TTS)"].index(st.session_state.get("current_unit", "北 (TTN)")), key="admin_target_unit_sel")
+    admin_target_unit = st.selectbox("選擇要維護的營運單位", ["TTN", "TTC", "TTS"], index=["TTN", "TTC", "TTS"].index(st.session_state.get("current_unit", "TTN")), key="admin_target_unit_sel")
     st.session_state["current_unit"] = admin_target_unit
     current_unit_files = UNITS[admin_target_unit]
 
@@ -1342,7 +1343,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                     search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
                     range_label_str = f"{start_date} 至 {end_date}" if start_date != end_date else start_date
                     time_label_str = f"時間 {min_time}" if max_time_sel.startswith("--") else f"區間 {min_time} ~ {max_time_sel}"
-                    st.markdown(f"### 檢索結果：{range_label_str} ｜ {time_label_str}（共符合 {len(search_results)} 筆）")
+                    st.markdown(### 檢索結果：{range_label_str} ｜ {time_label_str}（共符合 {len(search_results)} 筆）)
                     
                     if search_results:
                         current_date_group = None
