@@ -23,7 +23,6 @@ DATA_DIR = os.path.join(os.getcwd(), "data")
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR, exist_ok=True)
 
-# 支援北、中、南三單位獨立檔案對應（統一以英文質感代號為主）
 UNITS = {
     "TTN": {
         "駕駛": os.path.join(DATA_DIR, "TTN_TD.xlsx"),
@@ -338,7 +337,7 @@ if "user_input_field" not in st.session_state: st.session_state["user_input_fiel
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
 if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
-if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "TTN"
+if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
 if "current_unit" not in st.session_state: st.session_state["current_unit"] = "TTN"
 
 def get_current_role_files():
@@ -742,6 +741,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
 # --- 頂部質感標頭 ---
 current_unit_label = st.session_state.get("current_unit", "TTN")
 current_operator_id = st.session_state.get("current_user_id", "A")
+
 st.markdown(f"""
 <div class="header-container">
     <div class="title-left-group">
@@ -751,7 +751,7 @@ st.markdown(f"""
             C.L.F EDITION
         </div>
         <div class="title-subtitle">
-            <span class="online-dot"></span>HELLO WELCOME: {current_unit_label}<span class="online-dot"></span>
+            <span class="online-dot"></span>HELLO WELCOME: {current_unit_label} | {current_operator_id}<span class="online-dot"></span>
         </div>
     </div>
 </div>
@@ -803,7 +803,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     </div>
     """, unsafe_allow_html=True)
 
-    # 管理員後台單位切換器
     admin_target_unit = st.selectbox("選擇要維護的營運單位", ["TTN", "TTC", "TTS"], index=["TTN", "TTC", "TTS"].index(st.session_state.get("current_unit", "TTN")), key="admin_target_unit_sel")
     st.session_state["current_unit"] = admin_target_unit
     current_unit_files = UNITS[admin_target_unit]
