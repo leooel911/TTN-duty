@@ -716,7 +716,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
     col1, col2, col3 = st.columns([1, 2.2, 1])
     with col2:
         with st.form("auth_form"):
-            selected_unit = st.selectbox("選擇營運單位別", ["北 (TTN)", "中 (TTC)", "南 (TTS)"])
+            selected_unit = st.selectbox("選擇所屬單位", ["北 (TTN)", "中 (TTC)", "南 (TTS)"])
             entered_emp = st.text_input("使用者員編", value="A", placeholder="例如: 023300", max_chars=10)
             entered_key = st.text_input("系統授權碼", type="password", placeholder="請輸入系統授權碼...")
             btn_auth = st.form_submit_button("進入系統")
