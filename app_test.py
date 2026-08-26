@@ -338,7 +338,7 @@ if "user_input_field" not in st.session_state: st.session_state["user_input_fiel
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
 if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
-if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
+if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "TTN"
 if "current_unit" not in st.session_state: st.session_state["current_unit"] = "TTN"
 
 def get_current_role_files():
@@ -745,13 +745,13 @@ current_operator_id = st.session_state.get("current_user_id", "A")
 st.markdown(f"""
 <div class="header-container">
     <div class="title-left-group">
-        <div class="main-title">CREW DUTY ENGINE [{current_unit_label}]</div>
+        <div class="main-title">CREW DUTY ENGINE</div>
         <div style="color: #94A3B8; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; font-family: monospace; margin-top: 6px; line-height: 1.6;">
             BUSY DOING NOTHING PRODUCTIVE<br>
             C.L.F EDITION
         </div>
         <div class="title-subtitle">
-            <span class="online-dot"></span>HELLO WELCOME: {current_operator_id}<span class="online-dot"></span>
+            <span class="online-dot"></span>HELLO WELCOME: {current_unit_label}<span class="online-dot"></span>
         </div>
     </div>
 </div>
@@ -1340,7 +1340,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                             "隔日Sign-In": next_day_sign_in, "長班": is_long, "非正線": is_non_line
                                         })
 
-                   search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
+                    search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
                     range_label_str = f"{start_date} 至 {end_date}" if start_date != end_date else start_date
                     time_label_str = f"時間 {min_time}" if max_time_sel.startswith("--") else f"區間 {min_time} ~ {max_time_sel}"
                     
