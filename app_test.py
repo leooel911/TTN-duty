@@ -1340,14 +1340,11 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                             "隔日Sign-In": next_day_sign_in, "長班": is_long, "非正線": is_non_line
                                         })
 
-                    search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
+                   search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
                     range_label_str = f"{start_date} 至 {end_date}" if start_date != end_date else start_date
                     time_label_str = f"時間 {min_time}" if max_time_sel.startswith("--") else f"區間 {min_time} ~ {max_time_sel}"
                     
-                    # 修正此處：加上雙引號將 Markdown 字串包起來
                     st.markdown(f"### 檢索結果：{range_label_str} ｜ {time_label_str}（共符合 {len(search_results)} 筆）")
-                    
-                    if search_results:
                     
                     if search_results:
                         current_date_group = None
