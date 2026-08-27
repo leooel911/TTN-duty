@@ -1319,22 +1319,13 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
 
         if not date_cols: st.error("表中未偵測到有效日期欄位")
         else:
-            dynamic_time_set = set()
-            for _, r_row in df_search.iterrows():
-                for cell_val in r_row.iloc[2:]:
-                    p_temp = parse_cell(cell_val)
-                    if p_temp["start"] and re.match(r'^\d{1,2}:\d{2}$', p_temp["start"]):
-                        dynamic_time_set.add(p_temp["start"])
+            # 改為固定整點 00:00 至 18:00
+            TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
             
-            TIME_OPTIONS = sorted(list(dynamic_time_set))
-            if not TIME_OPTIONS: TIME_OPTIONS = ["04:00", "05:00", "06:00", "07:00"]
-
-            if selected_role == "駕駛": earliest_default = TIME_OPTIONS[0]
-            else:
-                target_default = "05:26"
-                earliest_default = target_default if target_default in TIME_OPTIONS else min(TIME_OPTIONS, key=lambda x: abs(datetime.strptime(x, "%H:%M") - datetime.strptime("05:26", "%H:%M")))
-
-            default_min_idx = TIME_OPTIONS.index(earliest_default) if earliest_default in TIME_OPTIONS else 0
+            # 依照職位設定預設時間：駕駛預設 03:00，其餘預設 05:00
+            target_default = "03:00" if selected_role == "駕駛" else "05:00"
+            earliest_default = target_default if target_default in TIME_OPTIONS else TIME_OPTIONS[0]
+            default_min_idx = TIME_OPTIONS.index(earliest_default)
 
             if "win_start_date" not in st.session_state:
                 st.session_state["win_start_date"] = date_cols[0]
