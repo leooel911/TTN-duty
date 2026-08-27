@@ -808,7 +808,8 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.markdown("---")
     st.markdown("##### 📊 伺服器即時處理動態與檔案健康狀態")
     
-    col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+    # 改為 3 等分，對應 駕駛、列車長、服勤員 三大表
+    col_stat1, col_stat2, col_stat3 = st.columns(3)
     with col_stat1:
         td_status = "🟢 已就緒" if os.path.exists(ROLE_FILES["駕駛"]) else "🔴 缺檔案"
         st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">駕駛大表 (TD)</div><div class="telemetry-value" style="font-size:14px;">{td_status}</div><div class="telemetry-sub">{get_file_mtime_str(ROLE_FILES["駕駛"])}</div></div>""", unsafe_allow_html=True)
@@ -818,10 +819,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     with col_stat3:
         ta_status = "🟢 已就緒" if os.path.exists(ROLE_FILES["服勤員"]) else "🔴 缺檔案"
         st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">服勤員大表 (TA)</div><div class="telemetry-value" style="font-size:14px;">{ta_status}</div><div class="telemetry-sub">{get_file_mtime_str(ROLE_FILES["服勤員"])}</div></div>""", unsafe_allow_html=True)
-    with col_stat4:
-        map_files_ready = sum(1 for p in ROLE_SHIFT_MAPPING_FILES.values() if os.path.exists(p))
-        map_status = f"🟢 已就緒 ({map_files_ready}/3)" if map_files_ready > 0 else "🔴 未上傳"
-        st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">職位對照表狀態</div><div class="telemetry-value" style="font-size:14px;">{map_status}</div><div class="telemetry-sub">三職位各自獨立對照表</div></div>""", unsafe_allow_html=True)
 
     st.markdown("---")
     st.subheader("🎛️ 班表維護控制台（黃金二窗口架構）")
