@@ -1,3 +1,4 @@
+import streamlit as str_module
 import streamlit as st
 import os
 import re
@@ -9,13 +10,44 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 import time
+import hashlib
+import base64
 
 matplotlib.use('Agg')
 
 st.set_page_config(page_title="TTN Shift Producer", page_icon="700st.png", layout="centered")
 
-# --- 定義台灣時區 (GMT+8) ---
 TAIWAN_TZ = timezone(timedelta(hours=8))
+
+DATA_DIR = os.path.join(os.getcwd(), "data")
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+ROLE_FILES = {
+    "駕駛": os.path.join(DATA_DIR, "TD.xlsx"),
+    "列車長": os.path.join(DATA_DIR, "TM.xlsx"),
+    "服勤員": os.path.join(DATA_DIR, "TA.xlsx")
+}
+
+ROLE_UPDATE_FILES = {
+    "駕駛": os.path.join(DATA_DIR, "TD_update.xlsx"),
+    "列車長": os.path.join(DATA_DIR, "TM_update.xlsx"),
+    "服勤員": os.path.join(DATA_DIR, "TA_update.xlsx")
+}
+
+ROLE_SHIFT_MAPPING_FILES = {
+    "駕駛": os.path.join(DATA_DIR, "shift_mapping_TD.xlsx"),
+    "列車長": os.path.join(DATA_DIR, "shift_mapping_TM.xlsx"),
+    "服勤員": os.path.join(DATA_DIR, "shift_mapping_TA.xlsx")
+}
+
+LOG_FILE = os.path.join(DATA_DIR, "activity_log.txt")
+
+MAINTENANCE_FLAGS = {
+    "producer": os.path.join(DATA_DIR, "maintenance_producer.flag"),
+    "window_filter": os.path.join(DATA_DIR, "maintenance_window.flag"),
+    "exchange_filter": os.path.join(DATA_DIR, "maintenance_exchange.flag")
+}
 
 st.markdown("""
 <style>
@@ -23,272 +55,140 @@ st.markdown("""
     .block-container { padding: 4.5rem 1rem 3rem 1rem !important; }
     
     @keyframes online-green-pulse {
-        0% { 
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
-        }
-        70% { 
-            transform: scale(1.05);
-            box-shadow: 0 0 0 8px rgba(74, 222, 128, 0);
-        }
-        100% { 
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
-        }
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+        70% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
     }
 
     .online-dot {
-        width: 8px;
-        height: 8px;
-        background-color: #4ADE80;
-        border-radius: 50%;
-        display: inline-block;
-        animation: online-green-pulse 2s infinite ease-in-out;
-        box-shadow: 0 0 10px #4ADE80;
-        margin: 0 8px;
-        vertical-align: middle;
+        width: 8px; height: 8px; background-color: #4ADE80; border-radius: 50%;
+        display: inline-block; animation: online-green-pulse 2s infinite ease-in-out;
+        box-shadow: 0 0 10px #4ADE80; margin: 0 8px; vertical-align: middle;
     }
 
+    @keyframes test-env-breathe {
+        0% { border-color: #D97706; box-shadow: 0 0 5px rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, rgba(39, 28, 12, 0.85) 0%, rgba(23, 16, 5, 0.85) 100%); backdrop-filter: blur(12px); }
+        50% { border-color: #F59E0B; box-shadow: 0 0 18px rgba(245, 158, 11, 0.8), inset 0 0 10px rgba(245, 158, 11, 0.2); background: linear-gradient(135deg, rgba(59, 39, 12, 0.9) 0%, rgba(31, 20, 4, 0.9) 100%); backdrop-filter: blur(16px); }
+        100% { border-color: #D97706; box-shadow: 0 0 5px rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, rgba(39, 28, 12, 0.85) 0%, rgba(23, 16, 5, 0.85) 100%); backdrop-filter: blur(12px); }
+    }
+
+    .test-env-banner {
+        border: 2px solid #F59E0B; border-radius: 14px; padding: 12px 18px; margin-bottom: 1.5rem;
+        text-align: center; animation: test-env-breathe 3s infinite ease-in-out; font-family: monospace;
+    }
+    .test-env-title { color: #FDE68A; font-size: 14px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 2px; text-transform: uppercase; }
+    .test-env-sub { color: #FCD34D; font-size: 11px; font-weight: 600; letter-spacing: 1px; }
+
     @keyframes maintenance-red-line-pulse {
-        0% { 
-            background-color: #7F1D1D; 
-            box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); 
-        }
-        50% { 
-            background-color: #EF4444; 
-            box-shadow: 0 0 16px rgba(239, 68, 68, 0.8), 0 0 25px rgba(239, 68, 68, 0.4); 
-        }
-        100% { 
-            background-color: #7F1D1D; 
-            box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); 
-        }
+        0% { background-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
+        50% { background-color: #EF4444; box-shadow: 0 0 16px rgba(239, 68, 68, 0.8), 0 0 25px rgba(239, 68, 68, 0.4); }
+        100% { background-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
     }
 
     @keyframes missing-data-pulse {
-        0% { 
-            border-color: #7F1D1D; 
-            box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); 
-        }
-        50% { 
-            border-color: #EF4444; 
-            box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 0 10px rgba(239, 68, 68, 0.4); 
-        }
-        100% { 
-            border-color: #7F1D1D; 
-            box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); 
-        }
+        0% { border-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); background: rgba(30, 27, 27, 0.75); }
+        50% { border-color: #EF4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 0 10px rgba(239, 68, 68, 0.4); background: rgba(45, 20, 20, 0.85); }
+        100% { border-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); background: rgba(30, 27, 27, 0.75); }
     }
 
     @keyframes blue-glow-pulse {
-        0% { 
-            border-color: #0369A1; 
-            box-shadow: 0 0 6px rgba(56, 189, 248, 0.2); 
-        }
-        50% { 
-            border-color: #38BDF8; 
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.7), inset 0 0 10px rgba(56, 189, 248, 0.3); 
-        }
-        100% { 
-            border-color: #0369A1; 
-            box-shadow: 0 0 6px rgba(56, 189, 248, 0.2); 
-        }
+        0% { border-color: rgba(3, 105, 161, 0.8); box-shadow: 0 0 8px rgba(56, 189, 248, 0.25); background: linear-gradient(135deg, rgba(19, 28, 49, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); }
+        50% { border-color: rgba(56, 189, 248, 1); box-shadow: 0 0 22px rgba(56, 189, 248, 0.6), inset 0 0 12px rgba(56, 189, 248, 0.25); background: linear-gradient(135deg, rgba(25, 38, 68, 0.9) 0%, rgba(19, 30, 56, 0.9) 100%); }
+        100% { border-color: rgba(3, 105, 161, 0.8); box-shadow: 0 0 8px rgba(56, 189, 248, 0.25); background: linear-gradient(135deg, rgba(19, 28, 49, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); }
     }
 
     .missing-data-card {
-        background: linear-gradient(135deg, #1E1B1B 0%, #0F172A 100%) !important;
-        border: 2px solid #EF4444 !important;
-        border-radius: 12px;
-        padding: 14px 18px;
-        margin-bottom: 16px;
-        animation: missing-data-pulse 2.5s infinite ease-in-out;
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 2px solid #EF4444 !important; border-radius: 14px;
+        padding: 14px 18px; margin-bottom: 16px; animation: missing-data-pulse 2.5s infinite ease-in-out;
     }
 
     .header-container { 
-        display: flex; 
-        flex-direction: column;
-        justify-content: center; 
-        align-items: center; 
-        text-align: center;
-        width: 100%; 
-        margin-bottom: 1.5rem; 
-        padding: 22px 20px;
-        background: linear-gradient(135deg, #131C31 0%, #0F172A 100%);
-        border: 2px solid #38BDF8;
-        border-radius: 14px;
-        animation: blue-glow-pulse 2.5s infinite ease-in-out;
+        display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+        width: 100%; margin-bottom: 1rem; padding: 22px 20px;
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 2px solid rgba(56, 189, 248, 0.7); border-radius: 16px; animation: blue-glow-pulse 2.5s infinite ease-in-out;
     }
-    .title-left-group {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        width: 100%;
-    }
-    .main-title { 
-        color: #F8FAFC !important; 
-        font-size: 24px; 
-        font-weight: 800; 
-        letter-spacing: 2px; 
-        margin: 0; 
-        font-family: monospace;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .title-subtitle {
-        color: #FFFFFF;
-        font-size: 13px;
-        font-weight: 700;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        font-family: monospace;
-        margin-top: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+    .title-left-group { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+    .main-title { color: #F8FAFC !important; font-size: 24px; font-weight: 800; letter-spacing: 2px; margin: 0; font-family: monospace; display: flex; align-items: center; justify-content: center; text-shadow: 0 2px 10px rgba(56,189,248,0.3); }
+    .title-subtitle { color: #FFFFFF; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; font-family: monospace; margin-top: 4px; display: flex; align-items: center; justify-content: center; }
     
-    .footer-badge-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
-        margin-top: 3rem;
-        margin-bottom: 1rem;
-    }
-    
+    .footer-badge-container { display: flex; justify-content: center; align-items: center; width: 100%; margin-top: 3rem; margin-bottom: 1rem; }
     .footer-badge-container div.stButton > button { 
-        background: #0B0F19 !important;
-        border: 1px solid #1E293B !important;
-        border-left: 2px solid #38BDF8 !important;
-        color: #64748B !important; 
-        font-size: 9px !important; 
-        font-weight: 600 !important; 
-        letter-spacing: 1.5px !important; 
-        text-transform: uppercase !important; 
-        padding: 4px 12px !important;
-        border-radius: 4px !important;
-        box-shadow: none !important;
-        font-family: monospace !important;
-        width: auto !important;
-        margin: 0 auto !important;
-        min-height: unset !important;
-        transition: all 0.2s ease !important;
+        background: rgba(11, 15, 25, 0.8) !important; backdrop-filter: blur(8px) !important;
+        border: 1px solid rgba(30, 41, 59, 0.8) !important; border-left: 2px solid #38BDF8 !important;
+        color: #64748B !important; font-size: 9px !important; font-weight: 600 !important; letter-spacing: 1.5px !important; 
+        text-transform: uppercase !important; padding: 4px 12px !important; border-radius: 4px !important; box-shadow: none !important;
+        font-family: monospace !important; width: auto !important; margin: 0 auto !important; min-height: unset !important; transition: all 0.2s ease !important;
     }
     .footer-badge-container div.stButton > button:hover {
-        border-color: #38BDF8 !important;
-        color: #38BDF8 !important;
-        background: #131C31 !important;
-        box-shadow: 0 0 10px rgba(56, 189, 248, 0.15) !important;
-        transform: translateY(-1px) !important;
+        border-color: #38BDF8 !important; color: #38BDF8 !important; background: rgba(19, 28, 49, 0.9) !important;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.2) !important; transform: translateY(-1px) !important;
     }
 
-    .mode-selection-header {
-        color: #FFFFFF;
-        font-size: 13px;
-        font-weight: 800;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin-bottom: 10px;
-        font-family: monospace;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .mode-selection-header::after {
-        content: '';
-        flex: 1;
-        height: 1px;
-        background: #334155;
-    }
+    .mode-selection-header { color: #FFFFFF; font-size: 13px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; font-family: monospace; display: flex; align-items: center; gap: 8px; }
+    .mode-selection-header::after { content: ''; flex: 1; height: 1px; background: rgba(51, 65, 85, 0.8); }
 
     .maintenance-card-box {
-        background: linear-gradient(135deg, #271C0C 0%, #171005 100%);
-        border: 1.5px solid #EAB308;
-        border-left: 5px solid #EAB308;
-        border-radius: 12px;
-        padding: 24px 20px;
-        text-align: center;
-        margin-top: 2rem;
-        margin-bottom: 0rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        background: linear-gradient(135deg, rgba(39, 28, 12, 0.85) 0%, rgba(23, 16, 5, 0.85) 100%);
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1.5px solid rgba(234, 179, 8, 0.8); border-left: 5px solid #EAB308; border-radius: 14px;
+        padding: 24px 20px; text-align: center; margin-top: 2rem; margin-bottom: 0rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
     }
-    .maintenance-red-glow-line {
-        height: 3px;
-        width: 100%;
-        background-color: #EF4444;
-        border-radius: 4px;
-        margin-top: 6px;
-        margin-bottom: 2rem;
-        animation: maintenance-red-line-pulse 3s infinite ease-in-out;
-    }
-    .maintenance-title {
-        color: #FEF08A;
-        font-size: 20px;
-        font-weight: 800;
-        letter-spacing: 1.5px;
-        margin-bottom: 8px;
-        font-family: monospace;
-    }
-    .maintenance-sub {
-        color: #CA8A04;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        font-family: monospace;
-    }
+    .maintenance-red-glow-line { height: 3px; width: 100%; background-color: #EF4444; border-radius: 4px; margin-top: 6px; margin-bottom: 2rem; animation: maintenance-red-line-pulse 3s infinite ease-in-out; }
+    .maintenance-title { color: #FEF08A; font-size: 20px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 8px; font-family: monospace; }
+    .maintenance-sub { color: #CA8A04; font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; font-family: monospace; }
 
     .admin-bypass-banner {
-        background: linear-gradient(135deg, #7F1D1D 0%, #450A0A 100%);
-        border: 1px solid #EF4444;
-        border-left: 5px solid #F87171;
-        color: #FEE2E2;
-        padding: 10px 16px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        font-family: monospace;
-        font-size: 13px;
-        font-weight: 700;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        background: linear-gradient(135deg, rgba(127, 29, 29, 0.9) 0%, rgba(69, 10, 10, 0.9) 100%);
+        backdrop-filter: blur(12px); border: 1px solid rgba(239, 68, 68, 0.8); border-left: 5px solid #F87171;
+        color: #FEE2E2; padding: 10px 16px; border-radius: 10px; margin-bottom: 20px; font-family: monospace; font-size: 13px; font-weight: 700;
+        display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
     }
 
-    .telemetry-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; border: 1px solid #334155 !important; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); position: relative; overflow: hidden; }
+    .admin-card-container {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%);
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 5px solid #38BDF8; border-radius: 14px;
+        padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    
+    .telemetry-card { 
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%) !important; 
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; 
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden; 
+    }
     .telemetry-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #3B82F6; }
     .telemetry-title { color: #94A3B8 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
     .telemetry-value { color: #F8FAFC !important; font-size: 18px; font-weight: 700; font-family: monospace; }
-    .telemetry-sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid #334155; font-size: 13px; color: #94A3B8; }
+    .telemetry-sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(51, 65, 85, 0.7); font-size: 13px; color: #94A3B8; }
     
-    .section-header-box { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 5px solid #3B82F6; border-radius: 10px; padding: 16px 20px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .section-header-box { 
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); 
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 5px solid #3B82F6; border-radius: 12px; padding: 16px 20px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); 
+    }
     .section-title { color: #F8FAFC; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin: 0; }
     .section-subtitle { color: #94A3B8; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
 
-    .date-banner { background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 8px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+    .date-banner { 
+        background: linear-gradient(135deg, rgba(30, 64, 175, 0.9) 0%, rgba(30, 58, 138, 0.9) 100%); 
+        backdrop-filter: blur(12px); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 10px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); 
+    }
     
-    .compact-card { background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 1px solid #334155; border-left: 4px solid #3B82F6; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-    .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5); transform: translateY(-2px); }
+    .compact-card { 
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); 
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 4px solid #3B82F6; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 8px 20px rgba(0,0,0,0.4); 
+    }
+    .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.3), 0 8px 24px rgba(0,0,0,0.6); transform: translateY(-2px); }
 
     .integrated-crew-box {
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        border: 1px solid #334155;
-        border-left: 4px solid #10B981;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 16px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-        transition: all 0.25s ease;
-    }
-    .integrated-crew-box:hover {
-        border-color: #34D399;
-        box-shadow: 0 0 20px rgba(52, 211, 153, 0.2), 0 6px 16px rgba(0,0,0,0.5);
-    }
-    .action-divider {
-        height: 1px;
-        background: #334155;
-        margin: 12px 0 4px 0;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.88) 0%, rgba(15, 23, 42, 0.88) 100%);
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 4px solid #10B981; border-radius: 12px 12px 0 0 !important;
+        padding: 16px; margin-bottom: 0px !important; box-shadow: none !important;
     }
 
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -304,61 +204,44 @@ st.markdown("""
     .stRadio > label { display: none !important; }
     .stRadio > div { background: transparent !important; display: flex; flex-direction: column; gap: 12px; }
     .stRadio label { 
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
-        border: 1px solid #334155 !important; 
-        border-left: 4px solid #3B82F6 !important; 
-        border-radius: 10px !important; 
-        padding: 16px 20px !important; 
-        width: 100% !important; 
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-        transition: all 0.25s ease !important;
-        cursor: pointer !important;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%) !important; 
+        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(51, 65, 85, 0.8) !important; 
+        border-left: 4px solid #3B82F6 !important; border-radius: 12px !important; padding: 16px 20px !important; width: 100% !important; 
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important; transition: all 0.25s ease !important; cursor: pointer !important;
     }
     .stRadio label:hover {
-        border-color: #38BDF8 !important;
-        border-left-color: #38BDF8 !important;
-        box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 6px 16px rgba(0,0,0,0.5) !important;
-        transform: translateY(-2px) !important;
+        border-color: #38BDF8 !important; border-left-color: #38BDF8 !important;
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.3), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-2px) !important;
     }
 
     .stProgress > div > div > div > div {
         background: linear-gradient(90deg, #3B82F6 0%, #60A5FA 50%, #93C5FD 100%) !important;
-        box-shadow: 0 0 16px rgba(59, 130, 246, 0.9), 0 0 8px rgba(96, 165, 250, 0.7) !important;
-        border-radius: 6px;
+        box-shadow: 0 0 16px rgba(59, 130, 246, 0.9), 0 0 8px rgba(96, 165, 250, 0.7) !important; border-radius: 6px;
     }
-    .loading-status-text {
-        font-family: monospace;
-        font-size: 14px;
-        color: #FB923C;
-        letter-spacing: 0.5px;
-        margin-bottom: 6px;
-        font-weight: 700;
-        text-shadow: 0 0 10px rgba(251, 146, 60, 0.5);
-    }
+    .loading-status-text { font-family: monospace; font-size: 14px; color: #FB923C; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 700; text-shadow: 0 0 10px rgba(251, 146, 60, 0.5); }
 
     div.stButton > button, div.stFormSubmitButton > button { 
-        font-weight: 700 !important; 
-        padding: 12px 18px !important; 
-        border-radius: 10px !important; 
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important; 
-        border: 1px solid #334155 !important;
-        border-left: 4px solid #38BDF8 !important;
-        color: #F8FAFC !important; 
-        width: 100% !important; 
-        margin-top: 6px !important;
-        margin-bottom: 6px !important;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        letter-spacing: 1.5px;
-        font-family: monospace;
+        font-weight: 700 !important; padding: 0.5rem 1rem !important; border-radius: 0.5rem !important; 
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%) !important; 
+        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(51, 65, 85, 0.8) !important;
+        color: #38BDF8 !important; width: 100% !important; 
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important; letter-spacing: 1px; font-family: monospace;
     }
     div.stButton > button:hover, div.stFormSubmitButton > button:hover {
-        border-color: #38BDF8 !important;
-        border-left-color: #38BDF8 !important;
-        color: #FFFFFF !important;
+        border-color: #38BDF8 !important; color: #FFFFFF !important;
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), 0 6px 16px rgba(0,0,0,0.5) !important;
-        transform: translateY(-2px) !important;
+        box-shadow: 0 0 22px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-1px) !important;
+    }
+
+    div.stButton > button[kind="secondary"] { 
+        border-radius: 0 0 12px 12px !important; 
+        border-top: none !important;
+        margin-top: -14px !important; 
+        margin-bottom: 16px !important;
+        box-shadow: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -373,23 +256,12 @@ NATIONAL_HOLIDAYS = {
 TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "TRAIN CREW DUTY CALENDAR"
 
-ROLE_FILES = {
-    "駕駛": "TD.xlsx",
-    "列車長": "TM.xlsx",
-    "服勤員": "TA.xlsx"
-}
-
 ADMIN_PASSWORD = "Lf0900"
 CREW_ACCESS_PASSWORD = "0900"
-LOG_FILE = "activity_log.txt"
-
-MAINTENANCE_FLAGS = {
-    "producer": "maintenance_producer.flag",
-    "window_filter": "maintenance_window.flag",
-    "exchange_filter": "maintenance_exchange.flag"
-}
 
 def set_module_maintenance(module_key, is_maint):
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR, exist_ok=True)
     flag_path = MAINTENANCE_FLAGS.get(module_key)
     if not flag_path: return
     if is_maint:
@@ -411,8 +283,7 @@ def parse_device_info(ua_string):
             try:
                 parts = ua_string.split(";")
                 for p in parts:
-                    if "build" in p.lower():
-                        device = f"Android ({p.split('Build')[0].strip()})"
+                    if "build" in p.lower(): device = f"Android ({p.split('Build')[0].strip()})"
             except: pass
     elif "macintosh" in ua or "mac os" in ua: device = "Mac"
     elif "windows" in ua: device = "Windows PC"
@@ -428,6 +299,8 @@ def parse_device_info(ua_string):
 
 def log_activity(input_str):
     try:
+        if not os.path.exists(DATA_DIR):
+            os.makedirs(DATA_DIR, exist_ok=True)
         now_tw = datetime.now(TAIWAN_TZ).strftime('%Y-%m-%d %H:%M:%S')
         ua_raw = ""
         try: ua_raw = st.context.headers.get("user-agent", "")
@@ -435,9 +308,12 @@ def log_activity(input_str):
         
         device_info = parse_device_info(ua_raw) if ua_raw else "未知裝置"
         current_operator = st.session_state.get("current_user_id", "未知")
-        log_entry = f"{now_tw} | 操作者員編: {current_operator} | 裝置: {device_info} | 查詢: {input_str}\n"
+        log_entry = f"{now_tw} | 操作者員編: {current_operator} | 裝置: {device_info} | 動作: {input_str}\n"
         with open(LOG_FILE, "a", encoding="utf-8") as f: f.write(log_entry)
     except: pass
+
+def render_zoomable_image(image_buf, caption=""):
+    st.image(image_buf, use_container_width=True)
 
 if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
 if "admin_logged_in" not in st.session_state: st.session_state["admin_logged_in"] = False
@@ -447,21 +323,55 @@ if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_t
 if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
 
+def safe_read_excel(file_source, header=None):
+    try:
+        if isinstance(file_source, str):
+            if file_source.endswith('.xls'):
+                return pd.read_excel(file_source, header=header, engine='xlrd')
+            else:
+                try:
+                    return pd.read_excel(file_source, header=header, engine='openpyxl')
+                except:
+                    return pd.read_excel(file_source, header=header, engine='xlrd')
+        else:
+            file_bytes = file_source.getvalue()
+            try:
+                return pd.read_excel(io.BytesIO(file_bytes), header=header, engine='openpyxl')
+            except:
+                return pd.read_excel(io.BytesIO(file_bytes), header=header, engine='xlrd')
+    except Exception as e:
+        try:
+            return pd.read_csv(io.BytesIO(file_bytes))
+        except:
+            raise ValueError(f"無法解析 Excel 檔案格式，請確認是否為標準 .xls 或 .xlsx 檔 (錯誤: {e})")
+
 def get_file_mtime_str(path):
     if os.path.exists(path):
         mtime = os.path.getmtime(path)
         dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(TAIWAN_TZ)
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
-    return "無檔案"
+        size_kb = os.path.getsize(path) / 1024
+        return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} ({size_kb:.1f} KB)"
+    return "尚無檔案"
+
+def get_file_info_text(path, label_prefix="目前檔案"):
+    if os.path.exists(path):
+        mtime = os.path.getmtime(path)
+        dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(TAIWAN_TZ)
+        size_kb = os.path.getsize(path) / 1024
+        return f"📁 {label_prefix}：{os.path.basename(path)} | 大小：{size_kb:.1f} KB | 更新時間：{dt.strftime('%Y-%m-%d %H:%M:%S')}"
+    return f"📁 {label_prefix}：尚無上傳檔案"
 
 def get_schedule_range():
     for path in ROLE_FILES.values():
         if os.path.exists(path):
             try:
-                df = pd.read_excel(path, header=3)
-                cols = [str(c).strip() for c in df.columns[2:]]
-                dates = [re.search(r'(\d+/\d+)', c).group(1) for c in cols if re.search(r'(\d+/\d+)', c)]
-                if dates: return f"{dates[0]} 至 {dates[-1]}"
+                df = safe_read_excel(path, header=None)
+                for r_idx in range(min(6, len(df))):
+                    row_vals = [str(val).strip() for val in df.iloc[r_idx].values]
+                    date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
+                    if date_count >= 3:
+                        dates = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in df.iloc[r_idx].values if re.search(r'(\d+/\d+)', str(c))]
+                        if dates: return f"{dates[0]} 至 {dates[-1]}"
             except: pass
     return "尚無資料"
 
@@ -514,27 +424,57 @@ def is_town_shift(tr, note):
 def parse_cell(raw):
     if pd.isna(raw) or not str(raw).strip(): return dict(start="", train="", end="", hours="", note="")
     raw_str = str(raw).strip()
+    
     lines = [l.strip() for l in raw_str.split("\n") if l.strip()]
+    lines = [l for l in lines if l != "."]
+    
     if not lines: return dict(start="", train="", end="", hours="", note="")
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
     if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): return dict(start="", train=lines[0], end="", hours="", note="")
+    
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     hours = calculate_hours(start_time, end_time)
+    
     do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l), "")
     real_train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != do_str and "h" not in l and "m" not in l), "")
     if not real_train:
         non_time_lines = [l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l]
         if non_time_lines: real_train = non_time_lines[0]
+        
     notes = [l for l in lines if l not in times and l != real_train]
-    return dict(start=start_time, end=end_time, train=real_train if real_train else "無", hours=hours, note=" ".join(notes))
+    
+    clean_real_train = re.sub(r'[#%]', '', real_train).strip() if real_train else "無"
+
+    return dict(start=start_time, end=end_time, train=clean_real_train if clean_real_train else "無", hours=hours, note=" ".join(notes))
+
+def load_shift_mapping_dict(role_key="服勤員"):
+    mapping_file = ROLE_SHIFT_MAPPING_FILES.get(role_key, ROLE_SHIFT_MAPPING_FILES["服勤員"])
+    mapping_dict = {}
+    if os.path.exists(mapping_file):
+        try:
+            df = safe_read_excel(mapping_file)
+            for _, row in df.iterrows():
+                code = str(row.iloc[0]).strip().upper()
+                start_t = str(row.iloc[1]).strip()
+                end_t = str(row.iloc[2]).strip()
+                hrs = str(row.iloc[3]).strip() if len(row) > 3 and not pd.isna(row.iloc[3]) else calculate_hours(start_t, end_t)
+                if code and code != "NAN":
+                    mapping_dict[code] = {
+                        "start": pad_time(start_t),
+                        "end": pad_time(end_t),
+                        "hours": hrs
+                    }
+        except Exception as e:
+            print(f"載入 {role_key} 班別對照表發生錯誤: {e}")
+    return mapping_dict
 
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
     matched_row, emp_id, emp_name, df_found = None, "", "", None
     for role, path in ROLE_FILES.items():
         if os.path.exists(path):
-            df_temp = pd.read_excel(path, header=3)
+            df_temp = safe_read_excel(path, header=3)
             df_temp.columns = [str(c).strip() for c in df_temp.columns]
             for idx, row in df_temp.iterrows():
                 if str(row.iloc[0]).strip().upper() == input_clean or str(row.iloc[1]).strip().upper() == input_clean:
@@ -718,14 +658,14 @@ if st.session_state.get("inspect_emp_target") is not None:
             draw_bold_text(ax, lx + badge_w_leg / 2, legend_y + badge_h_leg / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(9))
 
         now_str = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M")
-        draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
+        draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.20", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
         draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#0F172A", fontproperties=fp(12))
 
         buf = io.BytesIO()
         plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
 
         st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
-        st.image(buf, use_container_width=True)
+        render_zoomable_image(buf)
         st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
     except Exception as e:
         st.error(f"載入完整班表時發生錯誤: {e}")
@@ -753,8 +693,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
 
             if btn_auth:
                 clean_emp = entered_emp.strip()
-                if not clean_emp:
-                    st.error("請輸入有效的員編")
+                if not clean_emp: st.error("請輸入有效的員編")
                 elif entered_key == CREW_ACCESS_PASSWORD:
                     st.session_state["authenticated"] = True
                     st.session_state["current_user_id"] = clean_emp
@@ -765,8 +704,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.session_state["nav_mode"] = "admin_panel"
                     st.success("管理員驗證成功，正在載入後台...")
                     st.rerun()
-                else:
-                    st.error("授權碼或密碼錯誤，請重新輸入")
+                else: st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
 # --- 頂部質感標頭 ---
@@ -785,6 +723,14 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# --- 測試環境呼吸燈警示橫幅 ---
+st.markdown("""
+<div class="test-env-banner">
+    <div class="test-env-title">⚠️ 測試環境運行中（TEST ENVIRONMENT）</div>
+    <div class="test-env-sub">目前為內部測試階段，(每日更新最新班表)測試中</div>
+</div>
+""", unsafe_allow_html=True)
+
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -797,12 +743,9 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
     with col_l2:
         with st.form("admin_login_form"):
             adm_pwd_input = st.text_input("管理員密碼", type="password", placeholder="請輸入管理員解鎖密碼...", key="badge_admin_pwd_box")
-            
             col_btn1, col_btn2 = st.columns(2)
-            with col_btn1:
-                btn_submit_adm = st.form_submit_button("登入後台")
-            with col_btn2:
-                btn_cancel_adm = st.form_submit_button("取消")
+            with col_btn1: btn_submit_adm = st.form_submit_button("登入後台")
+            with col_btn2: btn_cancel_adm = st.form_submit_button("取消")
 
             if btn_submit_adm:
                 if adm_pwd_input == ADMIN_PASSWORD:
@@ -811,18 +754,18 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                     st.session_state["show_admin_login"] = False
                     st.success("驗證成功，正在進入後台...")
                     st.rerun()
-                else:
-                    st.error("管理員密碼錯誤")
+                else: st.error("管理員密碼錯誤")
             elif btn_cancel_adm:
                 st.session_state["show_admin_login"] = False
                 st.rerun()
     st.stop()
 
+# ==================== 管理員專用：升級版 UI 控制台 ====================
 if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
-        <div class="section-title">管理員專用：Database 控制台</div>
-        <div class="section-subtitle">Direct Administrator Dashboard</div>
+        <div class="section-title">管理員專用：Database 智慧控制台</div>
+        <div class="section-subtitle">Advanced Crew Duty Management & Data Maintenance Center</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -837,76 +780,156 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             st.session_state["nav_mode"] = "home"
             st.rerun()
 
-    st.success("歡迎回來，管理員 LEO（目前處於管理員在線狀態，可隨時點擊頁面最下方的版本貼紙切換回首頁）")
+    st.markdown("---")
+    
+    st.subheader("🛠️ 各大系統模組維護開關控制")
+    st.markdown("<p style='color:#94A3B8; font-size:13px;'>在此可獨立切換三大系統模組的維護狀態（開啟後一般組員端會顯示維護中畫面）。</p>", unsafe_allow_html=True)
+    
+    col_m1, col_m2, col_m3 = st.columns(3)
+    with col_m1:
+        m_prod = st.checkbox("【個人月班表圖檔】維護中", value=is_module_maintenance("producer"), key="m_prod_chk")
+        if m_prod != is_module_maintenance("producer"):
+            set_module_maintenance("producer", m_prod)
+            log_activity(f"切換個人月班表系統維護狀態: {m_prod}")
+            st.rerun()
+    with col_m2:
+        m_win = st.checkbox("【換班時段快篩】維護中", value=is_module_maintenance("window_filter"), key="m_win_chk")
+        if m_win != is_module_maintenance("window_filter"):
+            set_module_maintenance("window_filter", m_win)
+            log_activity(f"切換換班時段快篩系統維護狀態: {m_win}")
+            st.rerun()
+    with col_m3:
+        m_ex = st.checkbox("【換假日期快篩】維護中", value=is_module_maintenance("exchange_filter"), key="m_ex_chk")
+        if m_ex != is_module_maintenance("exchange_filter"):
+            set_module_maintenance("exchange_filter", m_ex)
+            log_activity(f"切換換假日期快篩系統維護狀態: {m_ex}")
+            st.rerun()
 
     st.markdown("---")
-    st.subheader("查詢紀錄清單")
+    st.markdown("##### 📊 伺服器即時處理動態與檔案健康狀態")
+    
+    col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
+    with col_stat1:
+        td_status = "🟢 已就緒" if os.path.exists(ROLE_FILES["駕駛"]) else "🔴 缺檔案"
+        st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">駕駛大表 (TD)</div><div class="telemetry-value" style="font-size:14px;">{td_status}</div><div class="telemetry-sub">{get_file_mtime_str(ROLE_FILES["駕駛"])}</div></div>""", unsafe_allow_html=True)
+    with col_stat2:
+        tm_status = "🟢 已就緒" if os.path.exists(ROLE_FILES["列車長"]) else "🔴 缺檔案"
+        st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">列車長大表 (TM)</div><div class="telemetry-value" style="font-size:14px;">{tm_status}</div><div class="telemetry-sub">{get_file_mtime_str(ROLE_FILES["列車長"])}</div></div>""", unsafe_allow_html=True)
+    with col_stat3:
+        ta_status = "🟢 已就緒" if os.path.exists(ROLE_FILES["服勤員"]) else "🔴 缺檔案"
+        st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">服勤員大表 (TA)</div><div class="telemetry-value" style="font-size:14px;">{ta_status}</div><div class="telemetry-sub">{get_file_mtime_str(ROLE_FILES["服勤員"])}</div></div>""", unsafe_allow_html=True)
+    with col_stat4:
+        map_files_ready = sum(1 for p in ROLE_SHIFT_MAPPING_FILES.values() if os.path.exists(p))
+        map_status = f"🟢 已就緒 ({map_files_ready}/3)" if map_files_ready > 0 else "🔴 未上傳"
+        st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">職位對照表狀態</div><div class="telemetry-value" style="font-size:14px;">{map_status}</div><div class="telemetry-sub">三職位各自獨立對照表</div></div>""", unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.subheader("🎛️ 班表維護控制台（黃金二窗口架構）")
+    selected_role = st.selectbox("選擇目前要維護的職位類別", ["駕駛", "列車長", "服勤員"], index=2)
+    target_path = ROLE_FILES[selected_role]
+    target_mapping_file = ROLE_SHIFT_MAPPING_FILES[selected_role]
+
+    st.markdown("""
+    <div style="display: flex; flex-direction: column; gap: 20px; margin-top: 15px;">
+    """, unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown(f"""
+        <div class="admin-card-container" style="border-left-color: #EAB308;">
+            <h4 style="color: #FEF08A; margin-top: 0;">1. 每月 20 號基準大表（原始月班表底稿）</h4>
+            <p style="color: #94A3B8; font-size: 13px;">上傳每月初或 20 號發出的基準大表，作為系統的基礎排班框架。</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.info(get_file_info_text(target_path, label_prefix="目前伺服器基準大表狀態"))
+        
+        uploaded_file_master = st.file_uploader(f"上傳【{selected_role}】基準大表 (.xlsx / .xls)", type=["xlsx", "xls", "csv"], key=f"master_up_{selected_role}")
+        if uploaded_file_master is not None:
+            file_bytes_m = uploaded_file_master.getvalue()
+            current_hash_m = hashlib.md5(file_bytes_m).hexdigest()
+            hash_key_m = f"master_hash_{selected_role}"
+            
+            if st.session_state.get(hash_key_m) != current_hash_m:
+                try:
+                    if not os.path.exists(DATA_DIR):
+                        os.makedirs(DATA_DIR, exist_ok=True)
+                    with open(target_path, "wb") as f: f.write(file_bytes_m)
+                    st.session_state[hash_key_m] = current_hash_m
+                    log_activity(f"上傳【{selected_role}】每月基準大表")
+                    st.success(f"【{selected_role}】基準大表已成功更新！")
+                    time.sleep(0.5)
+                    st.rerun()
+                except Exception as e: st.error(f"基準大表儲存失敗: {e}")
+
+    with st.container():
+        st.markdown(f"""
+        <div class="admin-card-container" style="border-left-color: #10B981;">
+            <h4 style="color: #34D399; margin-top: 0;">2. 本機運算完畢的「最新完整大表」更新（每日異動窗口）</h4>
+            <p style="color: #94A3B8; font-size: 13px;">當您在電腦端執行 Python 腳本完成多檔合併與時間對照後，直接將產出的**最終完整更新檔**上傳至此，即可直接覆蓋線上資料庫！</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.info(get_file_info_text(target_path, label_prefix="目前正式資料庫狀態"))
+
+        uploaded_file_update = st.file_uploader(f"上傳【{selected_role}】本機運算完畢的完整更新大表 (.xlsx)", type=["xlsx", "xls", "csv"], key=f"local_compiled_up_{selected_role}")
+        
+        if uploaded_file_update is not None:
+            file_bytes_u = uploaded_file_update.getvalue()
+            current_hash_u = hashlib.md5(file_bytes_u).hexdigest()
+            hash_key_u = f"update_hash_{selected_role}"
+            
+            if st.session_state.get(hash_key_u) != current_hash_u:
+                try:
+                    if not os.path.exists(DATA_DIR):
+                        os.makedirs(DATA_DIR, exist_ok=True)
+                    with open(target_path, "wb") as f: f.write(file_bytes_u)
+                    st.session_state[hash_key_u] = current_hash_u
+                    log_activity(f"上傳本機運算完畢的【{selected_role}】完整更新大表")
+                    st.success(f"【{selected_role}】資料庫已成功以本機運算檔更新完成！")
+                    time.sleep(0.5)
+                    st.rerun()
+                except Exception as e: st.error(f"更新檔寫入失敗: {e}")
+
+        col_rb_btn1, col_rb_btn2 = st.columns(2)
+        with col_rb_btn1:
+            if os.path.exists(target_path):
+                with open(target_path, "rb") as f:
+                    excel_bytes = f.read()
+                st.download_button(
+                    label=f"📥 下載【{selected_role}】現行資料庫 (.xlsx)",
+                    data=excel_bytes,
+                    file_name=f"{selected_role}_database_{datetime.now(TAIWAN_TZ).strftime('%m%d_%H%M')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"download_db_{selected_role}"
+                )
+        with col_rb_btn2:
+            if os.path.exists(target_path):
+                if st.button(f"🗑️ 清除【{selected_role}】的資料庫檔案", key=f"del_db_{selected_role}"):
+                    os.remove(target_path)
+                    log_activity(f"清除資料庫 [{selected_role}]")
+                    st.success(f"已成功清除【{selected_role}】的資料庫檔案！")
+                    time.sleep(0.5)
+                    st.rerun()
+
+    st.markdown("---")
+    st.subheader("📋 系統操作活動紀錄日誌 (Activity Log)")
     col_log_1, col_log_2 = st.columns([1, 1])
     with col_log_1:
-        if st.button("🔄 重新載入紀錄"): st.rerun()
+        if st.button("🔄 重新載入日誌"): st.rerun()
     with col_log_2:
-        if st.button("🗑️ 清除紀錄"):
+        if st.button("🗑️ 清空歷史日誌"):
             if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
             st.rerun()
 
     if os.path.exists(LOG_FILE):
         with open(LOG_FILE, "r", encoding="utf-8") as f:
             logs = f.readlines()
-            for line in reversed(logs[-20:]): st.text(line.strip())
-    else: st.info("尚無任何查詢紀錄")
-
-    st.markdown("---")
-    st.subheader("各系統獨立維護開關控制台")
-    st.caption("您可以針對這三種系統分別設定維護狀態，不需一次關閉全部系統：")
-
-    maint_p = is_module_maintenance("producer")
-    toggle_p = st.checkbox("【系統 1】繪製個人月班表圖檔 - 進入維護模式", value=maint_p, key="toggle_producer")
-    if toggle_p != maint_p:
-        set_module_maintenance("producer", toggle_p)
-        st.rerun()
-
-    maint_w = is_module_maintenance("window_filter")
-    toggle_w = st.checkbox("【系統 2】指定時段報到組員快篩 - 進入維護模式", value=maint_w, key="toggle_window")
-    if toggle_w != maint_w:
-        set_module_maintenance("window_filter", toggle_w)
-        st.rerun()
-
-    maint_e = is_module_maintenance("exchange_filter")
-    toggle_e = st.checkbox("【系統 3】換假日期快篩 - 進入維護模式", value=maint_e, key="toggle_exchange")
-    if toggle_e != maint_e:
-        set_module_maintenance("exchange_filter", toggle_e)
-        st.rerun()
-
-    st.markdown("---")
-    st.subheader("管理員檔案上傳與刪除區")
-    selected_role = st.selectbox("選擇要上傳或刪除的職位類別", ["駕駛", "列車長", "服勤員"])
-    
-    target_path = ROLE_FILES[selected_role]
-
-    col_up, col_del = st.columns(2)
-    with col_up:
-        uploaded_file = st.file_uploader(f"上傳【{selected_role}】班表檔案", type=["xlsx", "xls", "csv", "txt"])
-        if uploaded_file is not None:
-            with open(target_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            st.success("上傳成功")
-            st.rerun()
-
-    with col_del:
-        file_exists = os.path.exists(target_path)
-        st.write("目前檔案狀態：" + ("已存在" if file_exists else "無檔案"))
-        
-        if file_exists:
-            if st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案"):
-                os.remove(target_path)
-                st.success(f"已成功刪除【{selected_role}】的班表檔案")
-                st.rerun()
-        else:
-            st.button(f"🗑️ 刪除【{selected_role}】現有班表檔案", disabled=True)
+            for line in reversed(logs[-25:]): st.text(line.strip())
+    else: st.info("尚無任何操作紀錄")
 
     st.stop()
 
-# --- 一般系統首頁介面 ---
+# ==================== 一般系統首頁介面 ====================
 missing_files = []
 for role, path in ROLE_FILES.items():
     if not os.path.exists(path) or os.path.getsize(path) == 0:
@@ -940,7 +963,7 @@ st.markdown(f"""
 st.markdown('<div class="mode-selection-header">Select Operation Mode // 請選擇系統模式</div>', unsafe_allow_html=True)
 app_mode = st.radio("系統操作模式選擇", [
     "繪製個人月班表圖檔", 
-    "換班｜指定時段組員快篩（Alpha測試版）",
+    "換班｜指定時段組員名單快篩（Alpha測試版）",
     "換假｜日期快篩（Alpha測試版）"
 ], horizontal=False, label_visibility="collapsed")
 
@@ -979,10 +1002,9 @@ if app_mode == "繪製個人月班表圖檔":
 
     if st.button("立即生成個人班表圖片檔"):
         current_input = st.session_state.get("user_input_field", "").strip()
-        if not current_input:
-            st.warning("請輸入員編或姓名")
+        if not current_input: st.warning("請輸入員編或姓名")
         else:
-            log_activity(current_input)
+            log_activity(f"生成個人班表圖檔查詢: {current_input}")
             if not any(os.path.exists(path) for path in ROLE_FILES.values()): st.error("無班表資料")
             else:
                 try:
@@ -1110,7 +1132,7 @@ if app_mode == "繪製個人月班表圖檔":
                         draw_bold_text(ax, lx + badge_w_leg / 2, legend_y + badge_h_leg / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(9))
 
                     now_str = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M")
-                    draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
+                    draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.20", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
                     draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#0F172A", fontproperties=fp(12))
                     
                     buf = io.BytesIO()
@@ -1121,12 +1143,11 @@ if app_mode == "繪製個人月班表圖檔":
                     progress_bar.empty()
 
                     st.success("個人班表圖片生成成功")
-                    st.image(buf, use_container_width=True)
-                    st.info("提醒：長按上方的班表圖片即可一鍵存入手機相簿")
+                    render_zoomable_image(buf)
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
+elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
     if is_module_maintenance("window_filter") and not st.session_state.get("admin_logged_in", False):
         st.markdown("""
         <div class="maintenance-card-box">
@@ -1151,13 +1172,22 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
     </div>
     """, unsafe_allow_html=True)
 
-    selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2)
+    selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2, key="win_selected_role")
     target_path = ROLE_FILES[selected_role]
 
     if not os.path.exists(target_path):
         st.error(f"找不到【{selected_role}】的班表檔案 ({target_path})，請先至管理員後台上傳")
     else:
-        df_search = pd.read_excel(target_path, header=3)
+        raw_df_preview = safe_read_excel(target_path, header=None)
+        header_row_idx = 3
+        for r_idx in range(min(6, len(raw_df_preview))):
+            row_vals = [str(val).strip() for val in raw_df_preview.iloc[r_idx].values]
+            date_count = sum(1 for val in row_vals if re.search(r'\d{1,2}/\d{1,2}', val))
+            if date_count >= 3:
+                header_row_idx = r_idx
+                break
+
+        df_search = safe_read_excel(target_path, header=header_row_idx)
         df_search.columns = [str(c).strip() for c in df_search.columns]
         
         date_cols = []
@@ -1165,8 +1195,7 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
             match_d = re.search(r'(\d+/\d+)', str(col))
             if match_d: date_cols.append(match_d.group(1))
 
-        if not date_cols:
-            st.error("表中未偵測到有效日期欄位")
+        if not date_cols: st.error("表中未偵測到有效日期欄位")
         else:
             dynamic_time_set = set()
             for _, r_row in df_search.iterrows():
@@ -1178,46 +1207,48 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
             TIME_OPTIONS = sorted(list(dynamic_time_set))
             if not TIME_OPTIONS: TIME_OPTIONS = ["04:00", "05:00", "06:00", "07:00"]
 
-            if selected_role == "駕駛":
-                earliest_default = TIME_OPTIONS[0]
+            if selected_role == "駕駛": earliest_default = TIME_OPTIONS[0]
             else:
                 target_default = "05:26"
                 earliest_default = target_default if target_default in TIME_OPTIONS else min(TIME_OPTIONS, key=lambda x: abs(datetime.strptime(x, "%H:%M") - datetime.strptime("05:26", "%H:%M")))
 
             default_min_idx = TIME_OPTIONS.index(earliest_default) if earliest_default in TIME_OPTIONS else 0
-            try:
-                h, m = map(int, earliest_default.split(":"))
-                target_mins = h * 60 + m + 120
-                target_h = (target_mins // 60) % 24
-                target_m = target_mins % 60
-                suggested_end = f"{target_h:02d}:{target_m:02d}"
-                default_max_idx = TIME_OPTIONS.index(suggested_end) if suggested_end in TIME_OPTIONS else min(range(len(TIME_OPTIONS)), key=lambda i: abs(datetime.strptime(TIME_OPTIONS[i], "%H:%M") - datetime.strptime(suggested_end, "%H:%M")))
-            except:
-                default_max_idx = min(default_min_idx + 4, len(TIME_OPTIONS) - 1)
+
+            if "win_start_date" not in st.session_state:
+                st.session_state["win_start_date"] = date_cols[0]
+            if "win_end_date" not in st.session_state:
+                st.session_state["win_end_date"] = date_cols[0]
 
             c1, c2 = st.columns(2)
-            with c1: start_date = st.selectbox("起始日期", date_cols, index=0, key="win_start_date")
-            start_date_idx = date_cols.index(start_date) if start_date in date_cols else 0
-            with c2: end_date = st.selectbox("結束日期", date_cols, index=start_date_idx, key="win_end_date")
+            with c1: 
+                start_date = st.selectbox("起始日期", date_cols, key="win_start_date")
+            
+            if st.session_state["win_end_date"] not in date_cols or date_cols.index(st.session_state["win_end_date"]) < date_cols.index(start_date):
+                st.session_state["win_end_date"] = start_date
+
+            with c2: 
+                end_date = st.selectbox("結束日期", date_cols, key="win_end_date")
 
             c3, c4 = st.columns(2)
-            with c3: min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
-            with c4: max_time = st.selectbox("Sign-In Time 區間：到", options=TIME_OPTIONS, index=default_max_idx, key="max_time_selectbox")
+            with c3: 
+                min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
+            with c4: 
+                to_time_options = ["-- (僅查單一時間點)"] + TIME_OPTIONS
+                max_time_sel = st.selectbox("Sign-In Time 區間：到", options=to_time_options, index=0, key="max_time_selectbox")
 
             filter_col1, filter_col2 = st.columns(2)
             with filter_col1: only_main_line = st.checkbox("僅顯示正線勤務", value=False, key="win_main_line")
             with filter_col2: only_long_shift = st.checkbox("僅顯示長班 (>8.5h)", value=False, key="win_long_shift")
 
             if st.button("開始區間檢索符合條件人員", key="btn_window_search"):
-                log_activity(f"時段快篩 [{selected_role}] {start_date}~{end_date} {min_time}-{max_time}")
+                log_activity(f"時段快篩 [{selected_role}] {start_date}~{end_date} 從:{min_time} 到:{max_time_sel}")
                 try:
                     s_idx = date_cols.index(start_date)
                     e_idx = date_cols.index(end_date)
                     target_dates = date_cols[s_idx:e_idx+1] if s_idx <= e_idx else []
                 except: target_dates = []
 
-                if not target_dates:
-                    st.warning("起始日期不可大於結束日期")
+                if not target_dates: st.warning("起始日期不可大於結束日期")
                 else:
                     search_results = []
                     all_cols_list = list(df_search.columns[2:])
@@ -1225,6 +1256,8 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
                     for _, row in df_search.iterrows():
                         emp_id = str(row.iloc[0]).strip()
                         emp_name = str(row.iloc[1]).strip()
+                        if not emp_id or emp_id.upper() == "NAN": continue
+
                         for d_str in target_dates:
                             target_col_idx = -1
                             actual_col_pos = -1
@@ -1239,29 +1272,38 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
                                 parsed = parse_cell(cell_raw)
                                 start_t = parsed["start"]
                                 
-                                if start_t and min_time <= start_t <= max_time:
-                                    is_non_line = is_town_shift(parsed["train"], parsed["note"])
-                                    is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
-                                    
-                                    if only_main_line and is_non_line: continue
-                                    if only_long_shift and not is_long: continue
+                                if start_t:
+                                    matched_time_cond = False
+                                    if max_time_sel.startswith("--"):
+                                        matched_time_cond = (start_t == min_time)
+                                    else:
+                                        matched_time_cond = (min_time <= start_t <= max_time_sel)
 
-                                    next_day_sign_in = "無記錄"
-                                    if actual_col_pos + 1 < len(all_cols_list):
-                                        next_cell_raw = row.iloc[target_col_idx + 1]
-                                        next_parsed = parse_cell(next_cell_raw)
-                                        if next_parsed["start"]: next_day_sign_in = next_parsed["start"]
-                                        elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
-                                    
-                                    search_results.append({
-                                        "日期": d_str, "員編": emp_id, "姓名": emp_name,
-                                        "Sign-In": start_t, "收工時間": parsed["end"],
-                                        "車次": translate_train_code(parsed["train"]),
-                                        "隔日Sign-In": next_day_sign_in, "長班": is_long, "非正線": is_non_line
-                                    })
+                                    if matched_time_cond:
+                                        is_non_line = is_town_shift(parsed["train"], parsed["note"])
+                                        is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
+                                        
+                                        if only_main_line and is_non_line: continue
+                                        if only_long_shift and not is_long: continue
+
+                                        next_day_sign_in = "無記錄"
+                                        if actual_col_pos + 1 < len(all_cols_list):
+                                            next_cell_raw = row.iloc[target_col_idx + 1]
+                                            next_parsed = parse_cell(next_cell_raw)
+                                            if next_parsed["start"]: next_day_sign_in = next_parsed["start"]
+                                            elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
+                                        
+                                        search_results.append({
+                                            "日期": d_str, "員編": emp_id, "姓名": emp_name,
+                                            "Sign-In": start_t, "收工時間": parsed["end"],
+                                            "車次": translate_train_code(parsed["train"]),
+                                            "隔日Sign-In": next_day_sign_in, "長班": is_long, "非正線": is_non_line
+                                        })
 
                     search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
-                    st.markdown(f"### 檢索結果：{start_date} 至 {end_date} ｜ 區間 {min_time} ~ {max_time}（共符合 {len(search_results)} 筆）")
+                    range_label_str = f"{start_date} 至 {end_date}" if start_date != end_date else start_date
+                    time_label_str = f"時間 {min_time}" if max_time_sel.startswith("--") else f"區間 {min_time} ~ {max_time_sel}"
+                    st.markdown(f"### 檢索結果：{range_label_str} ｜ {time_label_str}（共符合 {len(search_results)} 筆）")
                     
                     if search_results:
                         current_date_group = None
@@ -1291,17 +1333,17 @@ elif app_mode == "換班｜指定時段組員快篩（Alpha測試版）":
                             </div>
                             """
                             if col_idx % 2 == 0:
-                                with c_col1: st.markdown(card_html, unsafe_allow_html=True)
+                                with c_col1:
+                                    st.markdown(card_html, unsafe_allow_html=True)
                             else:
-                                with c_col2: st.markdown(card_html, unsafe_allow_html=True)
+                                with c_col2:
+                                    st.markdown(card_html, unsafe_allow_html=True)
                             col_idx += 1
-                    else:
-                        st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
+                    else: st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if st.session_state.get("last_app_mode") != "換假｜日期快篩（Alpha測試版）":
-        if "ex_sub_mode" not in st.session_state:
-            st.session_state["ex_sub_mode"] = "search_form"
+        if "ex_sub_mode" not in st.session_state: st.session_state["ex_sub_mode"] = "search_form"
         st.session_state["last_app_mode"] = "換假｜日期快篩（Alpha測試版）"
 
     if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_logged_in", False):
@@ -1346,7 +1388,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             st.rerun()
 
         st.markdown("---")
-
         try:
             current_input = target_emp
             log_activity(f"換假檢視完整班表: {current_input}")
@@ -1460,18 +1501,16 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 draw_bold_text(ax, lx + badge_w_leg / 2, legend_y + badge_h_leg / 2, label, ha="center", va="center", color=txt_clr, fontproperties=fp(9))
 
             now_str = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M")
-            draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.19", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
+            draw_bold_text(ax, ML, MB * 0.12, "DESIGNED BY: C.L.F // v4.20", ha="left", va="bottom", color="#0F172A", fontproperties=fp(12))
             draw_bold_text(ax, 1.0 - MR, MB * 0.12, f"GENERATED: {now_str}", ha="right", va="bottom", color="#0F172A", fontproperties=fp(12))
 
             buf = io.BytesIO()
             plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
 
             st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
-            st.image(buf, use_container_width=True)
+            render_zoomable_image(buf)
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
-        except Exception as e:
-            st.error(f"載入完整班表時發生錯誤: {e}")
-
+        except Exception as e: st.error(f"載入完整班表時發生錯誤: {e}")
         st.stop()
 
     st.markdown("""
@@ -1490,14 +1529,12 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     
     sample_path = ROLE_FILES[selected_role] if os.path.exists(ROLE_FILES[selected_role]) else list(ROLE_FILES.values())[0]
     try:
-        temp_df_dates = pd.read_excel(sample_path, header=3)
+        temp_df_dates = safe_read_excel(sample_path, header=3)
         date_cols = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in temp_df_dates.columns[2:] if re.search(r'(\d+/\d+)', str(c))]
-    except:
-        date_cols = []
+    except: date_cols = []
 
     time_filter_options = [
-        "不限", 
-        "05:00 以後", "06:00 以後", "07:00 以後", "08:00 以後", 
+        "不限", "05:00 以後", "06:00 以後", "07:00 以後", "08:00 以後", 
         "09:00 以後", "10:00 以後", "11:00 以後", "12:00 以後", 
         "13:00 以後", "14:00 以後", "15:00 以後", "16:00 以後"
     ]
@@ -1507,36 +1544,30 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             saved_t_date = st.session_state.get("ex_saved_target_date", "")
             default_t_idx = date_cols.index(saved_t_date) if saved_t_date in date_cols else 0
             target_date = st.selectbox("想休假的日期", date_cols, index=default_t_idx, key=f"ex_target_date_{selected_role}")
-        else:
-            target_date = st.selectbox("想休假的日期", ["無可用日期"], index=0, key=f"ex_target_date_{selected_role}")
+        else: target_date = st.selectbox("想休假的日期", ["無可用日期"], index=0, key=f"ex_target_date_{selected_role}")
 
     with ex_c3:
         if date_cols:
             saved_r_date = st.session_state.get("ex_saved_return_date", "")
             default_r_idx = date_cols.index(saved_r_date) if saved_r_date in date_cols else min(1, len(date_cols)-1)
             return_date = st.selectbox("可還假的日期(上班日)", date_cols, index=default_r_idx, key=f"ex_return_date_{selected_role}")
-        else:
-            return_date = st.selectbox("可還假的日期(上班日)", ["無可用日期"], index=0, key=f"ex_return_date_{selected_role}")
+        else: return_date = st.selectbox("可還假的日期(上班日)", ["無可用日期"], index=0, key=f"ex_return_date_{selected_role}")
 
     saved_time_f = st.session_state.get("ex_saved_time_filter", "不限")
     default_time_idx = time_filter_options.index(saved_time_f) if saved_time_f in time_filter_options else 0
     return_time_filter = st.selectbox(
         "還假日，可接受對方的報到時間限制（只列出 XX:XX 之後報到的班）",
-        options=time_filter_options,
-        index=default_time_idx,
-        key="ex_return_time_filter"
+        options=time_filter_options, index=default_time_idx, key="ex_return_time_filter"
     )
 
     new_selection_key = f"{selected_role}_{target_date}_{return_date}_{return_time_filter}"
-    if "last_selection_signature" not in st.session_state:
-        st.session_state["last_selection_signature"] = new_selection_key
+    if "last_selection_signature" not in st.session_state: st.session_state["last_selection_signature"] = new_selection_key
 
     if st.session_state["ex_sub_mode"] != "results":
         if st.session_state["last_selection_signature"] != new_selection_key:
             st.session_state["ex_saved_candidates"] = []
             st.session_state["last_selection_signature"] = new_selection_key
-    else:
-        st.session_state["last_selection_signature"] = new_selection_key
+    else: st.session_state["last_selection_signature"] = new_selection_key
 
     strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True, key="ex_strict_limit")
 
@@ -1549,13 +1580,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             validation_error_msg = "「想休假的日期」與「可還假的日期」不可選擇同一天！"
         else:
             try:
-                sample_col = ""
-                for c in temp_df_dates.columns[2:]:
-                    if re.search(r'(\d+/\d+)', str(c)):
-                        sample_col = re.search(r'(\d+/\d+)', str(c)).group(1)
-                        break
                 year_val = 2026
-
                 def get_sun_sat_week(d_str):
                     m, d = map(int, d_str.split("/"))
                     dt_obj = date(year_val, m, d)
@@ -1570,16 +1595,11 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 if t_sun != r_sun:
                     is_selection_valid = False
                     validation_error_msg = "注意！『想休假日』與『可還假日』必須選擇在同一週內"
-                else:
-                    first_week_sun, first_week_sat = get_sun_sat_week(date_cols[0])
-                    if t_sun == first_week_sun:
-                        st.info("提示：注意前一週是否連續工作 7 天喔！")
             except Exception as e:
                 is_selection_valid = False
                 validation_error_msg = f"日期解析發生錯誤: {e}"
 
-    if not is_selection_valid:
-        st.error(f"條件未通過：{validation_error_msg}")
+    if not is_selection_valid: st.error(f"條件未通過：{validation_error_msg}")
 
     if is_selection_valid:
         if st.button("開始尋找可換假對象", key="btn_auto_search_exchange_fixed"):
@@ -1587,7 +1607,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
             st.session_state["ex_sub_mode"] = "results"
             try:
                 target_path = ROLE_FILES[selected_role]
-                df_ex = pd.read_excel(target_path, header=3)
+                df_ex = safe_read_excel(target_path, header=3)
                 df_ex.columns = [str(c).strip() for c in df_ex.columns]
                 
                 target_col_idx = -1
@@ -1612,22 +1632,18 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         emp_id = str(row.iloc[0]).strip()
                         emp_name = str(row.iloc[1]).strip()
                         
-                        # --- 外支援整週鎖定檢查 (若該週內含有 I 或 E 開頭等支援班別，整人排除) ---
                         has_external_support = False
                         s_wk_idx = max(0, actual_pos - 3)
                         e_wk_idx = min(len(all_cols_list) - 1, actual_pos + 3)
                         for w_i in range(s_wk_idx, e_wk_idx + 1):
                             cell_check = str(row.iloc[w_i + 2]).strip().upper()
-                            # 檢查是否有支援代號開頭 (例如 I, E 開頭的班別代號)
                             for line_item in cell_check.split('\n'):
                                 line_trimmed = line_item.strip()
                                 if re.match(r'^[IE]\d+[A-Z0-9]*$', line_trimmed):
                                     has_external_support = True
                                     break
                             if has_external_support: break
-                        
-                        if has_external_support:
-                            continue
+                        if has_external_support: continue
 
                         cell_target = row.iloc[target_col_idx]
                         parsed_target = parse_cell(cell_target)
@@ -1636,9 +1652,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         
                         is_target_do = ("DO" in raw_target_str) or ("D2W" in raw_target_str)
                         is_target_leave = (tr_target in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_target_str) or ("FAC" in raw_target_str)
-                        
-                        if not (is_target_do and not is_target_leave):
-                            continue
+                        if not (is_target_do and not is_target_leave): continue
 
                         cell_return = row.iloc[return_col_idx]
                         parsed_return = parse_cell(cell_return)
@@ -1647,40 +1661,31 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         
                         is_return_do = ("DO" in raw_return_str) or ("D2W" in raw_return_str)
                         is_return_leave = (tr_return in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in raw_return_str) or ("FAC" in raw_return_str)
-                        
-                        if is_return_do or is_return_leave:
-                            continue
+                        if is_return_do or is_return_leave: continue
 
                         if return_time_filter != "不限":
                             min_allowed_time = return_time_filter.split(" ")[0]
                             return_start_time = parsed_return["start"]
-                            if not return_start_time or return_start_time < min_allowed_time:
-                                continue
+                            if not return_start_time or return_start_time < min_allowed_time: continue
 
                         s_idx = max(0, actual_pos - 5)
                         e_idx = min(len(all_cols_list) - 1, actual_pos + 5)
-                        
-                        current_streak = 0
-                        max_streak = 0
+                        current_streak, max_streak = 0, 0
                         
                         for p_i in range(s_idx, e_idx + 1):
                             c_val = row.iloc[p_i + 2]
                             p_res = parse_cell(c_val)
                             c_raw_str = str(c_val).upper()
                             c_tr = str(p_res["train"]).strip().upper()
-                            
                             is_c_rest = ("DO" in c_raw_str) or ("D2W" in c_raw_str)
                             is_c_special_leave = (c_tr in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_str) or ("FAC" in c_raw_str)
                             
-                            if is_c_rest and not is_c_special_leave:
-                                current_streak = 0
+                            if is_c_rest and not is_c_special_leave: current_streak = 0
                             else:
                                 current_streak += 1
-                                if current_streak > max_streak:
-                                    max_streak = current_streak
+                                if current_streak > max_streak: max_streak = current_streak
                         
-                        if strict_limit and max_streak >= 6:
-                            continue
+                        if strict_limit and max_streak >= 6: continue
                             
                         disp_s = max(0, actual_pos - 7)
                         disp_e = min(len(all_cols_list) - 1, actual_pos + 7)
@@ -1689,33 +1694,25 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                             d_str = date_cols[p_i] if p_i < len(date_cols) else all_cols_list[p_i]
                             c_val = row.iloc[p_i + 2]
                             p_res = parse_cell(c_val)
-                            
                             c_raw_s = str(c_val).upper()
                             c_tr_s = str(p_res["train"]).strip().upper()
                             is_c_hol = ("DO" in c_raw_s) or ("D2W" in c_raw_s)
                             is_c_leave = (c_tr_s in ["PAY", "FAC", "AL", "SL", "CL"]) or ("PAY" in c_raw_s) or ("FAC" in c_raw_s) or ("特休" in c_raw_s)
                             
-                            if is_c_hol and not is_c_leave:
-                                shift_display = "休"
+                            if is_c_hol and not is_c_leave: shift_display = "休"
                             elif is_c_leave:
-                                if "PAY" in c_raw_s or "特休" in c_raw_s:
-                                    shift_display = "PAY"
-                                elif "FAC" in c_raw_s:
-                                    shift_display = "FAC"
-                                else:
-                                    shift_display = c_tr_s if c_tr_s else "特休"
+                                if "PAY" in c_raw_s or "特休" in c_raw_s: shift_display = "PAY"
+                                elif "FAC" in c_raw_s: shift_display = "FAC"
+                                else: shift_display = c_tr_s if c_tr_s else "特休"
                             else:
                                 main_tr_code = str(p_res["train"]).strip()
                                 if main_tr_code.upper().startswith("N") and p_res["start"] and p_res["end"]:
                                     shift_display = f"{p_res['start']}->{p_res['end']}"
-                                else:
-                                    shift_display = main_tr_code if main_tr_code and main_tr_code != "無" else (p_res["note"] if p_res["note"] else "班")
-                                
+                                else: shift_display = main_tr_code if main_tr_code and main_tr_code != "無" else (p_res["note"] if p_res["note"] else "班")
                             mini_schedule.append(f"{d_str}: {shift_display}")
 
                         candidates.append({
-                            "員編": emp_id,
-                            "姓名": emp_name,
+                            "員編": emp_id, "姓名": emp_name,
                             "當天狀態": f"想休 {target_date}(DO) ｜ 還假 {return_date}({parsed_return['start']+'->'+parsed_return['end'] if parsed_return['start'] else parsed_return['train']})",
                             "前後連續上班最大天數": max_streak,
                             "鄰近天數概況": " | ".join(mini_schedule)
@@ -1725,11 +1722,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                     st.session_state["ex_saved_return_date"] = return_date
                     st.session_state["ex_saved_role"] = selected_role
                     st.session_state["ex_saved_time_filter"] = return_time_filter
-            except Exception as e:
-                st.error(f"日期計算發生錯誤: {e}")
+            except Exception as e: st.error(f"日期計算發生錯誤: {e}")
             st.rerun()
-    else:
-        st.button("修正上述日期後 開始查詢", disabled=True, key="btn_auto_search_exchange_disabled")
+    else: st.button("修正上述日期後 開始查詢", disabled=True, key="btn_auto_search_exchange_disabled")
 
     if st.session_state["ex_sub_mode"] == "results" and st.session_state.get("ex_saved_candidates"):
         saved_candidates = st.session_state["ex_saved_candidates"]
@@ -1739,25 +1734,10 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         saved_time_f = st.session_state.get("ex_saved_time_filter", return_time_filter)
 
         st.markdown(f"""
-        <div style="
-            background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-            border: 1px solid #334155;
-            border-left: 5px solid #38BDF8;
-            border-radius: 12px;
-            padding: 16px 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        ">
+        <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(51, 65, 85, 0.8); border-left: 5px solid #38BDF8; border-radius: 14px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <span style="color: #F8FAFC; font-size: 18px; font-weight: 700; font-family: monospace;">
-                    【{saved_role}】符合換假名單
-                </span>
-                <span style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38BDF8; color: #38BDF8; font-size: 12px; padding: 2px 10px; border-radius: 6px; font-weight: 600; font-family: monospace;">
-                    共 {len(saved_candidates)} 位符合
-                </span>
+                <span style="color: #F8FAFC; font-size: 18px; font-weight: 700; font-family: monospace;">【{saved_role}】符合換假名單</span>
+                <span style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38BDF8; color: #38BDF8; font-size: 12px; padding: 2px 10px; border-radius: 6px; font-weight: 600; font-family: monospace;">共 {len(saved_candidates)} 位符合</span>
             </div>
             <div style="color: #94A3B8; font-size: 13px; font-family: monospace; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                 <span>想休日期：<strong style="color: #34D399;">{saved_date}</strong></span>
@@ -1770,51 +1750,45 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         """, unsafe_allow_html=True)        
         
         for idx, cand in enumerate(saved_candidates):
-            st.markdown(f"""
-            <div class="integrated-crew-box">
-                <div class="time-header-row">
-                    <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
-                    <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
+            card_container = st.container()
+            with card_container:
+                st.markdown(f"""
+                <div class="integrated-crew-box">
+                    <div class="time-header-row">
+                        <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
+                        </div>
+                    </div>
+                    <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
+                    <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
                 </div>
-                <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
-                <div class="compact-sub" style="margin-top: 6px; font-size: 11px; color: #CBD5E1;">前後動態: {cand['鄰近天數概況']}</div>
-                <div class="action-divider"></div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if st.button(f"檢視完整班表：{cand['姓名']}", key=f"ex_gen_img_btn_{cand['員編']}_{idx}"):
-                status_placeholder = st.empty()
-                progress_bar = st.progress(0)
-
-                first_name = cand['姓名'][1:] if len(cand['姓名']) > 1 else cand['姓名']
-                status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
-                progress_bar.progress(40)
-                time.sleep(0.4)
-
-                progress_bar.progress(80)
-                time.sleep(0.3)
-
-                st.session_state["ex_selected_emp"] = cand['員編']
-                st.session_state["ex_sub_mode"] = "inspect_image"
+                """, unsafe_allow_html=True)
                 
-                progress_bar.progress(100)
-                time.sleep(0.2)
-                status_placeholder.empty()
-                progress_bar.empty()
-                st.rerun()
-            
-            st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+                if st.button(f"查看 {cand['姓名']} ({cand['員編']}) 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True, type="secondary"):
+                    status_placeholder = st.empty()
+                    progress_bar = st.progress(0)
+                    first_name = cand['姓名'][1:] if len(cand['姓名']) > 1 else cand['姓名']
+                    status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
+                    progress_bar.progress(40)
+                    time.sleep(0.4)
+                    progress_bar.progress(80)
+                    time.sleep(0.3)
+                    st.session_state["ex_selected_emp"] = cand['員編']
+                    st.session_state["ex_sub_mode"] = "inspect_image"
+                    progress_bar.progress(100)
+                    time.sleep(0.2)
+                    status_placeholder.empty()
+                    progress_bar.empty()
+                    st.rerun()
 
 # --- 底部版本/管理員貼紙 ---
 st.markdown('<div class="footer-badge-container">', unsafe_allow_html=True)
 footer_badge_label = "ADMIN PANEL // C.L.F EDITION" if st.session_state.get("admin_logged_in", False) else "C.L.F EDITION"
 if st.button(footer_badge_label, key="bottom_footer_edition_badge"):
     if st.session_state.get("admin_logged_in", False):
-        if st.session_state["nav_mode"] == "home":
-            st.session_state["nav_mode"] = "admin_panel"
-        else:
-            st.session_state["nav_mode"] = "home"
-    else:
-        st.session_state["show_admin_login"] = True
+        if st.session_state["nav_mode"] == "home": st.session_state["nav_mode"] = "admin_panel"
+        else: st.session_state["nav_mode"] = "home"
+    else: st.session_state["show_admin_login"] = True
     st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
