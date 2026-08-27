@@ -161,20 +161,14 @@ st.markdown("""
         display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
     }
 
-    /* 讓上面所有的普通按鈕與獨立按鈕保持完全正常 */
-    div.stButton > button {
-        border-radius: 0.5rem !important;
-        border-left: 1px solid rgba(51, 65, 85, 0.8) !important;
-    }
-
-    /* 唯獨針對緊貼在卡片下方的按鈕，才套用無縫貼合與綠色左邊線 */
-    div.stButton > button[kind="secondary"] { 
-        border-radius: 0 0 12px 12px !important; 
-        border-top: none !important;
-        border-left: 4px solid #10B981 !important; 
-        margin-top: -14px !important; 
-        margin-bottom: 16px !important;
-        box-shadow: none !important;
+    div.stButton > button { 
+        font-weight: 700 !important; padding: 0.5rem 1rem !important; border-radius: 0.5rem !important; 
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%) !important; 
+        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(51, 65, 85, 0.8) !important;
+        color: #38BDF8 !important; width: 100% !important; 
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important; letter-spacing: 1px; font-family: monospace;
     }
 
     .admin-card-container {
