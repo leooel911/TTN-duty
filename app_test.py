@@ -764,7 +764,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.session_state["admin_logged_in"] = False 
                     st.session_state["current_unit"] = selected_unit
                     st.session_state["current_user_id"] = f"VIP_USER ({clean_emp if clean_emp != 'A' else '全域通行'})"
-                    log_activity("VIP 身分登入系統")  # 記錄登入
+                    log_activity("VIP 身分登入系統")
                     st.rerun()
                 
                 elif entered_key == ADMIN_PASSWORD:
@@ -772,7 +772,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.session_state["current_unit"] = selected_unit
                     st.session_state["current_user_id"] = f"ADMIN_{clean_emp}"
                     st.session_state["nav_mode"] = "admin_panel"
-                    log_activity("管理員登入後台")  # 記錄管理員登入
+                    log_activity("管理員登入後台")
                     st.success("管理員驗證成功，正在載入後台...")
                     st.rerun()
                 elif entered_key == CREW_ACCESS_PASSWORD:
@@ -782,7 +782,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                         st.session_state["admin_logged_in"] = False
                         st.session_state["current_unit"] = selected_unit
                         st.session_state["current_user_id"] = clean_emp
-                        log_activity("使用者登入系統")  # 記錄一般組員登入
+                        log_activity("使用者登入系統")
                         st.rerun()
                     else:
                         st.error("非所屬單位組員，或輸入不存在的編號，請確認員編。")
@@ -838,7 +838,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                     st.session_state["admin_logged_in"] = True
                     st.session_state["nav_mode"] = "admin_panel"
                     st.session_state["show_admin_login"] = False
-                    log_activity("管理員登入後台")  # 記錄管理員登入
+                    log_activity("管理員登入後台")
                     st.success("驗證成功，正在進入後台...")
                     st.rerun()
                 else: st.error("管理員密碼錯誤")
@@ -1004,7 +1004,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.markdown("---")
     
-    # === 升級後的結構化表格日誌呈現 ===
     st.subheader("📋 系統操作活動紀錄日誌 (Activity Log)")
     
     col_log_1, col_log_2, col_log_3 = st.columns([1, 1, 2])
@@ -1022,7 +1021,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.caption(f"目前日誌總筆數：{len(logs)} 筆（下方顯示最新 30 筆）")
         
         parsed_logs = []
-        for line in reversed(logs[-30:]):  # 顯示最近 30 筆
+        for line in reversed(logs[-30:]):
             parts = [p.strip() for p in line.split("|")]
             if len(parts) >= 5:
                 parsed_logs.append({
@@ -1348,9 +1347,8 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
             with c3: 
                 min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key=role_selectbox_key)
             
-            # === 核心修正：動態根據「從」的時間點計算 +1 小時作為「到」的預設值 ===
             to_time_options = ["-- (僅查單一時間點)"] + TIME_OPTIONS
-            default_max_idx = 1  # 預設保底
+            default_max_idx = 1 
             try:
                 h_part = int(min_time.split(":")[0])
                 target_next_h = h_part + 1
@@ -1359,12 +1357,10 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                     if target_next_str in to_time_options:
                         default_max_idx = to_time_options.index(target_next_str)
                 else:
-                    # 如果「從」已經選到 18:00，則「到」預設為 18:00
                     default_max_idx = to_time_options.index("18:00")
             except:
                 pass
 
-            # 建立一個與「從」連動的 key，當「從」改變時強制重置「到」的預設位置
             max_selectbox_key = f"max_time_selectbox_{selected_role}_{min_time}"
 
             with c4: 
@@ -1414,28 +1410,24 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                         matched_time_cond = (min_time <= start_t <= max_time_sel)
 
                                     if matched_time_cond:
-                        # 檢查是否為請假或休假（含 PAY）
-                        tr_upper = str(parsed["train"]).strip().upper()
-                        raw_cell_upper = str(cell_raw).upper()
-                        
-                        is_leave = (
-                            "PAY" in raw_cell_upper or 
-                            "FAC" in raw_cell_upper or 
-                            "AL" in raw_cell_upper or 
-                            "SL" in raw_cell_upper or 
-                            "CL" in raw_cell_upper or
-                            tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W"]
-                        )
-                        
-                        is_non_line = is_town_shift(parsed["train"], parsed["note"])
-                        is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
-                        
-                        # 如果勾選「僅顯示正線勤務」，只要它是「非正線」或是「PAY/請假」，就直接略過
-                        if only_main_line and (is_non_line or is_leave): 
-                            continue
-                            
-                        if only_long_shift and not is_long: 
-                            continue
+                                        # 檢查是否為請假或休假（含 PAY）
+                                        tr_upper = str(parsed["train"]).strip().upper()
+                                        raw_cell_upper = str(cell_raw).upper()
+                                        
+                                        is_leave = (
+                                            "PAY" in raw_cell_upper or 
+                                            "FAC" in raw_cell_upper or 
+                                            "AL" in raw_cell_upper or 
+                                            "SL" in raw_cell_upper or 
+                                            "CL" in raw_cell_upper or
+                                            tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W"]
+                                        )
+                                        
+                                        is_non_line = is_town_shift(parsed["train"], parsed["note"])
+                                        is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
+                                        
+                                        if only_main_line and (is_non_line or is_leave): continue
+                                        if only_long_shift and not is_long: continue
                                         
                                         next_day_sign_in = "無記錄"
                                         if actual_col_pos + 1 < len(all_cols_list):
