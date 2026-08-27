@@ -760,8 +760,8 @@ st.markdown(f"""
 # --- 測試環境呼吸燈警示橫幅 ---
 st.markdown("""
 <div class="test-env-banner">
-    <div class="test-env-title">⚠️ 測試環境運行中（TEST ENVIRONMENT）</div>
-    <div class="test-env-sub">目前為內部測試階段，(每日更新最新班表)測試中</div>
+    <div class="test-env-title">⚠️ 測試環境運行中（TEST ENVIRONMENT）⚠️</div>
+    <div class="test-env-sub">目前為內部測試階段|(所屬運轉單位組員查詢使用)</div>
 </div>
 """, unsafe_allow_html=True)
 
