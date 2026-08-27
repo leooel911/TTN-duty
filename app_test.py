@@ -764,7 +764,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.session_state["authenticated"] = True
                     st.session_state["admin_logged_in"] = False  # 確保無法進入管理後台
                     st.session_state["current_unit"] = selected_unit
-                    st.session_state["current_user_id"] = f"VIP_USER ({clean_emp if clean_emp != 'A' else '通用'})"
+                    st.session_state["current_user_id"] = f"VIP_USER ({clean_emp if clean_emp != 'A' else '全域通行'})"
                     st.rerun()
                 # =========================================================================
                 
