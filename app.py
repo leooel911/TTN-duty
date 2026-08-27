@@ -1143,8 +1143,15 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
 
         if not date_cols: st.error("表中未偵測到有效日期欄位")
         else:
-            # 改為整點候選清單（04:00 到 23:00）
-            HOUR_OPTIONS = [f"{h:02d}:00" for h in range(4, 24)]
+            # 改為固定整點 00:00 至 18:00
+            TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
+            
+            # 依照職位設定預設時間：駕駛預設 03:00，其餘預設 05:00
+            target_default = "03:00" if selected_role == "駕駛" else "05:00"
+            earliest_default = target_default if target_default in TIME_OPTIONS else TIME_OPTIONS[0]
+            default_min_idx = TIME_OPTIONS.index(earliest_default)
+
+            role_selectbox_key = f"min_time_selectbox_{selected_role}"
 
             if "win_start_date" not in st.session_state:
                 st.session_state["win_start_date"] = date_cols[0]
@@ -1163,19 +1170,21 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
 
             c3, c4 = st.columns(2)
             with c3: 
-                min_time = st.selectbox("Sign-In Time 區間：從", options=HOUR_OPTIONS, index=1, key="min_time_selectbox") # 預設 05:00
+                min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key=role_selectbox_key)
             
-            with c4: 
-                # 根據「從」的時間自動加一小時作為預設「到」的時間
-                try:
-                    from_h = int(min_time.split(":")[0])
-                    default_to_h = min(from_h + 1, 23)
-                    default_to_str = f"{default_to_h:02d}:00"
-                    default_to_idx = HOUR_OPTIONS.index(default_to_str) if default_to_str in HOUR_OPTIONS else 1
-                except:
-                    default_to_idx = 2
+            to_time_options = ["-- (僅查單一時間點)"] + TIME_OPTIONS
+            default_max_idx = 1 
+            try:
+                h_part = int(min_time.split(":")[0])
+                target_next_h = h_part + 1
+                if target_next_h <= 18:
+                    target_next_str = f"{target_next_h:02d}:00"
+                    if target_next_str in to_time_options:
+                        default_max_idx = to_time_options.index(target_next_str)
+            except: pass
 
-                max_time_sel = st.selectbox("Sign-In Time 區間：到", options=HOUR_OPTIONS, index=default_to_idx, key="max_time_selectbox")
+            with c4: 
+                max_time_sel = st.selectbox("Sign-In Time 區間：到", options=to_time_options, index=default_max_idx, key="max_time_selectbox")
 
             filter_col1, filter_col2 = st.columns(2)
             with filter_col1: only_main_line = st.checkbox("僅顯示正線勤務", value=False, key="win_main_line")
@@ -1214,8 +1223,11 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                 start_t = parsed["start"]
                                 
                                 if start_t:
-                                    # 以整點區間進行包含比對
-                                    matched_time_cond = (min_time <= start_t <= max_time_sel)
+                                    matched_time_cond = False
+                                    if max_time_sel.startswith("--"):
+                                        matched_time_cond = (start_t == min_time)
+                                    else:
+                                        matched_time_cond = (min_time <= start_t <= max_time_sel)
 
                                     if matched_time_cond:
                                         is_non_line = is_town_shift(parsed["train"], parsed["note"])
@@ -1240,7 +1252,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
 
                     search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
                     range_label_str = f"{start_date} 至 {end_date}" if start_date != end_date else start_date
-                    time_label_str = f"區間 {min_time} ~ {max_time_sel}"
+                    time_label_str = f"時間 {min_time}" if max_time_sel.startswith("--") else f"區間 {min_time} ~ {max_time_sel}"
                     st.markdown(f"### 檢索結果：{range_label_str} ｜ {time_label_str}（共符合 {len(search_results)} 筆）")
                     
                     if search_results:
