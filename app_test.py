@@ -1327,7 +1327,6 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
             earliest_default = target_default if target_default in TIME_OPTIONS else TIME_OPTIONS[0]
             default_min_idx = TIME_OPTIONS.index(earliest_default)
 
-            # 確保切換職位時，選項索引會跟著更新
             role_selectbox_key = f"min_time_selectbox_{selected_role}"
 
             if "win_start_date" not in st.session_state:
@@ -1348,9 +1347,22 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
             c3, c4 = st.columns(2)
             with c3: 
                 min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key=role_selectbox_key)
+            
+            # 自動計算「從」的時間 + 1 小時作為「到」的預設索引
+            to_time_options = ["-- (僅查單一時間點)"] + TIME_OPTIONS
+            default_max_idx = 1  # 預設選項位置
+            try:
+                h_part = int(min_time.split(":")[0])
+                target_next_h = h_part + 1
+                if target_next_h <= 18:
+                    target_next_str = f"{target_next_h:02d}:00"
+                    if target_next_str in TIME_OPTIONS:
+                        default_max_idx = to_time_options.index(target_next_str)
+            except:
+                pass
+
             with c4: 
-                to_time_options = ["-- (僅查單一時間點)"] + TIME_OPTIONS
-                max_time_sel = st.selectbox("Sign-In Time 區間：到", options=to_time_options, index=0, key=f"max_time_selectbox_{selected_role}")
+                max_time_sel = st.selectbox("Sign-In Time 區間：到", options=to_time_options, index=default_max_idx, key=f"max_time_selectbox_{selected_role}")
 
             filter_col1, filter_col2 = st.columns(2)
             with filter_col1: only_main_line = st.checkbox("僅顯示正線勤務", value=False, key="win_main_line")
