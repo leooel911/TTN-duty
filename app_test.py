@@ -755,9 +755,19 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
             btn_auth = st.form_submit_button("進入系統")
 
             if btn_auth:
-                clean_emp = entered_emp.strip()
+                clean_emp = entered_emp.strip().upper()
                 if not clean_emp: 
                     st.error("請輸入有效的員編")
+                    
+                # === 新增：只要輸入這組 VIP 授權碼，就直接開通跨單位全權限（不綁定特定員編） ===
+                elif entered_key == "您的VIP專用授權碼":  # 請在此替換您想要的密碼，例如 "vip999"
+                    st.session_state["authenticated"] = True
+                    st.session_state["admin_logged_in"] = False  # 確保無法進入管理後台
+                    st.session_state["current_unit"] = selected_unit
+                    st.session_state["current_user_id"] = f"VIP_USER ({clean_emp if clean_emp != 'A' else '通用'})"
+                    st.rerun()
+                # =========================================================================
+                
                 elif entered_key == ADMIN_PASSWORD:
                     st.session_state["admin_logged_in"] = True
                     st.session_state["current_unit"] = selected_unit
@@ -766,15 +776,16 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.success("管理員驗證成功，正在載入後台...")
                     st.rerun()
                 elif entered_key == CREW_ACCESS_PASSWORD:
-                    # 檢查是否為該單位的組員
+                    # 一般組員維持原本的嚴格員編與單位核對
                     is_member = verify_crew_membership(selected_unit, clean_emp)
                     if is_member:
                         st.session_state["authenticated"] = True
+                        st.session_state["admin_logged_in"] = False
                         st.session_state["current_unit"] = selected_unit
                         st.session_state["current_user_id"] = clean_emp
                         st.rerun()
                     else:
-                        st.error(f"非所屬單位組員，或輸入不存在的編號，請確認員編。")
+                        st.error("非所屬單位組員，或輸入不存在的編號，請確認員編。")
                 else: 
                     st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
