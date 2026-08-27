@@ -760,7 +760,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.error("請輸入有效的員編")
                     
                 # === 新增：只要輸入這組 VIP 授權碼，就直接開通跨單位全權限（不綁定特定員編） ===
-                elif entered_key == "您的VIP專用授權碼":  # 請在此替換您想要的密碼，例如 "vip999"
+                elif entered_key == "0900":  # 請在此替換您想要的密碼，例如 "vip999"
                     st.session_state["authenticated"] = True
                     st.session_state["admin_logged_in"] = False  # 確保無法進入管理後台
                     st.session_state["current_unit"] = selected_unit
