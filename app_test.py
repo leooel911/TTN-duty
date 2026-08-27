@@ -202,20 +202,8 @@ st.markdown("""
     .integrated-crew-box {
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.88) 0%, rgba(15, 23, 42, 0.88) 100%);
         backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(51, 65, 85, 0.8); 
-        border-left: none !important; /* 拔掉原本卡片單獨的左邊框 */
-        border-radius: 12px 12px 0 0 !important;
+        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 4px solid #10B981; border-radius: 12px 12px 0 0 !important;
         padding: 16px; margin-bottom: 0px !important; box-shadow: none !important;
-    }
-
-    /* 讓整個卡片連同下方的按鈕外框，左側統一擁有一條完美的延伸綠線 */
-    div.stButton > button[kind="secondary"] { 
-        border-radius: 0 0 12px 12px !important; 
-        border-top: none !important;
-        border-left: 4px solid #10B981 !important; /* 讓左側綠線直接延伸到按鈕底部 */
-        margin-top: -14px !important; 
-        margin-bottom: 16px !important;
-        box-shadow: none !important;
     }
 
     .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
