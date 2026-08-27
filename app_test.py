@@ -759,30 +759,30 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 if not clean_emp: 
                     st.error("請輸入有效的員編")
                     
-                # === 新增：只要輸入這組 VIP 授權碼，就直接開通跨單位全權限（不綁定特定員編） ===
-                elif entered_key == "0900":  # 請在此替換您想要的密碼，例如 "vip999"
+                elif entered_key == "0900": 
                     st.session_state["authenticated"] = True
-                    st.session_state["admin_logged_in"] = False  # 確保無法進入管理後台
+                    st.session_state["admin_logged_in"] = False 
                     st.session_state["current_unit"] = selected_unit
                     st.session_state["current_user_id"] = f"VIP_USER ({clean_emp if clean_emp != 'A' else '全域通行'})"
+                    log_activity("VIP 身分登入系統")  # 記錄登入
                     st.rerun()
-                # =========================================================================
                 
                 elif entered_key == ADMIN_PASSWORD:
                     st.session_state["admin_logged_in"] = True
                     st.session_state["current_unit"] = selected_unit
                     st.session_state["current_user_id"] = f"ADMIN_{clean_emp}"
                     st.session_state["nav_mode"] = "admin_panel"
+                    log_activity("管理員登入後台")  # 記錄管理員登入
                     st.success("管理員驗證成功，正在載入後台...")
                     st.rerun()
                 elif entered_key == CREW_ACCESS_PASSWORD:
-                    # 一般組員維持原本的嚴格員編與單位核對
                     is_member = verify_crew_membership(selected_unit, clean_emp)
                     if is_member:
                         st.session_state["authenticated"] = True
                         st.session_state["admin_logged_in"] = False
                         st.session_state["current_unit"] = selected_unit
                         st.session_state["current_user_id"] = clean_emp
+                        log_activity("使用者登入系統")  # 記錄一般組員登入
                         st.rerun()
                     else:
                         st.error("非所屬單位組員，或輸入不存在的編號，請確認員編。")
@@ -838,6 +838,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                     st.session_state["admin_logged_in"] = True
                     st.session_state["nav_mode"] = "admin_panel"
                     st.session_state["show_admin_login"] = False
+                    log_activity("管理員登入後台")  # 記錄管理員登入
                     st.success("驗證成功，正在進入後台...")
                     st.rerun()
                 else: st.error("管理員密碼錯誤")
@@ -866,6 +867,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             st.rerun()
     with col_ctrl2:
         if st.button("🔒 登出管理員身分", key="admin_logout_btn_top"):
+            log_activity("管理員登出後台")
             st.session_state["admin_logged_in"] = False
             st.session_state["nav_mode"] = "home"
             st.rerun()
@@ -1001,20 +1003,49 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     st.rerun()
 
     st.markdown("---")
-    st.subheader("系統操作活動紀錄日誌 (Activity Log)")
-    col_log_1, col_log_2 = st.columns([1, 1])
+    
+    # === 升級後的結構化表格日誌呈現 ===
+    st.subheader("📋 系統操作活動紀錄日誌 (Activity Log)")
+    
+    col_log_1, col_log_2, col_log_3 = st.columns([1, 1, 2])
     with col_log_1:
-        if st.button("重新載入日誌"): st.rerun()
+        if st.button("🔄 重新載入日誌"): st.rerun()
     with col_log_2:
-        if st.button("清空歷史日誌"):
+        if st.button("🗑️ 清空歷史日誌"):
             if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
             st.rerun()
 
     if os.path.exists(LOG_FILE):
         with open(LOG_FILE, "r", encoding="utf-8") as f:
             logs = f.readlines()
-            for line in reversed(logs[-25:]): st.text(line.strip())
-    else: st.info("尚無任何操作紀錄")
+        
+        st.caption(f"目前日誌總筆數：{len(logs)} 筆（下方顯示最新 30 筆）")
+        
+        parsed_logs = []
+        for line in reversed(logs[-30:]):  # 顯示最近 30 筆
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) >= 5:
+                parsed_logs.append({
+                    "時間": parts[0],
+                    "單位": parts[1].replace("單位: ", ""),
+                    "操作者": parts[2].replace("操作者員編: ", ""),
+                    "裝置": parts[3].replace("裝置: ", ""),
+                    "動作/查詢": " | ".join(parts[4:]).replace("動作: ", "")
+                })
+            else:
+                parsed_logs.append({
+                    "時間": "格式化日誌",
+                    "單位": "-",
+                    "操作者": "-",
+                    "裝置": "-",
+                    "動作/查詢": line.strip()
+                })
+        
+        if parsed_logs:
+            df_log_display = pd.DataFrame(parsed_logs)
+            st.dataframe(df_log_display, use_container_width=True, hide_index=True)
+    else:
+        st.info("尚無任何登入與操作紀錄")
 
     st.stop()
 
