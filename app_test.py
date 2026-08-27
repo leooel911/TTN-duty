@@ -272,7 +272,7 @@ TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
 TITLE = "TRAIN CREW DUTY CALENDAR"
 
 ADMIN_PASSWORD = "Lf0900"
-CREW_ACCESS_PASSWORD = "0900"
+CREW_ACCESS_PASSWORD = "0096"
 
 def set_module_maintenance(module_key, is_maint):
     if not os.path.exists(DATA_DIR):
