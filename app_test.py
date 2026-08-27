@@ -161,6 +161,15 @@ st.markdown("""
         display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
     }
 
+    div.stButton > button[kind="secondary"] { 
+        border-radius: 0 0 12px 12px !important; 
+        border-top: none !important;
+        border-left: 4px solid #10B981 !important; /* 讓左側粗線完美延伸到按鈕 */
+        margin-top: -14px !important; 
+        margin-bottom: 16px !important;
+        box-shadow: none !important;
+    }
+
     .admin-card-container {
         background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%);
         backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
