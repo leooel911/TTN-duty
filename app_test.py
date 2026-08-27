@@ -161,10 +161,17 @@ st.markdown("""
         display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
     }
 
+    /* 讓上面所有的普通按鈕與獨立按鈕保持完全正常 */
+    div.stButton > button {
+        border-radius: 0.5rem !important;
+        border-left: 1px solid rgba(51, 65, 85, 0.8) !important;
+    }
+
+    /* 唯獨針對緊貼在卡片下方的按鈕，才套用無縫貼合與綠色左邊線 */
     div.stButton > button[kind="secondary"] { 
         border-radius: 0 0 12px 12px !important; 
         border-top: none !important;
-        border-left: 4px solid #10B981 !important; /* 讓左側粗線完美延伸到按鈕 */
+        border-left: 4px solid #10B981 !important; 
         margin-top: -14px !important; 
         margin-bottom: 16px !important;
         box-shadow: none !important;
