@@ -164,7 +164,7 @@ st.markdown("""
     div.stButton > button[kind="secondary"] { 
         border-radius: 0 0 12px 12px !important; 
         border-top: none !important;
-        border-left: 4px solid #10B981 !important; /* 讓左側粗線完美延伸到按鈕 */
+        border-left: 4px solid #10B981 !important; 
         margin-top: -14px !important; 
         margin-bottom: 16px !important;
         box-shadow: none !important;
@@ -909,7 +909,8 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.markdown("---")
     st.subheader(f"【{admin_target_unit}】伺服器即時處理動態與檔案健康狀態")
     
-   col_stat1, col_stat2, col_stat3 = st.columns(3)
+    col_stat1, col_stat2, col_stat3 = st.columns(3)
+    
     with col_stat1:
         is_td_ready = os.path.exists(current_unit_files["駕駛"])
         td_status = "已就緒" if is_td_ready else "缺檔案"
@@ -948,6 +949,15 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             <div class="telemetry-sub">{get_file_mtime_str(current_unit_files["服勤員"])}</div>
         </div>
         """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.subheader(f"【{admin_target_unit}】班表維護控制台（黃金二窗口架構）")
+    selected_role = st.selectbox("選擇目前要維護的職位類別", ["駕駛", "列車長", "服勤員"], index=2, key="admin_role_select_box")
+    target_path = current_unit_files[selected_role]
+
+    st.markdown("""
+    <div style="display: flex; flex-direction: column; gap: 20px; margin-top: 15px;">
+    """, unsafe_allow_html=True)
 
     with st.container():
         st.markdown(f"""
@@ -1343,10 +1353,8 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
 
         if not date_cols: st.error("表中未偵測到有效日期欄位")
         else:
-            # 改為固定整點 00:00 至 18:00
             TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
             
-            # 依照職位設定預設時間：駕駛預設 03:00，其餘預設 05:00
             target_default = "03:00" if selected_role == "駕駛" else "05:00"
             earliest_default = target_default if target_default in TIME_OPTIONS else TIME_OPTIONS[0]
             default_min_idx = TIME_OPTIONS.index(earliest_default)
@@ -1435,7 +1443,6 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                         matched_time_cond = (min_time <= start_t <= max_time_sel)
 
                                     if matched_time_cond:
-                                        # 檢查是否為請假或休假（含 PAY）
                                         tr_upper = str(parsed["train"]).strip().upper()
                                         raw_cell_upper = str(cell_raw).upper()
                                         
