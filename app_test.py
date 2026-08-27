@@ -1417,8 +1417,29 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                         is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                         is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
                                         
-                                        if only_main_line and is_non_line: continue
-                                        if only_long_shift and not is_long: continue
+                                       if matched_time_cond:
+                                    # === 檢查是否為請假或休假（含 PAY） ===
+                                    tr_upper = str(parsed["train"]).strip().upper()
+                                    raw_cell_upper = str(cell_raw).upper()
+                                    
+                                    is_leave = (
+                                        "PAY" in raw_cell_upper or 
+                                        "FAC" in raw_cell_upper or 
+                                        "AL" in raw_cell_upper or 
+                                        "SL" in raw_cell_upper or 
+                                        "CL" in raw_cell_upper or
+                                        tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W"]
+                                    )
+                                    
+                                    is_non_line = is_town_shift(parsed["train"], parsed["note"])
+                                    is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
+                                    
+                                    # 如果勾選「僅顯示正線勤務」，只要它是「非正線」或是「PAY/請假」，就直接略過
+                                    if only_main_line and (is_non_line or is_leave): 
+                                        continue
+                                        
+                                    if only_long_shift and not is_long: 
+                                        continue
                                         
                                         next_day_sign_in = "無記錄"
                                         if actual_col_pos + 1 < len(all_cols_list):
