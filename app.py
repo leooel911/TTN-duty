@@ -66,19 +66,6 @@ st.markdown("""
         box-shadow: 0 0 10px #4ADE80; margin: 0 8px; vertical-align: middle;
     }
 
-    @keyframes test-env-breathe {
-        0% { border-color: #D97706; box-shadow: 0 0 5px rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, rgba(39, 28, 12, 0.85) 0%, rgba(23, 16, 5, 0.85) 100%); backdrop-filter: blur(12px); }
-        50% { border-color: #F59E0B; box-shadow: 0 0 18px rgba(245, 158, 11, 0.8), inset 0 0 10px rgba(245, 158, 11, 0.2); background: linear-gradient(135deg, rgba(59, 39, 12, 0.9) 0%, rgba(31, 20, 4, 0.9) 100%); backdrop-filter: blur(16px); }
-        100% { border-color: #D97706; box-shadow: 0 0 5px rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, rgba(39, 28, 12, 0.85) 0%, rgba(23, 16, 5, 0.85) 100%); backdrop-filter: blur(12px); }
-    }
-
-    .test-env-banner {
-        border: 2px solid #F59E0B; border-radius: 14px; padding: 12px 18px; margin-bottom: 1.5rem;
-        text-align: center; animation: test-env-breathe 3s infinite ease-in-out; font-family: monospace;
-    }
-    .test-env-title { color: #FDE68A; font-size: 14px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 2px; text-transform: uppercase; }
-    .test-env-sub { color: #FCD34D; font-size: 11px; font-weight: 600; letter-spacing: 1px; }
-
     @keyframes maintenance-red-line-pulse {
         0% { background-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
         50% { background-color: #EF4444; box-shadow: 0 0 16px rgba(239, 68, 68, 0.8), 0 0 25px rgba(239, 68, 68, 0.4); }
@@ -723,14 +710,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 測試環境呼吸燈警示橫幅 ---
-st.markdown("""
-<div class="test-env-banner">
-    <div class="test-env-title">⚠️ 測試環境運行中（TEST ENVIRONMENT）</div>
-    <div class="test-env-sub">目前為內部測試階段，(每日更新最新班表)測試中</div>
-</div>
-""", unsafe_allow_html=True)
-
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -808,7 +787,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.markdown("---")
     st.markdown("##### 📊 伺服器即時處理動態與檔案健康狀態")
     
-    # 改為 3 等分，對應 駕駛、列車長、服勤員 三大表
     col_stat1, col_stat2, col_stat3 = st.columns(3)
     with col_stat1:
         td_status = "🟢 已就緒" if os.path.exists(ROLE_FILES["駕駛"]) else "🔴 缺檔案"
