@@ -1418,7 +1418,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                         is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
                                         
                                     if matched_time_cond:
-                                    # === 檢查是否為請假或休假（含 PAY） ===
+                                    # 檢查是否為請假或休假（含 PAY）
                                     tr_upper = str(parsed["train"]).strip().upper()
                                     raw_cell_upper = str(cell_raw).upper()
                                     
