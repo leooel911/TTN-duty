@@ -909,25 +909,46 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.markdown("---")
     st.subheader(f"【{admin_target_unit}】伺服器即時處理動態與檔案健康狀態")
     
-    col_stat1, col_stat2, col_stat3 = st.columns(3)
+   col_stat1, col_stat2, col_stat3 = st.columns(3)
+    
     with col_stat1:
-        td_status = "已就緒" if os.path.exists(current_unit_files["駕駛"]) else "缺檔案"
-        st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">駕駛大表 (TD)</div><div class="telemetry-value" style="font-size:14px;">{td_status}</div><div class="telemetry-sub">{get_file_mtime_str(current_unit_files["駕駛"])}</div></div>""", unsafe_allow_html=True)
+        is_td_ready = os.path.exists(current_unit_files["駕駛"])
+        td_status = "已就緒" if is_td_ready else "缺檔案"
+        td_card_class = "telemetry-card" if is_td_ready else "missing-data-card"
+        td_dot = '<span class="online-dot"></span>' if is_td_ready else '<span style="width: 8px; height: 8px; background-color: #EF4444; border-radius: 50%; display: inline-block; box-shadow: 0 0 10px #EF4444; margin: 0 8px; vertical-align: middle;"></span>'
+        st.markdown(f"""
+        <div class="{td_card_class}">
+            <div class="telemetry-title">駕駛大表 (TD)</div>
+            <div class="telemetry-value" style="font-size:14px;">{td_dot}{td_status}</div>
+            <div class="telemetry-sub">{get_file_mtime_str(current_unit_files["駕駛"])}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
     with col_stat2:
-        tm_status = "已就緒" if os.path.exists(current_unit_files["列車長"]) else "缺檔案"
-        st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">列車長大表 (TM)</div><div class="telemetry-value" style="font-size:14px;">{tm_status}</div><div class="telemetry-sub">{get_file_mtime_str(current_unit_files["列車長"])}</div></div>""", unsafe_allow_html=True)
+        is_tm_ready = os.path.exists(current_unit_files["列車長"])
+        tm_status = "已就緒" if is_tm_ready else "缺檔案"
+        tm_card_class = "telemetry-card" if is_tm_ready else "missing-data-card"
+        tm_dot = '<span class="online-dot"></span>' if is_tm_ready else '<span style="width: 8px; height: 8px; background-color: #EF4444; border-radius: 50%; display: inline-block; box-shadow: 0 0 10px #EF4444; margin: 0 8px; vertical-align: middle;"></span>'
+        st.markdown(f"""
+        <div class="{tm_card_class}">
+            <div class="telemetry-title">列車長大表 (TM)</div>
+            <div class="telemetry-value" style="font-size:14px;">{tm_dot}{tm_status}</div>
+            <div class="telemetry-sub">{get_file_mtime_str(current_unit_files["列車長"])}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
     with col_stat3:
-        ta_status = "已就緒" if os.path.exists(current_unit_files["服勤員"]) else "缺檔案"
-        st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">服勤員大表 (TA)</div><div class="telemetry-value" style="font-size:14px;">{ta_status}</div><div class="telemetry-sub">{get_file_mtime_str(current_unit_files["服勤員"])}</div></div>""", unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.subheader(f"【{admin_target_unit}】班表維護控制台（黃金二窗口架構）")
-    selected_role = st.selectbox("選擇目前要維護的職位類別", ["駕駛", "列車長", "服勤員"], index=2, key="admin_role_select_box")
-    target_path = current_unit_files[selected_role]
-
-    st.markdown("""
-    <div style="display: flex; flex-direction: column; gap: 20px; margin-top: 15px;">
-    """, unsafe_allow_html=True)
+        is_ta_ready = os.path.exists(current_unit_files["服勤員"])
+        ta_status = "已就緒" if is_ta_ready else "缺檔案"
+        ta_card_class = "telemetry-card" if is_ta_ready else "missing-data-card"
+        ta_dot = '<span class="online-dot"></span>' if is_ta_ready else '<span style="width: 8px; height: 8px; background-color: #EF4444; border-radius: 50%; display: inline-block; box-shadow: 0 0 10px #EF4444; margin: 0 8px; vertical-align: middle;"></span>'
+        st.markdown(f"""
+        <div class="{ta_card_class}">
+            <div class="telemetry-title">服勤員大表 (TA)</div>
+            <div class="telemetry-value" style="font-size:14px;">{ta_dot}{ta_status}</div>
+            <div class="telemetry-sub">{get_file_mtime_str(current_unit_files["服勤員"])}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     with st.container():
         st.markdown(f"""
