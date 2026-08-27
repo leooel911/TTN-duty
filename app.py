@@ -222,14 +222,6 @@ st.markdown("""
         background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
         box-shadow: 0 0 22px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-1px) !important;
     }
-
-    div.stButton > button[kind="secondary"] { 
-        border-radius: 0 0 12px 12px !important; 
-        border-top: none !important;
-        margin-top: -14px !important; 
-        margin-bottom: 16px !important;
-        box-shadow: none !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -434,27 +426,6 @@ def parse_cell(raw):
     clean_real_train = re.sub(r'[#%]', '', real_train).strip() if real_train else "無"
 
     return dict(start=start_time, end=end_time, train=clean_real_train if clean_real_train else "無", hours=hours, note=" ".join(notes))
-
-def load_shift_mapping_dict(role_key="服勤員"):
-    mapping_file = ROLE_SHIFT_MAPPING_FILES.get(role_key, ROLE_SHIFT_MAPPING_FILES["服勤員"])
-    mapping_dict = {}
-    if os.path.exists(mapping_file):
-        try:
-            df = safe_read_excel(mapping_file)
-            for _, row in df.iterrows():
-                code = str(row.iloc[0]).strip().upper()
-                start_t = str(row.iloc[1]).strip()
-                end_t = str(row.iloc[2]).strip()
-                hrs = str(row.iloc[3]).strip() if len(row) > 3 and not pd.isna(row.iloc[3]) else calculate_hours(start_t, end_t)
-                if code and code != "NAN":
-                    mapping_dict[code] = {
-                        "start": pad_time(start_t),
-                        "end": pad_time(end_t),
-                        "hours": hrs
-                    }
-        except Exception as e:
-            print(f"載入 {role_key} 班別對照表發生錯誤: {e}")
-    return mapping_dict
 
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
@@ -1172,22 +1143,8 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
 
         if not date_cols: st.error("表中未偵測到有效日期欄位")
         else:
-            dynamic_time_set = set()
-            for _, r_row in df_search.iterrows():
-                for cell_val in r_row.iloc[2:]:
-                    p_temp = parse_cell(cell_val)
-                    if p_temp["start"] and re.match(r'^\d{1,2}:\d{2}$', p_temp["start"]):
-                        dynamic_time_set.add(p_temp["start"])
-            
-            TIME_OPTIONS = sorted(list(dynamic_time_set))
-            if not TIME_OPTIONS: TIME_OPTIONS = ["04:00", "05:00", "06:00", "07:00"]
-
-            if selected_role == "駕駛": earliest_default = TIME_OPTIONS[0]
-            else:
-                target_default = "05:26"
-                earliest_default = target_default if target_default in TIME_OPTIONS else min(TIME_OPTIONS, key=lambda x: abs(datetime.strptime(x, "%H:%M") - datetime.strptime("05:26", "%H:%M")))
-
-            default_min_idx = TIME_OPTIONS.index(earliest_default) if earliest_default in TIME_OPTIONS else 0
+            # 改為整點候選清單（04:00 到 23:00）
+            HOUR_OPTIONS = [f"{h:02d}:00" for h in range(4, 24)]
 
             if "win_start_date" not in st.session_state:
                 st.session_state["win_start_date"] = date_cols[0]
@@ -1206,10 +1163,19 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
 
             c3, c4 = st.columns(2)
             with c3: 
-                min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key="min_time_selectbox")
+                min_time = st.selectbox("Sign-In Time 區間：從", options=HOUR_OPTIONS, index=1, key="min_time_selectbox") # 預設 05:00
+            
             with c4: 
-                to_time_options = ["-- (僅查單一時間點)"] + TIME_OPTIONS
-                max_time_sel = st.selectbox("Sign-In Time 區間：到", options=to_time_options, index=0, key="max_time_selectbox")
+                # 根據「從」的時間自動加一小時作為預設「到」的時間
+                try:
+                    from_h = int(min_time.split(":")[0])
+                    default_to_h = min(from_h + 1, 23)
+                    default_to_str = f"{default_to_h:02d}:00"
+                    default_to_idx = HOUR_OPTIONS.index(default_to_str) if default_to_str in HOUR_OPTIONS else 1
+                except:
+                    default_to_idx = 2
+
+                max_time_sel = st.selectbox("Sign-In Time 區間：到", options=HOUR_OPTIONS, index=default_to_idx, key="max_time_selectbox")
 
             filter_col1, filter_col2 = st.columns(2)
             with filter_col1: only_main_line = st.checkbox("僅顯示正線勤務", value=False, key="win_main_line")
@@ -1248,11 +1214,8 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                 start_t = parsed["start"]
                                 
                                 if start_t:
-                                    matched_time_cond = False
-                                    if max_time_sel.startswith("--"):
-                                        matched_time_cond = (start_t == min_time)
-                                    else:
-                                        matched_time_cond = (min_time <= start_t <= max_time_sel)
+                                    # 以整點區間進行包含比對
+                                    matched_time_cond = (min_time <= start_t <= max_time_sel)
 
                                     if matched_time_cond:
                                         is_non_line = is_town_shift(parsed["train"], parsed["note"])
@@ -1277,7 +1240,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
 
                     search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
                     range_label_str = f"{start_date} 至 {end_date}" if start_date != end_date else start_date
-                    time_label_str = f"時間 {min_time}" if max_time_sel.startswith("--") else f"區間 {min_time} ~ {max_time_sel}"
+                    time_label_str = f"區間 {min_time} ~ {max_time_sel}"
                     st.markdown(f"### 檢索結果：{range_label_str} ｜ {time_label_str}（共符合 {len(search_results)} 筆）")
                     
                     if search_results:
