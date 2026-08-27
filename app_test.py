@@ -1330,6 +1330,21 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
             # 確保切換職位時，選項索引會跟著更新
             role_selectbox_key = f"min_time_selectbox_{selected_role}"
 
+            if "win_start_date" not in st.session_state:
+                st.session_state["win_start_date"] = date_cols[0]
+            if "win_end_date" not in st.session_state:
+                st.session_state["win_end_date"] = date_cols[0]
+
+            c1, c2 = st.columns(2)
+            with c1: 
+                start_date = st.selectbox("起始日期", date_cols, key="win_start_date")
+            
+            if st.session_state["win_end_date"] not in date_cols or date_cols.index(st.session_state["win_end_date"]) < date_cols.index(start_date):
+                st.session_state["win_end_date"] = start_date
+
+            with c2: 
+                end_date = st.selectbox("結束日期", date_cols, key="win_end_date")
+
             c3, c4 = st.columns(2)
             with c3: 
                 min_time = st.selectbox("Sign-In Time 區間：從", options=TIME_OPTIONS, index=default_min_idx, key=role_selectbox_key)
