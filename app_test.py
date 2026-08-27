@@ -910,7 +910,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.subheader(f"【{admin_target_unit}】伺服器即時處理動態與檔案健康狀態")
     
    col_stat1, col_stat2, col_stat3 = st.columns(3)
-    
     with col_stat1:
         is_td_ready = os.path.exists(current_unit_files["駕駛"])
         td_status = "已就緒" if is_td_ready else "缺檔案"
