@@ -344,27 +344,62 @@ def get_current_role_files():
     unit = st.session_state.get("current_unit", "TTN")
     return UNITS.get(unit, UNITS["TTN"])
 
-def safe_read_excel(file_source, header=None):
+@st.cache_data(show_spinner=False)
+def safe_read_excel_cached(file_path_or_bytes, header=None, file_mtime=None):
     try:
-        if isinstance(file_source, str):
-            if file_source.endswith('.xls'):
-                return pd.read_excel(file_source, header=header, engine='xlrd')
+        if isinstance(file_path_or_bytes, str):
+            if file_path_or_bytes.endswith('.xls'):
+                return pd.read_excel(file_path_or_bytes, header=header, engine='xlrd')
             else:
                 try:
-                    return pd.read_excel(file_source, header=header, engine='openpyxl')
+                    return pd.read_excel(file_path_or_bytes, header=header, engine='openpyxl')
                 except:
-                    return pd.read_excel(file_source, header=header, engine='xlrd')
+                    return pd.read_excel(file_path_or_bytes, header=header, engine='xlrd')
         else:
-            file_bytes = file_source.getvalue()
+            file_bytes = file_path_or_bytes
             try:
                 return pd.read_excel(io.BytesIO(file_bytes), header=header, engine='openpyxl')
             except:
                 return pd.read_excel(io.BytesIO(file_bytes), header=header, engine='xlrd')
     except Exception as e:
-        try:
-            return pd.read_csv(io.BytesIO(file_bytes))
-        except:
-            raise ValueError(f"無法解析 Excel 檔案格式，請確認是否為標準 .xls 或 .xlsx 檔 (錯誤: {e})")
+        raise ValueError(f"無法解析 Excel 檔案格式 (錯誤: {e})")
+
+def safe_read_excel(file_source, header=None):
+    if isinstance(file_source, str) and os.path.exists(file_source):
+        mtime = os.path.getmtime(file_source)
+        return safe_read_excel_cached(file_source, header=header, file_mtime=mtime)
+    elif hasattr(file_source, "getvalue"):
+        return safe_read_excel_cached(file_source.getvalue(), header=header)
+    else:
+        return safe_read_excel_cached(file_source, header=header)
+
+@st.cache_data(show_spinner=False)
+def get_unit_member_set(unit_key, file_mtimes_tuple):
+    unit_files = UNITS.get(unit_key, UNITS["TTN"])
+    members = set()
+    for role in ["駕駛", "列車長", "服勤員"]:
+        path = unit_files[role]
+        if os.path.exists(path):
+            try:
+                df = safe_read_excel(path, header=3)
+                df.columns = [str(c).strip() for c in df.columns]
+                for _, row in df.iterrows():
+                    emp_id = str(row.iloc[0]).strip().upper()
+                    emp_name = str(row.iloc[1]).strip().upper()
+                    if emp_id and emp_id != "NAN": members.add(emp_id)
+                    if emp_name and emp_name != "NAN": members.add(emp_name)
+            except: pass
+    return members
+
+def verify_crew_membership(unit_key, emp_input):
+    unit_files = UNITS.get(unit_key, UNITS["TTN"])
+    mtimes = []
+    for role in ["駕駛", "列車長", "服勤員"]:
+        p = unit_files[role]
+        mtimes.append(os.path.getmtime(p) if os.path.exists(p) else 0)
+    member_set = get_unit_member_set(unit_key, tuple(mtimes))
+    clean_input = emp_input.strip().upper()
+    return clean_input in member_set
 
 def get_file_mtime_str(path):
     if os.path.exists(path):
@@ -561,7 +596,6 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# --- 檢視完整班表 ---
 if st.session_state.get("inspect_emp_target") is not None:
     target_emp = st.session_state["inspect_emp_target"]
     current_unit = st.session_state.get("current_unit", "TTN")
@@ -700,7 +734,7 @@ if st.session_state.get("inspect_emp_target") is not None:
 
     st.stop()
 
-# --- 前置授權碼門戶檢查 (加入單位選擇) ---
+# --- 前置授權碼門戶檢查 (加入單位限定與快取檢查) ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div style="text-align: center; margin-top: 2rem; margin-bottom: 1.5rem;">
@@ -722,12 +756,8 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
 
             if btn_auth:
                 clean_emp = entered_emp.strip()
-                if not clean_emp: st.error("請輸入有效的員編")
-                elif entered_key == CREW_ACCESS_PASSWORD:
-                    st.session_state["authenticated"] = True
-                    st.session_state["current_unit"] = selected_unit
-                    st.session_state["current_user_id"] = clean_emp
-                    st.rerun()
+                if not clean_emp: 
+                    st.error("請輸入有效的員編")
                 elif entered_key == ADMIN_PASSWORD:
                     st.session_state["admin_logged_in"] = True
                     st.session_state["current_unit"] = selected_unit
@@ -735,7 +765,18 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.session_state["nav_mode"] = "admin_panel"
                     st.success("管理員驗證成功，正在載入後台...")
                     st.rerun()
-                else: st.error("授權碼或密碼錯誤，請重新輸入")
+                elif entered_key == CREW_ACCESS_PASSWORD:
+                    # 檢查是否為該單位的組員
+                    is_member = verify_crew_membership(selected_unit, clean_emp)
+                    if is_member:
+                        st.session_state["authenticated"] = True
+                        st.session_state["current_unit"] = selected_unit
+                        st.session_state["current_user_id"] = clean_emp
+                        st.rerun()
+                    else:
+                        st.error(f"非所屬單位組員，或輸入不存在的編號，請確認員編。")
+                else: 
+                    st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
 # --- 頂部質感標頭 ---
@@ -760,7 +801,7 @@ st.markdown(f"""
 # --- 測試環境呼吸燈警示橫幅 ---
 st.markdown("""
 <div class="test-env-banner">
-    <div class="test-env-title">⚠️ 測試環境運行中（TEST ENVIRONMENT）⚠️</div>
+    <div class="test-env-title">測試環境運行中（TEST ENVIRONMENT）</div>
     <div class="test-env-sub">目前為內部測試階段|(所屬運轉單位組員查詢使用)</div>
 </div>
 """, unsafe_allow_html=True)
@@ -820,7 +861,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.markdown("---")
     
-    st.subheader("🛠️ 各大系統模組維護開關控制")
+    st.subheader("各大系統模組維護開關控制")
     st.markdown("<p style='color:#94A3B8; font-size:13px;'>在此可獨立切換三大系統模組的維護狀態（開啟後一般組員端會顯示維護中畫面）。</p>", unsafe_allow_html=True)
     
     col_m1, col_m2, col_m3 = st.columns(3)
@@ -844,25 +885,25 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             st.rerun()
 
     st.markdown("---")
-    st.subheader(f"📊 【{admin_target_unit}】伺服器即時處理動態與檔案健康狀態")
+    st.subheader(f"【{admin_target_unit}】伺服器即時處理動態與檔案健康狀態")
     
     col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
     with col_stat1:
-        td_status = "🟢 已就緒" if os.path.exists(current_unit_files["駕駛"]) else "🔴 缺檔案"
+        td_status = "已就緒" if os.path.exists(current_unit_files["駕駛"]) else "缺檔案"
         st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">駕駛大表 (TD)</div><div class="telemetry-value" style="font-size:14px;">{td_status}</div><div class="telemetry-sub">{get_file_mtime_str(current_unit_files["駕駛"])}</div></div>""", unsafe_allow_html=True)
     with col_stat2:
-        tm_status = "🟢 已就緒" if os.path.exists(current_unit_files["列車長"]) else "🔴 缺檔案"
+        tm_status = "已就緒" if os.path.exists(current_unit_files["列車長"]) else "缺檔案"
         st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">列車長大表 (TM)</div><div class="telemetry-value" style="font-size:14px;">{tm_status}</div><div class="telemetry-sub">{get_file_mtime_str(current_unit_files["列車長"])}</div></div>""", unsafe_allow_html=True)
     with col_stat3:
-        ta_status = "🟢 已就緒" if os.path.exists(current_unit_files["服勤員"]) else "🔴 缺檔案"
+        ta_status = "已就緒" if os.path.exists(current_unit_files["服勤員"]) else "缺檔案"
         st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">服勤員大表 (TA)</div><div class="telemetry-value" style="font-size:14px;">{ta_status}</div><div class="telemetry-sub">{get_file_mtime_str(current_unit_files["服勤員"])}</div></div>""", unsafe_allow_html=True)
     with col_stat4:
         map_files_ready = sum(1 for p in current_unit_files["mapping"].values() if os.path.exists(p))
-        map_status = f"🟢 已就緒 ({map_files_ready}/3)" if map_files_ready > 0 else "🔴 未上傳"
+        map_status = f"已就緒 ({map_files_ready}/3)" if map_files_ready > 0 else "未上傳"
         st.markdown(f"""<div class="telemetry-card"><div class="telemetry-title">職位對照表狀態</div><div class="telemetry-value" style="font-size:14px;">{map_status}</div><div class="telemetry-sub">三職位各自獨立對照表</div></div>""", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.subheader(f"🎛️ 【{admin_target_unit}】班表維護控制台（黃金二窗口架構）")
+    st.subheader(f"【{admin_target_unit}】班表維護控制台（黃金二窗口架構）")
     selected_role = st.selectbox("選擇目前要維護的職位類別", ["駕駛", "列車長", "服勤員"], index=2, key="admin_role_select_box")
     target_path = current_unit_files[selected_role]
 
@@ -933,7 +974,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 with open(target_path, "rb") as f:
                     excel_bytes = f.read()
                 st.download_button(
-                    label=f"📥 下載【{admin_target_unit} - {selected_role}】現行資料庫 (.xlsx)",
+                    label=f"下載【{admin_target_unit} - {selected_role}】現行資料庫 (.xlsx)",
                     data=excel_bytes,
                     file_name=f"{admin_target_unit}_{selected_role}_database_{datetime.now(TAIWAN_TZ).strftime('%m%d_%H%M')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -941,7 +982,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 )
         with col_rb_btn2:
             if os.path.exists(target_path):
-                if st.button(f"🗑️ 清除【{admin_target_unit} - {selected_role}】的資料庫檔案", key=f"del_db_{admin_target_unit}_{selected_role}"):
+                if st.button(f"清除【{admin_target_unit} - {selected_role}】的資料庫檔案", key=f"del_db_{admin_target_unit}_{selected_role}"):
                     os.remove(target_path)
                     log_activity(f"清除資料庫 [{admin_target_unit} - {selected_role}]")
                     st.success(f"已成功清除【{admin_target_unit} - {selected_role}】的資料庫檔案！")
@@ -949,12 +990,12 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     st.rerun()
 
     st.markdown("---")
-    st.subheader("📋 系統操作活動紀錄日誌 (Activity Log)")
+    st.subheader("系統操作活動紀錄日誌 (Activity Log)")
     col_log_1, col_log_2 = st.columns([1, 1])
     with col_log_1:
-        if st.button("🔄 重新載入日誌"): st.rerun()
+        if st.button("重新載入日誌"): st.rerun()
     with col_log_2:
-        if st.button("🗑️ 清空歷史日誌"):
+        if st.button("清空歷史日誌"):
             if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
             st.rerun()
 
@@ -1324,7 +1365,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                         
                                         if only_main_line and is_non_line: continue
                                         if only_long_shift and not is_long: continue
-
+                                        
                                         next_day_sign_in = "無記錄"
                                         if actual_col_pos + 1 < len(all_cols_list):
                                             next_cell_raw = row.iloc[target_col_idx + 1]
