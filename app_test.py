@@ -624,6 +624,7 @@ C_TOWN_TXT = "#000000"
 if st.session_state.get("inspect_emp_target") is not None:
     target_emp = st.session_state["inspect_emp_target"]
     current_unit = st.session_state.get("current_unit", "TTN")
+    
     st.markdown(f"""
     <div class="section-header-box">
         <div class="section-title">[{current_unit}] 組員完整班表檢視: {target_emp}</div>
@@ -631,7 +632,8 @@ if st.session_state.get("inspect_emp_target") is not None:
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("上一頁 (返回換假列表)"):
+    # 點擊上一頁時清除目標，並強迫重新整理
+    if st.button("上一頁 (返回快篩結果)"):
         st.session_state["inspect_emp_target"] = None
         st.rerun()
 
@@ -753,10 +755,11 @@ if st.session_state.get("inspect_emp_target") is not None:
 
         st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
         render_zoomable_image(buf)
-        st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"TTN班表_{emp_name}.png", mime="image/png")
+        st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"{current_unit}_班表_{emp_name}.png", mime="image/png")
     except Exception as e:
         st.error(f"載入完整班表時發生錯誤: {e}")
 
+    # 【關鍵修正】必須加上 st.stop() 阻斷後續程式碼執行，否則會直接穿透並回到首頁
     st.stop()
 
 # --- 前置授權碼門戶檢查 ---
