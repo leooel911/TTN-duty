@@ -484,12 +484,23 @@ def translate_train_code(tr):
 
 def is_town_shift(tr, note):
     tr_upper = str(tr).strip().upper()
+    note_upper = str(note).strip().upper()
+    combined_text = f"{tr_upper} {note_upper}"
+    
     if is_valid_train_code(tr_upper): return False
     if tr_upper in ["PAY", "FAC"]: return False
     if not tr or tr_upper in ["", "無", "NAN"]: return True
+    
+    # 定義要過濾的關鍵字列表
     keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "OGC", "FAC", "DS", "H9", "WRSL"]
-    return any(kw in f"{tr_upper} {str(note).upper()}" for kw in keywords)
-
+    
+    # 使用正規表達式：確保關鍵字後面接數字或獨立出現時皆能被正確識別並過濾
+    for kw in keywords:
+        pattern = rf"\b{kw}\d*"
+        if re.search(pattern, combined_text):
+            return True
+            
+    return False
 def parse_cell(raw):
     if pd.isna(raw) or not str(raw).strip(): return dict(start="", train="", end="", hours="", note="")
     raw_str = str(raw).strip()
