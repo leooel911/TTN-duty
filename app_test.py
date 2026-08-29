@@ -64,10 +64,15 @@ MAINTENANCE_FLAGS = {
     "exchange_filter": os.path.join(DATA_DIR, "maintenance_exchange.flag")
 }
 
+# --- 升級版毛玻璃視覺設計 (Glassmorphism & Advanced UI Styling) ---
 st.markdown("""
 <style>
-    .stApp { background-color: #0B0F19 !important; color: #F8FAFC !important; }
-    .block-container { padding: 4.5rem 1rem 3rem 1rem !important; }
+    .stApp { 
+        background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, #020617 100%) !important; 
+        color: #F8FAFC !important; 
+        background-attachment: fixed !important;
+    }
+    .block-container { padding: 4.5rem 1rem 3rem 1rem !important; max-width: 750px !important; }
     
     @keyframes online-green-pulse {
         0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
@@ -82,17 +87,17 @@ st.markdown("""
     }
 
     @keyframes test-env-breathe {
-        0% { border-color: #D97706; box-shadow: 0 0 5px rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, rgba(39, 28, 12, 0.85) 0%, rgba(23, 16, 5, 0.85) 100%); backdrop-filter: blur(12px); }
-        50% { border-color: #F59E0B; box-shadow: 0 0 18px rgba(245, 158, 11, 0.8), inset 0 0 10px rgba(245, 158, 11, 0.2); background: linear-gradient(135deg, rgba(59, 39, 12, 0.9) 0%, rgba(31, 20, 4, 0.9) 100%); backdrop-filter: blur(16px); }
-        100% { border-color: #D97706; box-shadow: 0 0 5px rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, rgba(39, 28, 12, 0.85) 0%, rgba(23, 16, 5, 0.85) 100%); backdrop-filter: blur(12px); }
+        0% { border-color: rgba(245, 158, 11, 0.5); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 0 10px rgba(245, 158, 11, 0.1); background: rgba(39, 28, 12, 0.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        50% { border-color: rgba(245, 158, 11, 0.9); box-shadow: 0 8px 32px 0 rgba(245, 158, 11, 0.2), inset 0 0 16px rgba(245, 158, 11, 0.3); background: rgba(59, 39, 12, 0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        100% { border-color: rgba(245, 158, 11, 0.5); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 0 10px rgba(245, 158, 11, 0.1); background: rgba(39, 28, 12, 0.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
     }
 
     .test-env-banner {
-        border: 2px solid #F59E0B; border-radius: 14px; padding: 12px 18px; margin-bottom: 1.5rem;
+        border: 1px solid rgba(245, 158, 11, 0.5); border-radius: 16px; padding: 12px 18px; margin-bottom: 1.5rem;
         text-align: center; animation: test-env-breathe 3s infinite ease-in-out; font-family: monospace;
     }
-    .test-env-title { color: #FDE68A; font-size: 14px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 2px; text-transform: uppercase; }
-    .test-env-sub { color: #FCD34D; font-size: 11px; font-weight: 600; letter-spacing: 1px; }
+    .test-env-title { color: #FDE68A; font-size: 13px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 2px; text-transform: uppercase; text-shadow: 0 2px 8px rgba(245,158,11,0.4); }
+    .test-env-sub { color: #FCD34D; font-size: 10px; font-weight: 600; letter-spacing: 1px; opacity: 0.9; }
 
     @keyframes maintenance-red-line-pulse {
         0% { background-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); }
@@ -101,171 +106,168 @@ st.markdown("""
     }
 
     @keyframes missing-data-pulse {
-        0% { border-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); background: rgba(30, 27, 27, 0.75); }
-        50% { border-color: #EF4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), inset 0 0 10px rgba(239, 68, 68, 0.4); background: rgba(45, 20, 20, 0.85); }
-        100% { border-color: #7F1D1D; box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); background: rgba(30, 27, 27, 0.75); }
+        0% { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 8px 32px 0 rgba(239, 68, 68, 0.2); background: rgba(30, 27, 27, 0.5); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        50% { border-color: rgba(239, 68, 68, 0.9); box-shadow: 0 8px 32px 0 rgba(239, 68, 68, 0.4), inset 0 0 12px rgba(239, 68, 68, 0.3); background: rgba(45, 20, 20, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        100% { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 8px 32px 0 rgba(239, 68, 68, 0.2); background: rgba(30, 27, 27, 0.5); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
     }
 
     @keyframes blue-glow-pulse {
-        0% { border-color: rgba(3, 105, 161, 0.8); box-shadow: 0 0 8px rgba(56, 189, 248, 0.25); background: linear-gradient(135deg, rgba(19, 28, 49, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); }
-        50% { border-color: rgba(56, 189, 248, 1); box-shadow: 0 0 22px rgba(56, 189, 248, 0.6), inset 0 0 12px rgba(56, 189, 248, 0.25); background: linear-gradient(135deg, rgba(25, 38, 68, 0.9) 0%, rgba(19, 30, 56, 0.9) 100%); }
-        100% { border-color: rgba(3, 105, 161, 0.8); box-shadow: 0 0 8px rgba(56, 189, 248, 0.25); background: linear-gradient(135deg, rgba(19, 28, 49, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); }
+        0% { border-color: rgba(56, 189, 248, 0.3); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 0 10px rgba(56, 189, 248, 0.1); background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        50% { border-color: rgba(56, 189, 248, 0.7); box-shadow: 0 8px 32px 0 rgba(56, 189, 248, 0.25), inset 0 0 16px rgba(56, 189, 248, 0.2); background: rgba(30, 41, 59, 0.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        100% { border-color: rgba(56, 189, 248, 0.3); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 0 10px rgba(56, 189, 248, 0.1); background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
     }
 
     .missing-data-card {
-        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-        border: 2px solid #EF4444 !important; border-radius: 14px;
-        padding: 14px 18px; margin-bottom: 16px; animation: missing-data-pulse 2.5s infinite ease-in-out;
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(239, 68, 68, 0.6) !important; border-radius: 16px;
+        padding: 16px 20px; margin-bottom: 16px; animation: missing-data-pulse 2.5s infinite ease-in-out;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     }
 
     .header-container { 
         display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
-        width: 100%; margin-bottom: 1rem; padding: 22px 20px;
-        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-        border: 2px solid rgba(56, 189, 248, 0.7); border-radius: 16px; animation: blue-glow-pulse 2.5s infinite ease-in-out;
+        width: 100%; margin-bottom: 1.2rem; padding: 24px 20px;
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 20px; animation: blue-glow-pulse 2.5s infinite ease-in-out;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     }
     .title-left-group { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
-    .main-title { color: #F8FAFC !important; font-size: 24px; font-weight: 800; letter-spacing: 2px; margin: 0; font-family: monospace; display: flex; align-items: center; justify-content: center; text-shadow: 0 2px 10px rgba(56,189,248,0.3); }
-    .title-subtitle { color: #FFFFFF; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; font-family: monospace; margin-top: 4px; display: flex; align-items: center; justify-content: center; }
+    .main-title { color: #F8FAFC !important; font-size: 22px; font-weight: 800; letter-spacing: 2px; margin: 0; font-family: monospace; display: flex; align-items: center; justify-content: center; text-shadow: 0 2px 12px rgba(56,189,248,0.4); }
+    .title-subtitle { color: #FFFFFF; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; font-family: monospace; margin-top: 4px; display: flex; align-items: center; justify-content: center; }
     
     .footer-badge-container { display: flex; justify-content: center; align-items: center; width: 100%; margin-top: 3rem; margin-bottom: 1rem; }
     .footer-badge-container div.stButton > button { 
-        background: rgba(11, 15, 25, 0.8) !important; backdrop-filter: blur(8px) !important;
-        border: 1px solid rgba(30, 41, 59, 0.8) !important; border-left: 2px solid #38BDF8 !important;
-        color: #64748B !important; font-size: 9px !important; font-weight: 600 !important; letter-spacing: 1.5px !important; 
-        text-transform: uppercase !important; padding: 4px 12px !important; border-radius: 4px !important; box-shadow: none !important;
-        font-family: monospace !important; width: auto !important; margin: 0 auto !important; min-height: unset !important; transition: all 0.2s ease !important;
+        background: rgba(15, 23, 42, 0.4) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(51, 65, 85, 0.5) !important; border-left: 2px solid #38BDF8 !important;
+        color: #94A3B8 !important; font-size: 9px !important; font-weight: 600 !important; letter-spacing: 1.5px !important; 
+        text-transform: uppercase !important; padding: 6px 14px !important; border-radius: 6px !important; box-shadow: 0 4px 16px rgba(0,0,0,0.2) !important;
+        font-family: monospace !important; width: auto !important; margin: 0 auto !important; min-height: unset !important; transition: all 0.25s ease !important;
     }
     .footer-badge-container div.stButton > button:hover {
-        border-color: #38BDF8 !important; color: #38BDF8 !important; background: rgba(19, 28, 49, 0.9) !important;
-        box-shadow: 0 0 12px rgba(56, 189, 248, 0.2) !important; transform: translateY(-1px) !important;
+        border-color: #38BDF8 !important; color: #38BDF8 !important; background: rgba(30, 41, 59, 0.6) !important;
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.25) !important; transform: translateY(-1px) !important;
     }
 
-    .mode-selection-header { color: #FFFFFF; font-size: 13px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; font-family: monospace; display: flex; align-items: center; gap: 8px; }
-    .mode-selection-header::after { content: ''; flex: 1; height: 1px; background: rgba(51, 65, 85, 0.8); }
+    .mode-selection-header { color: #F8FAFC; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; font-family: monospace; display: flex; align-items: center; gap: 8px; }
+    .mode-selection-header::after { content: ''; flex: 1; height: 1px; background: rgba(255, 255, 255, 0.1); }
 
     .maintenance-card-box {
-        background: linear-gradient(135deg, rgba(39, 28, 12, 0.85) 0%, rgba(23, 16, 5, 0.85) 100%);
-        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-        border: 1.5px solid rgba(234, 179, 8, 0.8); border-left: 5px solid #EAB308; border-radius: 14px;
-        padding: 24px 20px; text-align: center; margin-top: 2rem; margin-bottom: 0rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+        background: rgba(39, 28, 12, 0.5);
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(234, 179, 8, 0.5); border-left: 4px solid #EAB308; border-radius: 16px;
+        padding: 24px 20px; text-align: center; margin-top: 2rem; margin-bottom: 0rem; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     }
     .maintenance-red-glow-line { height: 3px; width: 100%; background-color: #EF4444; border-radius: 4px; margin-top: 6px; margin-bottom: 2rem; animation: maintenance-red-line-pulse 3s infinite ease-in-out; }
-    .maintenance-title { color: #FEF08A; font-size: 20px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 8px; font-family: monospace; }
-    .maintenance-sub { color: #CA8A04; font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; font-family: monospace; }
+    .maintenance-title { color: #FEF08A; font-size: 18px; font-weight: 800; letter-spacing: 1.5px; margin-bottom: 8px; font-family: monospace; text-shadow: 0 2px 8px rgba(234,179,8,0.3); }
+    .maintenance-sub { color: #CA8A04; font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; font-family: monospace; opacity: 0.9; }
 
     .admin-bypass-banner {
-        background: linear-gradient(135deg, rgba(127, 29, 29, 0.9) 0%, rgba(69, 10, 10, 0.9) 100%);
-        backdrop-filter: blur(12px); border: 1px solid rgba(239, 68, 68, 0.8); border-left: 5px solid #F87171;
-        color: #FEE2E2; padding: 10px 16px; border-radius: 10px; margin-bottom: 20px; font-family: monospace; font-size: 13px; font-weight: 700;
-        display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
-    }
-
-    div.stButton > button[kind="secondary"] { 
-        border-radius: 0 0 12px 12px !important; 
-        border-top: none !important;
-        border-left: 4px solid #10B981 !important; 
-        margin-top: -14px !important; 
-        margin-bottom: 16px !important;
-        box-shadow: none !important;
+        background: rgba(127, 29, 29, 0.45);
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(239, 68, 68, 0.5); border-left: 4px solid #F87171;
+        color: #FEE2E2; padding: 10px 16px; border-radius: 12px; margin-bottom: 20px; font-family: monospace; font-size: 12px; font-weight: 700;
+        display: flex; justify-content: space-between; align-items: center; box-shadow: 0 8px 32px 0 rgba(239, 68, 68, 0.15);
     }
 
     .admin-card-container {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%);
-        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 5px solid #38BDF8; border-radius: 14px;
-        padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        background: rgba(30, 41, 59, 0.45);
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid #38BDF8; border-radius: 16px;
+        padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     }
     
     .telemetry-card { 
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%) !important; 
-        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; 
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden; 
+        background: rgba(30, 41, 59, 0.45) !important; 
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08) !important; border-left: 4px solid #3B82F6 !important; border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; 
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); position: relative; overflow: hidden; 
     }
-    .telemetry-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #3B82F6; }
-    .telemetry-title { color: #94A3B8 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
-    .telemetry-value { color: #F8FAFC !important; font-size: 18px; font-weight: 700; font-family: monospace; }
-    .telemetry-sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(51, 65, 85, 0.7); font-size: 13px; color: #94A3B8; }
+    .telemetry-title { color: #94A3B8 !important; font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 1px; }
+    .telemetry-value { color: #F8FAFC !important; font-size: 16px; font-weight: 700; font-family: monospace; }
+    .telemetry-sub { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.06); font-size: 12px; color: #94A3B8; font-family: monospace; line-height: 1.5; }
     
     .section-header-box { 
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); 
-        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 5px solid #3B82F6; border-radius: 12px; padding: 16px 20px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); 
+        background: rgba(30, 41, 59, 0.45); 
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid #3B82F6; border-radius: 16px; padding: 18px 20px; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); 
     }
-    .section-title { color: #F8FAFC; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin: 0; }
-    .section-subtitle { color: #94A3B8; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+    .section-title { color: #F8FAFC; font-size: 18px; font-weight: 700; letter-spacing: 0.5px; margin: 0; }
+    .section-subtitle { color: #94A3B8; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; font-family: monospace; }
 
     .date-banner { 
-        background: linear-gradient(135deg, rgba(30, 64, 175, 0.9) 0%, rgba(30, 58, 138, 0.9) 100%); 
-        backdrop-filter: blur(12px); border-left: 5px solid #60A5FA; color: #FFFFFF; font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 10px; margin-top: 24px; margin-bottom: 10px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); 
+        background: rgba(30, 64, 175, 0.45); 
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(96, 165, 250, 0.3); border-left: 4px solid #60A5FA; color: #FFFFFF; font-size: 13px; font-weight: 800; padding: 10px 16px; border-radius: 12px; margin-top: 24px; margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); 
+        font-family: monospace;
     }
     
     .compact-card { 
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); 
-        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 4px solid #3B82F6; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 8px 20px rgba(0,0,0,0.4); 
+        background: rgba(30, 41, 59, 0.45); 
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid #3B82F6; border-radius: 14px; padding: 14px 18px; margin-bottom: 12px; color: #F8FAFC; transition: all 0.25s ease; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); 
     }
-    .compact-card:hover { border-color: #38BDF8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.3), 0 8px 24px rgba(0,0,0,0.6); transform: translateY(-2px); }
+    .compact-card:hover { border-color: rgba(56, 189, 248, 0.5); box-shadow: 0 0 24px rgba(56, 189, 248, 0.2), 0 8px 32px rgba(0,0,0,0.5); transform: translateY(-2px); }
 
     .integrated-crew-box {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.88) 0%, rgba(15, 23, 42, 0.88) 100%);
-        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(51, 65, 85, 0.8); border-left: 4px solid #10B981; border-radius: 12px 12px 0 0 !important;
+        background: rgba(30, 41, 59, 0.5);
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid #10B981; border-radius: 14px 14px 0 0 !important;
         padding: 16px; margin-bottom: 0px !important; box-shadow: none !important;
     }
 
-    .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-    .compact-time { font-size: 14px; font-weight: 700; color: #60A5FA; font-family: monospace; }
-    .badge-group { display: flex; gap: 4px; align-items: center; }
+    .time-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .compact-time { font-size: 13px; font-weight: 700; color: #60A5FA; font-family: monospace; }
+    .badge-group { display: flex; gap: 6px; align-items: center; }
     
-    .long-badge { background: rgba(153, 27, 27, 0.4); border: 1px solid #EF4444; color: #FCA5A5; font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
-    .non-line-badge { background: rgba(76, 29, 149, 0.4); border: 1px solid #8B5CF6; color: #C4B5FD; font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600; box-shadow: 0 0 8px rgba(139, 92, 246, 0.4); }
+    .long-badge { background: rgba(153, 27, 27, 0.3); border: 1px solid rgba(239, 68, 68, 0.5); color: #FCA5A5; font-size: 10px; padding: 2px 8px; border-radius: 6px; font-weight: 600; box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
+    .non-line-badge { background: rgba(76, 29, 149, 0.3); border: 1px solid rgba(139, 92, 246, 0.5); color: #C4B5FD; font-size: 10px; padding: 2px 8px; border-radius: 6px; font-weight: 600; box-shadow: 0 0 10px rgba(139, 92, 246, 0.2); }
     
     .compact-name { font-size: 15px; font-weight: 600; color: #E2E8F0; }
-    .compact-sub { font-size: 12px; color: #94A3B8; font-family: monospace; margin-top: 2px; }
+    .compact-sub { font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 3px; }
 
     .stRadio > label { display: none !important; }
-    .stRadio > div { background: transparent !important; display: flex; flex-direction: column; gap: 12px; }
+    .stRadio > div { background: transparent !important; display: flex; flex-direction: column; gap: 10px; }
     .stRadio label { 
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%) !important; 
-        backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(51, 65, 85, 0.8) !important; 
-        border-left: 4px solid #3B82F6 !important; border-radius: 12px !important; padding: 16px 20px !important; width: 100% !important; 
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important; transition: all 0.25s ease !important; cursor: pointer !important;
+        background: rgba(30, 41, 59, 0.45) !important; 
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08) !important; 
+        border-left: 4px solid #3B82F6 !important; border-radius: 14px !important; padding: 14px 18px !important; width: 100% !important; 
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important; transition: all 0.25s ease !important; cursor: pointer !important;
     }
     .stRadio label:hover {
-        border-color: #38BDF8 !important; border-left-color: #38BDF8 !important;
-        box-shadow: 0 0 20px rgba(56, 189, 248, 0.3), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-2px) !important;
+        border-color: rgba(56, 189, 248, 0.5) !important; border-left-color: #38BDF8 !important;
+        box-shadow: 0 0 24px rgba(56, 189, 248, 0.2), 0 8px 32px rgba(0,0,0,0.5) !important; transform: translateY(-2px) !important;
     }
 
     .stProgress > div > div > div > div {
         background: linear-gradient(90deg, #3B82F6 0%, #60A5FA 50%, #93C5FD 100%) !important;
-        box-shadow: 0 0 16px rgba(59, 130, 246, 0.9), 0 0 8px rgba(96, 165, 250, 0.7) !important; border-radius: 6px;
+        box-shadow: 0 0 16px rgba(59, 130, 246, 0.7), 0 0 8px rgba(96, 165, 250, 0.5) !important; border-radius: 6px;
     }
-    .loading-status-text { font-family: monospace; font-size: 14px; color: #FB923C; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 700; text-shadow: 0 0 10px rgba(251, 146, 60, 0.5); }
+    .loading-status-text { font-family: monospace; font-size: 13px; color: #FB923C; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 700; text-shadow: 0 0 10px rgba(251, 146, 60, 0.4); }
 
     div.stButton > button, div.stFormSubmitButton > button { 
         font-weight: 700 !important; padding: 0.5rem 1rem !important; border-radius: 0.5rem !important; 
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%) !important; 
-        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(51, 65, 85, 0.8) !important;
+        background: rgba(30, 41, 59, 0.55) !important; 
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
         color: #38BDF8 !important; width: 100% !important; 
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important; letter-spacing: 1px; font-family: monospace;
     }
     div.stButton > button:hover, div.stFormSubmitButton > button:hover {
-        border-color: #38BDF8 !important; color: #FFFFFF !important;
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        box-shadow: 0 0 22px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0,0,0,0.6) !important; transform: translateY(-1px) !important;
+        border-color: rgba(56, 189, 248, 0.6) !important; color: #FFFFFF !important;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.85) 0%, rgba(29, 78, 216, 0.85) 100%) !important;
+        box-shadow: 0 0 24px rgba(56, 189, 248, 0.4), 0 8px 32px rgba(0,0,0,0.5) !important; transform: translateY(-1px) !important;
     }
 
     div.stButton > button[kind="secondary"] { 
-        border-radius: 0 0 12px 12px !important; 
+        border-radius: 0 0 14px 14px !important; 
         border-top: none !important;
+        border-left: 4px solid #10B981 !important; 
         margin-top: -14px !important; 
         margin-bottom: 16px !important;
-        box-shadow: none !important;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -747,15 +749,15 @@ if st.session_state.get("inspect_emp_target") is not None:
 if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div style="text-align: center; margin-top: 2rem; margin-bottom: 1.5rem;">
-        <div style="font-size: 34px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
-        <div style="color: #64748B; font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace; background: transparent !important;">
+        <div style="font-size: 32px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace; text-shadow: 0 2px 16px rgba(56,189,248,0.4);">CREW DUTY ENGINE</div>
+        <div style="color: #94A3B8; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 8px; font-family: monospace; background: transparent !important;">
             BUSY DOING NOTHING PRODUCTIVE<br>
             C.L.F EDITION
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 2.2, 1])
+    col1, col2, col3 = st.columns([1, 2.4, 1])
     with col2:
         with st.form("auth_form"):
             selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
@@ -807,7 +809,7 @@ st.markdown(f"""
 <div class="header-container">
     <div class="title-left-group">
         <div class="main-title">CREW DUTY ENGINE</div>
-        <div style="color: #94A3B8; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; font-family: monospace; margin-top: 6px; line-height: 1.6;">
+        <div style="color: #94A3B8; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; font-family: monospace; margin-top: 6px; line-height: 1.6;">
             BUSY DOING NOTHING PRODUCTIVE<br>
             C.L.F EDITION
         </div>
@@ -884,7 +886,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.markdown("---")
     
     st.subheader("各大系統模組維護開關控制")
-    st.markdown("<p style='color:#94A3B8; font-size:13px;'>在此可獨立切換三大系統模組的維護狀態（開啟後一般組員端會顯示維護中畫面）。</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#94A3B8; font-size:12px;'>在此可獨立切換三大系統模組的維護狀態（開啟後一般組員端會顯示維護中畫面）。</p>", unsafe_allow_html=True)
     
     col_m1, col_m2, col_m3 = st.columns(3)
     with col_m1:
@@ -919,7 +921,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.markdown(f"""
         <div class="{td_card_class}">
             <div class="telemetry-title">駕駛大表 (TD)</div>
-            <div class="telemetry-value" style="font-size:14px;">{td_dot}{td_status}</div>
+            <div class="telemetry-value" style="font-size:13px;">{td_dot}{td_status}</div>
             <div class="telemetry-sub">{get_file_mtime_str(current_unit_files["駕駛"])}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -932,7 +934,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.markdown(f"""
         <div class="{tm_card_class}">
             <div class="telemetry-title">列車長大表 (TM)</div>
-            <div class="telemetry-value" style="font-size:14px;">{tm_dot}{tm_status}</div>
+            <div class="telemetry-value" style="font-size:13px;">{tm_dot}{tm_status}</div>
             <div class="telemetry-sub">{get_file_mtime_str(current_unit_files["列車長"])}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -945,7 +947,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.markdown(f"""
         <div class="{ta_card_class}">
             <div class="telemetry-title">服勤員大表 (TA)</div>
-            <div class="telemetry-value" style="font-size:14px;">{ta_dot}{ta_status}</div>
+            <div class="telemetry-value" style="font-size:13px;">{ta_dot}{ta_status}</div>
             <div class="telemetry-sub">{get_file_mtime_str(current_unit_files["服勤員"])}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -962,8 +964,8 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #EAB308;">
-            <h4 style="color: #FEF08A; margin-top: 0;">1. 每月 20 號基準大表（原始月班表底稿）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">上傳每月初或 20 號發出的基準大表，作為系統的基礎排班框架。</p>
+            <h4 style="color: #FEF08A; margin-top: 0; font-size: 15px;">1. 每月 20 號基準大表（原始月班表底稿）</h4>
+            <p style="color: #94A3B8; font-size: 12px; margin-bottom:0;">上傳每月初或 20 號發出的基準大表，作為系統的基礎排班框架。</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -990,8 +992,8 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     with st.container():
         st.markdown(f"""
         <div class="admin-card-container" style="border-left-color: #10B981;">
-            <h4 style="color: #34D399; margin-top: 0;">2. 本機運算完畢的「最新完整大表」更新（每日異動窗口）</h4>
-            <p style="color: #94A3B8; font-size: 13px;">當您在電腦端執行 Python 腳本完成多檔合併與時間對照後，直接將產出的**最終完整更新檔**上傳至此，即可直接覆蓋線上資料庫！</p>
+            <h4 style="color: #34D399; margin-top: 0; font-size: 15px;">2. 本機運算完畢的「最新完整大表」更新（每日異動窗口）</h4>
+            <p style="color: #94A3B8; font-size: 12px; margin-bottom:0;">當您在電腦端執行 Python 腳本完成多檔合併與時間對照後，直接將產出的**最終完整更新檔**上傳至此，即可直接覆蓋線上資料庫！</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1105,7 +1107,7 @@ card_class = "missing-data-card" if missing_files else "telemetry-card"
 st.markdown(f"""
 <div class="{card_class}">
     <div class="telemetry-title">[{current_unit_label}] 目前系統排班週期 & 伺服器資料狀態</div>
-    <div class="telemetry-value" style="font-size: 22px; color: {"#EF4444" if missing_files else "#60A5FA"}; margin-bottom: 8px;">
+    <div class="telemetry-value" style="font-size: 20px; color: {"#EF4444" if missing_files else "#60A5FA"}; margin-bottom: 6px;">
         {sched_range if not is_db_empty else "資料庫異常：請洽管理員！"}
     </div>
     <div class="telemetry-sub">
@@ -1451,7 +1453,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                             "FAC" in raw_cell_upper or 
                                             "AL" in raw_cell_upper or 
                                             "SL" in raw_cell_upper or 
-                                            "CL" in raw_cell_upper or
+                                            "CL" in raw_cell_upper or 
                                             tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W"]
                                         )
                                         
@@ -1910,12 +1912,12 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         saved_time_f = st.session_state.get("ex_saved_time_filter", return_time_filter)
 
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.85) 100%); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(51, 65, 85, 0.8); border-left: 5px solid #38BDF8; border-radius: 14px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; flex-direction: column; gap: 8px;">
+        <div style="background: rgba(30, 41, 59, 0.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid #38BDF8; border-radius: 16px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37); display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <span style="color: #F8FAFC; font-size: 18px; font-weight: 700; font-family: monospace;">【{current_unit_label} - {saved_role}】符合換假名單</span>
-                <span style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38BDF8; color: #38BDF8; font-size: 12px; padding: 2px 10px; border-radius: 6px; font-weight: 600; font-family: monospace;">共 {len(saved_candidates)} 位符合</span>
+                <span style="color: #F8FAFC; font-size: 16px; font-weight: 700; font-family: monospace;">【{current_unit_label} - {saved_role}】符合換假名單</span>
+                <span style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: #38BDF8; font-size: 11px; padding: 2px 10px; border-radius: 6px; font-weight: 600; font-family: monospace;">共 {len(saved_candidates)} 位符合</span>
             </div>
-            <div style="color: #94A3B8; font-size: 13px; font-family: monospace; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="color: #94A3B8; font-size: 12px; font-family: monospace; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                 <span>想休日期：<strong style="color: #34D399;">{saved_date}</strong></span>
                 <span style="color: #475569;">|</span>
                 <span>可還假日期：<strong style="color: #60A5FA;">{saved_return_date}</strong></span>
@@ -1933,7 +1935,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                     <div class="time-header-row">
                         <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: #10B981; color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
+                            <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.4); color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
                         </div>
                     </div>
                     <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
