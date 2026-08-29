@@ -1506,7 +1506,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                         current_date_group = None
                         c_col1, c_col2 = None, None
                         col_idx = 0 
-                        for r in search_results:
+                        for idx, r in enumerate(search_results):
                             if r["日期"] != current_date_group:
                                 current_date_group = r["日期"]
                                 st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
@@ -1519,7 +1519,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                             badges_html += '</div>'
 
                             card_html = f"""
-                            <div class="compact-card">
+                            <div class="compact-card" style="margin-bottom: 0px !important; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important;">
                                 <div class="time-header-row">
                                     <span class="compact-time">{r['Sign-In']} -> {r['收工時間']}</span>
                                     {badges_html}
@@ -1529,12 +1529,14 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                 <div class="compact-sub">隔日勤務時間: {r['隔日Sign-In']}</div>
                             </div>
                             """
-                            if col_idx % 2 == 0:
-                                with c_col1:
-                                    st.markdown(card_html, unsafe_allow_html=True)
-                            else:
-                                with c_col2:
-                                    st.markdown(card_html, unsafe_allow_html=True)
+
+                            target_stream_col = c_col1 if (col_idx % 2 == 0) else c_col2
+                            with target_stream_col:
+                                st.markdown(card_html, unsafe_allow_html=True)
+                                if st.button(f"查看 {r['姓名']} 完整班表", key=f"win_inspect_{r['員編']}_{r['日期']}_{idx}", use_container_width=True, type="secondary"):
+                                    st.session_state["inspect_emp_target"] = r['員編']
+                                    st.rerun()
+                                    
                             col_idx += 1
                     else: st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
