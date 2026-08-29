@@ -1519,14 +1519,14 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                             badges_html += '</div>'
 
                             card_html = f"""
-                            <div class="compact-card" style="margin-bottom: 0px !important; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important;">
+                            <div class="integrated-crew-box" style="margin-bottom: 0px !important;">
                                 <div class="time-header-row">
                                     <span class="compact-time">{r['Sign-In']} -> {r['收工時間']}</span>
                                     {badges_html}
                                 </div>
-                                <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
-                                <div class="compact-sub">班別: {r['車次']}</div>
-                                <div class="compact-sub">隔日勤務時間: {r['隔日Sign-In']}</div>
+                                <div class="compact-name" style="margin-top: 4px;">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
+                                <div class="compact-sub" style="margin-top: 3px;">班別: {r['車次']}</div>
+                                <div class="compact-sub" style="margin-top: 3px;">隔日勤務時間: {r['隔日Sign-In']}</div>
                             </div>
                             """
 
