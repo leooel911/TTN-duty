@@ -488,18 +488,22 @@ def is_town_shift(tr, note):
     note_upper = str(note).strip().upper()
     combined_text = f"{tr_upper} {note_upper}"
     
-    if is_valid_train_code(tr_upper): return False
-    if tr_upper in ["PAY", "FAC"]: return False
-    if not tr or tr_upper in ["", "無", "NAN"]: return True
-    
+    if not tr or tr_upper in ["", "無", "NAN"]: 
+        return True
+    if tr_upper in ["PAY", "FAC"]: 
+        return False
+        
+    # --- 優先使用正規表達式攔截非正線關鍵字 (包含 TTN3) ---
     keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "OGC", "FAC", "DS", "H9", "WRSL"]
-    
     for kw in keywords:
         pattern = rf"\b{kw}\d*"
         if re.search(pattern, combined_text):
             return True
             
-    return False
+    if is_valid_train_code(tr_upper): 
+        return False
+        
+    return True
 
 def parse_cell(raw):
     if pd.isna(raw) or not str(raw).strip(): return dict(start="", train="", end="", hours="", note="")
