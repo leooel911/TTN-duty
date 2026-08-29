@@ -1460,28 +1460,29 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                         raw_cell_upper = str(cell_raw).upper()
                                         
                                         is_leave = (
-                                            "PAY" in raw_cell_upper or 
-                                            "FAC" in raw_cell_upper or 
-                                            "AL" in raw_cell_upper or 
-                                            "SL" in raw_cell_upper or 
-                                            "CL" in raw_cell_upper or 
-                                            tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W"]
-                                        )
-                                        
-                                        is_non_line = is_town_shift(parsed["train"], parsed["note"])
-                                        is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
-                                        
-                                        if only_main_line and (is_non_line or is_leave): continue
-                                        if only_long_shift and not is_long: continue
-                                        
-                                        next_day_sign_in = "無記錄"
-                                        if actual_col_pos + 1 < len(all_cols_list):
-                                            next_cell_raw = row.iloc[target_col_idx + 1]
-                                            next_parsed = parse_cell(next_cell_raw)
-                                            if next_parsed["start"]: next_day_sign_in = next_parsed["start"]
-                                            elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
-                                        
-                                        search_results.append({
+                                        "PAY" in raw_cell_upper or 
+                                        "FAC" in raw_cell_upper or 
+                                        "AL" in raw_cell_upper or 
+                                        "SL" in raw_cell_upper or 
+                                        "CL" in raw_cell_upper or 
+                                        tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W"]
+                                    )
+                                    
+                                    # 確保進行過濾判定時：
+                                    is_non_line = is_town_shift(parsed["train"], parsed["note"])
+
+                                    # 如果勾選了「僅顯示正線勤務」，只要屬於非正線（包含 TTN3 等），一律強制排除！
+                                    if only_main_line and is_non_line:
+                                        continue
+                                    
+                                    next_day_sign_in = "無記錄"
+                                    if actual_col_pos + 1 < len(all_cols_list):
+                                        next_cell_raw = row.iloc[target_col_idx + 1]
+                                        next_parsed = parse_cell(next_cell_raw)
+                                        if next_parsed["start"]: next_day_sign_in = next_parsed["start"]
+                                        elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
+                                    
+                                    search_results.append({
                                             "日期": d_str, "員編": emp_id, "姓名": emp_name,
                                             "Sign-In": start_t, "收工時間": parsed["end"],
                                             "車次": translate_train_code(parsed["train"]),
