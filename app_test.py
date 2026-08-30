@@ -479,7 +479,7 @@ def is_overtime(h, tr, note):
 def translate_train_code(tr):
     if not tr: return "無"
     tr_upper = str(tr).strip().upper()
-    mapping = {"PAY": "特休 (PAY)", "FAC": "家庭照顧假 (FAC)", "AL": "年假 (AL)", "SL": "病假 (SL)", "CL": "事假 (CL)"}
+    mapping = {"PAY": "特休 (PAY)", "FAC": "家庭照顧假 (FAC)", "LEV": "公假 (LEV)", "MLP": "身理假 (MLP)", "MTR": "事假 (MTR)"}
     return mapping.get(tr_upper, tr)
 
 def is_town_shift(tr, note):
