@@ -1536,21 +1536,8 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                             with target_stream_col:
                                 st.markdown(card_html, unsafe_allow_html=True)
                                 if st.button(f"查看 {r['姓名']} 完整班表", key=f"win_inspect_{r['員編']}_{r['日期']}_{idx}", use_container_width=True, type="secondary"):
-                                    status_placeholder = st.empty()
-                                    progress_bar = st.progress(0)
-                                    first_name = r['姓名'][1:] if len(r['姓名']) > 1 else r['姓名']
-                                    status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
-                                    progress_bar.progress(40)
-                                    time.sleep(0.3)
-                                    progress_bar.progress(80)
-                                    time.sleep(0.3)
-                                    
+                                    # 修正：立即將目標員編存入 session_state 並直接重新整理
                                     st.session_state["inspect_emp_target"] = str(r['員編']).strip()
-                                    
-                                    progress_bar.progress(100)
-                                    time.sleep(0.2)
-                                    status_placeholder.empty()
-                                    progress_bar.empty()
                                     st.rerun()
                                     
                             col_idx += 1
@@ -1982,20 +1969,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 """, unsafe_allow_html=True)
 
                 if st.button(f"查看 {cand['姓名']} ({cand['員編']}) 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True, type="secondary"):
-                    status_placeholder = st.empty()
-                    progress_bar = st.progress(0)
-                    first_name = cand['姓名'][1:] if len(cand['姓名']) > 1 else cand['姓名']
-                    status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
-                    progress_bar.progress(40)
-                    time.sleep(0.4)
-                    progress_bar.progress(80)
-                    time.sleep(0.3)
+                    # 修正：立即將選定員編與檢視模式寫入 session_state 並直接重新整理
                     st.session_state["ex_selected_emp"] = cand['員編']
                     st.session_state["ex_sub_mode"] = "inspect_image"
-                    progress_bar.progress(100)
-                    time.sleep(0.2)
-                    status_placeholder.empty()
-                    progress_bar.empty()
                     st.rerun()
 
 # --- 底部版本/管理員貼紙 ---
