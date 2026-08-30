@@ -621,10 +621,17 @@ C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#
 C_TOWN_TXT = "#000000"
 
 # ==================== 絕對最優先檢查：獨立檢視指定組員完整班表 (Inspector Mode) ====================
+# ==================== 絕對最優先檢查：獨立檢視指定組員完整班表 (Inspector Mode) ====================
 if st.session_state.get("inspect_emp_target") is not None:
     target_emp = st.session_state["inspect_emp_target"]
     current_unit = st.session_state.get("current_unit", "TTN")
     
+    # 顯示載入進度條與提示訊息
+    status_placeholder = st.empty()
+    progress_bar = st.progress(0)
+    status_placeholder.markdown(f'<div class="loading-status-text">「{target_emp}」的完整班表載入中，請稍後...</div>', unsafe_allow_html=True)
+    progress_bar.progress(50)
+
     st.markdown(f"""
     <div class="section-header-box">
         <div class="section-title">[{current_unit}] 組員完整班表檢視: {target_emp}</div>
@@ -635,6 +642,11 @@ if st.session_state.get("inspect_emp_target") is not None:
     if st.button("上一頁 (返回快篩結果)"):
         st.session_state["inspect_emp_target"] = None
         st.rerun()
+
+    # 繪圖完成後清除進度條
+    progress_bar.progress(100)
+    status_placeholder.empty()
+    progress_bar.empty()
 
     try:
         start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
@@ -1533,12 +1545,9 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                             """
 
                             target_stream_col = c_col1 if (col_idx % 2 == 0) else c_col2
-                            with target_stream_col:
-                                st.markdown(card_html, unsafe_allow_html=True)
-                                if st.button(f"查看 {r['姓名']} 完整班表", key=f"win_inspect_{r['員編']}_{r['日期']}_{idx}", use_container_width=True, type="secondary"):
-                                    # 修正：立即將目標員編存入 session_state 並直接重新整理
-                                    st.session_state["inspect_emp_target"] = str(r['員編']).strip()
-                                    st.rerun()
+                            if st.button(f"查看 {r['姓名']} 完整班表", key=f"win_inspect_{r['員編']}_{r['日期']}_{idx}", use_container_width=True, type="secondary"):
+                               st.session_state["inspect_emp_target"] = str(r['員編']).strip()
+                               st.rerun()
                                     
                             col_idx += 1
                     else: 
@@ -1969,10 +1978,9 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 """, unsafe_allow_html=True)
 
                 if st.button(f"查看 {cand['姓名']} ({cand['員編']}) 完整班表", key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True, type="secondary"):
-                    # 修正：立即將選定員編與檢視模式寫入 session_state 並直接重新整理
-                    st.session_state["ex_selected_emp"] = cand['員編']
-                    st.session_state["ex_sub_mode"] = "inspect_image"
-                    st.rerun()
+                   st.session_state["ex_selected_emp"] = cand['員編']
+                   st.session_state["ex_sub_mode"] = "inspect_image"
+                   st.rerun()
 
 # --- 底部版本/管理員貼紙 ---
 st.markdown('<div class="footer-badge-container">', unsafe_allow_html=True)
