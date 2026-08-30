@@ -1533,7 +1533,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                             """
 
                           target_stream_col = c_col1 if (col_idx % 2 == 0) else c_col2
-                        with target_stream_col:
+                          with target_stream_col:
                             st.markdown(card_html, unsafe_allow_html=True)
                             if st.button(f"查看 {r['姓名']} 完整班表", key=f"win_inspect_{r['員編']}_{r['日期']}_{idx}", use_container_width=True, type="secondary"):
                                 st.session_state["inspect_emp_target"] = r['員編']
