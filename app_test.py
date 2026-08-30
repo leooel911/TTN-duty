@@ -1406,6 +1406,8 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                     target_next_str = f"{target_next_h:02d}:00"
                     if target_next_str in to_time_options:
                         default_max_idx = to_time_options.index(target_next_str)
+                    else:
+                        default_max_idx = to_time_options.index("18:00")
                 else:
                     default_max_idx = to_time_options.index("18:00")
             except:
@@ -1533,58 +1535,27 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                             target_stream_col = c_col1 if (col_idx % 2 == 0) else c_col2
                             with target_stream_col:
                                 st.markdown(card_html, unsafe_allow_html=True)
-                                if search_results:
-                    current_date_group = None
-                    c_col1, c_col2 = None, None
-                    col_idx = 0 
-                    for idx, r in enumerate(search_results):
-                        if r["日期"] != current_date_group:
-                            current_date_group = r["日期"]
-                            st.markdown(f'<div class="date-banner">SERVICE DATE : {current_date_group}</div>', unsafe_allow_html=True)
-                            c_col1, c_col2 = st.columns(2)
-                            col_idx = 0 
-
-                        badges_html = '<div class="badge-group">'
-                        if r['長班']: badges_html += '<span class="long-badge">長班</span>'
-                        if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
-                        badges_html += '</div>'
-
-                        card_html = f"""
-                        <div class="integrated-crew-box" style="margin-bottom: 0px !important;">
-                            <div class="time-header-row">
-                                <span class="compact-time">{r['Sign-In']} -> {r['收工時間']}</span>
-                                {badges_html}
-                            </div>
-                            <div class="compact-name" style="margin-top: 4px;">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
-                            <div class="compact-sub" style="margin-top: 3px;">班別: {r['車次']}</div>
-                            <div class="compact-sub" style="margin-top: 3px;">隔日勤務時間: {r['隔日Sign-In']}</div>
-                        </div>
-                        """
-
-                        target_stream_col = c_col1 if (col_idx % 2 == 0) else c_col2
-                        with target_stream_col:
-                            st.markdown(card_html, unsafe_allow_html=True)
-                            if st.button(f"查看 {r['姓名']} 完整班表", key=f"win_inspect_{r['員編']}_{r['日期']}_{idx}", use_container_width=True, type="secondary"):
-                                status_placeholder = st.empty()
-                                progress_bar = st.progress(0)
-                                first_name = r['姓名'][1:] if len(r['姓名']) > 1 else r['姓名']
-                                status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
-                                progress_bar.progress(40)
-                                time.sleep(0.3)
-                                progress_bar.progress(80)
-                                time.sleep(0.3)
-                                
-                                st.session_state["inspect_emp_target"] = str(r['員編']).strip()
-                                
-                                progress_bar.progress(100)
-                                time.sleep(0.2)
-                                status_placeholder.empty()
-                                progress_bar.empty()
-                                st.rerun()
-                                
-                        col_idx += 1
-                            
-                    else: st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
+                                if st.button(f"查看 {r['姓名']} 完整班表", key=f"win_inspect_{r['員編']}_{r['日期']}_{idx}", use_container_width=True, type="secondary"):
+                                    status_placeholder = st.empty()
+                                    progress_bar = st.progress(0)
+                                    first_name = r['姓名'][1:] if len(r['姓名']) > 1 else r['姓名']
+                                    status_placeholder.markdown(f'<div class="loading-status-text">「{first_name}」的班表繪製中，請稍後...</div>', unsafe_allow_html=True)
+                                    progress_bar.progress(40)
+                                    time.sleep(0.3)
+                                    progress_bar.progress(80)
+                                    time.sleep(0.3)
+                                    
+                                    st.session_state["inspect_emp_target"] = str(r['員編']).strip()
+                                    
+                                    progress_bar.progress(100)
+                                    time.sleep(0.2)
+                                    status_placeholder.empty()
+                                    progress_bar.empty()
+                                    st.rerun()
+                                    
+                            col_idx += 1
+                    else: 
+                        st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if st.session_state.get("last_app_mode") != "換假｜日期快篩（Alpha測試版）":
