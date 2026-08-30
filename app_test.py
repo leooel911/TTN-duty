@@ -1540,8 +1540,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                     st.rerun()
                                 
                             col_idx += 1
-                                    
-                            col_idx += 1
+                                
                     else: st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 elif app_mode == "換假｜日期快篩（Alpha測試版）":
