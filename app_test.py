@@ -632,7 +632,6 @@ if st.session_state.get("inspect_emp_target") is not None:
     </div>
     """, unsafe_allow_html=True)
 
-    # 點擊上一頁時清除目標，並強迫重新整理
     if st.button("上一頁 (返回快篩結果)"):
         st.session_state["inspect_emp_target"] = None
         st.rerun()
@@ -759,7 +758,6 @@ if st.session_state.get("inspect_emp_target") is not None:
     except Exception as e:
         st.error(f"載入完整班表時發生錯誤: {e}")
 
-    # 【關鍵修正】必須加上 st.stop() 阻斷後續程式碼執行，否則會直接穿透並回到首頁
     st.stop()
 
 # --- 前置授權碼門戶檢查 ---
@@ -1532,15 +1530,15 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                             </div>
                             """
 
-                          target_stream_col = c_col1 if (col_idx % 2 == 0) else c_col2
+                            target_stream_col = c_col1 if (col_idx % 2 == 0) else c_col2
                             with target_stream_col:
                                 st.markdown(card_html, unsafe_allow_html=True)
                                 if st.button(f"查看 {r['姓名']} 完整班表", key=f"win_inspect_{r['員編']}_{r['日期']}_{idx}", use_container_width=True, type="secondary"):
                                     st.session_state["inspect_emp_target"] = str(r['員編']).strip()
                                     st.rerun()
-                                
+                                    
                             col_idx += 1
-                                
+                            
                     else: st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
 elif app_mode == "換假｜日期快篩（Alpha測試版）":
