@@ -1532,12 +1532,11 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                             </div>
                             """
 
-                            target_stream_col = c_col1 if (col_idx % 2 == 0) else c_col2
+                          target_stream_col = c_col1 if (col_idx % 2 == 0) else c_col2
                         with target_stream_col:
                             st.markdown(card_html, unsafe_allow_html=True)
-                            # 確保按鈕點擊時確實把員編寫入，並且加上唯一的 key 避免衝突
-                            if st.button(f"查看 {r['姓名']} 完整班表", key=f"fixed_win_inspect_{r['員編']}_{idx}", use_container_width=True, type="secondary"):
-                                st.session_state["inspect_emp_target"] = str(r['員編']).strip()
+                            if st.button(f"查看 {r['姓名']} 完整班表", key=f"win_inspect_{r['員編']}_{r['日期']}_{idx}", use_container_width=True, type="secondary"):
+                                st.session_state["inspect_emp_target"] = r['員編']
                                 st.rerun()
                                     
                             col_idx += 1
