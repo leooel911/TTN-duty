@@ -960,7 +960,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
             with q1:
                 if st.button("早班 (05-08)", key="q_0508"): st.session_state["win_time_slider"] = ("05:00", "08:00")
             with q2:
-                if st.button("中班 (08-12)", key="q_0812"): st.session_state["win_time_slider"] = ("08:00", "12:00")
+                if st.button("日班 (08-12)", key="q_0812"): st.session_state["win_time_slider"] = ("08:00", "12:00")
             with q3:
                 if st.button("晚班 (12-18)", key="q_1218"): st.session_state["win_time_slider"] = ("12:00", "18:00")
             with q4:
@@ -1012,19 +1012,15 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                 st.session_state["win_raw_candidates"] = raw_candidates
                 st.rerun()
 
-            # 即時動態過濾機制 (Live Dynamic Filtering)
+            # 即時動態過濾機制
             if st.session_state.get("win_raw_candidates") is not None:
                 raw_list = st.session_state["win_raw_candidates"]
                 filtered_results = []
 
                 for r in raw_list:
-                    # 報到區間過濾
                     if not (min_time <= r["Sign-In"] <= max_time_sel): continue
-                    # 僅顯示正線勤務過濾
                     if only_main_line and (r["非正線"] or r["請假"]): continue
-                    # 僅顯示長班過濾
                     if only_long_shift and not r["長班"]: continue
-
                     filtered_results.append(r)
 
                 filtered_results = sorted(filtered_results, key=lambda x: (str(x["Sign-In"]), str(x["Sign-Out"])))
@@ -1076,7 +1072,8 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
     </div>
     """, unsafe_allow_html=True)
 
-    if "ex_saved_candidates" not in st.session_state: st.session_state["ex_saved_candidates"] = []
+    if "ex_search_performed" not in st.session_state:
+        st.session_state["ex_search_performed"] = False
 
     ex_c1, ex_c2, ex_c3 = st.columns(3)
     with ex_c1: selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], key="ex_role_select")
@@ -1104,11 +1101,11 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                 with col_f2:
                     sort_order = st.selectbox("結果排序方式", ["依 Sign-In 時間 (由早至晚)", "依最早 Sign-Out", "依工時長短"], key="ex_sort_order")
 
-                strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True)
+                strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True, key="ex_strict_limit")
 
                 if st.button("搜尋可換假組員名單", key="btn_ex_search"):
                     log_activity(f"換假快篩 [{current_unit_label} - {selected_role}] 想休:{target_date} 還假:{return_date}")
-                    candidates = []
+                    raw_candidates = []
                     all_cols = list(df_ex.columns)
                     target_col_idx = next((idx for idx, col in enumerate(all_cols) if idx >= 2 and target_date in str(col)), -1)
                     return_col_idx = next((idx for idx, col in enumerate(all_cols) if idx >= 2 and return_date in str(col)), -1)
@@ -1131,25 +1128,20 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                             is_return_do = ("DO" in raw_return_str) or ("D2W" in raw_return_str)
                             if is_return_do: continue
 
-                            if return_time_filter != "不限":
-                                min_allowed = return_time_filter.split(" ")[0]
-                                if not parsed_return["start"] or parsed_return["start"] < min_allowed: continue
-
-                            if strict_limit:
-                                work_count = 0
-                                start_check_idx = max(2, target_col_idx - 5)
-                                end_check_idx = min(len(row) - 1, target_col_idx + 5)
-                                for c_i in range(start_check_idx, end_check_idx + 1):
-                                    cell_c = parse_cell(row.iloc[c_i])
-                                    cell_c_raw = str(row.iloc[c_i]).upper()
-                                    if cell_c["start"] or (not ("DO" in cell_c_raw or "D2W" in cell_c_raw)):
-                                        work_count += 1
-                                if work_count >= 6: continue
-
                             is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
                             is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
 
-                            candidates.append({
+                            # 連續上班天數分析
+                            work_count = 0
+                            start_check_idx = max(2, target_col_idx - 5)
+                            end_check_idx = min(len(row) - 1, target_col_idx + 5)
+                            for c_i in range(start_check_idx, end_check_idx + 1):
+                                cell_c = parse_cell(row.iloc[c_i])
+                                cell_c_raw = str(row.iloc[c_i]).upper()
+                                if cell_c["start"] or (not ("DO" in cell_c_raw or "D2W" in cell_c_raw)):
+                                    work_count += 1
+
+                            raw_candidates.append({
                                 "員編": emp_id,
                                 "姓名": emp_name,
                                 "想休日": target_date,
@@ -1160,26 +1152,45 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                 "Sign-Out": parsed_return["end"],
                                 "工時": parsed_return["hours"],
                                 "長班": is_long,
-                                "非正線": is_non_line
+                                "非正線": is_non_line,
+                                "連續上班天數": work_count
                             })
 
-                    if sort_order == "依 Sign-In 時間 (由早至晚)":
-                        candidates = sorted(candidates, key=lambda x: (x["Sign-In"] or "99:99", x["Sign-Out"] or "99:99"))
-                    elif sort_order == "依最早 Sign-Out":
-                        candidates = sorted(candidates, key=lambda x: (x["Sign-Out"] or "99:99", x["Sign-In"] or "99:99"))
-                    elif sort_order == "依工時長短":
-                        candidates = sorted(candidates, key=lambda x: x["工時"] or "0h00m", reverse=True)
-
-                    st.session_state["ex_saved_candidates"] = candidates
+                    st.session_state["ex_raw_candidates"] = raw_candidates
+                    st.session_state["ex_search_performed"] = True
                     st.rerun()
 
-                if st.session_state.get("ex_saved_candidates"):
-                    candidates = st.session_state["ex_saved_candidates"]
-                    st.markdown(f"### 換假可選人員名單（共 {len(candidates)} 位）")
+                # 即時動態過濾機制 (Live Dynamic Filtering)
+                if st.session_state.get("ex_search_performed"):
+                    raw_list = st.session_state.get("ex_raw_candidates", [])
+                    filtered_candidates = []
 
-                    if candidates:
+                    for cand in raw_list:
+                        # 1. 還假日 Sign-In 時間限制
+                        if return_time_filter != "不限":
+                            min_allowed = return_time_filter.split(" ")[0]
+                            if not cand["Sign-In"] or cand["Sign-In"] < min_allowed:
+                                continue
+
+                        # 2. 嚴格過濾 (連續上班 6 天以上)
+                        if strict_limit and cand["連續上班天數"] >= 6:
+                            continue
+
+                        filtered_candidates.append(cand)
+
+                    # 排序邏輯
+                    if sort_order == "依 Sign-In 時間 (由早至晚)":
+                        filtered_candidates = sorted(filtered_candidates, key=lambda x: (x["Sign-In"] or "99:99", x["Sign-Out"] or "99:99"))
+                    elif sort_order == "依最早 Sign-Out":
+                        filtered_candidates = sorted(filtered_candidates, key=lambda x: (x["Sign-Out"] or "99:99", x["Sign-In"] or "99:99"))
+                    elif sort_order == "依工時長短":
+                        filtered_candidates = sorted(filtered_candidates, key=lambda x: x["工時"] or "0h00m", reverse=True)
+
+                    st.markdown(f"### 換假可選人員名單（共 {len(filtered_candidates)} 位）")
+
+                    if filtered_candidates:
                         c_col1, c_col2 = st.columns(2)
-                        for idx, cand in enumerate(candidates):
+                        for idx, cand in enumerate(filtered_candidates):
                             cand_name = cand.get('姓名', '')
                             cand_id = cand.get('員編', '')
                             target_col = c_col1 if idx % 2 == 0 else c_col2
@@ -1223,7 +1234,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                 if st.button(f"檢視 {cand_name} 完整班表", key=f"ex_btn_{cand_id}_{idx}"):
                                     show_crew_schedule_modal(cand_id, current_unit_label, badge_title="Exchange | C.L.F")
                     else:
-                        st.info("在指定條件內，找不到符合的可換假人員")
+                        st.info("在指定條件內，找不到符合的可換假人員 (可嘗試放寬還假日 Sign-In 時間限制或取消嚴格過濾)")
         except Exception as e:
             st.error(f"讀取換假資料時發生錯誤：{e}")
 
