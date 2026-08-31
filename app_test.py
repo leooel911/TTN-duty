@@ -81,6 +81,14 @@ st.markdown("""
         .block-container { padding: 2.5rem 0.8rem 2rem 0.8rem !important; max-width: 100% !important; }
     }
 
+    /* 強制所有 Streamlit 按鈕容器具備 100% 滿寬能力 */
+    div[data-testid="stButton"], div.stButton {
+        width: 100% !important;
+    }
+    div[data-testid="stButton"] > button, div.stButton > button {
+        width: 100% !important;
+    }
+
     /* 三大系統按鈕選項方格化卡片設計 */
     div[role="radiogroup"] {
         display: flex;
@@ -175,15 +183,7 @@ st.markdown("""
         border: 1px solid rgba(96, 165, 250, 0.3); border-left: 4px solid #60A5FA; color: #FFFFFF; font-size: 13px; font-weight: 800; padding: 8px 14px; border-radius: 10px; margin-top: 18px; margin-bottom: 10px; font-family: monospace;
     }
 
-    /* 一體化卡片外層容器 */
-    .crew-card-container {
-        width: 100% !important;
-        display: flex !important;
-        flex-direction: column !important;
-        margin-bottom: 16px !important;
-    }
-
-    /* 一體化卡片主體設計 */
+    /* 一體化卡片上半部主體 */
     .integrated-crew-box {
         width: 100% !important;
         box-sizing: border-box !important;
@@ -199,17 +199,12 @@ st.markdown("""
         padding: 16px 16px 12px 16px;
         margin-bottom: 0px !important;
         box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-        transition: transform 0.2s ease, border-color 0.2s ease;
     }
 
-    /* 一體化卡片底部連結按鈕（100% 滿寬向右延伸貼合） */
-    .crew-card-container div.stButton {
-        width: 100% !important;
-    }
-
-    .crew-card-container div.stButton > button {
-        width: 100% !important;
-        box-sizing: border-box !important;
+    /* 一體化卡片下半部按鈕：精準對接並 100% 滿寬延伸 */
+    div.stElementContainer:has(.integrated-crew-box) + div.stElementContainer div[data-testid="stButton"] > button,
+    div.stElementContainer:has(.integrated-crew-box) + div[data-testid="stElementContainer"] div[data-testid="stButton"] > button,
+    div.element-container:has(.integrated-crew-box) + div.element-container button {
         border-top-left-radius: 0px !important;
         border-top-right-radius: 0px !important;
         border-bottom-left-radius: 14px !important;
@@ -220,13 +215,18 @@ st.markdown("""
         background: rgba(15, 23, 42, 0.85) !important;
         color: #38BDF8 !important;
         font-size: 13px !important;
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-        padding: 8px 12px !important;
+        margin-top: -1px !important;
+        margin-bottom: 16px !important;
+        padding: 9px 12px !important;
+        width: 100% !important;
         display: block !important;
         text-align: center !important;
+        box-sizing: border-box !important;
     }
-    .crew-card-container div.stButton > button:hover {
+
+    div.stElementContainer:has(.integrated-crew-box) + div.stElementContainer div[data-testid="stButton"] > button:hover,
+    div.stElementContainer:has(.integrated-crew-box) + div[data-testid="stElementContainer"] div[data-testid="stButton"] > button:hover,
+    div.element-container:has(.integrated-crew-box) + div.element-container button:hover {
         background: rgba(30, 58, 138, 0.85) !important;
         color: #FFFFFF !important;
         border-color: #38BDF8 !important;
@@ -1073,8 +1073,6 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                     for idx, r in enumerate(filtered_results):
                         target_col = c_col1 if idx % 2 == 0 else c_col2
                         with target_col:
-                            st.markdown('<div class="crew-card-container">', unsafe_allow_html=True)
-                            
                             badges_html = '<div class="badge-group">'
                             if r['長班']: badges_html += '<span class="long-badge">長班</span>'
                             if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
@@ -1099,10 +1097,8 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                             </div>
                             """, unsafe_allow_html=True)
 
-                            if st.button(f"檢視 {r['姓名']} 完整班表", key=f"win_btn_{r['員編']}_{idx}"):
+                            if st.button(f"檢視 {r['姓名']} 完整班表", key=f"win_btn_{r['員編']}_{idx}", use_container_width=True):
                                 show_crew_schedule_modal(r['員編'], current_unit_label, badge_title="Window Filter | C.L.F")
-                            
-                            st.markdown('</div>', unsafe_allow_html=True)
                 else: st.info("在指定條件內，找不到符合的人員")
 
 elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
@@ -1270,8 +1266,6 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                             badges_html += '</div>'
 
                             with target_col:
-                                st.markdown('<div class="crew-card-container">', unsafe_allow_html=True)
-
                                 st.markdown(f"""
                                 <div class="integrated-crew-box">
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -1302,10 +1296,8 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                 </div>
                                 """, unsafe_allow_html=True)
 
-                                if st.button(f"檢視 {cand_name} 完整班表", key=f"ex_btn_{cand_id}_{idx}"):
+                                if st.button(f"檢視 {cand_name} 完整班表", key=f"ex_btn_{cand_id}_{idx}", use_container_width=True):
                                     show_crew_schedule_modal(cand_id, current_unit_label, badge_title="Exchange | C.L.F")
-                                
-                                st.markdown('</div>', unsafe_allow_html=True)
                     else:
                         st.info("在指定條件內，找不到符合的可換假人員 (可嘗試放寬還假日 Sign-In 時間限制或取消嚴格過濾)")
         except Exception as e:
