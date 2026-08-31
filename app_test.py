@@ -512,7 +512,6 @@ def process_file_data(input_str):
         else: dates.append(col_str)
     return start_dt, dates, emp_id, emp_name, matched_row.iloc[2:].values
 
-# --- 升級加粗與描邊能力（位移量由 0.0002 提升至 0.00035）---
 def draw_bold_text(ax, x, y, text, **kwargs):
     ax.text(x, y, text, **kwargs)
     offset = 0.00035
@@ -607,14 +606,16 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
             bg = C_DO_BG if is_pure_hol else (C_PAY_BG if is_pay_shift else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
             ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
 
+            # --- 合理放大：國定假日/一般日期標籤放大 (9.5->11pt / 10->11.5pt) ---
             if dt in NATIONAL_HOLIDAYS:
                 full_date_str = f"{dt} ({NATIONAL_HOLIDAYS[dt]})"
-                draw_bold_text(ax, x + 0.005, ry + RH - 0.004, full_date_str, ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(9.5))
+                draw_bold_text(ax, x + 0.005, ry + RH - 0.004, full_date_str, ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(11))
             else:
-                draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color="#000000", fontproperties=fp(10))
+                draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color="#000000", fontproperties=fp(11.5))
 
+            # --- 合理放大：疏運標籤放大 (8.5->10.5pt) ---
             if dt in active_transport:
-                draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(8.5))
+                draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(10.5))
 
             if d.get("hours"): 
                 draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"], tr, note) else "#000000", fontproperties=fp(11.5))
@@ -625,14 +626,13 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
             cx = x + CW / 2
             if is_pure_hol: 
                 do_code = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l), "DO")
-                draw_bold_text(ax, cx, ry + RH * 0.48, do_code, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(15))
+                draw_bold_text(ax, cx, ry + RH * 0.48, do_code, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(18))
             elif is_pay_shift and not d["start"]: 
-                draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(15))
+                draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(18))
             else:
-                # --- 核心改動：方案 A 放大並加粗 (Sign-In/Out 13->15pt, 班別 12->13.5pt) ---
-                draw_bold_text(ax, cx, ry + RH * 0.65, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(15))
-                draw_bold_text(ax, cx, ry + RH * 0.40, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(15))
-                draw_bold_text(ax, cx, ry + RH * 0.15, tr, ha="center", va="center", color=C_PAY_TXT if is_pay_shift else "#000000", fontproperties=fp(13.5))
+                draw_bold_text(ax, cx, ry + RH * 0.65, d["start"], ha="center", va="center", color="#000000", fontproperties=fp(17.5))
+                draw_bold_text(ax, cx, ry + RH * 0.40, d["end"], ha="center", va="center", color="#000000", fontproperties=fp(17.5))
+                draw_bold_text(ax, cx, ry + RH * 0.15, tr, ha="center", va="center", color=C_PAY_TXT if is_pay_shift else "#000000", fontproperties=fp(15.5))
 
     legend_y = MB * 0.45
     badge_w_leg, badge_h_leg = CW * 0.90, 0.022
