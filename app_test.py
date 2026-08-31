@@ -1094,35 +1094,35 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                 with ex_c2: 
                     target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date")
 
-                # --- 計算想休假日期之同一週 (週日 ~ 週六) 區間過濾邏輯 ---
-                same_week_date_cols = []
-                week_range_str = ""
+                with ex_c3: 
+                    # 使用者可自由選擇全月任一日期
+                    return_date = st.selectbox("選擇可還假日期", date_cols, index=min(1, len(date_cols)-1), key="ex_return_date")
+
+                # --- 跨週即時偵測與示警邏輯 ---
+                is_cross_week = False
+                target_week_str = ""
                 try:
                     t_m, t_d = map(int, target_date.split('/'))
+                    r_m, r_d = map(int, return_date.split('/'))
                     t_dt = date(2026, t_m, t_d)
-                    
-                    # 計算當週週日 (Sun=0) 與當週週六 (Sat=6)
-                    sun_offset = (t_dt.weekday() + 1) % 7
-                    sun_dt = t_dt - timedelta(days=sun_offset)
-                    sat_dt = sun_dt + timedelta(days=6)
-                    
-                    week_range_str = f"{sun_dt.month}/{sun_dt.day:02d} (日) ~ {sat_dt.month}/{sat_dt.day:02d} (六)"
+                    r_dt = date(2026, r_m, r_d)
 
-                    for c_str in date_cols:
-                        cm, cd = map(int, c_str.split('/'))
-                        cur_dt = date(2026, cm, cd)
-                        if sun_dt <= cur_dt <= sat_dt:
-                            same_week_date_cols.append(c_str)
+                    # 當週週日 (Sun=0) 與週六 (Sat=6)
+                    t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
+                    t_sat = t_sun + timedelta(days=6)
+                    target_week_str = f"{t_sun.month}/{t_sun.day:02d} (日) ~ {t_sat.month}/{t_sat.day:02d} (六)"
+
+                    r_sun = r_dt - timedelta(days=(r_dt.weekday() + 1) % 7)
+                    
+                    if t_sun != r_sun:
+                        is_cross_week = True
                 except:
-                    same_week_date_cols = date_cols
+                    pass
 
-                if not same_week_date_cols:
-                    same_week_date_cols = date_cols
-
-                with ex_c3: 
-                    return_date = st.selectbox("選擇可還假日期 (限同一週)", same_week_date_cols, key="ex_return_date")
-
-                st.caption(f"📅 **同一週換假限制區間：{week_range_str}**（還假日期已自動限定於當週，無法跨週）")
+                if is_cross_week:
+                    st.warning(f"⚠️ **跨週警示**：您選擇的還假日期「{return_date}」與想休假日期「{target_date}」不在同一週！（想休假當週規範區間為：{target_week_str}）")
+                else:
+                    st.caption(f"📅 **同一週換假區間：{target_week_str}**")
 
                 col_f1, col_f2 = st.columns(2)
                 with col_f1:
