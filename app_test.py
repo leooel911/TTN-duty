@@ -1403,20 +1403,11 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
 
             role_selectbox_key = f"min_time_selectbox_{selected_role}"
 
-            if "win_start_date" not in st.session_state:
-                st.session_state["win_start_date"] = date_cols[0]
-            if "win_end_date" not in st.session_state:
-                st.session_state["win_end_date"] = date_cols[0]
+            if "win_target_date" not in st.session_state or st.session_state["win_target_date"] not in date_cols:
+                st.session_state["win_target_date"] = date_cols[0]
 
-            c1, c2 = st.columns(2)
-            with c1: 
-                start_date = st.selectbox("起始日期", date_cols, key="win_start_date")
-
-            if st.session_state["win_end_date"] not in date_cols or date_cols.index(st.session_state["win_end_date"]) < date_cols.index(start_date):
-                st.session_state["win_end_date"] = start_date
-
-            with c2: 
-                end_date = st.selectbox("結束日期", date_cols, key="win_end_date")
+            # 簡化：僅保留單一「查詢日期」選項
+            target_date = st.selectbox("查詢日期", date_cols, key="win_target_date")
 
             c3, c4 = st.columns(2)
             with c3: 
@@ -1449,89 +1440,80 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
 
             # 按下搜尋時執行運算並存入 Session State
             if st.button("開始區間檢索符合條件人員", key="btn_window_search"):
-                log_activity(f"時段快篩 [{current_unit_label} - {selected_role}] {start_date}~{end_date} 從:{min_time} 到:{max_time_sel}")
-                try:
-                    s_idx = date_cols.index(start_date)
-                    e_idx = date_cols.index(end_date)
-                    target_dates = date_cols[s_idx:e_idx+1] if s_idx <= e_idx else []
-                except: target_dates = []
+                log_activity(f"時段快篩 [{current_unit_label} - {selected_role}] 日期:{target_date} 從:{min_time} 到:{max_time_sel}")
+                
+                search_results = []
+                all_cols_list = list(df_search.columns[2:])
 
-                if not target_dates:
-                    st.warning("起始日期不可大於結束日期")
-                else:
-                    search_results = []
-                    all_cols_list = list(df_search.columns[2:])
+                for _, row in df_search.iterrows():
+                    emp_id = str(row.iloc[0]).strip()
+                    emp_name = str(row.iloc[1]).strip()
+                    if not emp_id or emp_id.upper() == "NAN": continue
 
-                    for _, row in df_search.iterrows():
-                        emp_id = str(row.iloc[0]).strip()
-                        emp_name = str(row.iloc[1]).strip()
-                        if not emp_id or emp_id.upper() == "NAN": continue
+                    target_col_idx = -1
+                    actual_col_pos = -1
+                    for idx, col in enumerate(all_cols_list):
+                        if target_date in str(col):
+                            target_col_idx = idx + 2
+                            actual_col_pos = idx
+                            break
 
-                        for d_str in target_dates:
-                            target_col_idx = -1
-                            actual_col_pos = -1
-                            for idx, col in enumerate(all_cols_list):
-                                if d_str in str(col):
-                                    target_col_idx = idx + 2
-                                    actual_col_pos = idx
-                                    break
+                    if target_col_idx != -1:
+                        cell_raw = row.iloc[target_col_idx]
+                        parsed = parse_cell(cell_raw)
+                        start_t = parsed["start"]
 
-                            if target_col_idx != -1:
-                                cell_raw = row.iloc[target_col_idx]
-                                parsed = parse_cell(cell_raw)
-                                start_t = parsed["start"]
+                        if start_t:
+                            matched_time_cond = False
+                            if max_time_sel.startswith("--"):
+                                matched_time_cond = (start_t == min_time)
+                            else:
+                                matched_time_cond = (min_time <= start_t <= max_time_sel)
 
-                                if start_t:
-                                    matched_time_cond = False
-                                    if max_time_sel.startswith("--"):
-                                        matched_time_cond = (start_t == min_time)
-                                    else:
-                                        matched_time_cond = (min_time <= start_t <= max_time_sel)
+                            if matched_time_cond:
+                                tr_upper = str(parsed["train"]).strip().upper()
+                                raw_cell_upper = str(cell_raw).upper()
 
-                                    if matched_time_cond:
-                                        tr_upper = str(parsed["train"]).strip().upper()
-                                        raw_cell_upper = str(cell_raw).upper()
+                                is_leave = (
+                                    "PAY" in raw_cell_upper or 
+                                    "FAC" in raw_cell_upper or 
+                                    "AL" in raw_cell_upper or 
+                                    "SL" in raw_cell_upper or 
+                                    "CL" in raw_cell_upper or 
+                                    tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W"]
+                                )
 
-                                        is_leave = (
-                                            "PAY" in raw_cell_upper or 
-                                            "FAC" in raw_cell_upper or 
-                                            "AL" in raw_cell_upper or 
-                                            "SL" in raw_cell_upper or 
-                                            "CL" in raw_cell_upper or 
-                                            tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W"]
-                                        )
+                                is_non_line = is_town_shift(parsed["train"], parsed["note"])
+                                is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
 
-                                        is_non_line = is_town_shift(parsed["train"], parsed["note"])
-                                        is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
+                                if only_main_line and is_non_line: continue
+                                if only_main_line and is_leave: continue
+                                if only_long_shift and not is_long: continue
 
-                                        if only_main_line and is_non_line: continue
-                                        if only_main_line and is_leave: continue
-                                        if only_long_shift and not is_long: continue
+                                next_day_sign_in = "無記錄"
+                                if actual_col_pos + 1 < len(all_cols_list):
+                                    next_cell_raw = row.iloc[target_col_idx + 1]
+                                    next_parsed = parse_cell(next_cell_raw)
+                                    if next_parsed["start"]: next_day_sign_in = next_parsed["start"]
+                                    elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
 
-                                        next_day_sign_in = "無記錄"
-                                        if actual_col_pos + 1 < len(all_cols_list):
-                                            next_cell_raw = row.iloc[target_col_idx + 1]
-                                            next_parsed = parse_cell(next_cell_raw)
-                                            if next_parsed["start"]: next_day_sign_in = next_parsed["start"]
-                                            elif next_parsed["train"]: next_day_sign_in = next_parsed["train"]
+                                search_results.append({
+                                    "日期": target_date, "員編": emp_id, "姓名": emp_name,
+                                    "Sign-In": start_t, "收工時間": parsed["end"],
+                                    "車次": translate_train_code(parsed["train"]),
+                                    "隔日Sign-In": next_day_sign_in, "長班": is_long, "非正線": is_non_line
+                                })
 
-                                        search_results.append({
-                                            "日期": d_str, "員編": emp_id, "姓名": emp_name,
-                                            "Sign-In": start_t, "收工時間": parsed["end"],
-                                            "車次": translate_train_code(parsed["train"]),
-                                            "隔日Sign-In": next_day_sign_in, "長班": is_long, "非正線": is_non_line
-                                        })
-
-                    search_results = sorted(search_results, key=lambda x: (date_cols.index(x["日期"]) if x["日期"] in date_cols else 999, str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
-                    
-                    # 寫入 Session State 實現持久化
-                    st.session_state["win_search_results"] = search_results
-                    st.session_state["win_search_summary"] = {
-                        "range": f"{start_date} 至 {end_date}" if start_date != end_date else start_date,
-                        "time": f"時間 {min_time}" if max_time_sel.startswith("--") else f"區間 {min_time} ~ {max_time_sel}"
-                    }
-                    st.session_state["win_active_inspect_emp"] = None
-                    st.rerun()
+                search_results = sorted(search_results, key=lambda x: (str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
+                
+                # 寫入 Session State 實現持久化
+                st.session_state["win_search_results"] = search_results
+                st.session_state["win_search_summary"] = {
+                    "range": target_date,
+                    "time": f"時間 {min_time}" if max_time_sel.startswith("--") else f"區間 {min_time} ~ {max_time_sel}"
+                }
+                st.session_state["win_active_inspect_emp"] = None
+                st.rerun()
 
             # 只要 Session State 中有搜尋結果，就進行渲染呈現
             if st.session_state.get("win_search_results") is not None:
