@@ -941,8 +941,6 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
     </div>
     """, unsafe_allow_html=True)
 
-    if "win_search_results" not in st.session_state: st.session_state["win_search_results"] = None
-
     selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2, key="win_selected_role")
     target_path = active_files[selected_role]
 
@@ -976,9 +974,9 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
             with filter_col2: only_long_shift = st.checkbox("僅顯示長班 (>8.5h)", value=False, key="win_long_shift")
 
             if st.button("搜尋可換班組員名單", key="btn_window_search"):
-                log_activity(f"換班快篩 [{current_unit_label} - {selected_role}] 日期:{target_date} 區間:{min_time}~{max_time_sel}")
-                search_results = []
+                log_activity(f"換班快篩 [{current_unit_label} - {selected_role}] 日期:{target_date}")
                 all_cols_list = list(df_search.columns[2:])
+                raw_candidates = []
 
                 for _, row in df_search.iterrows():
                     emp_id = str(row.iloc[0]).strip()
@@ -991,38 +989,51 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                         parsed = parse_cell(cell_raw)
                         start_t = parsed["start"]
 
-                        if start_t and (min_time <= start_t <= max_time_sel):
+                        if start_t:
                             tr_upper = str(parsed["train"]).strip().upper()
                             raw_cell_upper = str(cell_raw).upper()
                             is_leave = any(k in raw_cell_upper for k in ["PAY", "FAC", "AL", "SL", "CL"]) or tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W"]
                             is_non_line = is_town_shift(parsed["train"], parsed["note"])
                             is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
 
-                            if only_main_line and (is_non_line or is_leave): continue
-                            if only_long_shift and not is_long: continue
-
                             next_day_sign_in = "無記錄"
                             if target_col_idx + 1 < len(row):
                                 next_parsed = parse_cell(row.iloc[target_col_idx + 1])
                                 next_day_sign_in = next_parsed["start"] if next_parsed["start"] else (next_parsed["train"] if next_parsed["train"] else "無記錄")
 
-                            search_results.append({
+                            raw_candidates.append({
                                 "日期": target_date, "員編": emp_id, "姓名": emp_name,
-                                "Sign-In": start_t, "收工時間": parsed["end"],
+                                "Sign-In": start_t, "Sign-Out": parsed["end"],
                                 "車次": translate_train_code(parsed["train"]),
-                                "隔日Sign-In": next_day_sign_in, "長班": is_long, "非正線": is_non_line
+                                "隔日Sign-In": next_day_sign_in, "長班": is_long,
+                                "非正線": is_non_line, "請假": is_leave
                             })
 
-                st.session_state["win_search_results"] = sorted(search_results, key=lambda x: (str(x["Sign-In"]), str(x["收工時間"])))
+                st.session_state["win_raw_candidates"] = raw_candidates
                 st.rerun()
 
-            if st.session_state.get("win_search_results") is not None:
-                search_results = st.session_state["win_search_results"]
-                st.markdown(f"### 換班可選人員名單（共符合 {len(search_results)} 筆）")
+            # 即時動態過濾機制 (Live Dynamic Filtering)
+            if st.session_state.get("win_raw_candidates") is not None:
+                raw_list = st.session_state["win_raw_candidates"]
+                filtered_results = []
 
-                if search_results:
+                for r in raw_list:
+                    # 報到區間過濾
+                    if not (min_time <= r["Sign-In"] <= max_time_sel): continue
+                    # 僅顯示正線勤務過濾
+                    if only_main_line and (r["非正線"] or r["請假"]): continue
+                    # 僅顯示長班過濾
+                    if only_long_shift and not r["長班"]: continue
+
+                    filtered_results.append(r)
+
+                filtered_results = sorted(filtered_results, key=lambda x: (str(x["Sign-In"]), str(x["Sign-Out"])))
+
+                st.markdown(f"### 換班可選人員名單（共符合 {len(filtered_results)} 筆）")
+
+                if filtered_results:
                     c_col1, c_col2 = st.columns(2)
-                    for idx, r in enumerate(search_results):
+                    for idx, r in enumerate(filtered_results):
                         target_col = c_col1 if idx % 2 == 0 else c_col2
                         with target_col:
                             badges_html = '<div class="badge-group">'
@@ -1039,7 +1050,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                                     </div>
                                     <div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
                                         <div style="font-size: 14px; font-weight: 800; color: #4ADE80; font-family: monospace;">Sign-In {r['Sign-In']}</div>
-                                        <div style="font-size: 14px; font-weight: 800; color: #4ADE80; font-family: monospace;">Sign-Out {r['收工時間']}</div>
+                                        <div style="font-size: 14px; font-weight: 800; color: #4ADE80; font-family: monospace;">Sign-Out {r['Sign-Out']}</div>
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
@@ -1146,16 +1157,16 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                 "還休日": return_date,
                                 "還假車次": translate_train_code(parsed_return["train"]),
                                 "Sign-In": parsed_return["start"],
-                                "收工時間": parsed_return["end"],
+                                "Sign-Out": parsed_return["end"],
                                 "工時": parsed_return["hours"],
                                 "長班": is_long,
                                 "非正線": is_non_line
                             })
 
                     if sort_order == "依 Sign-In 時間 (由早至晚)":
-                        candidates = sorted(candidates, key=lambda x: (x["Sign-In"] or "99:99", x["收工時間"] or "99:99"))
+                        candidates = sorted(candidates, key=lambda x: (x["Sign-In"] or "99:99", x["Sign-Out"] or "99:99"))
                     elif sort_order == "依最早 Sign-Out":
-                        candidates = sorted(candidates, key=lambda x: (x["收工時間"] or "99:99", x["Sign-In"] or "99:99"))
+                        candidates = sorted(candidates, key=lambda x: (x["Sign-Out"] or "99:99", x["Sign-In"] or "99:99"))
                     elif sort_order == "依工時長短":
                         candidates = sorted(candidates, key=lambda x: x["工時"] or "0h00m", reverse=True)
 
@@ -1193,7 +1204,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                                 Sign-In {cand.get('Sign-In', '--:--')}
                                             </div>
                                             <div style="font-size: 14px; font-weight: 800; color: #4ADE80; font-family: monospace;">
-                                                Sign-Out {cand.get('收工時間', '--:--')}
+                                                Sign-Out {cand.get('Sign-Out', '--:--')}
                                             </div>
                                             <div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px;">
                                                 ({cand.get('工時', '')})
