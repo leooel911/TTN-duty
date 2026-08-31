@@ -1086,8 +1086,13 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                 with ex_c2: target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date")
                 with ex_c3: return_date = st.selectbox("選擇可還假日期", date_cols, index=min(1, len(date_cols)-1), key="ex_return_date")
 
-                time_filter_options = ["不限"] + [f"{h:02d}:00 以後" for h in range(5, 17)]
-                return_time_filter = st.selectbox("還假日，可接受對方的報到時間限制", options=time_filter_options, key="ex_time_filter")
+                col_f1, col_f2 = st.columns(2)
+                with col_f1:
+                    time_filter_options = ["不限"] + [f"{h:02d}:00 以後" for h in range(5, 17)]
+                    return_time_filter = st.selectbox("還假日報到時間限制", options=time_filter_options, key="ex_time_filter")
+                with col_f2:
+                    sort_order = st.selectbox("結果排序方式", ["依報到時間 (由早至晚)", "依最早收工", "依工時長短"], key="ex_sort_order")
+
                 strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True)
 
                 if st.button("搜尋可換假組員名單", key="btn_ex_search"):
@@ -1106,12 +1111,12 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                             if target_col_idx >= len(row) or return_col_idx >= len(row): continue
 
                             parsed_target = parse_cell(row.iloc[target_col_idx])
-                            raw_target_str = str(row.iloc[target_col_idx]).upper()
-                            is_target_do = ("DO" in raw_target_str) or ("D2W" in raw_target_str)
+                            raw_target_str = str(row.iloc[target_col_idx]).strip()
+                            is_target_do = ("DO" in raw_target_str.upper()) or ("D2W" in raw_target_str.upper())
                             if not is_target_do: continue
 
                             parsed_return = parse_cell(row.iloc[return_col_idx])
-                            raw_return_str = str(row.iloc[return_col_idx]).upper()
+                            raw_return_str = str(row.iloc[return_col_idx]).strip().upper()
                             is_return_do = ("DO" in raw_return_str) or ("D2W" in raw_return_str)
                             if is_return_do: continue
 
@@ -1130,11 +1135,29 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                         work_count += 1
                                 if work_count >= 6: continue
 
+                            is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
+                            is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
+
                             candidates.append({
-                                "員編": emp_id, "姓名": emp_name,
-                                "狀態": f"想休 {target_date} (DO) ｜ 還假 {return_date} ({parsed_return['start']}->{parsed_return['end']})",
-                                "班別": parsed_return["train"]
+                                "員編": emp_id,
+                                "姓名": emp_name,
+                                "想休日": target_date,
+                                "想休狀態": raw_target_str.split("\n")[0] if raw_target_str else "DO",
+                                "還休日": return_date,
+                                "還假車次": translate_train_code(parsed_return["train"]),
+                                "Sign-In": parsed_return["start"],
+                                "收工時間": parsed_return["end"],
+                                "工時": parsed_return["hours"],
+                                "長班": is_long,
+                                "非正線": is_non_line
                             })
+
+                    if sort_order == "依報到時間 (由早至晚)":
+                        candidates = sorted(candidates, key=lambda x: (x["Sign-In"] or "99:99", x["收工時間"] or "99:99"))
+                    elif sort_order == "依最早收工":
+                        candidates = sorted(candidates, key=lambda x: (x["收工時間"] or "99:99", x["Sign-In"] or "99:99"))
+                    elif sort_order == "依工時長短":
+                        candidates = sorted(candidates, key=lambda x: x["工時"] or "0h00m", reverse=True)
 
                     st.session_state["ex_saved_candidates"] = candidates
                     st.rerun()
@@ -1144,21 +1167,49 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                     st.markdown(f"### 換假可選人員名單（共 {len(candidates)} 位）")
 
                     if candidates:
+                        c_col1, c_col2 = st.columns(2)
                         for idx, cand in enumerate(candidates):
                             cand_name = cand.get('姓名', '')
                             cand_id = cand.get('員編', '')
-                            cand_status = cand.get('狀態', '')
-                            st.markdown(f"""
-                            <div class="integrated-crew-box">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div class="compact-name">{cand_name} <span style="color:#94A3B8; font-size:12px;">({cand_id})</span></div>
-                                    <span style="font-size: 12px; color: #34D399; font-weight: 700; font-family: monospace;">{cand_status}</span>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            target_col = c_col1 if idx % 2 == 0 else c_col2
 
-                            if st.button(f"檢視 {cand_name} 完整班表", key=f"ex_btn_{cand_id}_{idx}"):
-                                show_crew_schedule_modal(cand_id, current_unit_label, badge_title="Exchange | C.L.F")
+                            badges_html = '<div class="badge-group">'
+                            if cand.get('長班'): badges_html += '<span class="long-badge">長班</span>'
+                            if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
+                            badges_html += '</div>'
+
+                            with target_col:
+                                st.markdown(f"""
+                                <div class="integrated-crew-box">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                        <div>
+                                            <div class="compact-name">{cand_name} <span style="color:#94A3B8; font-size:12px;">({cand_id})</span></div>
+                                            <div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 3px;">
+                                                還假班別：{cand.get('還假車次', '無')}
+                                            </div>
+                                            <div style="font-size: 11px; color: #94A3B8; margin-top: 2px;">
+                                                對方想休 {cand.get('想休日')} ({cand.get('想休狀態')})
+                                            </div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-size: 18px; font-weight: 900; color: #4ADE80; font-family: monospace;">
+                                                {cand.get('Sign-In', '--:--')}
+                                            </div>
+                                            <div style="font-size: 11px; color: #64748B;">收工 {cand.get('收工時間', '--:--')}</div>
+                                            <div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px;">
+                                                ({cand.get('工時', '')})
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
+                                        <span style="font-size: 11px; color: #FCD34D; font-weight: 600;">還休日：{cand.get('還休日')}</span>
+                                        {badges_html}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                                if st.button(f"檢視 {cand_name} 完整班表", key=f"ex_btn_{cand_id}_{idx}"):
+                                    show_crew_schedule_modal(cand_id, current_unit_label, badge_title="Exchange | C.L.F")
                     else:
                         st.info("在指定條件內，找不到符合的可換假人員")
         except Exception as e:
