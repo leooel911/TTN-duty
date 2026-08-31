@@ -6,7 +6,7 @@ import io
 import pandas as pd
 from datetime import date, timedelta, datetime, timezone
 import matplotlib
-import matplotlib.plt as plt
+import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 import time
@@ -81,7 +81,7 @@ st.markdown("""
         .block-container { padding: 2.5rem 0.8rem 2rem 0.8rem !important; max-width: 100% !important; }
     }
 
-    /* 三大系統按鈕選項方格化卡片設計 (Optimization 1) */
+    /* 三大系統按鈕選項方格化卡片設計 */
     div[role="radiogroup"] {
         display: flex;
         flex-direction: column;
@@ -888,7 +888,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 三大系統的按鈕選項：搭配 CSS 渲染成高質感的方格卡片按鈕 (Optimization 1 & 4)
+# 三大系統的按鈕選項：搭配 CSS 渲染成高質感的方格卡片按鈕
 app_mode = st.radio("系統操作模式選擇", [
     "繪製個人月班表圖檔", 
     "換班｜選擇換班日期（Alpha測試版）",
@@ -920,7 +920,6 @@ if app_mode == "繪製個人月班表圖檔":
         if not current_input: st.warning("請輸入員編或姓名")
         else:
             log_activity(f"生成個人班表圖檔查詢: {current_input}")
-            # 加上處理狀態顯示，防止誤以為當機 (Optimization 2)
             with st.spinner("正在解析資料與繪製個人月班表，請稍候..."):
                 try:
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(current_input)
@@ -1073,7 +1072,6 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
 
     sample_path = active_files.get(selected_role, "")
     
-    # 防呆修正：檢查檔案是否存在，避免換假系統丟出錯誤碼 (Optimization 3)
     if not sample_path or not os.path.exists(sample_path):
         st.error(f"找不到【{current_unit_label} - {selected_role}】的班表檔案，請先至管理員後台上傳")
     else:
@@ -1121,7 +1119,6 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                 min_allowed = return_time_filter.split(" ")[0]
                                 if not parsed_return["start"] or parsed_return["start"] < min_allowed: continue
 
-                            # 嚴格過濾連續上班天數檢查
                             if strict_limit:
                                 work_count = 0
                                 start_check_idx = max(2, target_col_idx - 5)
@@ -1148,17 +1145,20 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
 
                     if candidates:
                         for idx, cand in enumerate(candidates):
+                            cand_name = cand.get('姓名', '')
+                            cand_id = cand.get('員編', '')
+                            cand_status = cand.get('狀態', '')
                             st.markdown(f"""
                             <div class="integrated-crew-box">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div class="compact-name">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
-                                    <span style="font-size: 12px; color: #34D399; font-weight: 700; font-family: monospace;">{cand['狀態']}</span>
+                                    <div class="compact-name">{cand_name} <span style="color:#94A3B8; font-size:12px;">({cand_id})</span></div>
+                                    <span style="font-size: 12px; color: #34D399; font-weight: 700; font-family: monospace;">{cand_status}</span>
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
 
-                            if st.button(f"檢視 {cand['姓名']} 完整班表", key=f"ex_btn_{cand['員編']}_{idx}"):
-                                show_crew_schedule_modal(cand['員編'], current_unit_label, badge_title="Exchange | C.L.F")
+                            if st.button(f"檢視 {cand_name} 完整班表", key=f"ex_btn_{cand_id}_{idx}"):
+                                show_crew_schedule_modal(cand_id, current_unit_label, badge_title="Exchange | C.L.F")
                     else:
                         st.info("在指定條件內，找不到符合的可換假人員")
         except Exception as e:
