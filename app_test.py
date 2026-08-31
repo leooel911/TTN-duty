@@ -960,7 +960,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
             with q1:
                 if st.button("早班 (05-08)", key="q_0508"): st.session_state["win_time_slider"] = ("05:00", "08:00")
             with q2:
-                if st.button("日班 (08-12)", key="q_0812"): st.session_state["win_time_slider"] = ("08:00", "12:00")
+                if st.button("中班 (08-12)", key="q_0812"): st.session_state["win_time_slider"] = ("08:00", "12:00")
             with q3:
                 if st.button("晚班 (12-18)", key="q_1218"): st.session_state["win_time_slider"] = ("12:00", "18:00")
             with q4:
