@@ -624,7 +624,7 @@ C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
 
-# ==================== 絕對最優先檢查：獨立檢視指定組員完整班表 (Inspector Mode) ====================
+# ==================== 獨立檢視指定組員完整班表 (Inspector Mode) ====================
 if st.session_state.get("inspect_emp_target") is not None:
     target_emp = st.session_state["inspect_emp_target"]
     current_unit = st.session_state.get("current_unit", "TTN")
@@ -927,16 +927,16 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             log_activity(f"切換個人月班表系統維護狀態: {m_prod}")
             st.rerun()
     with col_m2:
-        m_win = st.checkbox("【換班時段快篩】維護中", value=is_module_maintenance("window_filter"), key="m_win_chk")
+        m_win = st.checkbox("【換班選擇日期】維護中", value=is_module_maintenance("window_filter"), key="m_win_chk")
         if m_win != is_module_maintenance("window_filter"):
             set_module_maintenance("window_filter", m_win)
-            log_activity(f"切換換班時段快篩系統維護狀態: {m_win}")
+            log_activity(f"切換換班選擇日期系統維護狀態: {m_win}")
             st.rerun()
     with col_m3:
-        m_ex = st.checkbox("【換假日期快篩】維護中", value=is_module_maintenance("exchange_filter"), key="m_ex_chk")
+        m_ex = st.checkbox("【換假選擇日期】維護中", value=is_module_maintenance("exchange_filter"), key="m_ex_chk")
         if m_ex != is_module_maintenance("exchange_filter"):
             set_module_maintenance("exchange_filter", m_ex)
-            log_activity(f"切換換假日期快篩系統維護狀態: {m_ex}")
+            log_activity(f"切換換假選擇日期系統維護狀態: {m_ex}")
             st.rerun()
 
     st.markdown("---")
@@ -1152,11 +1152,11 @@ st.markdown(f"""
 st.markdown('<div class="mode-selection-header">Select Operation Mode // 請選擇系統模式</div>', unsafe_allow_html=True)
 app_mode = st.radio("系統操作模式選擇", [
     "繪製個人月班表圖檔", 
-    "換班｜指定時段組員名單快篩（Alpha測試版）",
-    "換假｜日期快篩（Alpha測試版）"
+    "換班｜選擇換班日期（Alpha測試版）",
+    "換假｜選擇換假日期（Alpha測試版）"
 ], horizontal=False, label_visibility="collapsed")
 
-if app_mode != "換假｜日期快篩（Alpha測試版）":
+if app_mode != "換假｜選擇換假日期（Alpha測試版）":
     st.session_state["ex_sub_mode"] = "search_form"
     st.session_state["last_app_mode"] = ""
 
@@ -1336,11 +1336,11 @@ if app_mode == "繪製個人月班表圖檔":
                     st.download_button("點此下載班表影像檔", data=buf, file_name=f"{current_unit_label}_班表_{emp_name}.png", mime="image/png")
                 except Exception as e: st.error(f"錯誤：{e}")
 
-elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
+elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
     if is_module_maintenance("window_filter") and not st.session_state.get("admin_logged_in", False):
         st.markdown("""
         <div class="maintenance-card-box">
-            <div class="maintenance-title">[ 系統維護中 ] 指定時段報到組員快篩系統</div>
+            <div class="maintenance-title">[ 系統維護中 ] 換班選擇日期快篩系統</div>
             <div class="maintenance-sub">C.L.F // MAINTENANCE MODE &bull; SYSTEM UPGRADING</div>
         </div>
         <div class="maintenance-red-glow-line"></div>
@@ -1350,13 +1350,13 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
     if st.session_state.get("admin_logged_in", False) and is_module_maintenance("window_filter"):
         st.markdown("""
         <div class="admin-bypass-banner">
-            <span>[!] ADMIN BYPASS // 「時段快篩」目前處於維護中，您正以管理員身分預覽</span>
+            <span>[!] ADMIN BYPASS // 「換班選擇日期」目前處於維護中，您正以管理員身分預覽</span>
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="section-header-box">
-        <div class="section-title">指定 Sign-In 時段組員名單快篩</div>
+        <div class="section-title">換班檢索｜指定 Sign-In 時段組員快篩</div>
         <div class="section-subtitle">Duty Time Window & Sign-In Filter Matrix</div>
     </div>
     """, unsafe_allow_html=True)
@@ -1406,8 +1406,7 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
             if "win_target_date" not in st.session_state or st.session_state["win_target_date"] not in date_cols:
                 st.session_state["win_target_date"] = date_cols[0]
 
-            # 簡化：僅保留單一「查詢日期」選項
-            target_date = st.selectbox("查詢日期", date_cols, key="win_target_date")
+            target_date = st.selectbox("選擇換班日期", date_cols, key="win_target_date")
 
             c3, c4 = st.columns(2)
             with c3: 
@@ -1438,9 +1437,8 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
             with filter_col1: only_main_line = st.checkbox("僅顯示正線勤務", value=False, key="win_main_line")
             with filter_col2: only_long_shift = st.checkbox("僅顯示長班 (>8.5h)", value=False, key="win_long_shift")
 
-            # 按下搜尋時執行運算並存入 Session State
-            if st.button("開始區間檢索符合條件人員", key="btn_window_search"):
-                log_activity(f"時段快篩 [{current_unit_label} - {selected_role}] 日期:{target_date} 從:{min_time} 到:{max_time_sel}")
+            if st.button("搜尋可換班組員名單", key="btn_window_search"):
+                log_activity(f"換班快篩 [{current_unit_label} - {selected_role}] 日期:{target_date} 從:{min_time} 到:{max_time_sel}")
                 
                 search_results = []
                 all_cols_list = list(df_search.columns[2:])
@@ -1506,7 +1504,6 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
 
                 search_results = sorted(search_results, key=lambda x: (str(x["Sign-In"]), str(x["收工時間"]), str(x["員編"])))
                 
-                # 寫入 Session State 實現持久化
                 st.session_state["win_search_results"] = search_results
                 st.session_state["win_search_summary"] = {
                     "range": target_date,
@@ -1515,14 +1512,13 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                 st.session_state["win_active_inspect_emp"] = None
                 st.rerun()
 
-            # 只要 Session State 中有搜尋結果，就進行渲染呈現
             if st.session_state.get("win_search_results") is not None:
                 search_results = st.session_state["win_search_results"]
                 summary = st.session_state.get("win_search_summary", {})
                 range_label_str = summary.get("range", "")
                 time_label_str = summary.get("time", "")
 
-                st.markdown(f"### 檢索結果：{range_label_str} ｜ {time_label_str}（共符合 {len(search_results)} 筆）")
+                st.markdown(f"### 換班可選人員名單：{range_label_str} ｜ {time_label_str}（共符合 {len(search_results)} 筆）")
 
                 if search_results:
                     current_date_group = None
@@ -1556,10 +1552,9 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                         with target_stream_col:
                             st.markdown(card_html, unsafe_allow_html=True)
 
-                            # 判斷目前這張卡片是否正處於檢視狀態
                             inspect_key = f"{r['員編']}_{r['日期']}"
                             is_inspecting = (st.session_state.get("win_active_inspect_emp") == inspect_key)
-                            btn_label = f"▲ 收合 {r['姓名']} 班表" if is_inspecting else f"▼ 查看 {r['姓名']} ({r['員編']}) 完整班表"
+                            btn_label = f"▲ 收合 {r['姓名']} 完整月班表" if is_inspecting else f"▼ 檢視 {r['姓名']} ({r['員編']}) 完整月班表"
 
                             if st.button(btn_label, key=f"win_inspect_btn_{r['員編']}_{r['日期']}_{idx}", use_container_width=True, type="secondary"):
                                 if is_inspecting:
@@ -1568,7 +1563,6 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                                     st.session_state["win_active_inspect_emp"] = inspect_key
                                 st.rerun()
 
-                            # 點擊後直接在卡片正下方生成繪圖進度條與班表圖片
                             if is_inspecting:
                                 status_placeholder = st.empty()
                                 progress_bar = st.progress(0)
@@ -1713,15 +1707,15 @@ elif app_mode == "換班｜指定時段組員名單快篩（Alpha測試版）":
                 else: 
                     st.info("在指定的日期與 Sign-In 區間內，沒有找到符合條件的人員")
 
-elif app_mode == "換假｜日期快篩（Alpha測試版）":
-    if st.session_state.get("last_app_mode") != "換假｜日期快篩（Alpha測試版）":
+elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
+    if st.session_state.get("last_app_mode") != "換假｜選擇換假日期（Alpha測試版）":
         if "ex_sub_mode" not in st.session_state: st.session_state["ex_sub_mode"] = "search_form"
-        st.session_state["last_app_mode"] = "換假｜日期快篩（Alpha測試版）"
+        st.session_state["last_app_mode"] = "換假｜選擇換假日期（Alpha測試版）"
 
     if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_logged_in", False):
         st.markdown("""
         <div class="maintenance-card-box">
-            <div class="maintenance-title">[ 系統維護中 ] 換假日期快篩系統</div>
+            <div class="maintenance-title">[ 系統維護中 ] 換假選擇日期快篩系統</div>
             <div class="maintenance-sub">C.L.F // MAINTENANCE MODE &bull; SYSTEM UPGRADING</div>
         </div>
         <div class="maintenance-red-glow-line"></div>
@@ -1731,7 +1725,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if st.session_state.get("admin_logged_in", False) and is_module_maintenance("exchange_filter"):
         st.markdown("""
         <div class="admin-bypass-banner">
-            <span>[!] ADMIN BYPASS // 「換假快篩」目前處於維護中，您正以管理員身分預覽</span>
+            <span>[!] ADMIN BYPASS // 「換假選擇日期」目前處於維護中，您正以管理員身分預覽</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1746,7 +1740,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
 
     st.markdown("""
     <div class="section-header-box">
-        <div class="section-title">換假日期快篩系統</div>
+        <div class="section-title">換假檢索｜選擇換假日期快篩</div>
         <div class="section-subtitle">Shift Exchange Date Filter Matrix</div>
     </div>
     """, unsafe_allow_html=True)
@@ -1774,15 +1768,15 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         if date_cols:
             saved_t_date = st.session_state.get("ex_saved_target_date", "")
             default_t_idx = date_cols.index(saved_t_date) if saved_t_date in date_cols else 0
-            target_date = st.selectbox("想休假的日期", date_cols, index=default_t_idx, key=f"ex_target_date_{selected_role}")
-        else: target_date = st.selectbox("想休假的日期", ["無可用日期"], index=0, key=f"ex_target_date_{selected_role}")
+            target_date = st.selectbox("選擇想休假日期", date_cols, index=default_t_idx, key=f"ex_target_date_{selected_role}")
+        else: target_date = st.selectbox("選擇想休假日期", ["無可用日期"], index=0, key=f"ex_target_date_{selected_role}")
 
     with ex_c3:
         if date_cols:
             saved_r_date = st.session_state.get("ex_saved_return_date", "")
             default_r_idx = date_cols.index(saved_r_date) if saved_r_date in date_cols else min(1, len(date_cols)-1)
-            return_date = st.selectbox("可還假的日期(上班日)", date_cols, index=default_r_idx, key=f"ex_return_date_{selected_role}")
-        else: return_date = st.selectbox("可還假的日期(上班日)", ["無可用日期"], index=0, key=f"ex_return_date_{selected_role}")
+            return_date = st.selectbox("選擇可還假日期", date_cols, index=default_r_idx, key=f"ex_return_date_{selected_role}")
+        else: return_date = st.selectbox("選擇可還假日期", ["無可用日期"], index=0, key=f"ex_return_date_{selected_role}")
 
     saved_time_f = st.session_state.get("ex_saved_time_filter", "不限")
     default_time_idx = time_filter_options.index(saved_time_f) if saved_time_f in time_filter_options else 0
@@ -1808,7 +1802,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if date_cols and target_date != "無可用日期" and return_date != "無可用日期":
         if target_date == return_date:
             is_selection_valid = False
-            validation_error_msg = "「想休假的日期」與「可還假的日期」不可選擇同一天！"
+            validation_error_msg = "「選擇想休假日期」與「選擇可還假日期」不可選擇同一天！"
         else:
             try:
                 year_val = 2026
@@ -1833,7 +1827,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
     if not is_selection_valid: st.error(f"條件未通過：{validation_error_msg}")
 
     if is_selection_valid:
-        if st.button("開始尋找可換假對象", key="btn_auto_search_exchange_fixed"):
+        if st.button("搜尋可換假組員名單", key="btn_auto_search_exchange_fixed"):
             log_activity(f"換假快篩 [{current_unit_label} - {selected_role}] 想休:{target_date} 還假:{return_date}")
             st.session_state["ex_sub_mode"] = "results"
             try:
@@ -1945,7 +1939,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         candidates.append({
                             "員編": emp_id, "姓名": emp_name,
                             "當天狀態": f"想休 {target_date}(DO) ｜ 還假 {return_date}({parsed_return['start']+'->'+parsed_return['end'] if parsed_return['start'] else parsed_return['train']})",
-                            "前後連續上班最大天數": max_streak,
+                            "前後連續上班風險度": max_streak,
                             "鄰近天數概況": " | ".join(mini_schedule)
                         })
                     st.session_state["ex_saved_candidates"] = candidates
@@ -1967,7 +1961,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         st.markdown(f"""
         <div style="background: rgba(30, 41, 59, 0.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid #38BDF8; border-radius: 16px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 8px 32px 0 rgba(0,0,0,0.37); display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <span style="color: #F8FAFC; font-size: 16px; font-weight: 700; font-family: monospace;">【{current_unit_label} - {saved_role}】符合換假名單</span>
+                <span style="color: #F8FAFC; font-size: 16px; font-weight: 700; font-family: monospace;">【{current_unit_label} - {saved_role}】換假可選人員名單</span>
                 <span style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: #38BDF8; font-size: 11px; padding: 2px 10px; border-radius: 6px; font-weight: 600; font-family: monospace;">共 {len(saved_candidates)} 位符合</span>
             </div>
             <div style="color: #94A3B8; font-size: 12px; font-family: monospace; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
@@ -1983,13 +1977,12 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
         for idx, cand in enumerate(saved_candidates):
             card_container = st.container()
             with card_container:
-                # 1. 人員資訊方塊格
                 st.markdown(f"""
                 <div class="integrated-crew-box">
                     <div class="time-header-row">
                         <span class="compact-time" style="color: #34D399;">{cand['當天狀態']}</span>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.4); color: #34D399;">連續上班風險度: {cand['前後連續上班最大天數']}天</span>
+                            <span class="non-line-badge" style="background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.4); color: #34D399;">連續上班風險度: {cand['前後連續上班風險度']}天</span>
                         </div>
                     </div>
                     <div class="compact-name" style="margin-top: 4px;">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
@@ -1998,7 +1991,7 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                 """, unsafe_allow_html=True)
 
                 is_inspecting = (st.session_state.get("ex_active_inspect_emp") == cand['員編'])
-                btn_label = f"▲ 收合 {cand['姓名']} 班表" if is_inspecting else f"▼ 查看 {cand['姓名']} ({cand['員編']}) 完整班表"
+                btn_label = f"▲ 收合 {cand['姓名']} 完整月班表" if is_inspecting else f"▼ 檢視 {cand['姓名']} ({cand['員編']}) 完整月班表"
 
                 if st.button(btn_label, key=f"ex_gen_img_btn_{cand['員編']}_{idx}", use_container_width=True, type="secondary"):
                     if is_inspecting:
@@ -2007,7 +2000,6 @@ elif app_mode == "換假｜日期快篩（Alpha測試版）":
                         st.session_state["ex_active_inspect_emp"] = cand['員編']
                     st.rerun()
 
-                # 2. 進度條與班表圖檔直接在此人員卡片正下方生成渲染
                 if is_inspecting:
                     status_placeholder = st.empty()
                     progress_bar = st.progress(0)
