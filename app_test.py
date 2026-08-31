@@ -1184,11 +1184,8 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                         <div>
                                             <div class="compact-name">{cand_name} <span style="color:#94A3B8; font-size:12px;">({cand_id})</span></div>
-                                            <div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 3px;">
-                                                還假班別：{cand.get('還假車次', '無')}
-                                            </div>
-                                            <div style="font-size: 11px; color: #94A3B8; margin-top: 2px;">
-                                                對方想休 {cand.get('想休日')} ({cand.get('想休狀態')})
+                                            <div style="font-size: 12px; color: #94A3B8; margin-top: 4px; font-family: monospace;">
+                                                還休日：{cand.get('還休日')} ｜ 班別：<strong style="color:#38BDF8;">{cand.get('還假車次', '無')}</strong>
                                             </div>
                                         </div>
                                         <div style="text-align: right;">
@@ -1202,7 +1199,9 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                         </div>
                                     </div>
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
-                                        <span style="font-size: 11px; color: #FCD34D; font-weight: 600;">還休日：{cand.get('還休日')}</span>
+                                        <span style="font-size: 12px; color: #FCD34D; font-weight: 700; font-family: monospace;">
+                                            我想休：{cand.get('想休日')} ({cand.get('想休狀態')})
+                                        </span>
                                         {badges_html}
                                     </div>
                                 </div>
