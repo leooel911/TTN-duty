@@ -620,7 +620,8 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
             if d.get("hours"): 
                 draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"], tr, note) else "#000000", fontproperties=fp(11.5))
                 do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l or "OGC" in l), "")
-                if do_match:
+                # 加上 do_match != tr 判斷，避免與中央顯示的勤務代碼重複
+                if do_match and do_match != tr:
                     draw_bold_text(ax, x + CW - 0.004, ry + 0.026, do_match, ha="right", va="bottom", color=C_DO_TXT, fontproperties=fp(10.5))
 
             cx = x + CW / 2
