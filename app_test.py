@@ -58,11 +58,21 @@ UNITS = {
 
 LOG_FILE = os.path.join(DATA_DIR, "activity_log.txt")
 
-MAINTENANCE_FLAGS = {
-    "producer": os.path.join(DATA_DIR, "maintenance_producer.flag"),
-    "window_filter": os.path.join(DATA_DIR, "maintenance_window.flag"),
-    "exchange_filter": os.path.join(DATA_DIR, "maintenance_exchange.flag")
-}
+# --- 升級：依單位動態產生獨立 Flag 檔名 ---
+def get_maintenance_flag_path(unit, module_key):
+    return os.path.join(DATA_DIR, f"maintenance_{unit}_{module_key}.flag")
+
+def set_module_maintenance(unit, module_key, is_maint):
+    if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR, exist_ok=True)
+    flag_path = get_maintenance_flag_path(unit, module_key)
+    if is_maint:
+        with open(flag_path, "w") as f: f.write("ON")
+    else:
+        if os.path.exists(flag_path): os.remove(flag_path)
+
+def is_module_maintenance(unit, module_key):
+    flag_path = get_maintenance_flag_path(unit, module_key)
+    return os.path.exists(flag_path)
 
 # --- 升級版毛玻璃與響應式視覺設計 (Glassmorphism & Integrated UI) ---
 st.markdown("""
@@ -270,19 +280,6 @@ C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
 C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
 C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
 C_TOWN_TXT = "#000000"
-
-def set_module_maintenance(module_key, is_maint):
-    if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR, exist_ok=True)
-    flag_path = MAINTENANCE_FLAGS.get(module_key)
-    if not flag_path: return
-    if is_maint:
-        with open(flag_path, "w") as f: f.write("ON")
-    else:
-        if os.path.exists(flag_path): os.remove(flag_path)
-
-def is_module_maintenance(module_key):
-    flag_path = MAINTENANCE_FLAGS.get(module_key)
-    return os.path.exists(flag_path) if flag_path else False
 
 def parse_device_info(ua_string):
     ua = ua_string.lower()
@@ -799,7 +796,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                 st.rerun()
     st.stop()
 
-# ==================== 管理員專用：Database 智慧控制台 (保持管理員圖示) ====================
+# ==================== 管理員專用：Database 智慧控制台 ====================
 if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -844,18 +841,28 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.metric("系統日誌累計", f"{log_cnt} 筆", delta="Activity")
 
     st.markdown("---")
-    st.subheader("各大系統模組維護開關控制")
+    st.subheader(f"各大系統模組維護開關控制（當前控制單位：{admin_target_unit}）")
 
+    # --- 升級：維護開關依選取單位獨立綁定 ---
     col_m1, col_m2, col_m3 = st.columns(3)
     with col_m1:
-        m_prod = st.checkbox("【個人月班表圖檔】維護中", value=is_module_maintenance("producer"), key="m_prod_chk")
-        if m_prod != is_module_maintenance("producer"): set_module_maintenance("producer", m_prod); st.rerun()
+        m_prod = st.checkbox("【個人月班表圖檔】維護中", value=is_module_maintenance(admin_target_unit, "producer"), key=f"m_prod_chk_{admin_target_unit}")
+        if m_prod != is_module_maintenance(admin_target_unit, "producer"):
+            set_module_maintenance(admin_target_unit, "producer", m_prod)
+            log_activity(f"設定 [{admin_target_unit}] 月班表模組維護開關: {m_prod}")
+            st.rerun()
     with col_m2:
-        m_win = st.checkbox("【換班選擇日期】維護中", value=is_module_maintenance("window_filter"), key="m_win_chk")
-        if m_win != is_module_maintenance("window_filter"): set_module_maintenance("window_filter", m_win); st.rerun()
+        m_win = st.checkbox("【換班選擇日期】維護中", value=is_module_maintenance(admin_target_unit, "window_filter"), key=f"m_win_chk_{admin_target_unit}")
+        if m_win != is_module_maintenance(admin_target_unit, "window_filter"):
+            set_module_maintenance(admin_target_unit, "window_filter", m_win)
+            log_activity(f"設定 [{admin_target_unit}] 換班模組維護開關: {m_win}")
+            st.rerun()
     with col_m3:
-        m_ex = st.checkbox("【換假選擇日期】維護中", value=is_module_maintenance("exchange_filter"), key="m_ex_chk")
-        if m_ex != is_module_maintenance("exchange_filter"): set_module_maintenance("exchange_filter", m_ex); st.rerun()
+        m_ex = st.checkbox("【換假選擇日期】維護中", value=is_module_maintenance(admin_target_unit, "exchange_filter"), key=f"m_ex_chk_{admin_target_unit}")
+        if m_ex != is_module_maintenance(admin_target_unit, "exchange_filter"):
+            set_module_maintenance(admin_target_unit, "exchange_filter", m_ex)
+            log_activity(f"設定 [{admin_target_unit}] 換假模組維護開關: {m_ex}")
+            st.rerun()
 
     st.markdown("---")
     st.subheader(f"【{admin_target_unit}】班表維護控制台")
@@ -906,7 +913,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.stop()
 
-# ==================== 一般使用者系統首頁介面 (純淨無貼圖) ====================
+# ==================== 一般使用者系統首頁介面 ====================
 active_files = get_current_role_files()
 missing_files = [role for role in ["駕駛", "列車長", "服勤員"] if not os.path.exists(active_files[role]) or os.path.getsize(active_files[role]) == 0]
 
@@ -929,7 +936,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 三大系統的按鈕選項：搭配 CSS 渲染成高質感的方格卡片按鈕
 app_mode = st.radio("系統操作模式選擇", [
     "繪製個人月班表圖檔", 
     "換班｜選擇換班日期（Alpha測試版）",
@@ -943,8 +949,9 @@ if st.session_state["last_app_mode"] != app_mode:
 st.markdown("---")
 
 if app_mode == "繪製個人月班表圖檔":
-    if is_module_maintenance("producer") and not st.session_state.get("admin_logged_in", False):
-        st.warning("[ 系統維護中 ] 繪製個人月班表圖檔系統維護中")
+    # 判斷當前使用者單位的維護狀態
+    if is_module_maintenance(current_unit_label, "producer") and not st.session_state.get("admin_logged_in", False):
+        st.warning(f"[ 系統維護中 ] 【{current_unit_label}】繪製個人月班表圖檔系統維護中")
         st.stop()
 
     st.markdown("""
@@ -971,8 +978,9 @@ if app_mode == "繪製個人月班表圖檔":
                 except Exception as e: st.error(f"錯誤：{e}")
 
 elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
-    if is_module_maintenance("window_filter") and not st.session_state.get("admin_logged_in", False):
-        st.warning("[ 系統維護中 ] 換班選擇日期快篩系統維護中")
+    # 判斷當前使用者單位的維護狀態
+    if is_module_maintenance(current_unit_label, "window_filter") and not st.session_state.get("admin_logged_in", False):
+        st.warning(f"[ 系統維護中 ] 【{current_unit_label}】換班選擇日期快篩系統維護中")
         st.stop()
 
     st.markdown("""
@@ -1053,7 +1061,6 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                 st.session_state["win_raw_candidates"] = raw_candidates
                 st.rerun()
 
-            # 即時動態過濾機制
             if st.session_state.get("win_raw_candidates") is not None:
                 raw_list = st.session_state["win_raw_candidates"]
                 filtered_results = []
@@ -1102,8 +1109,9 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                 else: st.info("在指定條件內，找不到符合的人員")
 
 elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
-    if is_module_maintenance("exchange_filter") and not st.session_state.get("admin_logged_in", False):
-        st.warning("[ 系統維護中 ] 換假選擇日期快篩系統維護中")
+    # 判斷當前使用者單位的維護狀態
+    if is_module_maintenance(current_unit_label, "exchange_filter") and not st.session_state.get("admin_logged_in", False):
+        st.warning(f"[ 系統維護中 ] 【{current_unit_label}】換假選擇日期快篩系統維護中")
         st.stop()
 
     st.markdown("""
@@ -1138,7 +1146,6 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                 with ex_c3: 
                     return_date = st.selectbox("選擇可還假日期", date_cols, index=min(1, len(date_cols)-1), key="ex_return_date")
 
-                # --- 跨週即時偵測與示警邏輯 ---
                 is_cross_week = False
                 target_week_str = ""
                 try:
@@ -1228,7 +1235,6 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                     st.session_state["ex_search_performed"] = True
                     st.rerun()
 
-                # 即時動態過濾機制 (Live Dynamic Filtering)
                 if st.session_state.get("ex_search_performed"):
                     raw_list = st.session_state.get("ex_raw_candidates", [])
                     filtered_candidates = []
