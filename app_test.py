@@ -805,7 +805,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.subheader("📋 系統操作活動紀錄日誌 (Activity Log)")
     col_log1, col_log2 = st.columns([1, 3])
     with col_log1:
-        log_filter_keyword = st.text_input("🔍 搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 單位")
+        log_filter_keyword = st.text_input(" 搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 單位")
     with col_log2:
         st.write("")
         if st.button("🗑️ 清空歷史日誌"):
@@ -922,16 +922,16 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
 
             # 時間區間雙向 Slider 與快捷膠囊按鈕 (Optimization 2)
             TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
-            st.write("⏱️ **Sign-In 時段區間快選**")
+            st.write(" **Sign-In 時段區間快選**")
             q1, q2, q3, q4 = st.columns(4)
             with q1:
-                if st.button("🌅 早班 (05-08)", key="q_0508"): st.session_state["win_time_slider"] = ("05:00", "08:00")
+                if st.button(" 早班 (05-08)", key="q_0508"): st.session_state["win_time_slider"] = ("05:00", "08:00")
             with q2:
-                if st.button("☀️ 日班 (08-12)", key="q_0812"): st.session_state["win_time_slider"] = ("08:00", "12:00")
+                if st.button("中班 (08-12)", key="q_0812"): st.session_state["win_time_slider"] = ("08:00", "12:00")
             with q3:
-                if st.button("🌆 晚班 (12-18)", key="q_1218"): st.session_state["win_time_slider"] = ("12:00", "18:00")
+                if st.button(" 晚班 (12-18)", key="q_1218"): st.session_state["win_time_slider"] = ("12:00", "18:00")
             with q4:
-                if st.button("🔄 全時段 (00-18)", key="q_0018"): st.session_state["win_time_slider"] = ("00:00", "18:00")
+                if st.button("全時段 (00-18)", key="q_0018"): st.session_state["win_time_slider"] = ("00:00", "18:00")
 
             default_slider = st.session_state.get("win_time_slider", ("05:00", "08:00"))
             min_time, max_time_sel = st.select_slider("Sign-In 報到區間", options=TIME_OPTIONS, value=default_slider, key="win_time_slider")
@@ -1016,7 +1016,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                             """, unsafe_allow_html=True)
 
                             # 原生 Dialog Modal 彈窗觸發按鈕 (Optimization 1)
-                            if st.button(f"🔍 檢視 {r['姓名']} 完整班表", key=f"win_btn_{r['員編']}_{idx}"):
+                            if st.button(f" 檢視 {r['姓名']} 完整班表", key=f"win_btn_{r['員編']}_{idx}"):
                                 show_crew_schedule_modal(r['員編'], current_unit_label, badge_title="Window Filter | C.L.F")
                 else: st.info("在指定條件內，找不到符合的人員")
 
@@ -1098,7 +1098,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
             </div>
             """, unsafe_allow_html=True)
 
-            if st.button(f"🔍 檢視 {cand['姓名']} 完整班表", key=f"ex_btn_{cand['員編']}_{idx}"):
+            if st.button(f" 檢視 {cand['姓名']} 完整班表", key=f"ex_btn_{cand['員編']}_{idx}"):
                 show_crew_schedule_modal(cand['員編'], current_unit_label, badge_title="Exchange | C.L.F")
 
 # --- 底部頁尾貼紙 ---
