@@ -74,13 +74,6 @@ def is_module_maintenance(unit, module_key):
     flag_path = get_maintenance_flag_path(unit, module_key)
     return os.path.exists(flag_path)
 
-# --- 事件驅動型維護狀態變更 Callback ---
-def toggle_maintenance_callback(unit, module_key):
-    key = f"maint_sw_{unit}_{module_key}"
-    new_state = st.session_state.get(key, False)
-    set_module_maintenance(unit, module_key, new_state)
-    log_activity(f"設定 [{unit}] {module_key} 維護開關狀態: {'開啟維護' if new_state else '解除維護'}")
-
 # --- 升級版毛玻璃與響應式視覺設計 (Glassmorphism & Integrated UI) ---
 st.markdown("""
 <style>
@@ -451,6 +444,17 @@ def translate_train_code(tr):
     mapping = {"PAY": "特休 (PAY)", "FAC": "家庭照顧假 (FAC)", "LEV": "公假 (LEV)", "MLP": "身理假 (MLP)", "MTR": "事假 (MTR)"}
     return mapping.get(tr_upper, tr)
 
+# --- 產生格式化 LINE 訊息的輔助函式 ---
+def generate_line_swap_msg(my_id_or_name, target_name, target_date, target_duty, my_return_date, my_return_duty):
+    clean_target = str(target_name).strip()
+    greeting = f"{clean_target} 同仁" if len(clean_target) > 3 else f"{clean_target} 哥/姐"
+    
+    return f"""【換班/換假詢問】
+{greeting} 您好：
+我是 {my_id_or_name}，請問您在 {target_date} 的【{target_duty}】是否方便跟我調整呢？
+我這邊可以提供 {my_return_date} 的【{my_return_duty}】。
+如方便的話再麻煩回覆我，非常感謝！"""
+
 def is_town_shift(tr, note):
     tr_upper = str(tr).strip().upper()
     note_upper = str(note).strip().upper()
@@ -606,21 +610,18 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
             bg = C_DO_BG if is_pure_hol else (C_PAY_BG if is_pay_shift else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
             ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
 
-            # --- 合理放大：國定假日/一般日期標籤放大 (9.5->11pt / 10->11.5pt) ---
             if dt in NATIONAL_HOLIDAYS:
                 full_date_str = f"{dt} ({NATIONAL_HOLIDAYS[dt]})"
                 draw_bold_text(ax, x + 0.005, ry + RH - 0.004, full_date_str, ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(11))
             else:
                 draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color="#000000", fontproperties=fp(11.5))
 
-            # --- 合理放大：疏運標籤放大 (8.5->10.5pt) ---
             if dt in active_transport:
                 draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(10.5))
 
             if d.get("hours"): 
                 draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"], tr, note) else "#000000", fontproperties=fp(11.5))
                 do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l or "OGC" in l), "")
-                # 加上 do_match != tr 判斷，避免與中央顯示的勤務代碼重複
                 if do_match and do_match != tr:
                     draw_bold_text(ax, x + CW - 0.004, ry + 0.026, do_match, ha="right", va="bottom", color=C_DO_TXT, fontproperties=fp(10.5))
 
@@ -816,7 +817,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     """, unsafe_allow_html=True)
 
     admin_target_unit = st.selectbox("選擇要維護的營運單位", ["TTN", "TTC", "TTS"], key="admin_target_unit_sel")
-    st.session_state["current_unit"] = admin_target_unit
     current_unit_files = UNITS[admin_target_unit]
 
     col_ctrl1, col_ctrl2 = st.columns(2)
@@ -853,36 +853,44 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.markdown("---")
     st.subheader(f"各大系統模組維護開關控制（當前控制單位：{admin_target_unit}）")
 
-    k_prod = f"maint_sw_{admin_target_unit}_producer"
-    k_win = f"maint_sw_{admin_target_unit}_window_filter"
-    k_ex = f"maint_sw_{admin_target_unit}_exchange_filter"
-
-    st.session_state[k_prod] = is_module_maintenance(admin_target_unit, "producer")
-    st.session_state[k_win] = is_module_maintenance(admin_target_unit, "window_filter")
-    st.session_state[k_ex] = is_module_maintenance(admin_target_unit, "exchange_filter")
+    # 讀取當前管理單位的獨立維護 Flag
+    is_prod_maint = is_module_maintenance(admin_target_unit, "producer")
+    is_win_maint = is_module_maintenance(admin_target_unit, "window_filter")
+    is_ex_maint = is_module_maintenance(admin_target_unit, "exchange_filter")
 
     col_m1, col_m2, col_m3 = st.columns(3)
     with col_m1:
-        st.checkbox(
+        new_prod = st.checkbox(
             "【個人月班表圖檔】維護中",
-            key=k_prod,
-            on_change=toggle_maintenance_callback,
-            args=(admin_target_unit, "producer")
+            value=is_prod_maint,
+            key=f"cb_{admin_target_unit}_producer"
         )
+        if new_prod != is_prod_maint:
+            set_module_maintenance(admin_target_unit, "producer", new_prod)
+            log_activity(f"設定 [{admin_target_unit}] 個人月班表維護開關: {'開啟維護' if new_prod else '解除維護'}")
+            st.rerun()
+
     with col_m2:
-        st.checkbox(
+        new_win = st.checkbox(
             "【換班選擇日期】維護中",
-            key=k_win,
-            on_change=toggle_maintenance_callback,
-            args=(admin_target_unit, "window_filter")
+            value=is_win_maint,
+            key=f"cb_{admin_target_unit}_window_filter"
         )
+        if new_win != is_win_maint:
+            set_module_maintenance(admin_target_unit, "window_filter", new_win)
+            log_activity(f"設定 [{admin_target_unit}] 換班選擇日期維護開關: {'開啟維護' if new_win else '解除維護'}")
+            st.rerun()
+
     with col_m3:
-        st.checkbox(
+        new_ex = st.checkbox(
             "【換假選擇日期】維護中",
-            key=k_ex,
-            on_change=toggle_maintenance_callback,
-            args=(admin_target_unit, "exchange_filter")
+            value=is_ex_maint,
+            key=f"cb_{admin_target_unit}_exchange_filter"
         )
+        if new_ex != is_ex_maint:
+            set_module_maintenance(admin_target_unit, "exchange_filter", new_ex)
+            log_activity(f"設定 [{admin_target_unit}] 換假選擇日期維護開關: {'開啟維護' if new_ex else '解除維護'}")
+            st.rerun()
 
     st.markdown("---")
     st.subheader(f"【{admin_target_unit}】班表維護控制台")
@@ -1124,6 +1132,20 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
 
                             if st.button(f"檢視 {r['姓名']} 完整班表", key=f"win_btn_{r['員編']}_{idx}", use_container_width=True):
                                 show_crew_schedule_modal(r['員編'], current_unit_label, badge_title="Window Filter | C.L.F")
+
+                            # --- LINE 換班詢問文案產生器 ---
+                            duty_detail = f"{r['車次']} ({r['Sign-In']}~{r['Sign-Out']})"
+                            line_msg_win = generate_line_swap_msg(
+                                my_id_or_name=st.session_state.get("current_user_id", "同仁"),
+                                target_name=r['姓名'],
+                                target_date=r['日期'],
+                                target_duty=duty_detail,
+                                my_return_date="[還假日期]",
+                                my_return_duty="[還假班別/DO]"
+                            )
+                            with st.popover("📱 產生 LINE 換班文案", use_container_width=True):
+                                st.caption("點擊右上方 **「複製圖示」** 即可一鍵複製：")
+                                st.code(line_msg_win, language=None)
                 else: st.info("在指定條件內，找不到符合的人員")
 
 elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
@@ -1321,6 +1343,22 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
 
                                 if st.button(f"檢視 {cand_name} 完整班表", key=f"ex_btn_{cand_id}_{idx}", use_container_width=True):
                                     show_crew_schedule_modal(cand_id, current_unit_label, badge_title="Exchange | C.L.F")
+
+                                # --- LINE 換假詢問文案產生器 ---
+                                target_duty_info = f"{cand.get('想休狀態')}"
+                                return_duty_info = f"{cand.get('還假車次', '無')} ({cand.get('Sign-In', '--:--')}~{cand.get('Sign-Out', '--:--')})"
+
+                                line_msg = generate_line_swap_msg(
+                                    my_id_or_name=st.session_state.get("current_user_id", "同仁"),
+                                    target_name=cand_name,
+                                    target_date=cand.get('想休日'),
+                                    target_duty=target_duty_info,
+                                    my_return_date=cand.get('還休日'),
+                                    my_return_duty=return_duty_info
+                                )
+                                with st.popover("📱 產生 LINE 換假文案", use_container_width=True):
+                                    st.caption("點擊右上方 **「複製圖示」** 即可一鍵複製：")
+                                    st.code(line_msg, language=None)
                     else:
                         st.info("在指定條件內，找不到符合的可換假人員 (可嘗試放寬還假日 Sign-In 時間限制或取消嚴格過濾)")
         except Exception as e:
