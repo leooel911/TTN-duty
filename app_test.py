@@ -175,8 +175,18 @@ st.markdown("""
         border: 1px solid rgba(96, 165, 250, 0.3); border-left: 4px solid #60A5FA; color: #FFFFFF; font-size: 13px; font-weight: 800; padding: 8px 14px; border-radius: 10px; margin-top: 18px; margin-bottom: 10px; font-family: monospace;
     }
 
+    /* 一體化卡片外層容器 */
+    .crew-card-container {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        margin-bottom: 16px !important;
+    }
+
     /* 一體化卡片主體設計 */
     .integrated-crew-box {
+        width: 100% !important;
+        box-sizing: border-box !important;
         background: rgba(30, 41, 59, 0.75);
         backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(56, 189, 248, 0.25);
@@ -192,8 +202,14 @@ st.markdown("""
         transition: transform 0.2s ease, border-color 0.2s ease;
     }
 
-    /* 一體化卡片底部連結按鈕 */
+    /* 一體化卡片底部連結按鈕（100% 滿寬向右延伸貼合） */
+    .crew-card-container div.stButton {
+        width: 100% !important;
+    }
+
     .crew-card-container div.stButton > button {
+        width: 100% !important;
+        box-sizing: border-box !important;
         border-top-left-radius: 0px !important;
         border-top-right-radius: 0px !important;
         border-bottom-left-radius: 14px !important;
@@ -205,8 +221,10 @@ st.markdown("""
         color: #38BDF8 !important;
         font-size: 13px !important;
         margin-top: 0px !important;
-        margin-bottom: 16px !important;
+        margin-bottom: 0px !important;
         padding: 8px 12px !important;
+        display: block !important;
+        text-align: center !important;
     }
     .crew-card-container div.stButton > button:hover {
         background: rgba(30, 58, 138, 0.85) !important;
@@ -983,7 +1001,6 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
             with q1:
                 if st.button("早班 (05-08)", key="q_0508"): st.session_state["win_time_slider"] = ("05:00", "08:00")
             with q2:
-                # 【優化 3】按鈕名稱由「日班」更名為「中班」
                 if st.button("中班 (08-12)", key="q_0812"): st.session_state["win_time_slider"] = ("08:00", "12:00")
             with q3:
                 if st.button("晚班 (12-18)", key="q_1218"): st.session_state["win_time_slider"] = ("12:00", "18:00")
@@ -1056,7 +1073,6 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                     for idx, r in enumerate(filtered_results):
                         target_col = c_col1 if idx % 2 == 0 else c_col2
                         with target_col:
-                            # 【優化 2】使用一體化容器包覆卡片與按鈕
                             st.markdown('<div class="crew-card-container">', unsafe_allow_html=True)
                             
                             badges_html = '<div class="badge-group">'
@@ -1064,7 +1080,6 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                             if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
                             badges_html += '</div>'
 
-                            # 【優化 1】上下班時間字體放大至 17px 並改為 900 Ultra Bold 超粗體
                             st.markdown(f"""
                             <div class="integrated-crew-box">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
