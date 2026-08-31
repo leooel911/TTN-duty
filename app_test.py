@@ -969,7 +969,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                 if st.button("全時段 (00-18)", key="q_0018"): st.session_state["win_time_slider"] = ("00:00", "18:00")
 
             default_slider = st.session_state.get("win_time_slider", ("05:00", "08:00"))
-            min_time, max_time_sel = st.select_slider("Sign-In 報到區間", options=TIME_OPTIONS, value=default_slider, key="win_time_slider")
+            min_time, max_time_sel = st.select_slider("Sign-In 區間", options=TIME_OPTIONS, value=default_slider, key="win_time_slider")
 
             filter_col1, filter_col2 = st.columns(2)
             with filter_col1: only_main_line = st.checkbox("僅顯示正線勤務", value=False, key="win_main_line")
@@ -1037,13 +1037,13 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                                         <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
                                         <div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{r['車次']}</div>
                                     </div>
-                                    <div style="text-align: right;">
-                                        <div style="font-size: 18px; font-weight: 900; color: #4ADE80; font-family: monospace;">{r['Sign-In']}</div>
-                                        <div style="font-size: 11px; color: #64748B;">收工 {r['收工時間']}</div>
+                                    <div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
+                                        <div style="font-size: 14px; font-weight: 800; color: #4ADE80; font-family: monospace;">Sign-In {r['Sign-In']}</div>
+                                        <div style="font-size: 14px; font-weight: 800; color: #4ADE80; font-family: monospace;">Sign-Out {r['收工時間']}</div>
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
-                                    <span style="font-size: 11px; color: #94A3B8; font-family: monospace;">隔日報到：<strong style="color:#FCD34D;">{r['隔日Sign-In']}</strong></span>
+                                    <span style="font-size: 11px; color: #94A3B8; font-family: monospace;">隔日 Sign-In：<strong style="color:#FCD34D;">{r['隔日Sign-In']}</strong></span>
                                     {badges_html}
                                 </div>
                             </div>
@@ -1089,9 +1089,9 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                 col_f1, col_f2 = st.columns(2)
                 with col_f1:
                     time_filter_options = ["不限"] + [f"{h:02d}:00 以後" for h in range(5, 17)]
-                    return_time_filter = st.selectbox("還假日報到時間限制", options=time_filter_options, key="ex_time_filter")
+                    return_time_filter = st.selectbox("還假日 Sign-In 時間限制", options=time_filter_options, key="ex_time_filter")
                 with col_f2:
-                    sort_order = st.selectbox("結果排序方式", ["依報到時間 (由早至晚)", "依最早收工", "依工時長短"], key="ex_sort_order")
+                    sort_order = st.selectbox("結果排序方式", ["依 Sign-In 時間 (由早至晚)", "依最早 Sign-Out", "依工時長短"], key="ex_sort_order")
 
                 strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True)
 
@@ -1152,9 +1152,9 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                 "非正線": is_non_line
                             })
 
-                    if sort_order == "依報到時間 (由早至晚)":
+                    if sort_order == "依 Sign-In 時間 (由早至晚)":
                         candidates = sorted(candidates, key=lambda x: (x["Sign-In"] or "99:99", x["收工時間"] or "99:99"))
-                    elif sort_order == "依最早收工":
+                    elif sort_order == "依最早 Sign-Out":
                         candidates = sorted(candidates, key=lambda x: (x["收工時間"] or "99:99", x["Sign-In"] or "99:99"))
                     elif sort_order == "依工時長短":
                         candidates = sorted(candidates, key=lambda x: x["工時"] or "0h00m", reverse=True)
@@ -1188,11 +1188,13 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                                 還休日：{cand.get('還休日')} ｜ 班別：<strong style="color:#38BDF8;">{cand.get('還假車次', '無')}</strong>
                                             </div>
                                         </div>
-                                        <div style="text-align: right;">
-                                            <div style="font-size: 18px; font-weight: 900; color: #4ADE80; font-family: monospace;">
-                                                {cand.get('Sign-In', '--:--')}
+                                        <div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
+                                            <div style="font-size: 14px; font-weight: 800; color: #4ADE80; font-family: monospace;">
+                                                Sign-In {cand.get('Sign-In', '--:--')}
                                             </div>
-                                            <div style="font-size: 11px; color: #64748B;">收工 {cand.get('收工時間', '--:--')}</div>
+                                            <div style="font-size: 14px; font-weight: 800; color: #4ADE80; font-family: monospace;">
+                                                Sign-Out {cand.get('收工時間', '--:--')}
+                                            </div>
                                             <div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px;">
                                                 ({cand.get('工時', '')})
                                             </div>
