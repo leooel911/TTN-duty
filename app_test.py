@@ -6,7 +6,7 @@ import io
 import pandas as pd
 from datetime import date, timedelta, datetime, timezone
 import matplotlib
-import matplotlib.pyplot as plt
+import matplotlib.plt as plt
 import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 import time
@@ -73,12 +73,51 @@ st.markdown("""
         background-attachment: fixed !important;
     }
     
-    /* 桌面端與行動端寬度適配 (Optimization 3) */
+    /* 桌面端與行動端寬度適配 */
     @media (min-width: 1024px) {
         .block-container { padding: 3.5rem 1.5rem 3rem 1.5rem !important; max-width: 1050px !important; }
     }
     @media (max-width: 1023px) {
         .block-container { padding: 2.5rem 0.8rem 2rem 0.8rem !important; max-width: 100% !important; }
+    }
+
+    /* 三大系統按鈕選項方格化卡片設計 (Optimization 1) */
+    div[role="radiogroup"] {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+        margin-top: 10px;
+        margin-bottom: 15px;
+    }
+    div[role="radiogroup"] > label {
+        background: rgba(30, 41, 59, 0.65) !important;
+        border: 1px solid rgba(56, 189, 248, 0.25) !important;
+        border-left: 5px solid #38BDF8 !important;
+        border-radius: 12px !important;
+        padding: 14px 18px !important;
+        margin: 0 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease-in-out !important;
+        width: 100% !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    div[role="radiogroup"] > label:hover {
+        background: rgba(30, 58, 138, 0.5) !important;
+        border-color: #38BDF8 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(56, 189, 248, 0.2);
+    }
+    div[role="radiogroup"] > label[data-checked="true"], div[role="radiogroup"] > label:has(input:checked) {
+        background: rgba(30, 64, 175, 0.65) !important;
+        border-color: #60A5FA !important;
+        border-left-color: #60A5FA !important;
+        box-shadow: 0 0 14px rgba(96, 165, 250, 0.3);
+    }
+    div[role="radiogroup"] > label p {
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        color: #F8FAFC !important;
     }
 
     @keyframes online-green-pulse {
@@ -136,7 +175,6 @@ st.markdown("""
         border: 1px solid rgba(96, 165, 250, 0.3); border-left: 4px solid #60A5FA; color: #FFFFFF; font-size: 13px; font-weight: 800; padding: 8px 14px; border-radius: 10px; margin-top: 18px; margin-bottom: 10px; font-family: monospace;
     }
 
-    /* 組員雙欄與標籤視覺階層優化 (Optimization 4) */
     .integrated-crew-box {
         background: rgba(30, 41, 59, 0.65);
         backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -159,7 +197,6 @@ st.markdown("""
     .long-badge { background: rgba(153, 27, 27, 0.35); border: 1px solid rgba(239, 68, 68, 0.5); color: #FCA5A5; font-size: 10px; padding: 2px 7px; border-radius: 6px; font-weight: 600; }
     .non-line-badge { background: rgba(76, 29, 149, 0.35); border: 1px solid rgba(139, 92, 246, 0.5); color: #C4B5FD; font-size: 10px; padding: 2px 7px; border-radius: 6px; font-weight: 600; }
 
-    /* 按鈕樣式提升 */
     div.stButton > button, div.stFormSubmitButton > button { 
         font-weight: 700 !important; padding: 0.5rem 1rem !important; border-radius: 0.5rem !important; 
         background: rgba(30, 41, 59, 0.6) !important; 
@@ -313,8 +350,8 @@ def get_file_info_text(path, label_prefix="目前檔案"):
         mtime = os.path.getmtime(path)
         dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(TAIWAN_TZ)
         size_kb = os.path.getsize(path) / 1024
-        return f"📁 {label_prefix}：{os.path.basename(path)} | 大小：{size_kb:.1f} KB | 更新時間：{dt.strftime('%Y-%m-%d %H:%M:%S')}"
-    return f"📁 {label_prefix}：尚無上傳檔案"
+        return f"目前檔案：{os.path.basename(path)} | 大小：{size_kb:.1f} KB | 更新時間：{dt.strftime('%Y-%m-%d %H:%M:%S')}"
+    return f"目前檔案：尚無上傳檔案"
 
 def get_schedule_range():
     active_files = get_current_role_files()
@@ -464,7 +501,6 @@ def setup_font():
         return fm.FontProperties(fname=font_path)
     return None
 
-# --- 重構班表繪製引擎：將圖檔產出模組化，避免代碼重複 (Optimization 1) ---
 def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label, badge_title="Producer | C.L.F"):
     active_transport = parse_transport_periods(TRANSPORT_PERIODS)
     font_prop = setup_font()
@@ -581,10 +617,9 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
     return buf
 
-# --- 原生 Dialog 彈窗檢視模組：解決頁面推擠與跳動 (Optimization 1) ---
 @st.dialog("完整月班表檢視", width="large")
 def show_crew_schedule_modal(emp_input, unit_label, badge_title="Inspector | C.L.F"):
-    with st.spinner(f"正在載入【{emp_input}】的完整月班表..."):
+    with st.spinner(f"正在讀取資料與繪製【{emp_input}】的完整月班表，請稍候..."):
         try:
             start_dt, dates, emp_id, emp_name, cells = process_file_data(emp_input)
             buf = render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label, badge_title=badge_title)
@@ -610,14 +645,15 @@ if st.session_state.get("inspect_emp_target") is not None:
         st.session_state["inspect_emp_target"] = None
         st.rerun()
 
-    try:
-        start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
-        buf = render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, current_unit, badge_title="Inspector | C.L.F")
-        st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
-        render_zoomable_image(buf)
-        st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"{current_unit}_班表_{emp_name}.png", mime="image/png")
-    except Exception as e:
-        st.error(f"載入完整班表時發生錯誤: {e}")
+    with st.spinner(f"正在繪製【{target_emp}】的完整月班表..."):
+        try:
+            start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
+            buf = render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, current_unit, badge_title="Inspector | C.L.F")
+            st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
+            render_zoomable_image(buf)
+            st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"{current_unit}_班表_{emp_name}.png", mime="image/png")
+        except Exception as e:
+            st.error(f"載入完整班表時發生錯誤: {e}")
 
     st.stop()
 
@@ -669,7 +705,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 else: st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
-# --- 頂部質感標頭 ---
+# --- 頂部標頭 ---
 current_unit_label = st.session_state.get("current_unit", "TTN")
 current_operator_id = st.session_state.get("current_user_id", "A")
 
@@ -722,7 +758,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                 st.rerun()
     st.stop()
 
-# ==================== 管理員專用：Database 智慧控制台 (Optimization 5) ====================
+# ==================== 管理員專用：Database 智慧控制台 (保持管理員圖示) ====================
 if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -749,7 +785,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.markdown("---")
 
-    # 管理員 Dashborad 頂部數據卡片 (Optimization 5)
     st.subheader(f"📊 【{admin_target_unit}】伺服器狀態 & Dashboard 數據")
     m1, m2, m3, m4 = st.columns(4)
     with m1:
@@ -805,7 +840,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.subheader("📋 系統操作活動紀錄日誌 (Activity Log)")
     col_log1, col_log2 = st.columns([1, 3])
     with col_log1:
-        log_filter_keyword = st.text_input(" 搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 單位")
+        log_filter_keyword = st.text_input("🔍 搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 單位")
     with col_log2:
         st.write("")
         if st.button("🗑️ 清空歷史日誌"):
@@ -830,7 +865,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.stop()
 
-# ==================== 一般系統首頁介面 ====================
+# ==================== 一般使用者系統首頁介面 (純淨無貼圖) ====================
 active_files = get_current_role_files()
 missing_files = [role for role in ["駕駛", "列車長", "服勤員"] if not os.path.exists(active_files[role]) or os.path.getsize(active_files[role]) == 0]
 
@@ -853,13 +888,13 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# 三大系統的按鈕選項：搭配 CSS 渲染成高質感的方格卡片按鈕 (Optimization 1 & 4)
 app_mode = st.radio("系統操作模式選擇", [
     "繪製個人月班表圖檔", 
     "換班｜選擇換班日期（Alpha測試版）",
     "換假｜選擇換假日期（Alpha測試版）"
 ], horizontal=False, label_visibility="collapsed")
 
-# 模式切換狀態維護：不強制重整，維持順暢切換
 if "last_app_mode" not in st.session_state: st.session_state["last_app_mode"] = app_mode
 if st.session_state["last_app_mode"] != app_mode:
     st.session_state["last_app_mode"] = app_mode
@@ -885,13 +920,15 @@ if app_mode == "繪製個人月班表圖檔":
         if not current_input: st.warning("請輸入員編或姓名")
         else:
             log_activity(f"生成個人班表圖檔查詢: {current_input}")
-            try:
-                start_dt, dates, emp_id, emp_name, cells = process_file_data(current_input)
-                buf = render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, current_unit_label, badge_title="Producer | C.L.F")
-                st.success("個人班表圖片生成成功")
-                render_zoomable_image(buf)
-                st.download_button("點此下載班表影像檔", data=buf, file_name=f"{current_unit_label}_班表_{emp_name}.png", mime="image/png")
-            except Exception as e: st.error(f"錯誤：{e}")
+            # 加上處理狀態顯示，防止誤以為當機 (Optimization 2)
+            with st.spinner("正在解析資料與繪製個人月班表，請稍候..."):
+                try:
+                    start_dt, dates, emp_id, emp_name, cells = process_file_data(current_input)
+                    buf = render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, current_unit_label, badge_title="Producer | C.L.F")
+                    st.success("個人班表圖片生成成功")
+                    render_zoomable_image(buf)
+                    st.download_button("點此下載班表影像檔", data=buf, file_name=f"{current_unit_label}_班表_{emp_name}.png", mime="image/png")
+                except Exception as e: st.error(f"錯誤：{e}")
 
 elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
     if is_module_maintenance("window_filter") and not st.session_state.get("admin_logged_in", False):
@@ -920,16 +957,15 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
         if date_cols:
             target_date = st.selectbox("選擇換班日期", date_cols, key="win_target_date")
 
-            # 時間區間雙向 Slider 與快捷膠囊按鈕 (Optimization 2)
             TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
-            st.write(" **Sign-In 時段區間快選**")
+            st.write("**Sign-In 時段區間快選**")
             q1, q2, q3, q4 = st.columns(4)
             with q1:
-                if st.button(" 早班 (05-08)", key="q_0508"): st.session_state["win_time_slider"] = ("05:00", "08:00")
+                if st.button("早班 (05-08)", key="q_0508"): st.session_state["win_time_slider"] = ("05:00", "08:00")
             with q2:
-                if st.button("中班 (08-12)", key="q_0812"): st.session_state["win_time_slider"] = ("08:00", "12:00")
+                if st.button("日班 (08-12)", key="q_0812"): st.session_state["win_time_slider"] = ("08:00", "12:00")
             with q3:
-                if st.button(" 晚班 (12-18)", key="q_1218"): st.session_state["win_time_slider"] = ("12:00", "18:00")
+                if st.button("晚班 (12-18)", key="q_1218"): st.session_state["win_time_slider"] = ("12:00", "18:00")
             with q4:
                 if st.button("全時段 (00-18)", key="q_0018"): st.session_state["win_time_slider"] = ("00:00", "18:00")
 
@@ -948,10 +984,10 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                 for _, row in df_search.iterrows():
                     emp_id = str(row.iloc[0]).strip()
                     emp_name = str(row.iloc[1]).strip()
-                    if not emp_id or emp_id.upper() == "NAN": continue
+                    if not emp_id or emp_id.upper() in ["NAN", "NONE", ""]: continue
 
                     target_col_idx = next((idx + 2 for idx, col in enumerate(all_cols_list) if target_date in str(col)), -1)
-                    if target_col_idx != -1:
+                    if target_col_idx != -1 and target_col_idx < len(row):
                         cell_raw = row.iloc[target_col_idx]
                         parsed = parse_cell(cell_raw)
                         start_t = parsed["start"]
@@ -967,7 +1003,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                             if only_long_shift and not is_long: continue
 
                             next_day_sign_in = "無記錄"
-                            if target_col_idx + 1 < len(df_search.columns):
+                            if target_col_idx + 1 < len(row):
                                 next_parsed = parse_cell(row.iloc[target_col_idx + 1])
                                 next_day_sign_in = next_parsed["start"] if next_parsed["start"] else (next_parsed["train"] if next_parsed["train"] else "無記錄")
 
@@ -995,7 +1031,6 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                             if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
                             badges_html += '</div>'
 
-                            # 階層化 Card 佈局 (Optimization 4)
                             st.markdown(f"""
                             <div class="integrated-crew-box">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -1015,8 +1050,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                             </div>
                             """, unsafe_allow_html=True)
 
-                            # 原生 Dialog Modal 彈窗觸發按鈕 (Optimization 1)
-                            if st.button(f" 檢視 {r['姓名']} 完整班表", key=f"win_btn_{r['員編']}_{idx}"):
+                            if st.button(f"檢視 {r['姓名']} 完整班表", key=f"win_btn_{r['員編']}_{idx}"):
                                 show_crew_schedule_modal(r['員編'], current_unit_label, badge_title="Window Filter | C.L.F")
                 else: st.info("在指定條件內，找不到符合的人員")
 
@@ -1037,69 +1071,98 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
     ex_c1, ex_c2, ex_c3 = st.columns(3)
     with ex_c1: selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], key="ex_role_select")
 
-    sample_path = active_files[selected_role]
-    df_ex = safe_read_excel(sample_path, header=3)
-    df_ex.columns = [str(c).strip() for c in df_ex.columns]
-    date_cols = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in df_ex.columns[2:] if re.search(r'(\d+/\d+)', str(c))]
+    sample_path = active_files.get(selected_role, "")
+    
+    # 防呆修正：檢查檔案是否存在，避免換假系統丟出錯誤碼 (Optimization 3)
+    if not sample_path or not os.path.exists(sample_path):
+        st.error(f"找不到【{current_unit_label} - {selected_role}】的班表檔案，請先至管理員後台上傳")
+    else:
+        try:
+            df_ex = safe_read_excel(sample_path, header=3)
+            df_ex.columns = [str(c).strip() for c in df_ex.columns]
+            date_cols = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in df_ex.columns[2:] if re.search(r'(\d+/\d+)', str(c))]
 
-    with ex_c2: target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date")
-    with ex_c3: return_date = st.selectbox("選擇可還假日期", date_cols, index=min(1, len(date_cols)-1), key="ex_return_date")
+            if not date_cols:
+                st.warning("目前的班表檔案中無法解析出有效的日期欄位。")
+            else:
+                with ex_c2: target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date")
+                with ex_c3: return_date = st.selectbox("選擇可還假日期", date_cols, index=min(1, len(date_cols)-1), key="ex_return_date")
 
-    time_filter_options = ["不限"] + [f"{h:02d}:00 以後" for h in range(5, 17)]
-    return_time_filter = st.selectbox("還假日，可接受對方的報到時間限制", options=time_filter_options, key="ex_time_filter")
-    strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True)
+                time_filter_options = ["不限"] + [f"{h:02d}:00 以後" for h in range(5, 17)]
+                return_time_filter = st.selectbox("還假日，可接受對方的報到時間限制", options=time_filter_options, key="ex_time_filter")
+                strict_limit = st.checkbox("嚴格過濾：排除前後 5 天內連續上班已達 6 天以上的人員", value=True)
 
-    if st.button("搜尋可換假組員名單", key="btn_ex_search"):
-        log_activity(f"換假快篩 [{current_unit_label} - {selected_role}] 想休:{target_date} 還假:{return_date}")
-        candidates = []
-        target_col_idx = next((idx + 2 for idx, col in enumerate(df_ex.columns[2:]) if target_date in str(col)), -1)
-        return_col_idx = next((idx + 2 for idx, col in enumerate(df_ex.columns[2:]) if return_date in str(col)), -1)
+                if st.button("搜尋可換假組員名單", key="btn_ex_search"):
+                    log_activity(f"換假快篩 [{current_unit_label} - {selected_role}] 想休:{target_date} 還假:{return_date}")
+                    candidates = []
+                    all_cols = list(df_ex.columns)
+                    target_col_idx = next((idx for idx, col in enumerate(all_cols) if idx >= 2 and target_date in str(col)), -1)
+                    return_col_idx = next((idx for idx, col in enumerate(all_cols) if idx >= 2 and return_date in str(col)), -1)
 
-        if target_col_idx != -1 and return_col_idx != -1:
-            for _, row in df_ex.iterrows():
-                emp_id = str(row.iloc[0]).strip()
-                emp_name = str(row.iloc[1]).strip()
-                if not emp_id or emp_id.upper() == "NAN": continue
+                    if target_col_idx != -1 and return_col_idx != -1:
+                        for _, row in df_ex.iterrows():
+                            emp_id = str(row.iloc[0]).strip()
+                            emp_name = str(row.iloc[1]).strip()
+                            if not emp_id or emp_id.upper() in ["NAN", "NONE", ""]: continue
 
-                parsed_target = parse_cell(row.iloc[target_col_idx])
-                raw_target_str = str(row.iloc[target_col_idx]).upper()
-                is_target_do = ("DO" in raw_target_str) or ("D2W" in raw_target_str)
-                if not is_target_do: continue
+                            if target_col_idx >= len(row) or return_col_idx >= len(row): continue
 
-                parsed_return = parse_cell(row.iloc[return_col_idx])
-                raw_return_str = str(row.iloc[return_col_idx]).upper()
-                is_return_do = ("DO" in raw_return_str) or ("D2W" in raw_return_str)
-                if is_return_do: continue
+                            parsed_target = parse_cell(row.iloc[target_col_idx])
+                            raw_target_str = str(row.iloc[target_col_idx]).upper()
+                            is_target_do = ("DO" in raw_target_str) or ("D2W" in raw_target_str)
+                            if not is_target_do: continue
 
-                if return_time_filter != "不限":
-                    min_allowed = return_time_filter.split(" ")[0]
-                    if not parsed_return["start"] or parsed_return["start"] < min_allowed: continue
+                            parsed_return = parse_cell(row.iloc[return_col_idx])
+                            raw_return_str = str(row.iloc[return_col_idx]).upper()
+                            is_return_do = ("DO" in raw_return_str) or ("D2W" in raw_return_str)
+                            if is_return_do: continue
 
-                candidates.append({
-                    "員編": emp_id, "姓名": emp_name,
-                    "狀態": f"想休 {target_date} (DO) ｜ 還假 {return_date} ({parsed_return['start']}->{parsed_return['end']})",
-                    "班別": parsed_return["train"]
-                })
+                            if return_time_filter != "不限":
+                                min_allowed = return_time_filter.split(" ")[0]
+                                if not parsed_return["start"] or parsed_return["start"] < min_allowed: continue
 
-        st.session_state["ex_saved_candidates"] = candidates
-        st.rerun()
+                            # 嚴格過濾連續上班天數檢查
+                            if strict_limit:
+                                work_count = 0
+                                start_check_idx = max(2, target_col_idx - 5)
+                                end_check_idx = min(len(row) - 1, target_col_idx + 5)
+                                for c_i in range(start_check_idx, end_check_idx + 1):
+                                    cell_c = parse_cell(row.iloc[c_i])
+                                    cell_c_raw = str(row.iloc[c_i]).upper()
+                                    if cell_c["start"] or (not ("DO" in cell_c_raw or "D2W" in cell_c_raw)):
+                                        work_count += 1
+                                if work_count >= 6: continue
 
-    if st.session_state.get("ex_saved_candidates"):
-        candidates = st.session_state["ex_saved_candidates"]
-        st.markdown(f"### 換假可選人員名單（共 {len(candidates)} 位）")
+                            candidates.append({
+                                "員編": emp_id, "姓名": emp_name,
+                                "狀態": f"想休 {target_date} (DO) ｜ 還假 {return_date} ({parsed_return['start']}->{parsed_return['end']})",
+                                "班別": parsed_return["train"]
+                            })
 
-        for idx, cand in enumerate(candidates):
-            st.markdown(f"""
-            <div class="integrated-crew-box">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div class="compact-name">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
-                    <span style="font-size: 12px; color: #34D399; font-weight: 700; font-family: monospace;">{cand['狀態']}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                    st.session_state["ex_saved_candidates"] = candidates
+                    st.rerun()
 
-            if st.button(f" 檢視 {cand['姓名']} 完整班表", key=f"ex_btn_{cand['員編']}_{idx}"):
-                show_crew_schedule_modal(cand['員編'], current_unit_label, badge_title="Exchange | C.L.F")
+                if st.session_state.get("ex_saved_candidates"):
+                    candidates = st.session_state["ex_saved_candidates"]
+                    st.markdown(f"### 換假可選人員名單（共 {len(candidates)} 位）")
+
+                    if candidates:
+                        for idx, cand in enumerate(candidates):
+                            st.markdown(f"""
+                            <div class="integrated-crew-box">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div class="compact-name">{cand['姓名']} <span style="color:#94A3B8; font-size:12px;">({cand['員編']})</span></div>
+                                    <span style="font-size: 12px; color: #34D399; font-weight: 700; font-family: monospace;">{cand['狀態']}</span>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                            if st.button(f"檢視 {cand['姓名']} 完整班表", key=f"ex_btn_{cand['員編']}_{idx}"):
+                                show_crew_schedule_modal(cand['員編'], current_unit_label, badge_title="Exchange | C.L.F")
+                    else:
+                        st.info("在指定條件內，找不到符合的可換假人員")
+        except Exception as e:
+            st.error(f"讀取換假資料時發生錯誤：{e}")
 
 # --- 底部頁尾貼紙 ---
 st.markdown('<div class="footer-badge-container">', unsafe_allow_html=True)
