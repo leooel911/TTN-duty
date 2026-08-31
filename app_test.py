@@ -64,7 +64,7 @@ MAINTENANCE_FLAGS = {
     "exchange_filter": os.path.join(DATA_DIR, "maintenance_exchange.flag")
 }
 
-# --- 升級版毛玻璃與響應式視覺設計 (Glassmorphism & Adaptive UI) ---
+# --- 升級版毛玻璃與響應式視覺設計 (Glassmorphism & Integrated UI) ---
 st.markdown("""
 <style>
     .stApp { 
@@ -175,20 +175,43 @@ st.markdown("""
         border: 1px solid rgba(96, 165, 250, 0.3); border-left: 4px solid #60A5FA; color: #FFFFFF; font-size: 13px; font-weight: 800; padding: 8px 14px; border-radius: 10px; margin-top: 18px; margin-bottom: 10px; font-family: monospace;
     }
 
+    /* 一體化卡片主體設計 */
     .integrated-crew-box {
-        background: rgba(30, 41, 59, 0.65);
+        background: rgba(30, 41, 59, 0.75);
         backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        border-bottom: none !important;
         border-left: 4px solid #10B981;
-        border-radius: 14px;
-        padding: 16px;
-        margin-bottom: 12px;
+        border-top-left-radius: 14px;
+        border-top-right-radius: 14px;
+        border-bottom-left-radius: 0px !important;
+        border-bottom-right-radius: 0px !important;
+        padding: 16px 16px 12px 16px;
+        margin-bottom: 0px !important;
         box-shadow: 0 6px 20px rgba(0,0,0,0.25);
         transition: transform 0.2s ease, border-color 0.2s ease;
     }
-    .integrated-crew-box:hover {
-        border-color: rgba(56, 189, 248, 0.5);
-        transform: translateY(-2px);
+
+    /* 一體化卡片底部連結按鈕 */
+    .crew-card-container div.stButton > button {
+        border-top-left-radius: 0px !important;
+        border-top-right-radius: 0px !important;
+        border-bottom-left-radius: 14px !important;
+        border-bottom-right-radius: 14px !important;
+        border: 1px solid rgba(56, 189, 248, 0.25) !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-left: 4px solid #10B981 !important;
+        background: rgba(15, 23, 42, 0.85) !important;
+        color: #38BDF8 !important;
+        font-size: 13px !important;
+        margin-top: 0px !important;
+        margin-bottom: 16px !important;
+        padding: 8px 12px !important;
+    }
+    .crew-card-container div.stButton > button:hover {
+        background: rgba(30, 58, 138, 0.85) !important;
+        color: #FFFFFF !important;
+        border-color: #38BDF8 !important;
     }
 
     .compact-name { font-size: 16px; font-weight: 800; color: #F8FAFC; }
@@ -960,6 +983,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
             with q1:
                 if st.button("早班 (05-08)", key="q_0508"): st.session_state["win_time_slider"] = ("05:00", "08:00")
             with q2:
+                # 【優化 3】按鈕名稱由「日班」更名為「中班」
                 if st.button("中班 (08-12)", key="q_0812"): st.session_state["win_time_slider"] = ("08:00", "12:00")
             with q3:
                 if st.button("晚班 (12-18)", key="q_1218"): st.session_state["win_time_slider"] = ("12:00", "18:00")
@@ -1032,11 +1056,15 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                     for idx, r in enumerate(filtered_results):
                         target_col = c_col1 if idx % 2 == 0 else c_col2
                         with target_col:
+                            # 【優化 2】使用一體化容器包覆卡片與按鈕
+                            st.markdown('<div class="crew-card-container">', unsafe_allow_html=True)
+                            
                             badges_html = '<div class="badge-group">'
                             if r['長班']: badges_html += '<span class="long-badge">長班</span>'
                             if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
                             badges_html += '</div>'
 
+                            # 【優化 1】上下班時間字體放大至 17px 並改為 900 Ultra Bold 超粗體
                             st.markdown(f"""
                             <div class="integrated-crew-box">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -1044,9 +1072,9 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                                         <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
                                         <div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{r['車次']}</div>
                                     </div>
-                                    <div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
-                                        <div style="font-size: 14px; font-weight: 800; color: #4ADE80; font-family: monospace;">Sign-In {r['Sign-In']}</div>
-                                        <div style="font-size: 14px; font-weight: 800; color: #4ADE80; font-family: monospace;">Sign-Out {r['Sign-Out']}</div>
+                                    <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
+                                        <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-In {r['Sign-In']}</div>
+                                        <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-Out {r['Sign-Out']}</div>
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
@@ -1058,6 +1086,8 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
 
                             if st.button(f"檢視 {r['姓名']} 完整班表", key=f"win_btn_{r['員編']}_{idx}"):
                                 show_crew_schedule_modal(r['員編'], current_unit_label, badge_title="Window Filter | C.L.F")
+                            
+                            st.markdown('</div>', unsafe_allow_html=True)
                 else: st.info("在指定條件內，找不到符合的人員")
 
 elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
@@ -1095,7 +1125,6 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                     target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date")
 
                 with ex_c3: 
-                    # 使用者可自由選擇全月任一日期
                     return_date = st.selectbox("選擇可還假日期", date_cols, index=min(1, len(date_cols)-1), key="ex_return_date")
 
                 # --- 跨週即時偵測與示警邏輯 ---
@@ -1107,7 +1136,6 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                     t_dt = date(2026, t_m, t_d)
                     r_dt = date(2026, r_m, r_d)
 
-                    # 當週週日 (Sun=0) 與週六 (Sat=6)
                     t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
                     t_sat = t_sun + timedelta(days=6)
                     target_week_str = f"{t_sun.month}/{t_sun.day:02d} (日) ~ {t_sat.month}/{t_sat.day:02d} (六)"
@@ -1161,7 +1189,6 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                             is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
                             is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
 
-                            # 連續上班天數分析
                             work_count = 0
                             start_check_idx = max(2, target_col_idx - 5)
                             end_check_idx = min(len(row) - 1, target_col_idx + 5)
@@ -1196,19 +1223,16 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                     filtered_candidates = []
 
                     for cand in raw_list:
-                        # 1. 還假日 Sign-In 時間限制
                         if return_time_filter != "不限":
                             min_allowed = return_time_filter.split(" ")[0]
                             if not cand["Sign-In"] or cand["Sign-In"] < min_allowed:
                                 continue
 
-                        # 2. 嚴格過濾 (連續上班 6 天以上)
                         if strict_limit and cand["連續上班天數"] >= 6:
                             continue
 
                         filtered_candidates.append(cand)
 
-                    # 排序邏輯
                     if sort_order == "依 Sign-In 時間 (由早至晚)":
                         filtered_candidates = sorted(filtered_candidates, key=lambda x: (x["Sign-In"] or "99:99", x["Sign-Out"] or "99:99"))
                     elif sort_order == "依最早 Sign-Out":
@@ -1231,6 +1255,8 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                             badges_html += '</div>'
 
                             with target_col:
+                                st.markdown('<div class="crew-card-container">', unsafe_allow_html=True)
+
                                 st.markdown(f"""
                                 <div class="integrated-crew-box">
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -1240,11 +1266,11 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                                 還休日：{cand.get('還休日')} ｜ 班別：<strong style="color:#38BDF8;">{cand.get('還假車次', '無')}</strong>
                                             </div>
                                         </div>
-                                        <div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
-                                            <div style="font-size: 14px; font-weight: 800; color: #4ADE80; font-family: monospace;">
+                                        <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
+                                            <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">
                                                 Sign-In {cand.get('Sign-In', '--:--')}
                                             </div>
-                                            <div style="font-size: 14px; font-weight: 800; color: #4ADE80; font-family: monospace;">
+                                            <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">
                                                 Sign-Out {cand.get('Sign-Out', '--:--')}
                                             </div>
                                             <div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px;">
@@ -1263,6 +1289,8 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
 
                                 if st.button(f"檢視 {cand_name} 完整班表", key=f"ex_btn_{cand_id}_{idx}"):
                                     show_crew_schedule_modal(cand_id, current_unit_label, badge_title="Exchange | C.L.F")
+                                
+                                st.markdown('</div>', unsafe_allow_html=True)
                     else:
                         st.info("在指定條件內，找不到符合的可換假人員 (可嘗試放寬還假日 Sign-In 時間限制或取消嚴格過濾)")
         except Exception as e:
