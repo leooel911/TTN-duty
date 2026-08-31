@@ -1091,8 +1091,38 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
             if not date_cols:
                 st.warning("目前的班表檔案中無法解析出有效的日期欄位。")
             else:
-                with ex_c2: target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date")
-                with ex_c3: return_date = st.selectbox("選擇可還假日期", date_cols, index=min(1, len(date_cols)-1), key="ex_return_date")
+                with ex_c2: 
+                    target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date")
+
+                # --- 計算想休假日期之同一週 (週日 ~ 週六) 區間過濾邏輯 ---
+                same_week_date_cols = []
+                week_range_str = ""
+                try:
+                    t_m, t_d = map(int, target_date.split('/'))
+                    t_dt = date(2026, t_m, t_d)
+                    
+                    # 計算當週週日 (Sun=0) 與當週週六 (Sat=6)
+                    sun_offset = (t_dt.weekday() + 1) % 7
+                    sun_dt = t_dt - timedelta(days=sun_offset)
+                    sat_dt = sun_dt + timedelta(days=6)
+                    
+                    week_range_str = f"{sun_dt.month}/{sun_dt.day:02d} (日) ~ {sat_dt.month}/{sat_dt.day:02d} (六)"
+
+                    for c_str in date_cols:
+                        cm, cd = map(int, c_str.split('/'))
+                        cur_dt = date(2026, cm, cd)
+                        if sun_dt <= cur_dt <= sat_dt:
+                            same_week_date_cols.append(c_str)
+                except:
+                    same_week_date_cols = date_cols
+
+                if not same_week_date_cols:
+                    same_week_date_cols = date_cols
+
+                with ex_c3: 
+                    return_date = st.selectbox("選擇可還假日期 (限同一週)", same_week_date_cols, key="ex_return_date")
+
+                st.caption(f"📅 **同一週換假限制區間：{week_range_str}**（還假日期已自動限定於當週，無法跨週）")
 
                 col_f1, col_f2 = st.columns(2)
                 with col_f1:
