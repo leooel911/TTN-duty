@@ -840,7 +840,7 @@ st.markdown(f"""
 st.markdown("""
 <div class="test-env-banner">
     <div class="test-env-title">測試環境運行中（TEST ENVIRONMENT）</div>
-    <div class="test-env-sub">目前為內部測試階段 | (所屬運轉單位組員查詢使用)</div>
+    <div class="test-env-sub">目前為內部測試階段 | (問題與建議請聯繫管理員C.L.F)</div>
 </div>
 """, unsafe_allow_html=True)
 
