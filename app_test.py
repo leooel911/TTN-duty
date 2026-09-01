@@ -6,7 +6,7 @@ import io
 import pandas as pd
 from datetime import date, timedelta, datetime, timezone
 import matplotlib
-import matplotlib.pyplot as plt
+import matplotlib.plt as plt
 import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 import time
@@ -20,8 +20,12 @@ st.set_page_config(page_title="TTN Shift Producer", page_icon="700st.png", layou
 TAIWAN_TZ = timezone(timedelta(hours=8))
 
 DATA_DIR = os.path.join(os.getcwd(), "data")
+FEEDBACK_IMG_DIR = os.path.join(DATA_DIR, "feedback_uploads")
+
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR, exist_ok=True)
+if not os.path.exists(FEEDBACK_IMG_DIR):
+    os.makedirs(FEEDBACK_IMG_DIR, exist_ok=True)
 
 UNITS = {
     "TTN": {
@@ -130,14 +134,16 @@ st.markdown("""
     }
 
     /* 修正輸入框雙重外框與兩側邊角未填滿漏洞 */
-    div[data-testid="stTextInput"] div[data-baseweb="input"] {
+    div[data-testid="stTextInput"] div[data-baseweb="input"],
+    div[data-testid="stTextArea"] div[data-baseweb="textarea"] {
         background: rgba(15, 23, 42, 0.75) !important;
         border: 1px solid rgba(56, 189, 248, 0.35) !important;
         border-radius: 10px !important;
         padding: 2px 4px !important;
         transition: all 0.25s ease !important;
     }
-    div[data-testid="stTextInput"] input {
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stTextArea"] textarea {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
@@ -145,7 +151,8 @@ st.markdown("""
         padding: 6px 10px !important;
         font-family: monospace !important;
     }
-    div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within {
+    div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within,
+    div[data-testid="stTextArea"] div[data-baseweb="textarea"]:focus-within {
         border-color: #38BDF8 !important;
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
     }
@@ -747,11 +754,27 @@ def show_feedback_modal():
     fb_type = st.selectbox("反饋類別", ["Bug 問題回報", "功能改進建議", "班表資料不對", "其他"])
     fb_content = st.text_area("詳細說明", placeholder="請輸入您遇到的問題或建議內容...", height=110)
     
+    uploaded_img = st.file_uploader("上傳螢幕截圖 (選填，限 PNG/JPG)", type=["png", "jpg", "jpeg"], key="fb_img_uploader")
+    
     col_sb1, col_sb2 = st.columns(2)
     with col_sb1:
         if st.button("確認送出", key="submit_fb_btn", use_container_width=True):
             if fb_content.strip():
-                log_activity(f"【問題回報】類別:{fb_type} | 內容:{fb_content.strip()}")
+                clean_content = fb_content.strip().replace("\n", " ↵ ")
+                img_log_str = ""
+                
+                if uploaded_img is not None:
+                    now_stamp = datetime.now(TAIWAN_TZ).strftime('%Y%m%d_%H%M%S')
+                    clean_user_id = str(current_user).split(" ")[0].replace("/", "_")
+                    ext = uploaded_img.name.split(".")[-1]
+                    saved_filename = f"{now_stamp}_{current_unit}_{clean_user_id}.{ext}"
+                    saved_path = os.path.join(FEEDBACK_IMG_DIR, saved_filename)
+                    
+                    with open(saved_path, "wb") as f:
+                        f.write(uploaded_img.getvalue())
+                    img_log_str = f" | 截圖檔名: {saved_filename}"
+
+                log_activity(f"【問題回報】類別:{fb_type} | 內容:{clean_content}{img_log_str}")
                 st.success("反饋已成功送出！感謝您的協助。")
                 time.sleep(1)
                 if "action" in st.query_params:
@@ -1026,6 +1049,52 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 st.success("檔案上傳成功！")
                 time.sleep(0.5); st.rerun()
             except Exception as e: st.error(f"寫入失敗: {e}")
+
+    # ==================== 管理員專用：問題回報與截圖畫廊專區 ====================
+    st.markdown("---")
+    st.subheader("使用者問題與建議／截圖檢視專區 (Feedback Gallery)")
+    
+    saved_feedback_images = os.listdir(FEEDBACK_IMG_DIR) if os.path.exists(FEEDBACK_IMG_DIR) else []
+    saved_feedback_images = [img for img in saved_feedback_images if img.lower().endswith(('.png', '.jpg', '.jpeg'))]
+
+    if saved_feedback_images:
+        st.caption(f"目前共收集到 {len(saved_feedback_images)} 張問題截圖（最新在前）")
+        sorted_imgs = sorted(saved_feedback_images, reverse=True)
+        
+        gallery_col1, gallery_col2 = st.columns(2)
+        for idx, img_filename in enumerate(sorted_imgs):
+            col_target = gallery_col1 if idx % 2 == 0 else gallery_col2
+            img_path = os.path.join(FEEDBACK_IMG_DIR, img_filename)
+            
+            with col_target:
+                parts = img_filename.split("_")
+                img_time_str = parts[0] if len(parts) > 0 else "未知時間"
+                img_unit_str = parts[2] if len(parts) > 2 else "通用"
+                img_user_str = parts[3].split(".")[0] if len(parts) > 3 else "匿名"
+
+                st.markdown(f"""
+                <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 10px; margin-bottom: 12px;">
+                    <div style="font-size: 12px; font-weight: 800; color: #38BDF8; font-family: monospace;">
+                        [{img_unit_str}] 回報者: {img_user_str}
+                    </div>
+                    <div style="font-size: 10px; color: #94A3B8; font-family: monospace; margin-bottom: 6px;">
+                        檔名: {img_filename}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.image(img_path, use_container_width=True)
+                
+                with open(img_path, "rb") as file_data:
+                    st.download_button(
+                        f"下載圖片檔 ({img_filename})",
+                        data=file_data,
+                        file_name=img_filename,
+                        mime="image/png",
+                        key=f"dl_fb_img_{idx}"
+                    )
+    else:
+        st.info("尚無任何組員上傳問題截圖")
 
     st.markdown("---")
     st.subheader("系統操作活動紀錄日誌 (Activity Log)")
