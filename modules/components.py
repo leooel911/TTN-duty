@@ -70,7 +70,7 @@ def show_feedback_modal():
                         ticket_id = f"FB-{now_dt.strftime('%Y%m%d-%H%M%S')}-{current_unit}"
                         base_name = f"{now_stamp}_{current_unit}_{clean_user_id}"
                         
-                        # 【關鍵修復】：確保 FEEDBACK_IMG_DIR 資料夾存在，避免 FileNotFoundError
+                        # 確保 FEEDBACK_IMG_DIR 資料夾存在，避免 FileNotFoundError
                         os.makedirs(FEEDBACK_IMG_DIR, exist_ok=True)
 
                         txt_path = os.path.join(FEEDBACK_IMG_DIR, f"{base_name}.txt")
@@ -87,8 +87,10 @@ def show_feedback_modal():
                             img_log_str = f" | 截圖檔名: {saved_filename}"
                         
                         log_activity(f"【問題回報】單號:{ticket_id} | 類別:{fb_type} | 內容:{clean_content.replace('\n', ' ')}{img_log_str}")
+                        
+                        # 【關鍵修復】：只需寫入 Session State，不執行 st.rerun()
+                        # Streamlit 在點擊按鈕後會自動原地重繪對話框，即時呈現工單號卡片！
                         st.session_state["fb_submitted_id"] = ticket_id
-                        st.rerun()
                     else:
                         st.warning("請填寫詳細說明後再送出")
             with col_sb2:
