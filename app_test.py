@@ -1470,7 +1470,7 @@ if app_mode == "繪製個人月班表圖檔":
 
     target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A", key="user_input_field")
 
-    if st.button("權限解鎖：立即生成個人班表圖片檔"):
+    if st.button("立即生成班表圖片檔"):
         current_input = st.session_state.get("user_input_field", "").strip()
         if not current_input:
             st.warning("請輸入員編或姓名")
