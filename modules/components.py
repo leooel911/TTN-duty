@@ -48,7 +48,7 @@ def show_feedback_modal():
             </div>
             """, unsafe_allow_html=True)
             
-            if st.button("繼續填寫下一筆", key="confirm_fb_success_btn", use_container_width=True):
+            if st.button("確認並完成", key="confirm_fb_success_btn", use_container_width=True):
                 del st.session_state["fb_submitted_id"]
                 st.rerun()
         else:
@@ -70,7 +70,7 @@ def show_feedback_modal():
                         ticket_id = f"FB-{now_dt.strftime('%Y%m%d-%H%M%S')}-{current_unit}"
                         base_name = f"{now_stamp}_{current_unit}_{clean_user_id}"
                         
-                        # 確保資料夾存在
+                        # 【關鍵修復】：確保 FEEDBACK_IMG_DIR 資料夾存在，避免 FileNotFoundError
                         os.makedirs(FEEDBACK_IMG_DIR, exist_ok=True)
 
                         txt_path = os.path.join(FEEDBACK_IMG_DIR, f"{base_name}.txt")
@@ -87,27 +87,12 @@ def show_feedback_modal():
                             img_log_str = f" | 截圖檔名: {saved_filename}"
                         
                         log_activity(f"【問題回報】單號:{ticket_id} | 類別:{fb_type} | 內容:{clean_content.replace('\n', ' ')}{img_log_str}")
-                        
-                        # 直接在當前彈窗內寫入工單號並即時顯示，不觸發關閉視窗的 st.rerun()
                         st.session_state["fb_submitted_id"] = ticket_id
-                        st.success("反饋已成功送出！")
-                        st.markdown(f"""
-                        <div style="background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10B981; border-radius: 12px; padding: 16px; text-align: center; margin: 12px 0;">
-                            <div style="font-size: 12px; color: #CBD5E1; font-family: monospace;">系統處理編號 (Ticket ID)</div>
-                            <div style="font-size: 22px; font-weight: 800; color: #34D399; font-family: monospace; letter-spacing: 1.5px; margin-top: 4px;">
-                                {ticket_id}
-                            </div>
-                            <div style="font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
-                                您可以隨時切換至「我的歷史回報」頁籤查看即時處理進度與留言。
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.rerun()
                     else:
                         st.warning("請填寫詳細說明後再送出")
             with col_sb2:
                 if st.button("關閉視窗", key="close_fb_btn_1", use_container_width=True):
-                    if "fb_submitted_id" in st.session_state:
-                        del st.session_state["fb_submitted_id"]
                     st.rerun()
 
     with tab_my_records:
@@ -162,7 +147,7 @@ def show_feedback_modal():
                         <span style="font-size: 13px; font-weight: 800; color: #F8FAFC; font-family: monospace;">{rec.get("處理編號", "未知單號")}</span>
                         <span style="font-size: 12px; font-weight: 800; color: {txt_color}; font-family: monospace;">【{status}】</span>
                     </div>
-                    <div style="font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
+                    <div style="font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 4px;">
                         提報時間：{rec.get("時間", "未知")} ｜ 類別：{rec.get("類別", "無")}
                     </div>
                     <div style="font-size: 12px; color: #CBD5E1; font-family: monospace; margin-top: 6px; background: rgba(15, 23, 42, 0.5); padding: 6px 10px; border-radius: 6px;">
