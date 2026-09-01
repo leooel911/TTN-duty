@@ -212,34 +212,44 @@ st.markdown("""
     .main-title { color: #F8FAFC !important; font-size: 16px !important; font-weight: 800; letter-spacing: 1.2px; margin: 0; font-family: monospace; }
     .title-subtitle { color: #FFFFFF; font-size: 10px !important; font-weight: 700; letter-spacing: 0.8px; font-family: monospace; margin-top: 2px; }
 
-    /* 測試環境橫幅外框 */
-    .test-env-banner-box {
-        border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 6px 10px !important; margin-bottom: 0.6rem !important;
-        text-align: center; background: rgba(39, 28, 12, 0.55); backdrop-filter: blur(12px); font-family: monospace;
+    /* 一體化質感測試環境橫幅 */
+    .test-env-unified-card {
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        border-radius: 12px;
+        padding: 8px 12px !important;
+        margin-bottom: 0.8rem !important;
+        background: rgba(39, 28, 12, 0.55);
+        backdrop-filter: blur(12px);
+        font-family: monospace;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
     }
-    .test-env-title { color: #FDE68A; font-size: 11px !important; font-weight: 800; letter-spacing: 1px; }
+    .test-env-title { color: #FDE68A; font-size: 11px !important; font-weight: 800; letter-spacing: 1px; margin: 0; }
+    .test-env-sub { color: #FCD34D; font-size: 9.5px !important; font-weight: 500; opacity: 0.85; margin: 0; }
 
-    /* 偽裝問題回報按鈕成純文字超連結（絕不刷新全頁） */
-    div.stButton > button[aria-label="問題與建議回報"] {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
+    /* 橫幅內問題回報專用膠囊按鈕 */
+    div.stButton > button[key="btn_banner_feedback_trigger"],
+    div.stButton > button[aria-label="💬 問題與建議回報"] {
+        background: rgba(56, 189, 248, 0.15) !important;
+        border: 1px solid rgba(56, 189, 248, 0.4) !important;
         color: #38BDF8 !important;
-        text-decoration: underline !important;
-        font-size: 9.5px !important;
+        font-size: 10.5px !important;
         font-weight: 700 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        min-height: auto !important;
-        height: auto !important;
-        width: auto !important;
-        line-height: normal !important;
-        cursor: pointer !important;
+        padding: 2px 10px !important;
+        min-height: 28px !important;
+        height: 28px !important;
+        border-radius: 20px !important;
+        transition: all 0.2s ease-in-out !important;
+        line-height: 1 !important;
     }
-    div.stButton > button[aria-label="問題與建議回報"]:hover {
-        color: #93C5FD !important;
-        text-shadow: 0 0 8px rgba(147, 197, 253, 0.6) !important;
-        background: transparent !important;
+    div.stButton > button[key="btn_banner_feedback_trigger"]:hover,
+    div.stButton > button[aria-label="💬 問題與建議回報"]:hover {
+        background: rgba(56, 189, 248, 0.3) !important;
+        border-color: #38BDF8 !important;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important;
+        color: #FFFFFF !important;
     }
 
     /* 管理員維護模式檢視提示橫幅 */
@@ -916,18 +926,18 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 測試環境橫幅（原生按鈕偽裝超連結，不重新載入網頁） ---
+# --- 一體化測試環境橫幅卡片 ---
 st.markdown("""
-<div class="test-env-banner-box">
+<div class="test-env-unified-card">
     <div class="test-env-title">測試環境運行中（TEST ENVIRONMENT）</div>
+    <div class="test-env-sub">目前為內部測試階段</div>
 </div>
 """, unsafe_allow_html=True)
 
-banner_sub_col1, banner_sub_col2 = st.columns([0.62, 0.38])
-with banner_sub_col1:
-    st.markdown('<div style="text-align: right; color: #FCD34D; font-size: 9.5px; font-weight: 500; opacity: 0.9; font-family: monospace;">目前為內部測試階段 ｜</div>', unsafe_allow_html=True)
-with banner_sub_col2:
-    if st.button("問題與建議回報", key="btn_banner_feedback_trigger"):
+# 置中精緻膠囊按鈕觸發 Modal
+col_fb1, col_fb2, col_fb3 = st.columns([1, 1.8, 1])
+with col_fb2:
+    if st.button("💬 問題與建議回報", key="btn_banner_feedback_trigger"):
         st.session_state["show_feedback_dialog"] = True
         st.rerun()
 
@@ -1084,7 +1094,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             img_path = os.path.join(FEEDBACK_IMG_DIR, img_filename)
             
             with col_target:
-                # 檔名解構：時間_單位_員編.ext
                 parts = img_filename.split("_")
                 img_time_str = parts[0] if len(parts) > 0 else "未知時間"
                 img_unit_str = parts[2] if len(parts) > 2 else "通用"
