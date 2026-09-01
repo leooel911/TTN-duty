@@ -58,7 +58,7 @@ def get_employee_name(unit_key, emp_input):
     input_clean = str(emp_input).strip().upper()
     unit_files = UNITS.get(unit_key, UNITS["TTN"])
     for role in ["駕駛", "列車長", "服勤員"]:
-        path = unit_files[role]
+        path = unit_files.get(role, "")
         if os.path.exists(path):
             try:
                 df = safe_read_excel(path, header=3)
@@ -99,6 +99,46 @@ def log_activity(input_str):
         log_entry = f"{now_tw} | 單位: {current_unit} | 操作者員編: {current_operator} | 裝置: {device_info} | 動作: {input_str}\n"
         with open(LOG_FILE, "a", encoding="utf-8") as f: f.write(log_entry)
     except: pass
+
+def load_activity_logs():
+    """解析你的實體 LOG_FILE 文字檔為 DataFrame 格式，供管理員後台讀取分析與下載"""
+    logs = []
+    if os.path.exists(LOG_FILE):
+        try:
+            with open(LOG_FILE, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            for line in reversed(lines):
+                line = line.strip()
+                if not line: continue
+                parts = line.split(" | ")
+                if len(parts) >= 5:
+                    timestamp = parts[0]
+                    unit = parts[1].replace("單位: ", "").strip()
+                    user_id = parts[2].replace("操作者員編: ", "").strip()
+                    device = parts[3].replace("裝置: ", "").strip()
+                    action = parts[4].replace("動作: ", "").strip()
+                    logs.append({
+                        "timestamp": timestamp,
+                        "unit": unit,
+                        "user_id": user_id,
+                        "user_name": get_employee_name(unit, user_id) or user_id,
+                        "device": device,
+                        "action": action,
+                        "details": action
+                    })
+                else:
+                    logs.append({
+                        "timestamp": "",
+                        "unit": "TTN",
+                        "user_id": "未知",
+                        "user_name": "未知",
+                        "device": "未知",
+                        "action": line,
+                        "details": line
+                    })
+        except Exception as e:
+            print(f"[Log Parsing Error] {e}")
+    return logs
 
 def get_file_mtime_str(path):
     if os.path.exists(path):
