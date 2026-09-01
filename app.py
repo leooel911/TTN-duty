@@ -755,7 +755,7 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
     return buf
 
-# --- 問題與建議線上回報彈窗 Modal（同時儲存文字內容與截圖） ---
+# --- 問題與建議線上回報彈窗 Modal ---
 @st.dialog("系統問題與建議回報", width="small")
 def show_feedback_modal():
     current_unit = st.session_state.get("current_unit", "TTN")
@@ -778,12 +778,10 @@ def show_feedback_modal():
                 clean_user_id = str(current_user).split(" ")[0].replace("/", "_")
                 base_name = f"{now_stamp}_{current_unit}_{clean_user_id}"
                 
-                # 1. 寫入 .txt 元資料紀錄檔
                 txt_path = os.path.join(FEEDBACK_IMG_DIR, f"{base_name}.txt")
                 with open(txt_path, "w", encoding="utf-8") as f_txt:
                     f_txt.write(f"類別: {fb_type}\n單位: {current_unit}\n回報者: {current_user}\n時間: {now_human}\n詳細說明:\n{clean_content}")
 
-                # 2. 若有上傳圖片則儲存圖檔
                 img_log_str = ""
                 if uploaded_img is not None:
                     ext = uploaded_img.name.split(".")[-1]
@@ -961,7 +959,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                 st.rerun()
     st.stop()
 
-# ==================== 管理員專用：Database 智慧控制台 (精緻展演版) ====================
+# ==================== 管理員專用：Database 智慧控制台 ====================
 if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -1060,13 +1058,12 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     time.sleep(0.5); st.rerun()
                 except Exception as e: st.error(f"寫入失敗: {e}")
 
-    # ===== TAB 2: 問題與建議回報專區 (高質感卡片 + 折疊圖檔) =====
+    # ===== TAB 2: 問題與建議回報專區 =====
     with tab_gallery:
         st.subheader("使用者問題與建議／截圖檢視專區 (Feedback Gallery)")
         
         all_fb_files = os.listdir(FEEDBACK_IMG_DIR) if os.path.exists(FEEDBACK_IMG_DIR) else []
         
-        # 依主檔名 (stem) 聚合 .txt 與圖片紀錄
         records = {}
         for f in all_fb_files:
             stem, ext = os.path.splitext(f)
@@ -1089,7 +1086,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 rec = records[stem]
                 txt_path, img_path = rec["txt"], rec["img"]
 
-                # 預設與解析文字檔資料
                 fb_type = "問題回報"
                 fb_unit = "TTN"
                 fb_user = "匿名"
@@ -1120,7 +1116,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                         fb_unit = parts[1]
                         fb_user = parts[2]
 
-                # 各類別配色標籤
                 badge_style = "background: rgba(148, 163, 184, 0.2); color: #CBD5E1; border: 1px solid rgba(148, 163, 184, 0.4);"
                 if "Bug" in fb_type:
                     badge_style = "background: rgba(225, 29, 72, 0.2); color: #FB7185; border: 1px solid rgba(244, 63, 94, 0.4);"
@@ -1149,7 +1144,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     </div>
                     """, unsafe_allow_html=True)
 
-                    # 若夾帶螢幕截圖，呈現「預設折疊點擊開啟」機制
                     if img_path and os.path.exists(img_path):
                         with st.expander("🖼️ 檢視夾帶螢幕截圖 (點擊展開)", expanded=False):
                             st.image(img_path, use_container_width=True)
@@ -1175,25 +1169,13 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         else:
             st.info("尚無任何組員上傳問題截圖或建議")
 
-    # ===== TAB 3: 系統操作日誌 =====
+    # ===== TAB 3: 系統操作日誌（已移除過濾標籤列） =====
     with tab_logs:
         st.subheader("系統操作活動紀錄日誌 (Activity Log)")
         
-        st.write("**快速篩選標籤**")
-        flg1, flg2, flg3, flg4 = st.columns(4)
-        with flg1:
-            if st.button("全部顯示", key="log_flg_all"): st.session_state["admin_log_kw"] = ""
-        with flg2:
-            if st.button("僅看【問題回報】", key="log_flg_fb"): st.session_state["admin_log_kw"] = "問題回報"
-        with flg3:
-            if st.button("僅看【VIP/登入】", key="log_flg_login"): st.session_state["admin_log_kw"] = "登入"
-        with flg4:
-            if st.button("僅看【檔案上傳】", key="log_flg_up"): st.session_state["admin_log_kw"] = "上傳"
-
-        curr_kw = st.session_state.get("admin_log_kw", "")
         col_log1, col_log2 = st.columns([2, 1])
         with col_log1:
-            log_filter_keyword = st.text_input("搜尋關鍵字", value=curr_kw, placeholder="例如: 員編 / 換班 / 問題回報", key="admin_log_search_input")
+            log_filter_keyword = st.text_input("搜尋關鍵字", placeholder="例如: 員編 / 換班 / 問題回報", key="admin_log_search_input")
         with col_log2:
             st.write("")
             if st.button("清空歷史日誌", key="admin_clear_log_btn"):
