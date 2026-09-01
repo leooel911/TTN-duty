@@ -20,8 +20,12 @@ st.set_page_config(page_title="TTN Shift Producer", page_icon="700st.png", layou
 TAIWAN_TZ = timezone(timedelta(hours=8))
 
 DATA_DIR = os.path.join(os.getcwd(), "data")
+FEEDBACK_IMG_DIR = os.path.join(DATA_DIR, "feedback_uploads")
+
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR, exist_ok=True)
+if not os.path.exists(FEEDBACK_IMG_DIR):
+    os.makedirs(FEEDBACK_IMG_DIR, exist_ok=True)
 
 UNITS = {
     "TTN": {
@@ -130,14 +134,16 @@ st.markdown("""
     }
 
     /* 修正輸入框雙重外框與兩側邊角未填滿漏洞 */
-    div[data-testid="stTextInput"] div[data-baseweb="input"] {
+    div[data-testid="stTextInput"] div[data-baseweb="input"],
+    div[data-testid="stTextArea"] div[data-baseweb="textarea"] {
         background: rgba(15, 23, 42, 0.75) !important;
         border: 1px solid rgba(56, 189, 248, 0.35) !important;
         border-radius: 10px !important;
         padding: 2px 4px !important;
         transition: all 0.25s ease !important;
     }
-    div[data-testid="stTextInput"] input {
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stTextArea"] textarea {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
@@ -145,7 +151,8 @@ st.markdown("""
         padding: 6px 10px !important;
         font-family: monospace !important;
     }
-    div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within {
+    div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within,
+    div[data-testid="stTextArea"] div[data-baseweb="textarea"]:focus-within {
         border-color: #38BDF8 !important;
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
     }
@@ -736,7 +743,7 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
     return buf
 
-# --- 問題與建議線上回報彈窗 Modal ---
+# --- 問題與建議線上回報彈窗 Modal（含圖片上傳與文字清洗防破壞 Log） ---
 @st.dialog("系統問題與建議回報", width="small")
 def show_feedback_modal():
     current_unit = st.session_state.get("current_unit", "TTN")
@@ -745,13 +752,32 @@ def show_feedback_modal():
     st.caption(f"回報人員：{current_unit} | {current_user}")
     
     fb_type = st.selectbox("反饋類別", ["Bug 問題回報", "功能改進建議", "班表資料不對", "其他"])
-    fb_content = st.text_area("詳細說明", placeholder="請輸入您遇到的問題或建議內容...", height=110)
+    fb_content = st.text_area("詳細說明", placeholder="請輸入您遇到的問題或建議內容...", height=100, max_chars=500)
+    
+    uploaded_img = st.file_uploader("上傳螢幕截圖 (選填，限 PNG/JPG)", type=["png", "jpg", "jpeg"], key="fb_img_uploader")
     
     col_sb1, col_sb2 = st.columns(2)
     with col_sb1:
         if st.button("確認送出", key="submit_fb_btn", use_container_width=True):
             if fb_content.strip():
-                log_activity(f"【問題回報】類別:{fb_type} | 內容:{fb_content.strip()}")
+                # 1. 清洗換行符號，確保日誌結構為單行
+                clean_content = fb_content.strip().replace("\n", " ↵ ")
+                
+                # 2. 處理圖片儲存與檔名記錄
+                img_log_str = ""
+                if uploaded_img is not None:
+                    now_stamp = datetime.now(TAIWAN_TZ).strftime('%Y%m%d_%H%M%S')
+                    clean_user_id = str(current_user).split(" ")[0].replace("/", "_")
+                    ext = uploaded_img.name.split(".")[-1]
+                    saved_filename = f"{now_stamp}_{current_unit}_{clean_user_id}.{ext}"
+                    saved_path = os.path.join(FEEDBACK_IMG_DIR, saved_filename)
+                    
+                    with open(saved_path, "wb") as f:
+                        f.write(uploaded_img.getvalue())
+                    img_log_str = f" | 截圖檔名: {saved_filename}"
+                
+                # 3. 寫入 Activity Log
+                log_activity(f"【問題回報】類別:{fb_type} | 內容:{clean_content}{img_log_str}")
                 st.success("反饋已成功送出！感謝您的協助。")
                 time.sleep(1)
                 if "action" in st.query_params:
@@ -1031,7 +1057,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.subheader("系統操作活動紀錄日誌 (Activity Log)")
     col_log1, col_log2 = st.columns([1, 3])
     with col_log1:
-        log_filter_keyword = st.text_input("搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 單位")
+        log_filter_keyword = st.text_input("搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 問題回報")
     with col_log2:
         st.write("")
         if st.button("清空歷史日誌"):
@@ -1067,7 +1093,7 @@ tm_time = get_file_mtime_str(active_files["列車長"])
 ta_time = get_file_mtime_str(active_files["服勤員"])
 sched_range = get_schedule_range()
 
-# 方案一：折疊收納式（預設極致壓縮高度）
+# 折疊收納式排班週期資訊
 st.markdown(f"""
 <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 !important;">
     <div style="display: flex; justify-content: space-between; align-items: center;">
