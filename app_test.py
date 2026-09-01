@@ -100,7 +100,7 @@ def get_employee_name(unit_key, emp_input):
             except: pass
     return ""
 
-# --- 升級版毛玻璃與極致行動端空間利用 (Mobile Compact UX Upgrade & Input Border Fix) ---
+# --- 升級版毛玻璃與極致行動端空間利用 (Mobile Compact UX Upgrade) ---
 st.markdown("""
 <style>
     /* 隱藏 Streamlit 原生 Header 與 Menu 提升 Native App 質感 */
@@ -285,6 +285,47 @@ st.markdown("""
         padding: 12px 12px 8px 12px;
         margin-bottom: 0px !important;
         box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    }
+
+    /* 膠囊 Badge 標籤樣式與姓名樣式 */
+    .compact-name {
+        font-size: 15px !important;
+        font-weight: 800 !important;
+        color: #F8FAFC !important;
+    }
+    .badge-group {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+    }
+    .long-badge {
+        background: rgba(225, 29, 72, 0.2) !important;
+        color: #FB7185 !important;
+        border: 1px solid rgba(244, 63, 94, 0.5) !important;
+        border-radius: 6px !important;
+        padding: 2px 6px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        font-family: monospace !important;
+        line-height: 1.2 !important;
+    }
+    .non-line-badge {
+        background: rgba(148, 163, 184, 0.2) !important;
+        color: #CBD5E1 !important;
+        border: 1px solid rgba(148, 163, 184, 0.4) !important;
+        border-radius: 6px !important;
+        padding: 2px 6px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        font-family: monospace !important;
+        line-height: 1.2 !important;
+    }
+    .footer-badge-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
     }
 
     div.stButton > button, div.stFormSubmitButton > button { 
@@ -769,7 +810,6 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                         st.session_state["admin_logged_in"] = False
                         st.session_state["current_unit"] = selected_unit
                         
-                        # 抓取對應人員姓名並進行去姓處理
                         emp_real_name = get_employee_name(selected_unit, clean_emp)
                         disp_name = format_display_name(emp_real_name)
                         st.session_state["current_user_id"] = f"{clean_emp} {disp_name}".strip()
