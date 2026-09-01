@@ -100,7 +100,7 @@ def get_employee_name(unit_key, emp_input):
             except: pass
     return ""
 
-# --- 升級版毛玻璃與極致行動端空間利用 (Mobile Compact UX Upgrade) ---
+# --- 升級版毛玻璃與極致行動端空間利用 ---
 st.markdown("""
 <style>
     /* 隱藏 Streamlit 原生 Header 與 Menu 提升 Native App 質感 */
@@ -129,7 +129,7 @@ st.markdown("""
         min-height: 42px !important;
     }
 
-    /* 修正輸入框雙重外框與兩側邊角未填滿漏洞 (BaseWeb Container Fix) */
+    /* 修正輸入框雙重外框與兩側邊角未填滿漏洞 */
     div[data-testid="stTextInput"] div[data-baseweb="input"] {
         background: rgba(15, 23, 42, 0.75) !important;
         border: 1px solid rgba(56, 189, 248, 0.35) !important;
@@ -211,7 +211,20 @@ st.markdown("""
         text-align: center; background: rgba(39, 28, 12, 0.55); backdrop-filter: blur(12px); font-family: monospace;
     }
     .test-env-title { color: #FDE68A; font-size: 11px !important; font-weight: 800; letter-spacing: 1px; }
-    .test-env-sub { color: #FCD34D; font-size: 9px !important; font-weight: 500; opacity: 0.85; }
+    .test-env-sub { color: #FCD34D; font-size: 9.5px !important; font-weight: 500; opacity: 0.9; }
+
+    /* 橫幅內互動連結樣式 */
+    .banner-link {
+        color: #38BDF8 !important;
+        font-weight: 700 !important;
+        text-decoration: underline !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+    }
+    .banner-link:hover {
+        color: #93C5FD !important;
+        text-shadow: 0 0 8px rgba(147, 197, 253, 0.6) !important;
+    }
 
     /* 管理員維護模式檢視提示橫幅 */
     .admin-maint-banner {
@@ -723,6 +736,39 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
     return buf
 
+# --- 問題與建議線上回報彈窗 Modal ---
+@st.dialog("系統問題與建議回報", width="small")
+def show_feedback_modal():
+    current_unit = st.session_state.get("current_unit", "TTN")
+    current_user = st.session_state.get("current_user_id", "未知")
+    
+    st.caption(f"回報人員：{current_unit} | {current_user}")
+    
+    fb_type = st.selectbox("反饋類別", ["Bug 問題回報", "功能改進建議", "班表資料不對", "其他"])
+    fb_content = st.text_area("詳細說明", placeholder="請輸入您遇到的問題或建議內容...", height=110)
+    
+    col_sb1, col_sb2 = st.columns(2)
+    with col_sb1:
+        if st.button("確認送出", key="submit_fb_btn", use_container_width=True):
+            if fb_content.strip():
+                log_activity(f"【問題回報】類別:{fb_type} | 內容:{fb_content.strip()}")
+                st.success("反饋已成功送出！感謝您的協助。")
+                time.sleep(1)
+                if "action" in st.query_params:
+                    del st.query_params["action"]
+                st.rerun()
+            else:
+                st.warning("請填寫詳細說明後再送出")
+    with col_sb2:
+        if st.button("關閉", key="close_fb_btn", use_container_width=True):
+            if "action" in st.query_params:
+                del st.query_params["action"]
+            st.rerun()
+
+# 偵測觸發問題回報 Modal
+if st.query_params.get("action") == "feedback":
+    show_feedback_modal()
+
 @st.dialog("完整月班表檢視", width="large")
 def show_crew_schedule_modal(emp_input, unit_label, badge_title="Inspector | C.L.F"):
     try:
@@ -836,11 +882,13 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 測試環境橫幅 ---
+# --- 測試環境橫幅（無縫整合問題與建議回報連結） ---
 st.markdown("""
 <div class="test-env-banner">
     <div class="test-env-title">測試環境運行中（TEST ENVIRONMENT）</div>
-    <div class="test-env-sub">目前為內部測試階段 | (問題與建議請聯繫管理員C.L.F)</div>
+    <div class="test-env-sub">
+        目前為內部測試階段 ｜ <a class="banner-link" href="?action=feedback" target="_self">問題與建議回報</a>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
