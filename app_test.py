@@ -763,7 +763,7 @@ def view_feedback_img_modal(img_path, ticket_id, user_info):
         with open(img_path, "rb") as f_img:
             st.download_button(
                 "📥 下載原始圖檔",
-                data=f_img.getvalue(),
+                data=f_img.read(),
                 file_name=os.path.basename(img_path),
                 mime="image/png",
                 use_container_width=True
