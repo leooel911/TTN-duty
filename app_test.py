@@ -212,25 +212,34 @@ st.markdown("""
     .main-title { color: #F8FAFC !important; font-size: 16px !important; font-weight: 800; letter-spacing: 1.2px; margin: 0; font-family: monospace; }
     .title-subtitle { color: #FFFFFF; font-size: 10px !important; font-weight: 700; letter-spacing: 0.8px; font-family: monospace; margin-top: 2px; }
 
-    /* 測試環境橫幅精簡 */
+    /* 測試環境純淨橫幅 */
     .test-env-banner {
-        border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 5px 10px !important; margin-bottom: 0.6rem !important;
+        border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 6px 10px !important; margin-bottom: 0.8rem !important;
         text-align: center; background: rgba(39, 28, 12, 0.55); backdrop-filter: blur(12px); font-family: monospace;
     }
     .test-env-title { color: #FDE68A; font-size: 11px !important; font-weight: 800; letter-spacing: 1px; }
-    .test-env-sub { color: #FCD34D; font-size: 9.5px !important; font-weight: 500; opacity: 0.9; }
+    .test-env-sub { color: #FCD34D; font-size: 9.5px !important; font-weight: 500; opacity: 0.85; margin-top: 1px; }
 
-    /* 橫幅內互動連結樣式 */
-    .banner-link {
-        color: #38BDF8 !important;
-        font-weight: 700 !important;
+    /* 頁尾淡色極簡問題回報按鈕樣式 */
+    div.stButton > button[key*="btn_footer_feedback_text"] {
+        background: transparent !important;
+        border: none !important;
+        color: #94A3B8 !important;
+        font-size: 11px !important;
+        font-weight: 500 !important;
         text-decoration: underline !important;
-        cursor: pointer !important;
-        transition: all 0.2s ease !important;
+        padding: 2px 8px !important;
+        min-height: 24px !important;
+        height: 24px !important;
+        box-shadow: none !important;
+        letter-spacing: 0.5px !important;
+        margin-bottom: 4px !important;
     }
-    .banner-link:hover {
-        color: #93C5FD !important;
-        text-shadow: 0 0 8px rgba(147, 197, 253, 0.6) !important;
+    div.stButton > button[key*="btn_footer_feedback_text"]:hover {
+        color: #38BDF8 !important;
+        background: transparent !important;
+        border: none !important;
+        text-shadow: 0 0 8px rgba(56, 189, 248, 0.5) !important;
     }
 
     /* 管理員維護模式檢視提示橫幅 */
@@ -342,9 +351,10 @@ st.markdown("""
     }
     .footer-badge-container {
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
-        margin-top: 1.5rem;
+        margin-top: 1.8rem;
         margin-bottom: 1rem;
     }
 
@@ -413,6 +423,7 @@ if "authenticated" not in st.session_state: st.session_state["authenticated"] = 
 if "admin_logged_in" not in st.session_state: st.session_state["admin_logged_in"] = False
 if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
+if "show_feedback_dialog" not in st.session_state: st.session_state["show_feedback_dialog"] = False
 if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
@@ -752,7 +763,7 @@ def show_feedback_modal():
     st.caption(f"回報人員：{current_unit} | {current_user}")
     
     fb_type = st.selectbox("反饋類別", ["Bug 問題回報", "功能改進建議", "班表資料不對", "其他"])
-    fb_content = st.text_area("詳細說明", placeholder="請輸入您遇到的問題或建議內容...", height=110)
+    fb_content = st.text_area("詳細說明", placeholder="請輸入您遇到的問題或建議內容...", height=100, max_chars=500)
     
     uploaded_img = st.file_uploader("上傳螢幕截圖 (選填，限 PNG/JPG)", type=["png", "jpg", "jpeg"], key="fb_img_uploader")
     
@@ -761,8 +772,8 @@ def show_feedback_modal():
         if st.button("確認送出", key="submit_fb_btn", use_container_width=True):
             if fb_content.strip():
                 clean_content = fb_content.strip().replace("\n", " ↵ ")
-                img_log_str = ""
                 
+                img_log_str = ""
                 if uploaded_img is not None:
                     now_stamp = datetime.now(TAIWAN_TZ).strftime('%Y%m%d_%H%M%S')
                     clean_user_id = str(current_user).split(" ")[0].replace("/", "_")
@@ -773,23 +784,20 @@ def show_feedback_modal():
                     with open(saved_path, "wb") as f:
                         f.write(uploaded_img.getvalue())
                     img_log_str = f" | 截圖檔名: {saved_filename}"
-
+                
                 log_activity(f"【問題回報】類別:{fb_type} | 內容:{clean_content}{img_log_str}")
                 st.success("反饋已成功送出！感謝您的協助。")
-                time.sleep(1)
-                if "action" in st.query_params:
-                    del st.query_params["action"]
+                time.sleep(0.8)
+                st.session_state["show_feedback_dialog"] = False
                 st.rerun()
             else:
                 st.warning("請填寫詳細說明後再送出")
     with col_sb2:
         if st.button("關閉", key="close_fb_btn", use_container_width=True):
-            if "action" in st.query_params:
-                del st.query_params["action"]
+            st.session_state["show_feedback_dialog"] = False
             st.rerun()
 
-# 偵測觸發問題回報 Modal
-if st.query_params.get("action") == "feedback":
+if st.session_state.get("show_feedback_dialog", False):
     show_feedback_modal()
 
 @st.dialog("完整月班表檢視", width="large")
@@ -905,13 +913,11 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 測試環境橫幅（無縫整合問題與建議回報連結） ---
+# --- 測試環境純淨橫幅 ---
 st.markdown("""
 <div class="test-env-banner">
     <div class="test-env-title">測試環境運行中（TEST ENVIRONMENT）</div>
-    <div class="test-env-sub">
-        目前為內部測試階段 ｜ <a class="banner-link" href="?action=feedback" target="_self">問題與建議回報</a>
-    </div>
+    <div class="test-env-sub">目前為內部測試階段</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -991,7 +997,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.markdown("---")
     st.subheader(f"各大系統模組維護開關控制（當前控制單位：{admin_target_unit}）")
 
-    # 讀取當前管理單位的獨立維護 Flag
     is_prod_maint = is_module_maintenance(admin_target_unit, "producer")
     is_win_maint = is_module_maintenance(admin_target_unit, "window_filter")
     is_ex_maint = is_module_maintenance(admin_target_unit, "exchange_filter")
@@ -1096,11 +1101,12 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     else:
         st.info("尚無任何組員上傳問題截圖")
 
+    # ==================== 管理員專用：系統活動日誌 ====================
     st.markdown("---")
     st.subheader("系統操作活動紀錄日誌 (Activity Log)")
     col_log1, col_log2 = st.columns([1, 3])
     with col_log1:
-        log_filter_keyword = st.text_input("搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 單位")
+        log_filter_keyword = st.text_input("搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 問題回報")
     with col_log2:
         st.write("")
         if st.button("清空歷史日誌"):
@@ -1136,7 +1142,7 @@ tm_time = get_file_mtime_str(active_files["列車長"])
 ta_time = get_file_mtime_str(active_files["服勤員"])
 sched_range = get_schedule_range()
 
-# 方案一：折疊收納式（預設極致壓縮高度）
+# 折疊收納式排班週期資訊
 st.markdown(f"""
 <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 !important;">
     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1584,12 +1590,18 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
         except Exception as e:
             st.error(f"讀取換假資料時發生錯誤：{e}")
 
-# --- 底部頁尾貼紙 ---
+# --- 底部頁尾區塊（含極簡問題回報文字按鈕與 C.L.F EDITION 貼紙） ---
 st.markdown('<div class="footer-badge-container">', unsafe_allow_html=True)
+
+if st.button("問題回報與建議", key="btn_footer_feedback_text"):
+    st.session_state["show_feedback_dialog"] = True
+    st.rerun()
+
 footer_label = f"ADMIN PANEL [{current_unit_label}] // C.L.F EDITION" if st.session_state.get("admin_logged_in", False) else f"C.L.F EDITION [{current_unit_label}]"
 if st.button(footer_label, key="bottom_footer_badge"):
     if st.session_state.get("admin_logged_in", False):
         st.session_state["nav_mode"] = "admin_panel" if st.session_state["nav_mode"] == "home" else "home"
     else: st.session_state["show_admin_login"] = True
     st.rerun()
+
 st.markdown('</div>', unsafe_allow_html=True)
