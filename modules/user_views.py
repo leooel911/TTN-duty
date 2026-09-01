@@ -153,7 +153,7 @@ def render_user_home():
                
                 st.write("**快捷選擇時段：**")
                 q_col1, q_col2, q_col3, q_col4 = st.columns(4)
-                if q_col1.button("全段", key="btn_win_all", use_container_width=True):
+                if q_col1.button("全時段", key="btn_win_all", use_container_width=True):
                     st.session_state["win_time_slider"] = ("04:00", "18:00")
                     st.rerun()
                 if q_col2.button("早班", key="btn_win_morn", use_container_width=True):
