@@ -858,12 +858,12 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     col_ctrl1, col_ctrl2 = st.columns(2)
     with col_ctrl1:
-        if st.button("← 返回一般系統首頁", key="admin_back_to_home_btn"):
+        if st.button("返回一般系統首頁", key="admin_back_to_home_btn"):
             st.session_state["current_unit"] = admin_target_unit
             st.session_state["nav_mode"] = "home"
             st.rerun()
     with col_ctrl2:
-        if st.button("🔒 登出管理員身分", key="admin_logout_btn_top"):
+        if st.button("登出管理員身分", key="admin_logout_btn_top"):
             log_activity("管理員登出後台")
             st.session_state["admin_logged_in"] = False
             st.session_state["nav_mode"] = "home"
@@ -871,17 +871,17 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
 
     st.markdown("---")
 
-    st.subheader(f"📊 【{admin_target_unit}】伺服器狀態 & Dashboard 數據")
+    st.subheader(f"【{admin_target_unit}】伺服器狀態 & Dashboard 數據")
     m1, m2, m3, m4 = st.columns(4)
     with m1:
         td_ok = os.path.exists(current_unit_files["駕駛"])
-        st.metric("駕駛大表 (TD)", "已就緒" if td_ok else "缺檔案", delta="🟢 正常" if td_ok else "🔴 缺失")
+        st.metric("駕駛大表 (TD)", "已就緒" if td_ok else "缺檔案", delta="正常" if td_ok else "缺失")
     with m2:
         tm_ok = os.path.exists(current_unit_files["列車長"])
-        st.metric("列車長大表 (TM)", "已就緒" if tm_ok else "缺檔案", delta="🟢 正常" if tm_ok else "🔴 缺失")
+        st.metric("列車長大表 (TM)", "已就緒" if tm_ok else "缺檔案", delta="正常" if tm_ok else "缺失")
     with m3:
         ta_ok = os.path.exists(current_unit_files["服勤員"])
-        st.metric("服勤員大表 (TA)", "已就緒" if ta_ok else "缺檔案", delta="🟢 正常" if ta_ok else "🔴 缺失")
+        st.metric("服勤員大表 (TA)", "已就緒" if ta_ok else "缺檔案", delta="正常" if ta_ok else "缺失")
     with m4:
         log_cnt = 0
         if os.path.exists(LOG_FILE):
@@ -951,13 +951,13 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             except Exception as e: st.error(f"寫入失敗: {e}")
 
     st.markdown("---")
-    st.subheader("📋 系統操作活動紀錄日誌 (Activity Log)")
+    st.subheader("系統操作活動紀錄日誌 (Activity Log)")
     col_log1, col_log2 = st.columns([1, 3])
     with col_log1:
-        log_filter_keyword = st.text_input("🔍 搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 單位")
+        log_filter_keyword = st.text_input("搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 單位")
     with col_log2:
         st.write("")
-        if st.button("🗑️ 清空歷史日誌"):
+        if st.button("清空歷史日誌"):
             if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
             st.rerun()
 
@@ -1021,7 +1021,7 @@ if app_mode == "繪製個人月班表圖檔":
         if not is_admin_user:
             st.markdown(f"""
             <div class="user-maint-banner">
-                <div class="user-maint-title">🛠️ SYSTEM MAINTENANCE // 系統維護中</div>
+                <div class="user-maint-title">SYSTEM MAINTENANCE // 系統維護中</div>
                 <div style="font-size: 16px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
                     【{current_unit_label}】個人月班表圖檔生成系統進行維護中
                 </div>
@@ -1034,7 +1034,7 @@ if app_mode == "繪製個人月班表圖檔":
         else:
             st.markdown(f"""
             <div class="admin-maint-banner">
-                🛠️ <strong>【管理員維護模式檢視】</strong> 當前【{current_unit_label} - 個人月班表圖檔】模組已設為「維護中」（一般組員已被阻擋），您目前正以管理員身分進行預覽與功能測試。
+                <strong>【管理員維護模式檢視】</strong> 當前【{current_unit_label} - 個人月班表圖檔】模組已設為「維護中」（一般組員已被阻擋），您目前正以管理員身分進行預覽與功能測試。
             </div>
             """, unsafe_allow_html=True)
 
@@ -1066,7 +1066,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
         if not is_admin_user:
             st.markdown(f"""
             <div class="user-maint-banner">
-                <div class="user-maint-title">🛠️ SYSTEM MAINTENANCE // 系統維護中</div>
+                <div class="user-maint-title">SYSTEM MAINTENANCE // 系統維護中</div>
                 <div style="font-size: 16px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
                     【{current_unit_label}】換班選擇日期快篩系統進行維護中
                 </div>
@@ -1079,7 +1079,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
         else:
             st.markdown(f"""
             <div class="admin-maint-banner">
-                🛠️ <strong>【管理員維護模式檢視】</strong> 當前【{current_unit_label} - 換班選擇日期快篩】模組已設為「維護中」（一般組員已被阻擋），您目前正以管理員身分進行預覽與功能測試。
+                <strong>【管理員維護模式檢視】</strong> 當前【{current_unit_label} - 換班選擇日期快篩】模組已設為「維護中」（一般組員已被阻擋），您目前正以管理員身分進行預覽與功能測試。
             </div>
             """, unsafe_allow_html=True)
 
@@ -1213,7 +1213,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
         if not is_admin_user:
             st.markdown(f"""
             <div class="user-maint-banner">
-                <div class="user-maint-title">🛠️ SYSTEM MAINTENANCE // 系統維護中</div>
+                <div class="user-maint-title">SYSTEM MAINTENANCE // 系統維護中</div>
                 <div style="font-size: 16px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
                     【{current_unit_label}】換假選擇日期快篩系統進行維護中
                 </div>
@@ -1226,7 +1226,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
         else:
             st.markdown(f"""
             <div class="admin-maint-banner">
-                🛠️ <strong>【管理員維護模式檢視】</strong> 當前【{current_unit_label} - 換假選擇日期快篩】模組已設為「維護中」（一般組員已被阻擋），您目前正以管理員身分進行預覽與功能測試。
+                <strong>【管理員維護模式檢視】</strong> 當前【{current_unit_label} - 換假選擇日期快篩】模組已設為「維護中」（一般組員已被阻擋），您目前正以管理員身分進行預覽與功能測試。
             </div>
             """, unsafe_allow_html=True)
 
@@ -1282,9 +1282,9 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                     pass
 
                 if is_cross_week:
-                    st.warning(f"⚠️ **跨週警示**：您選擇的還假日期「{return_date}」與想休假日期「{target_date}」不在同一週！（想休假當週規範區間為：{target_week_str}）")
+                    st.warning(f"**跨週警示**：您選擇的還假日期「{return_date}」與想休假日期「{target_date}」不在同一週！（想休假當週規範區間為：{target_week_str}）")
                 else:
-                    st.caption(f"📅 **同一週換假區間：{target_week_str}**")
+                    st.caption(f"**同一週換假區間：{target_week_str}**")
 
                 col_f1, col_f2 = st.columns(2)
                 with col_f1:
