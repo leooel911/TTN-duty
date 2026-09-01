@@ -576,6 +576,20 @@ def parse_cell(raw):
     clean_real_train = re.sub(r'[#%]', '', real_train).strip() if real_train else "無"
     return dict(start=start_time, end=end_time, train=clean_real_train if clean_real_train else "無", hours=hours, note=" ".join(notes))
 
+def is_cell_off_day(raw_val):
+    if pd.isna(raw_val) or not str(raw_val).strip():
+        return True
+    raw_str = str(raw_val).strip().upper()
+    if raw_str in ["NAN", "NONE", "", "."]:
+        return True
+    parsed = parse_cell(raw_val)
+    off_keywords = ["DO", "D2W", "PAY", "FAC", "AL", "SL", "CL", "ML"]
+    if any(k in raw_str for k in off_keywords) or parsed["train"] in off_keywords:
+        return True
+    if not parsed["start"] and (not parsed["train"] or parsed["train"] == "無"):
+        return True
+    return False
+
 def process_file_data(input_str):
     input_clean = input_str.strip().upper()
     matched_row, emp_id, emp_name, df_found = None, "", "", None
@@ -1723,16 +1737,21 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                             is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
                             is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
 
+                            # 精準模擬「換假後」前後 5 天的最大連續上班天數
                             max_consecutive_streak = 0
                             current_streak = 0
                             start_check_idx = max(2, target_col_idx - 5)
                             end_check_idx = min(len(row) - 1, target_col_idx + 5)
 
                             for c_i in range(start_check_idx, end_check_idx + 1):
-                                cell_c_raw = str(row.iloc[c_i]).upper()
-                                cell_c = parse_cell(row.iloc[c_i])
-                                is_off_day = any(k in cell_c_raw for k in ["DO", "D2W", "PAY", "FAC", "AL", "SL", "CL"]) or (cell_c["train"] in ["DO", "D2W", "PAY", "FAC"])
-                                if not is_off_day:
+                                if c_i == target_col_idx:
+                                    is_off = False  # 換假後補上班
+                                elif c_i == return_col_idx:
+                                    is_off = True   # 換假後改休假
+                                else:
+                                    is_off = is_cell_off_day(row.iloc[c_i])
+
+                                if not is_off:
                                     current_streak += 1
                                     if current_streak > max_consecutive_streak:
                                         max_consecutive_streak = current_streak
@@ -1794,6 +1813,9 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                             if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
                             badges_html += '</div>'
 
+                            streak_cnt = cand.get('連續上班天數', 0)
+                            streak_color = "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
+
                             with target_col:
                                 st.markdown(f"""
                                 <div class="integrated-crew-box">
@@ -1817,8 +1839,8 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                         </div>
                                     </div>
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
-                                        <span style="font-size: 12px; color: #FCD34D; font-weight: 700; font-family: monospace;">
-                                            我想休：{cand.get('想休日')} ({cand.get('想休狀態')})
+                                        <span style="font-size: 11.5px; color: {streak_color}; font-weight: 700; font-family: monospace;">
+                                            換假後連續上班：{streak_cnt} 天 {'(⚠️過濾項)' if streak_cnt >= 6 else ''}
                                         </span>
                                         {badges_html}
                                     </div>
