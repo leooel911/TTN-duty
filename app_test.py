@@ -74,9 +74,18 @@ def is_module_maintenance(unit, module_key):
     flag_path = get_maintenance_flag_path(unit, module_key)
     return os.path.exists(flag_path)
 
-# --- 升級版毛玻璃與響應式視覺設計 (Glassmorphism & Integrated UI) ---
+# --- 升級版毛玻璃與行動端自適應視覺設計 (Glassmorphism & Mobile UX Upgrade) ---
 st.markdown("""
 <style>
+    /* 隱藏 Streamlit 原生 Header 與 Menu 提升 Native App 質感 */
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+    }
+    div[data-testid="stToolbar"] {
+        visibility: hidden !important;
+    }
+    footer { visibility: hidden !important; }
+
     .stApp { 
         background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, #020617 100%) !important; 
         color: #F8FAFC !important; 
@@ -85,10 +94,10 @@ st.markdown("""
     
     /* 桌面端與行動端寬度適配 */
     @media (min-width: 1024px) {
-        .block-container { padding: 3.5rem 1.5rem 3rem 1.5rem !important; max-width: 1050px !important; }
+        .block-container { padding: 3rem 1.5rem 3rem 1.5rem !important; max-width: 1050px !important; }
     }
     @media (max-width: 1023px) {
-        .block-container { padding: 2.5rem 0.8rem 2rem 0.8rem !important; max-width: 100% !important; }
+        .block-container { padding: 1.2rem 0.8rem 2rem 0.8rem !important; max-width: 100% !important; }
     }
 
     /* 強制所有 Streamlit 按鈕容器具備 100% 滿寬能力 */
@@ -97,23 +106,39 @@ st.markdown("""
     }
     div[data-testid="stButton"] > button, div.stButton > button {
         width: 100% !important;
+        min-height: 44px !important;
+    }
+
+    /* 輸入框行動端質感與 Focus 狀態 Glow 效果 */
+    div[data-testid="stTextInput"] input {
+        background: rgba(15, 23, 42, 0.75) !important;
+        border: 1px solid rgba(56, 189, 248, 0.3) !important;
+        border-radius: 10px !important;
+        color: #F8FAFC !important;
+        padding: 10px 14px !important;
+        font-family: monospace !important;
+        transition: all 0.25s ease !important;
+    }
+    div[data-testid="stTextInput"] input:focus {
+        border-color: #38BDF8 !important;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.3) !important;
     }
 
     /* 三大系統按鈕選項方格化卡片設計 */
     div[role="radiogroup"] {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
         width: 100%;
-        margin-top: 10px;
-        margin-bottom: 15px;
+        margin-top: 8px;
+        margin-bottom: 12px;
     }
     div[role="radiogroup"] > label {
         background: rgba(30, 41, 59, 0.65) !important;
         border: 1px solid rgba(56, 189, 248, 0.25) !important;
         border-left: 5px solid #38BDF8 !important;
         border-radius: 12px !important;
-        padding: 14px 18px !important;
+        padding: 12px 16px !important;
         margin: 0 !important;
         cursor: pointer !important;
         transition: all 0.2s ease-in-out !important;
@@ -123,8 +148,7 @@ st.markdown("""
     div[role="radiogroup"] > label:hover {
         background: rgba(30, 58, 138, 0.5) !important;
         border-color: #38BDF8 !important;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(56, 189, 248, 0.2);
+        transform: translateY(-1px);
     }
     div[role="radiogroup"] > label[data-checked="true"], div[role="radiogroup"] > label:has(input:checked) {
         background: rgba(30, 64, 175, 0.65) !important;
@@ -133,7 +157,7 @@ st.markdown("""
         box-shadow: 0 0 14px rgba(96, 165, 250, 0.3);
     }
     div[role="radiogroup"] > label p {
-        font-size: 15px !important;
+        font-size: 14.5px !important;
         font-weight: 700 !important;
         color: #F8FAFC !important;
     }
@@ -145,41 +169,41 @@ st.markdown("""
     }
 
     .online-dot {
-        width: 8px; height: 8px; background-color: #4ADE80; border-radius: 50%;
+        width: 7px; height: 7px; background-color: #4ADE80; border-radius: 50%;
         display: inline-block; animation: online-green-pulse 2.5s infinite ease-in-out;
-        box-shadow: 0 0 8px #4ADE80; margin: 0 8px; vertical-align: middle;
+        box-shadow: 0 0 8px #4ADE80; margin: 0 6px; vertical-align: middle;
     }
 
     .test-env-banner {
-        border: 1px solid rgba(245, 158, 11, 0.5); border-radius: 16px; padding: 10px 18px; margin-bottom: 1.2rem;
+        border: 1px solid rgba(245, 158, 11, 0.5); border-radius: 12px; padding: 8px 12px; margin-bottom: 1rem;
         text-align: center; background: rgba(39, 28, 12, 0.55); backdrop-filter: blur(12px); font-family: monospace;
     }
-    .test-env-title { color: #FDE68A; font-size: 13px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
-    .test-env-sub { color: #FCD34D; font-size: 10px; font-weight: 600; letter-spacing: 1px; opacity: 0.9; }
+    .test-env-title { color: #FDE68A; font-size: 12px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; }
+    .test-env-sub { color: #FCD34D; font-size: 9.5px; font-weight: 600; letter-spacing: 0.8px; opacity: 0.9; }
 
     /* 管理員維護模式檢視提示橫幅 */
     .admin-maint-banner {
         border: 1px solid rgba(245, 158, 11, 0.6);
         border-left: 5px solid #F59E0B;
         border-radius: 12px;
-        padding: 12px 18px;
-        margin-bottom: 1.2rem;
+        padding: 10px 14px;
+        margin-bottom: 1rem;
         background: rgba(245, 158, 11, 0.12);
         backdrop-filter: blur(8px);
         color: #FDE68A;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.5px;
     }
 
-    /* 使用者端質感維護卡片（High-Tech Amber Glass） */
+    /* 使用者端質感維護卡片 */
     .user-maint-banner {
         border: 1px solid rgba(245, 158, 11, 0.45);
         border-left: 5px solid #F59E0B;
-        border-radius: 16px;
-        padding: 22px 24px;
-        margin-top: 15px;
-        margin-bottom: 22px;
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-top: 12px;
+        margin-bottom: 18px;
         background: radial-gradient(circle at 50% 0%, rgba(69, 41, 10, 0.6) 0%, rgba(24, 18, 11, 0.75) 100%);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
@@ -188,18 +212,18 @@ st.markdown("""
     }
     .user-maint-title {
         color: #FDE68A;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 800;
-        letter-spacing: 1.8px;
+        letter-spacing: 1.5px;
         font-family: monospace;
         text-transform: uppercase;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
     }
     .user-maint-sub {
         color: #CBD5E1;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 500;
-        letter-spacing: 0.8px;
+        letter-spacing: 0.5px;
         font-family: monospace;
         margin-top: 4px;
         opacity: 0.85;
@@ -207,16 +231,16 @@ st.markdown("""
 
     .header-container { 
         display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
-        width: 100%; margin-bottom: 1.2rem; padding: 20px 16px;
+        width: 100%; margin-bottom: 1rem; padding: 14px 12px;
         backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
         background: rgba(15, 23, 42, 0.55);
-        border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 20px;
+        border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 16px;
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     }
-    .main-title { color: #F8FAFC !important; font-size: 22px; font-weight: 800; letter-spacing: 2px; margin: 0; font-family: monospace; }
-    .title-subtitle { color: #FFFFFF; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; font-family: monospace; margin-top: 6px; }
+    .main-title { color: #F8FAFC !important; font-size: 18px; font-weight: 800; letter-spacing: 1.5px; margin: 0; font-family: monospace; }
+    .title-subtitle { color: #FFFFFF; font-size: 11px; font-weight: 700; letter-spacing: 1px; font-family: monospace; margin-top: 4px; }
 
-    .footer-badge-container { display: flex; justify-content: center; align-items: center; width: 100%; margin-top: 2.5rem; margin-bottom: 1rem; }
+    .footer-badge-container { display: flex; justify-content: center; align-items: center; width: 100%; margin-top: 2rem; margin-bottom: 1rem; }
     .footer-badge-container div.stButton > button { 
         background: rgba(15, 23, 42, 0.4) !important; backdrop-filter: blur(12px) !important;
         border: 1px solid rgba(51, 65, 85, 0.5) !important; border-left: 2px solid #38BDF8 !important;
@@ -224,21 +248,38 @@ st.markdown("""
         text-transform: uppercase !important; padding: 6px 14px !important; border-radius: 6px !important;
         font-family: monospace !important; width: auto !important; margin: 0 auto !important; min-height: unset !important; transition: all 0.25s ease !important;
     }
-    .footer-badge-container div.stButton > button:hover {
-        border-color: #38BDF8 !important; color: #38BDF8 !important; background: rgba(30, 41, 59, 0.6) !important;
-    }
 
     .section-header-box { 
         background: rgba(30, 41, 59, 0.45); 
         backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid #3B82F6; border-radius: 16px; padding: 16px 20px; margin-top: 15px; margin-bottom: 18px; 
+        border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid #3B82F6; border-radius: 14px; padding: 14px 16px; margin-top: 12px; margin-bottom: 14px; 
     }
-    .section-title { color: #F8FAFC; font-size: 17px; font-weight: 700; margin: 0; }
-    .section-subtitle { color: #94A3B8; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin-top: 3px; font-family: monospace; }
+    .section-title { color: #F8FAFC; font-size: 15px; font-weight: 700; margin: 0; }
+    .section-subtitle { color: #94A3B8; font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 3px; font-family: monospace; }
 
-    .date-banner { 
-        background: rgba(30, 64, 175, 0.45); 
-        border: 1px solid rgba(96, 165, 250, 0.3); border-left: 4px solid #60A5FA; color: #FFFFFF; font-size: 13px; font-weight: 800; padding: 8px 14px; border-radius: 10px; margin-top: 18px; margin-bottom: 10px; font-family: monospace;
+    /* 行動端自適應資料狀態卡片 */
+    .mobile-status-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .mobile-status-item {
+        font-size: 11px;
+        color: #94A3B8;
+        font-family: monospace;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(15, 23, 42, 0.35);
+        padding: 5px 10px;
+        border-radius: 6px;
+    }
+    .mobile-status-label {
+        color: #38BDF8;
+        font-weight: 700;
     }
 
     /* 一體化卡片上半部主體 */
@@ -250,51 +291,14 @@ st.markdown("""
         border: 1px solid rgba(56, 189, 248, 0.25);
         border-bottom: none !important;
         border-left: 4px solid #10B981;
-        border-top-left-radius: 14px;
-        border-top-right-radius: 14px;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
         border-bottom-left-radius: 0px !important;
         border-bottom-right-radius: 0px !important;
-        padding: 16px 16px 12px 16px;
+        padding: 14px 14px 10px 14px;
         margin-bottom: 0px !important;
         box-shadow: 0 6px 20px rgba(0,0,0,0.25);
     }
-
-    /* 一體化卡片下半部按鈕：精準對接並 100% 滿寬延伸 */
-    div.stElementContainer:has(.integrated-crew-box) + div.stElementContainer div[data-testid="stButton"] > button,
-    div.stElementContainer:has(.integrated-crew-box) + div[data-testid="stElementContainer"] div[data-testid="stButton"] > button,
-    div.element-container:has(.integrated-crew-box) + div.element-container button {
-        border-top-left-radius: 0px !important;
-        border-top-right-radius: 0px !important;
-        border-bottom-left-radius: 14px !important;
-        border-bottom-right-radius: 14px !important;
-        border: 1px solid rgba(56, 189, 248, 0.25) !important;
-        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-        border-left: 4px solid #10B981 !important;
-        background: rgba(15, 23, 42, 0.85) !important;
-        color: #38BDF8 !important;
-        font-size: 13px !important;
-        margin-top: -1px !important;
-        margin-bottom: 16px !important;
-        padding: 9px 12px !important;
-        width: 100% !important;
-        display: block !important;
-        text-align: center !important;
-        box-sizing: border-box !important;
-    }
-
-    div.stElementContainer:has(.integrated-crew-box) + div.stElementContainer div[data-testid="stButton"] > button:hover,
-    div.stElementContainer:has(.integrated-crew-box) + div[data-testid="stElementContainer"] div[data-testid="stButton"] > button:hover,
-    div.element-container:has(.integrated-crew-box) + div.element-container button:hover {
-        background: rgba(30, 58, 138, 0.85) !important;
-        color: #FFFFFF !important;
-        border-color: #38BDF8 !important;
-    }
-
-    .compact-name { font-size: 16px; font-weight: 800; color: #F8FAFC; }
-    .compact-sub { font-size: 12px; color: #CBD5E1; font-family: monospace; }
-    .badge-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-    .long-badge { background: rgba(153, 27, 27, 0.35); border: 1px solid rgba(239, 68, 68, 0.5); color: #FCA5A5; font-size: 10px; padding: 2px 7px; border-radius: 6px; font-weight: 600; }
-    .non-line-badge { background: rgba(76, 29, 149, 0.35); border: 1px solid rgba(139, 92, 246, 0.5); color: #C4B5FD; font-size: 10px; padding: 2px 7px; border-radius: 6px; font-weight: 600; }
 
     div.stButton > button, div.stFormSubmitButton > button { 
         font-weight: 700 !important; padding: 0.5rem 1rem !important; border-radius: 0.5rem !important; 
@@ -302,10 +306,6 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.12) !important;
         color: #38BDF8 !important; width: 100% !important; 
         transition: all 0.2s ease !important; letter-spacing: 0.5px; font-family: monospace;
-    }
-    div.stButton > button:hover, div.stFormSubmitButton > button:hover {
-        border-color: rgba(56, 189, 248, 0.6) !important; color: #FFFFFF !important;
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.85) 0%, rgba(29, 78, 216, 0.85) 100%) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -430,14 +430,6 @@ def get_file_mtime_str(path):
         size_kb = os.path.getsize(path) / 1024
         return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} ({size_kb:.1f} KB)"
     return "尚無檔案"
-
-def get_file_info_text(path, label_prefix="目前檔案"):
-    if os.path.exists(path):
-        mtime = os.path.getmtime(path)
-        dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(TAIWAN_TZ)
-        size_kb = os.path.getsize(path) / 1024
-        return f"目前檔案：{os.path.basename(path)} | 大小：{size_kb:.1f} KB | 更新時間：{dt.strftime('%Y-%m-%d %H:%M:%S')}"
-    return f"目前檔案：尚無上傳檔案"
 
 def get_schedule_range():
     active_files = get_current_role_files()
@@ -746,9 +738,9 @@ if st.session_state.get("inspect_emp_target") is not None:
 # --- 前置授權碼門戶檢查 ---
 if not st.session_state["authenticated"] and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
-    <div style="text-align: center; margin-top: 2rem; margin-bottom: 1.5rem;">
-        <div style="font-size: 32px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
-        <div style="color: #94A3B8; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-top: 8px; font-family: monospace;">
+    <div style="text-align: center; margin-top: 1.5rem; margin-bottom: 1.2rem;">
+        <div style="font-size: 26px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
+        <div style="color: #94A3B8; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace;">
             BUSY DOING NOTHING PRODUCTIVE<br>C.L.F EDITION
         </div>
     </div>
@@ -798,7 +790,7 @@ current_operator_id = st.session_state.get("current_user_id", "A")
 st.markdown(f"""
 <div class="header-container">
     <div class="main-title">CREW DUTY ENGINE</div>
-    <div style="color: #94A3B8; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; font-family: monospace; margin-top: 4px;">
+    <div style="color: #94A3B8; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; font-family: monospace; margin-top: 3px;">
         BUSY DOING NOTHING PRODUCTIVE &bull; C.L.F EDITION
     </div>
     <div class="title-subtitle">
@@ -993,11 +985,22 @@ sched_range = get_schedule_range()
 st.markdown(f"""
 <div class="section-header-box" style="border-left-color: #60A5FA;">
     <div class="section-title">[{current_unit_label}] 目前系統排班週期 & 資料狀態</div>
-    <div style="font-size: 18px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 700; margin-top: 4px;">
+    <div style="font-size: 17px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; margin-top: 4px;">
         {sched_range if len(missing_files) < 3 else "資料庫異常：請洽管理員！"}
     </div>
-    <div class="section-subtitle" style="margin-top: 6px;">
-        駕駛: {td_time} | 列車長: {tm_time} | 服勤員: {ta_time}
+    <div class="mobile-status-grid">
+        <div class="mobile-status-item">
+            <span class="mobile-status-label">駕駛</span>
+            <span>{td_time}</span>
+        </div>
+        <div class="mobile-status-item">
+            <span class="mobile-status-label">列車長</span>
+            <span>{tm_time}</span>
+        </div>
+        <div class="mobile-status-item">
+            <span class="mobile-status-label">服勤員</span>
+            <span>{ta_time}</span>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -1022,11 +1025,11 @@ if app_mode == "繪製個人月班表圖檔":
             st.markdown(f"""
             <div class="user-maint-banner">
                 <div class="user-maint-title">SYSTEM MAINTENANCE // 系統維護中</div>
-                <div style="font-size: 16px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
+                <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 6px 0;">
                     【{current_unit_label}】個人月班表圖檔生成系統進行維護中
                 </div>
                 <div class="user-maint-sub">
-                    當前模組正在進行資料維護與排班結構優化，暫不開放服務，請稍後再試。
+                    正在進行系統維護，暫不開放服務，請稍後再試。
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -1067,7 +1070,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
             st.markdown(f"""
             <div class="user-maint-banner">
                 <div class="user-maint-title">SYSTEM MAINTENANCE // 系統維護中</div>
-                <div style="font-size: 16px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
+                <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 6px 0;">
                     【{current_unit_label}】換班選擇日期快篩系統進行維護中
                 </div>
                 <div class="user-maint-sub">
@@ -1214,7 +1217,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
             st.markdown(f"""
             <div class="user-maint-banner">
                 <div class="user-maint-title">SYSTEM MAINTENANCE // 系統維護中</div>
-                <div style="font-size: 16px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
+                <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 6px 0;">
                     【{current_unit_label}】換假選擇日期快篩系統進行維護中
                 </div>
                 <div class="user-maint-sub">
