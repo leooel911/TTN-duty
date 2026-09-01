@@ -70,6 +70,9 @@ def show_feedback_modal():
                         ticket_id = f"FB-{now_dt.strftime('%Y%m%d-%H%M%S')}-{current_unit}"
                         base_name = f"{now_stamp}_{current_unit}_{clean_user_id}"
                         
+                        # 【關鍵修復】：確保 FEEDBACK_IMG_DIR 資料夾存在，避免 FileNotFoundError
+                        os.makedirs(FEEDBACK_IMG_DIR, exist_ok=True)
+
                         txt_path = os.path.join(FEEDBACK_IMG_DIR, f"{base_name}.txt")
                         with open(txt_path, "w", encoding="utf-8") as f_txt:
                             f_txt.write(f"處理編號: {ticket_id}\n狀態: 待處理\n類別: {fb_type}\n單位: {current_unit}\n回報者: {current_user}\n時間: {now_human}\n管理員回覆: 尚無回覆\n詳細說明:\n{clean_content}")
