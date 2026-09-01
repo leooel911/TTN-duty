@@ -424,7 +424,6 @@ if "authenticated" not in st.session_state: st.session_state["authenticated"] = 
 if "admin_logged_in" not in st.session_state: st.session_state["admin_logged_in"] = False
 if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
-if "show_feedback_dialog" not in st.session_state: st.session_state["show_feedback_dialog"] = False
 if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
@@ -794,17 +793,12 @@ def show_feedback_modal():
                 log_activity(f"【問題回報】類別:{fb_type} | 內容:{clean_content.replace('\n', ' ')}{img_log_str}")
                 st.success("反饋已成功送出！感謝您的協助。")
                 time.sleep(0.8)
-                st.session_state["show_feedback_dialog"] = False
                 st.rerun()
             else:
                 st.warning("請填寫詳細說明後再送出")
     with col_sb2:
         if st.button("關閉", key="close_fb_btn", use_container_width=True):
-            st.session_state["show_feedback_dialog"] = False
             st.rerun()
-
-if st.session_state.get("show_feedback_dialog", False):
-    show_feedback_modal()
 
 @st.dialog("完整月班表檢視", width="large")
 def show_crew_schedule_modal(emp_input, unit_label, badge_title="Inspector | C.L.F"):
@@ -1169,15 +1163,15 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         else:
             st.info("尚無任何組員上傳問題截圖或建議")
 
-    # ===== TAB 3: 系統操作日誌（已移除過濾標籤列） =====
+    # ===== TAB 3: 系統操作日誌（乾淨獨立搜尋排版） =====
     with tab_logs:
         st.subheader("系統操作活動紀錄日誌 (Activity Log)")
         
-        col_log1, col_log2 = st.columns([2, 1])
+        col_log1, col_log2 = st.columns([2.5, 1])
         with col_log1:
-            log_filter_keyword = st.text_input("搜尋關鍵字", placeholder="例如: 員編 / 換班 / 問題回報", key="admin_log_search_input")
+            log_filter_keyword = st.text_input("搜尋關鍵字", placeholder="輸入員編、換班或問題回報...", key="admin_log_search_input")
         with col_log2:
-            st.write("")
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
             if st.button("清空歷史日誌", key="admin_clear_log_btn"):
                 if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
                 st.rerun()
@@ -1665,8 +1659,7 @@ col_f1, col_f2 = st.columns(2)
 
 with col_f1:
     if st.button("問題回報與建議", key="btn_footer_feedback_left", use_container_width=True):
-        st.session_state["show_feedback_dialog"] = True
-        st.rerun()
+        show_feedback_modal()
 
 with col_f2:
     admin_btn_label = f"ADMIN PANEL [{current_unit_label}]" if st.session_state.get("admin_logged_in", False) else f"C.L.F EDITION [{current_unit_label}]"
