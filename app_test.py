@@ -62,7 +62,6 @@ UNITS = {
 
 LOG_FILE = os.path.join(DATA_DIR, "activity_log.txt")
 
-# --- 單位獨立維護開關的核心檔案處理邏輯 ---
 def get_maintenance_flag_path(unit, module_key):
     return os.path.join(DATA_DIR, f"maintenance_{unit}_{module_key}.flag")
 
@@ -78,7 +77,6 @@ def is_module_maintenance(unit, module_key):
     flag_path = get_maintenance_flag_path(unit, module_key)
     return os.path.exists(flag_path)
 
-# --- 姓名顯示邏輯（去除姓氏，兩字姓名顯示全名） ---
 def format_display_name(name):
     if not name or str(name).strip().upper() in ["NAN", "NONE", ""]:
         return ""
@@ -104,10 +102,8 @@ def get_employee_name(unit_key, emp_input):
             except: pass
     return ""
 
-# --- 升級版毛玻璃與極致行動端空間利用 ---
 st.markdown("""
 <style>
-    /* 隱藏 Streamlit 原生 Header 與 Menu 提升 Native App 質感 */
     header[data-testid="stHeader"] { background: transparent !important; }
     div[data-testid="stToolbar"] { visibility: hidden !important; }
     footer { visibility: hidden !important; }
@@ -118,7 +114,6 @@ st.markdown("""
         background-attachment: fixed !important;
     }
     
-    /* 桌面端與行動端寬度適配 */
     @media (min-width: 1024px) {
         .block-container { padding: 2.5rem 1.5rem 2.5rem 1.5rem !important; max-width: 1050px !important; }
     }
@@ -126,14 +121,12 @@ st.markdown("""
         .block-container { padding: 0.8rem 0.6rem 1.5rem 0.6rem !important; max-width: 100% !important; }
     }
 
-    /* 強制所有 Streamlit 按鈕容器具備 100% 滿寬能力 */
     div[data-testid="stButton"], div.stButton { width: 100% !important; }
     div[data-testid="stButton"] > button, div.stButton > button {
         width: 100% !important;
         min-height: 42px !important;
     }
 
-    /* 修正輸入框雙重外框與兩側邊角未填滿漏洞 */
     div[data-testid="stTextInput"] div[data-baseweb="input"],
     div[data-testid="stTextArea"] div[data-baseweb="textarea"] {
         background: rgba(15, 23, 42, 0.75) !important;
@@ -157,7 +150,6 @@ st.markdown("""
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
     }
 
-    /* 三大系統按鈕選項方格化卡片極簡化 */
     div[role="radiogroup"] {
         display: flex;
         flex-direction: column;
@@ -201,7 +193,6 @@ st.markdown("""
         box-shadow: 0 0 8px #4ADE80; margin: 0 5px; vertical-align: middle;
     }
 
-    /* 手機極致壓縮版 Header */
     .header-container { 
         display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
         width: 100%; margin-bottom: 0.6rem !important; padding: 10px 10px !important;
@@ -212,7 +203,6 @@ st.markdown("""
     .main-title { color: #F8FAFC !important; font-size: 16px !important; font-weight: 800; letter-spacing: 1.2px; margin: 0; font-family: monospace; }
     .title-subtitle { color: #FFFFFF; font-size: 10px !important; font-weight: 700; letter-spacing: 0.8px; font-family: monospace; margin-top: 2px; }
 
-    /* 測試環境純淨橫幅 */
     .test-env-banner {
         border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 6px 10px !important; margin-bottom: 0.8rem !important;
         text-align: center; background: rgba(39, 28, 12, 0.55); backdrop-filter: blur(12px); font-family: monospace;
@@ -220,7 +210,6 @@ st.markdown("""
     .test-env-title { color: #FDE68A; font-size: 11px !important; font-weight: 800; letter-spacing: 1px; }
     .test-env-sub { color: #FCD34D; font-size: 9.5px !important; font-weight: 500; opacity: 0.85; margin-top: 1px; }
 
-    /* 頁尾左右對稱極簡雙按鈕樣式 */
     div.stButton > button[key*="btn_footer_feedback_left"],
     div.stButton > button[key*="btn_footer_admin_right"] {
         background: rgba(30, 41, 59, 0.45) !important;
@@ -245,7 +234,6 @@ st.markdown("""
         box-shadow: 0 0 10px rgba(56, 189, 248, 0.25) !important;
     }
 
-    /* 管理員維護模式檢視提示橫幅 */
     .admin-maint-banner {
         border: 1px solid rgba(245, 158, 11, 0.6);
         border-left: 5px solid #F59E0B;
@@ -260,7 +248,6 @@ st.markdown("""
         letter-spacing: 0.5px;
     }
 
-    /* 使用者端質感維護卡片 */
     .user-maint-banner {
         border: 1px solid rgba(245, 158, 11, 0.45);
         border-left: 5px solid #F59E0B;
@@ -301,7 +288,6 @@ st.markdown("""
     .section-title { color: #F8FAFC; font-size: 14px !important; font-weight: 700; margin: 0; }
     .section-subtitle { color: #94A3B8; font-size: 9.5px !important; font-weight: 500; text-transform: uppercase; font-family: monospace; }
 
-    /* 一體化卡片上半部主體 */
     .integrated-crew-box {
         width: 100% !important;
         box-sizing: border-box !important;
@@ -319,7 +305,6 @@ st.markdown("""
         box-shadow: 0 6px 20px rgba(0,0,0,0.25);
     }
 
-    /* 膠囊 Badge 標籤樣式與姓名樣式 */
     .compact-name {
         font-size: 15px !important;
         font-weight: 800 !important;
@@ -749,7 +734,6 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
     return buf
 
-# --- 問題與建議線上回報彈窗 Modal ---
 @st.dialog("系統問題與建議回報", width="small")
 def show_feedback_modal():
     current_unit = st.session_state.get("current_unit", "TTN")
@@ -807,7 +791,6 @@ def show_crew_schedule_modal(emp_input, unit_label, badge_title="Inspector | C.L
     except Exception as e:
         st.error(f"載入完整班表時發生錯誤: {e}")
 
-# ==================== 獨立檢視指定組員完整班表 (Inspector Mode) ====================
 if st.session_state.get("inspect_emp_target") is not None:
     target_emp = st.session_state["inspect_emp_target"]
     current_unit = st.session_state.get("current_unit", "TTN")
@@ -860,6 +843,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                 elif entered_key == "0900": 
                     st.session_state["authenticated"] = True
                     st.session_state["admin_logged_in"] = False 
+                    st.session_state["nav_mode"] = "home"
                     st.session_state["current_unit"] = selected_unit
                     
                     emp_real_name = get_employee_name(selected_unit, clean_emp)
@@ -880,6 +864,7 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     if verify_crew_membership(selected_unit, clean_emp):
                         st.session_state["authenticated"] = True
                         st.session_state["admin_logged_in"] = False
+                        st.session_state["nav_mode"] = "home"
                         st.session_state["current_unit"] = selected_unit
                         
                         emp_real_name = get_employee_name(selected_unit, clean_emp)
@@ -937,6 +922,11 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                     st.session_state["admin_logged_in"] = True
                     st.session_state["nav_mode"] = "admin_panel"
                     st.session_state["show_admin_login"] = False
+                    
+                    # 修正重點：解鎖後台時，更新頂部顯示的身分名稱
+                    curr_op = st.session_state.get("user_input_field", "A")
+                    st.session_state["current_user_id"] = f"ADMIN ({curr_op})"
+                    
                     log_activity("管理員登入後台")
                     st.rerun()
                 else: st.error("管理員密碼錯誤")
@@ -1050,7 +1040,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 time.sleep(0.5); st.rerun()
             except Exception as e: st.error(f"寫入失敗: {e}")
 
-    # ==================== 管理員專用：問題回報與截圖畫廊專區 ====================
     st.markdown("---")
     st.subheader("使用者問題與建議／截圖檢視專區 (Feedback Gallery)")
     
@@ -1096,7 +1085,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     else:
         st.info("尚無任何組員上傳問題截圖")
 
-    # ==================== 管理員專用：系統活動日誌 ====================
     st.markdown("---")
     st.subheader("系統操作活動紀錄日誌 (Activity Log)")
     col_log1, col_log2 = st.columns([1, 3])
@@ -1137,7 +1125,6 @@ tm_time = get_file_mtime_str(active_files["列車長"])
 ta_time = get_file_mtime_str(active_files["服勤員"])
 sched_range = get_schedule_range()
 
-# 折疊收納式排班週期資訊
 st.markdown(f"""
 <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 !important;">
     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1585,7 +1572,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
         except Exception as e:
             st.error(f"讀取換假資料時發生錯誤：{e}")
 
-# --- 底部頁尾區塊（左右 1:1 對稱雙膠囊按鈕：左問題與建議 ｜ 右 C.L.F EDITION 英文標籤） ---
+# --- 底部頁尾區塊 ---
 st.markdown('<div style="margin-top: 2rem; padding-top: 0.8rem; border-top: 1px dashed rgba(255,255,255,0.08);"></div>', unsafe_allow_html=True)
 
 col_f1, col_f2 = st.columns(2)
