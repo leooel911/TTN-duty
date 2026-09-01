@@ -235,6 +235,7 @@ st.markdown("""
         letter-spacing: 0.5px !important;
         transition: all 0.25s ease !important;
         box-shadow: none !important;
+        font-family: monospace !important;
     }
     div.stButton > button[key*="btn_footer_feedback_left"]:hover,
     div.stButton > button[key*="btn_footer_admin_right"]:hover {
@@ -1584,7 +1585,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
         except Exception as e:
             st.error(f"讀取換假資料時發生錯誤：{e}")
 
-# --- 底部頁尾區塊（左右 1:1 對稱雙膠囊按鈕：左問題與建議 ｜ 右管理員系統） ---
+# --- 底部頁尾區塊（左右 1:1 對稱雙膠囊按鈕：左問題與建議 ｜ 右 C.L.F EDITION 英文標籤） ---
 st.markdown('<div style="margin-top: 2rem; padding-top: 0.8rem; border-top: 1px dashed rgba(255,255,255,0.08);"></div>', unsafe_allow_html=True)
 
 col_f1, col_f2 = st.columns(2)
@@ -1595,7 +1596,7 @@ with col_f1:
         st.rerun()
 
 with col_f2:
-    admin_btn_label = f"管理員後台 [{current_unit_label}]" if st.session_state.get("admin_logged_in", False) else f"管理員系統 [{current_unit_label}]"
+    admin_btn_label = f"ADMIN PANEL [{current_unit_label}]" if st.session_state.get("admin_logged_in", False) else f"C.L.F EDITION [{current_unit_label}]"
     if st.button(admin_btn_label, key="btn_footer_admin_right", use_container_width=True):
         if st.session_state.get("admin_logged_in", False):
             st.session_state["nav_mode"] = "admin_panel" if st.session_state["nav_mode"] == "home" else "home"
