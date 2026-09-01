@@ -6,7 +6,7 @@ import io
 import pandas as pd
 from datetime import date, timedelta, datetime, timezone
 import matplotlib
-import matplotlib.plt as plt
+import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 import time
@@ -1723,7 +1723,6 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                             is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
                             is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
 
-                            # 計算精準「最長連續上班天數」
                             max_consecutive_streak = 0
                             current_streak = 0
                             start_check_idx = max(2, target_col_idx - 5)
