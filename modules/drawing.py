@@ -14,7 +14,6 @@ from modules.utils import is_town_shift, is_overtime
 
 matplotlib.use('Agg')
 
-@plt.FuncFormatter
 def setup_font():
     font_path = "NotoSansTC.ttf"
     if os.path.exists(font_path):
