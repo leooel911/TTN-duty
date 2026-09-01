@@ -212,44 +212,39 @@ st.markdown("""
     .main-title { color: #F8FAFC !important; font-size: 16px !important; font-weight: 800; letter-spacing: 1.2px; margin: 0; font-family: monospace; }
     .title-subtitle { color: #FFFFFF; font-size: 10px !important; font-weight: 700; letter-spacing: 0.8px; font-family: monospace; margin-top: 2px; }
 
-    /* 一體化質感測試環境橫幅 */
-    .test-env-unified-card {
-        border: 1px solid rgba(245, 158, 11, 0.4);
-        border-radius: 12px;
-        padding: 8px 12px !important;
+    /* 測試環境一體化卡片外框（將標題與按鈕完全收納於同一方塊中） */
+    div[data-testid="stVerticalBlock"]:has(button[key="btn_banner_feedback_trigger"]) {
+        border: 1px solid rgba(245, 158, 11, 0.4) !important;
+        border-radius: 12px !important;
+        padding: 10px 14px 12px 14px !important;
+        background: rgba(39, 28, 12, 0.55) !important;
+        backdrop-filter: blur(12px) !important;
         margin-bottom: 0.8rem !important;
-        background: rgba(39, 28, 12, 0.55);
-        backdrop-filter: blur(12px);
-        font-family: monospace;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
+        text-align: center !important;
     }
-    .test-env-title { color: #FDE68A; font-size: 11px !important; font-weight: 800; letter-spacing: 1px; margin: 0; }
-    .test-env-sub { color: #FCD34D; font-size: 9.5px !important; font-weight: 500; opacity: 0.85; margin: 0; }
 
     /* 橫幅內問題回報專用膠囊按鈕 */
     div.stButton > button[key="btn_banner_feedback_trigger"],
-    div.stButton > button[aria-label="💬 問題與建議回報"] {
-        background: rgba(56, 189, 248, 0.15) !important;
-        border: 1px solid rgba(56, 189, 248, 0.4) !important;
+    div.stButton > button[aria-label="問題與建議回報"] {
+        background: rgba(56, 189, 248, 0.12) !important;
+        border: 1px solid rgba(56, 189, 248, 0.35) !important;
         color: #38BDF8 !important;
-        font-size: 10.5px !important;
+        font-size: 10px !important;
         font-weight: 700 !important;
-        padding: 2px 10px !important;
-        min-height: 28px !important;
-        height: 28px !important;
-        border-radius: 20px !important;
+        padding: 2px 12px !important;
+        min-height: 26px !important;
+        height: 26px !important;
+        border-radius: 14px !important;
         transition: all 0.2s ease-in-out !important;
         line-height: 1 !important;
+        margin-top: 2px !important;
     }
     div.stButton > button[key="btn_banner_feedback_trigger"]:hover,
-    div.stButton > button[aria-label="💬 問題與建議回報"]:hover {
-        background: rgba(56, 189, 248, 0.3) !important;
+    div.stButton > button[aria-label="問題與建議回報"]:hover {
+        background: rgba(56, 189, 248, 0.25) !important;
         border-color: #38BDF8 !important;
-        box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important;
         color: #FFFFFF !important;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.3) !important;
     }
 
     /* 管理員維護模式檢視提示橫幅 */
@@ -926,20 +921,20 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 一體化測試環境橫幅卡片 ---
-st.markdown("""
-<div class="test-env-unified-card">
-    <div class="test-env-title">測試環境運行中（TEST ENVIRONMENT）</div>
-    <div class="test-env-sub">目前為內部測試階段</div>
-</div>
-""", unsafe_allow_html=True)
-
-# 置中精緻膠囊按鈕觸發 Modal
-col_fb1, col_fb2, col_fb3 = st.columns([1, 1.8, 1])
-with col_fb2:
-    if st.button("💬 問題與建議回報", key="btn_banner_feedback_trigger"):
-        st.session_state["show_feedback_dialog"] = True
-        st.rerun()
+# --- 一體化測試環境橫幅（將文字與按鈕完全收納於同一金黃色外框中） ---
+with st.container():
+    st.markdown("""
+    <div style="text-align: center; font-family: monospace;">
+        <div style="color: #FDE68A; font-size: 11px; font-weight: 800; letter-spacing: 1px;">測試環境運行中（TEST ENVIRONMENT）</div>
+        <div style="color: #FCD34D; font-size: 9.5px; font-weight: 500; opacity: 0.85; margin-top: 2px; margin-bottom: 6px;">目前為內部測試階段</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col_fb1, col_fb2, col_fb3 = st.columns([1, 1.6, 1])
+    with col_fb2:
+        if st.button("問題與建議回報", key="btn_banner_feedback_trigger"):
+            st.session_state["show_feedback_dialog"] = True
+            st.rerun()
 
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
