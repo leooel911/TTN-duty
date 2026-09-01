@@ -20,12 +20,8 @@ st.set_page_config(page_title="TTN Shift Producer", page_icon="700st.png", layou
 TAIWAN_TZ = timezone(timedelta(hours=8))
 
 DATA_DIR = os.path.join(os.getcwd(), "data")
-FEEDBACK_IMG_DIR = os.path.join(DATA_DIR, "feedback_uploads")
-
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR, exist_ok=True)
-if not os.path.exists(FEEDBACK_IMG_DIR):
-    os.makedirs(FEEDBACK_IMG_DIR, exist_ok=True)
 
 UNITS = {
     "TTN": {
@@ -134,16 +130,14 @@ st.markdown("""
     }
 
     /* 修正輸入框雙重外框與兩側邊角未填滿漏洞 */
-    div[data-testid="stTextInput"] div[data-baseweb="input"],
-    div[data-testid="stTextArea"] div[data-baseweb="textarea"] {
+    div[data-testid="stTextInput"] div[data-baseweb="input"] {
         background: rgba(15, 23, 42, 0.75) !important;
         border: 1px solid rgba(56, 189, 248, 0.35) !important;
         border-radius: 10px !important;
         padding: 2px 4px !important;
         transition: all 0.25s ease !important;
     }
-    div[data-testid="stTextInput"] input,
-    div[data-testid="stTextArea"] textarea {
+    div[data-testid="stTextInput"] input {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
@@ -151,8 +145,7 @@ st.markdown("""
         padding: 6px 10px !important;
         font-family: monospace !important;
     }
-    div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within,
-    div[data-testid="stTextArea"] div[data-baseweb="textarea"]:focus-within {
+    div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within {
         border-color: #38BDF8 !important;
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
     }
@@ -212,34 +205,25 @@ st.markdown("""
     .main-title { color: #F8FAFC !important; font-size: 16px !important; font-weight: 800; letter-spacing: 1.2px; margin: 0; font-family: monospace; }
     .title-subtitle { color: #FFFFFF; font-size: 10px !important; font-weight: 700; letter-spacing: 0.8px; font-family: monospace; margin-top: 2px; }
 
-    /* 測試環境橫幅外框 */
-    .test-env-banner-box {
-        border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 6px 10px !important; margin-bottom: 0.6rem !important;
+    /* 測試環境橫幅精簡 */
+    .test-env-banner {
+        border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 5px 10px !important; margin-bottom: 0.6rem !important;
         text-align: center; background: rgba(39, 28, 12, 0.55); backdrop-filter: blur(12px); font-family: monospace;
     }
     .test-env-title { color: #FDE68A; font-size: 11px !important; font-weight: 800; letter-spacing: 1px; }
+    .test-env-sub { color: #FCD34D; font-size: 9.5px !important; font-weight: 500; opacity: 0.9; }
 
-    /* 偽裝問題回報按鈕成純文字超連結（絕不刷新全頁） */
-    div.stButton > button[aria-label="問題與建議回報"] {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
+    /* 橫幅內互動連結樣式 */
+    .banner-link {
         color: #38BDF8 !important;
-        text-decoration: underline !important;
-        font-size: 9.5px !important;
         font-weight: 700 !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        min-height: auto !important;
-        height: auto !important;
-        width: auto !important;
-        line-height: normal !important;
+        text-decoration: underline !important;
         cursor: pointer !important;
+        transition: all 0.2s ease !important;
     }
-    div.stButton > button[aria-label="問題與建議回報"]:hover {
+    .banner-link:hover {
         color: #93C5FD !important;
         text-shadow: 0 0 8px rgba(147, 197, 253, 0.6) !important;
-        background: transparent !important;
     }
 
     /* 管理員維護模式檢視提示橫幅 */
@@ -422,7 +406,6 @@ if "authenticated" not in st.session_state: st.session_state["authenticated"] = 
 if "admin_logged_in" not in st.session_state: st.session_state["admin_logged_in"] = False
 if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
-if "show_feedback_dialog" not in st.session_state: st.session_state["show_feedback_dialog"] = False
 if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
@@ -753,7 +736,7 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
     return buf
 
-# --- 問題與建議線上回報彈窗 Modal（改用 Session 狀態觸發，免網頁刷新） ---
+# --- 問題與建議線上回報彈窗 Modal ---
 @st.dialog("系統問題與建議回報", width="small")
 def show_feedback_modal():
     current_unit = st.session_state.get("current_unit", "TTN")
@@ -762,45 +745,28 @@ def show_feedback_modal():
     st.caption(f"回報人員：{current_unit} | {current_user}")
     
     fb_type = st.selectbox("反饋類別", ["Bug 問題回報", "功能改進建議", "班表資料不對", "其他"])
-    fb_content = st.text_area("詳細說明", placeholder="請輸入您遇到的問題或建議內容...", height=100, max_chars=500)
-    
-    uploaded_img = st.file_uploader("上傳螢幕截圖 (選填，限 PNG/JPG)", type=["png", "jpg", "jpeg"], key="fb_img_uploader")
+    fb_content = st.text_area("詳細說明", placeholder="請輸入您遇到的問題或建議內容...", height=110)
     
     col_sb1, col_sb2 = st.columns(2)
     with col_sb1:
         if st.button("確認送出", key="submit_fb_btn", use_container_width=True):
             if fb_content.strip():
-                # 1. 清洗換行符號，確保 Log 維持單行結構
-                clean_content = fb_content.strip().replace("\n", " ↵ ")
-                
-                # 2. 處理圖片儲存與檔名記錄
-                img_log_str = ""
-                if uploaded_img is not None:
-                    now_stamp = datetime.now(TAIWAN_TZ).strftime('%Y%m%d_%H%M%S')
-                    clean_user_id = str(current_user).split(" ")[0].replace("/", "_")
-                    ext = uploaded_img.name.split(".")[-1]
-                    saved_filename = f"{now_stamp}_{current_unit}_{clean_user_id}.{ext}"
-                    saved_path = os.path.join(FEEDBACK_IMG_DIR, saved_filename)
-                    
-                    with open(saved_path, "wb") as f:
-                        f.write(uploaded_img.getvalue())
-                    img_log_str = f" | 截圖檔名: {saved_filename}"
-                
-                # 3. 寫入 Activity Log 並更新 Session 關閉 Modal
-                log_activity(f"【問題回報】類別:{fb_type} | 內容:{clean_content}{img_log_str}")
+                log_activity(f"【問題回報】類別:{fb_type} | 內容:{fb_content.strip()}")
                 st.success("反饋已成功送出！感謝您的協助。")
-                time.sleep(0.8)
-                st.session_state["show_feedback_dialog"] = False
+                time.sleep(1)
+                if "action" in st.query_params:
+                    del st.query_params["action"]
                 st.rerun()
             else:
                 st.warning("請填寫詳細說明後再送出")
     with col_sb2:
         if st.button("關閉", key="close_fb_btn", use_container_width=True):
-            st.session_state["show_feedback_dialog"] = False
+            if "action" in st.query_params:
+                del st.query_params["action"]
             st.rerun()
 
-# 偵測 Session 狀態觸發 Modal
-if st.session_state.get("show_feedback_dialog", False):
+# 偵測觸發問題回報 Modal
+if st.query_params.get("action") == "feedback":
     show_feedback_modal()
 
 @st.dialog("完整月班表檢視", width="large")
@@ -916,20 +882,15 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 測試環境橫幅（原生按鈕偽裝超連結，不重新載入網頁） ---
+# --- 測試環境橫幅（無縫整合問題與建議回報連結） ---
 st.markdown("""
-<div class="test-env-banner-box">
+<div class="test-env-banner">
     <div class="test-env-title">測試環境運行中（TEST ENVIRONMENT）</div>
+    <div class="test-env-sub">
+        目前為內部測試階段 ｜ <a class="banner-link" href="?action=feedback" target="_self">問題與建議回報</a>
+    </div>
 </div>
 """, unsafe_allow_html=True)
-
-banner_sub_col1, banner_sub_col2 = st.columns([0.62, 0.38])
-with banner_sub_col1:
-    st.markdown('<div style="text-align: right; color: #FCD34D; font-size: 9.5px; font-weight: 500; opacity: 0.9; font-family: monospace;">目前為內部測試階段 ｜</div>', unsafe_allow_html=True)
-with banner_sub_col2:
-    if st.button("問題與建議回報", key="btn_banner_feedback_trigger"):
-        st.session_state["show_feedback_dialog"] = True
-        st.rerun()
 
 if st.session_state.get("show_admin_login", False) and not st.session_state.get("admin_logged_in", False):
     st.markdown("""
@@ -1070,7 +1031,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.subheader("系統操作活動紀錄日誌 (Activity Log)")
     col_log1, col_log2 = st.columns([1, 3])
     with col_log1:
-        log_filter_keyword = st.text_input("搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 問題回報")
+        log_filter_keyword = st.text_input("搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 單位")
     with col_log2:
         st.write("")
         if st.button("清空歷史日誌"):
@@ -1106,7 +1067,7 @@ tm_time = get_file_mtime_str(active_files["列車長"])
 ta_time = get_file_mtime_str(active_files["服勤員"])
 sched_range = get_schedule_range()
 
-# 折疊收納式排班週期資訊
+# 方案一：折疊收納式（預設極致壓縮高度）
 st.markdown(f"""
 <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 !important;">
     <div style="display: flex; justify-content: space-between; align-items: center;">
