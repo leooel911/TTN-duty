@@ -6,7 +6,7 @@ import io
 import pandas as pd
 from datetime import date, timedelta, datetime, timezone
 import matplotlib
-import matplotlib.pyplot as plt
+import matplotlib.plt as plt
 import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 import time
@@ -73,13 +73,6 @@ def set_module_maintenance(unit, module_key, is_maint):
 def is_module_maintenance(unit, module_key):
     flag_path = get_maintenance_flag_path(unit, module_key)
     return os.path.exists(flag_path)
-
-# --- 事件驅動型維護狀態變更 Callback ---
-def toggle_maintenance_callback(unit, module_key):
-    key = f"maint_sw_{unit}_{module_key}"
-    new_state = st.session_state.get(key, False)
-    set_module_maintenance(unit, module_key, new_state)
-    log_activity(f"設定 [{unit}] {module_key} 維護開關狀態: {'開啟維護' if new_state else '解除維護'}")
 
 # --- 升級版毛玻璃與響應式視覺設計 (Glassmorphism & Integrated UI) ---
 st.markdown("""
@@ -606,21 +599,18 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
             bg = C_DO_BG if is_pure_hol else (C_PAY_BG if is_pay_shift else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
             ax.add_patch(FancyBboxPatch((x, ry), CW, RH, boxstyle="square,pad=0", linewidth=1.0, edgecolor="#64748B", facecolor=bg))
 
-            # --- 合理放大：國定假日/一般日期標籤放大 (9.5->11pt / 10->11.5pt) ---
             if dt in NATIONAL_HOLIDAYS:
                 full_date_str = f"{dt} ({NATIONAL_HOLIDAYS[dt]})"
                 draw_bold_text(ax, x + 0.005, ry + RH - 0.004, full_date_str, ha="left", va="top", color=C_HOLI_TXT, fontproperties=fp(11))
             else:
                 draw_bold_text(ax, x + 0.005, ry + RH - 0.004, dt, ha="left", va="top", color="#000000", fontproperties=fp(11.5))
 
-            # --- 合理放大：疏運標籤放大 (8.5->10.5pt) ---
             if dt in active_transport:
                 draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(10.5))
 
             if d.get("hours"): 
                 draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"], tr, note) else "#000000", fontproperties=fp(11.5))
                 do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l or "OGC" in l), "")
-                # 加上 do_match != tr 判斷，避免與中央顯示的勤務代碼重複
                 if do_match and do_match != tr:
                     draw_bold_text(ax, x + CW - 0.004, ry + 0.026, do_match, ha="right", va="bottom", color=C_DO_TXT, fontproperties=fp(10.5))
 
@@ -816,7 +806,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     """, unsafe_allow_html=True)
 
     admin_target_unit = st.selectbox("選擇要維護的營運單位", ["TTN", "TTC", "TTS"], key="admin_target_unit_sel")
-    st.session_state["current_unit"] = admin_target_unit
     current_unit_files = UNITS[admin_target_unit]
 
     col_ctrl1, col_ctrl2 = st.columns(2)
@@ -853,36 +842,44 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     st.markdown("---")
     st.subheader(f"各大系統模組維護開關控制（當前控制單位：{admin_target_unit}）")
 
-    k_prod = f"maint_sw_{admin_target_unit}_producer"
-    k_win = f"maint_sw_{admin_target_unit}_window_filter"
-    k_ex = f"maint_sw_{admin_target_unit}_exchange_filter"
-
-    st.session_state[k_prod] = is_module_maintenance(admin_target_unit, "producer")
-    st.session_state[k_win] = is_module_maintenance(admin_target_unit, "window_filter")
-    st.session_state[k_ex] = is_module_maintenance(admin_target_unit, "exchange_filter")
+    # 讀取當前管理單位的獨立維護 Flag
+    is_prod_maint = is_module_maintenance(admin_target_unit, "producer")
+    is_win_maint = is_module_maintenance(admin_target_unit, "window_filter")
+    is_ex_maint = is_module_maintenance(admin_target_unit, "exchange_filter")
 
     col_m1, col_m2, col_m3 = st.columns(3)
     with col_m1:
-        st.checkbox(
+        new_prod = st.checkbox(
             "【個人月班表圖檔】維護中",
-            key=k_prod,
-            on_change=toggle_maintenance_callback,
-            args=(admin_target_unit, "producer")
+            value=is_prod_maint,
+            key=f"cb_{admin_target_unit}_producer"
         )
+        if new_prod != is_prod_maint:
+            set_module_maintenance(admin_target_unit, "producer", new_prod)
+            log_activity(f"設定 [{admin_target_unit}] 個人月班表維護開關: {'開啟維護' if new_prod else '解除維護'}")
+            st.rerun()
+
     with col_m2:
-        st.checkbox(
+        new_win = st.checkbox(
             "【換班選擇日期】維護中",
-            key=k_win,
-            on_change=toggle_maintenance_callback,
-            args=(admin_target_unit, "window_filter")
+            value=is_win_maint,
+            key=f"cb_{admin_target_unit}_window_filter"
         )
+        if new_win != is_win_maint:
+            set_module_maintenance(admin_target_unit, "window_filter", new_win)
+            log_activity(f"設定 [{admin_target_unit}] 換班選擇日期維護開關: {'開啟維護' if new_win else '解除維護'}")
+            st.rerun()
+
     with col_m3:
-        st.checkbox(
+        new_ex = st.checkbox(
             "【換假選擇日期】維護中",
-            key=k_ex,
-            on_change=toggle_maintenance_callback,
-            args=(admin_target_unit, "exchange_filter")
+            value=is_ex_maint,
+            key=f"cb_{admin_target_unit}_exchange_filter"
         )
+        if new_ex != is_ex_maint:
+            set_module_maintenance(admin_target_unit, "exchange_filter", new_ex)
+            log_activity(f"設定 [{admin_target_unit}] 換假選擇日期維護開關: {'開啟維護' if new_ex else '解除維護'}")
+            st.rerun()
 
     st.markdown("---")
     st.subheader(f"【{admin_target_unit}】班表維護控制台")
@@ -1335,5 +1332,3 @@ if st.button(footer_label, key="bottom_footer_badge"):
     else: st.session_state["show_admin_login"] = True
     st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
-
-
