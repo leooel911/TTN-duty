@@ -769,14 +769,14 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     return buf
 
 # --- 彈窗燈箱：獨立檢視截圖附件 ---
-@st.dialog("🖼️ 檢視回報附件截圖", width="medium")
+@st.dialog("檢視回報附件截圖", width="medium")
 def view_feedback_img_modal(img_path, ticket_id, user_info):
     st.caption(f"處理單號：{ticket_id} ｜ 回報人員：{user_info}")
     if os.path.exists(img_path):
         st.image(img_path, use_container_width=True)
         with open(img_path, "rb") as f_img:
             st.download_button(
-                "📥 下載原始圖檔",
+                "下載原始圖檔",
                 data=f_img.read(),
                 file_name=os.path.basename(img_path),
                 mime="image/png",
@@ -791,13 +791,13 @@ def show_feedback_modal():
     current_unit = st.session_state.get("current_unit", "TTN")
     current_user = st.session_state.get("current_user_id", "未知")
     
-    tab_create, tab_my_records = st.tabs(["📝 線上回報", "📜 我的歷史回報"])
+    tab_create, tab_my_records = st.tabs(["線上回報", "我的歷史回報"])
     
     # ----- 頁籤 1：線上回報 -----
     with tab_create:
         if "fb_submitted_id" in st.session_state:
             ticket_id = st.session_state["fb_submitted_id"]
-            st.success("🎉 反饋已成功送出！系統已紀錄您的處理編號。")
+            st.success("反饋已成功送出！系統已紀錄您的處理編號。")
             st.markdown(f"""
             <div style="background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10B981; border-radius: 12px; padding: 16px; text-align: center; margin: 12px 0;">
                 <div style="font-size: 12px; color: #CBD5E1; font-family: monospace;">系統處理編號 (Ticket ID)</div>
@@ -805,7 +805,7 @@ def show_feedback_modal():
                     {ticket_id}
                 </div>
                 <div style="font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
-                    您可以隨時切換至「📜 我的歷史回報」頁籤查看即時處理進度與留言。
+                    您可以隨時切換至「我的歷史回報」頁籤查看即時處理進度與留言。
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -908,13 +908,13 @@ def show_feedback_modal():
                         <span style="font-size: 12px; font-weight: 800; color: {txt_color}; font-family: monospace;">【{status}】</span>
                     </div>
                     <div style="font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 4px;">
-                        ⏱️ 提報時間：{rec.get("時間", "未知")} ｜ 🏷️ 類別：{rec.get("類別", "無")}
+                        提報時間：{rec.get("時間", "未知")} ｜ 類別：{rec.get("類別", "無")}
                     </div>
                     <div style="font-size: 12px; color: #CBD5E1; font-family: monospace; margin-top: 6px; background: rgba(15, 23, 42, 0.5); padding: 6px 10px; border-radius: 6px;">
                         {rec.get("詳細說明", "")}
                     </div>
                     <div style="margin-top: 6px; font-size: 11.5px; font-family: monospace;">
-                        <span style="color: #38BDF8; font-weight: 700;">💬 管理員回覆：</span>
+                        <span style="color: #38BDF8; font-weight: 700;">管理員回覆：</span>
                         <span style="color: #F8FAFC;">{rec.get("管理員回覆", "尚無回覆")}</span>
                     </div>
                 </div>
@@ -1101,9 +1101,9 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             st.rerun()
 
     tab_status, tab_gallery, tab_logs = st.tabs([
-        "📊 數據與檔案維護", 
-        "💬 客服工單管理中心 (Table View)", 
-        "📜 系統操作日誌"
+        "數據與檔案維護", 
+        "客服工單管理中心 (Table View)", 
+        "系統操作日誌"
     ])
 
     # ===== TAB 1: 數據與檔案維護 =====
@@ -1290,7 +1290,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 
                 with c1:
                     st.markdown(f"<span style='font-family:monospace; font-weight:800; color:#38BDF8; font-size:12px;'>{rec['單號']}</span>", unsafe_allow_html=True)
-                    st.markdown(f"<span style='font-family:monospace; color:#94A3B8; font-size:10px;'>⏱️ {rec['時間']}</span>", unsafe_allow_html=True)
+                    st.markdown(f"<span style='font-family:monospace; color:#94A3B8; font-size:10px;'>{rec['時間']}</span>", unsafe_allow_html=True)
                     
                 with c2:
                     st.markdown(f"<span style='font-family:monospace; color:#F8FAFC; font-weight:700; font-size:11.5px;'>[{rec['單位']}]</span>", unsafe_allow_html=True)
@@ -1309,12 +1309,12 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     act_c1, act_c2 = st.columns(2)
                     with act_c1:
                         if rec["img_path"]:
-                            if st.button("📸 檢視", key=f"tbl_img_{idx}", use_container_width=True):
+                            if st.button("檢視", key=f"tbl_img_{idx}", use_container_width=True):
                                 view_feedback_img_modal(rec["img_path"], rec["單號"], f"[{rec['單位']}] {rec['回報者']}")
                         else:
                             st.button("無附件", key=f"tbl_no_img_{idx}", disabled=True, use_container_width=True)
                     with act_c2:
-                        with st.popover("💬 處置", use_container_width=True):
+                        with st.popover("處置", use_container_width=True):
                             m_status_idx = ["待處理", "處理中", "已完成", "已不處理"].index(rec["狀態"]) if rec["狀態"] in ["待處理", "處理中", "已完成", "已不處理"] else 0
                             new_st = st.selectbox("變更狀態", ["待處理", "處理中", "已完成", "已不處理"], index=m_status_idx, key=f"pop_st_{idx}")
                             new_reply = st.text_input("留言回覆", value="" if rec["管理員回覆"] == "尚無回覆" else rec["管理員回覆"], placeholder="例如: 已發布更新修正", key=f"pop_rp_{idx}")
@@ -1349,7 +1349,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                                     except Exception as e:
                                         st.error(f"失敗: {e}")
                             with col_p2:
-                                if st.button("🗑️ 刪除", key=f"pop_del_{idx}", use_container_width=True):
+                                if st.button("刪除", key=f"pop_del_{idx}", use_container_width=True):
                                     try:
                                         if os.path.exists(rec["txt_path"]): os.remove(rec["txt_path"])
                                         if rec["img_path"] and os.path.exists(rec["img_path"]): os.remove(rec["img_path"])
@@ -1840,7 +1840,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                     </div>
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
                                         <span style="font-size: 11.5px; color: {streak_color}; font-weight: 700; font-family: monospace;">
-                                            換假後連續上班：{streak_cnt} 天 {'(⚠️過濾項)' if streak_cnt >= 6 else ''}
+                                            換假後連續上班：{streak_cnt} 天
                                         </span>
                                         {badges_html}
                                     </div>
