@@ -346,7 +346,6 @@ st.markdown("""
         transition: all 0.2s ease !important; letter-spacing: 0.5px; font-family: monospace;
     }
 
-    /* 管理員 Tab 樣式優化 */
     div[data-baseweb="tab-list"] {
         gap: 8px !important;
         background: rgba(15, 23, 42, 0.5) !important;
@@ -425,7 +424,6 @@ if "authenticated" not in st.session_state: st.session_state["authenticated"] = 
 if "admin_logged_in" not in st.session_state: st.session_state["admin_logged_in"] = False
 if "user_input_field" not in st.session_state: st.session_state["user_input_field"] = "A"
 if "show_admin_login" not in st.session_state: st.session_state["show_admin_login"] = False
-if "show_feedback_dialog" not in st.session_state: st.session_state["show_feedback_dialog"] = False
 if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
@@ -756,56 +754,206 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
     return buf
 
-# --- 問題與建議線上回報彈窗 Modal（同時儲存同名 .txt 以供後台精確讀取文字） ---
-@st.dialog("系統問題與建議回報", width="small")
+# --- 問題與建議線上回報彈窗 Modal (無 Emoji、自動記憶組員回報紀錄與單號彈窗) ---
+@st.dialog("系統問題與建議", width="medium")
 def show_feedback_modal():
     current_unit = st.session_state.get("current_unit", "TTN")
     current_user = st.session_state.get("current_user_id", "未知")
     
-    st.caption(f"回報人員：{current_unit} | {current_user}")
+    tab_create, tab_history = st.tabs(["線上回報", "歷史紀錄與查詢"])
     
-    fb_type = st.selectbox("反饋類別", ["Bug 問題回報", "功能改進建議", "班表資料不對", "其他"])
-    fb_content = st.text_area("詳細說明", placeholder="請輸入您遇到的問題或建議內容...", height=100, max_chars=500)
-    
-    uploaded_img = st.file_uploader("上傳螢幕截圖 (選填，限 PNG/JPG)", type=["png", "jpg", "jpeg"], key="fb_img_uploader")
-    
-    col_sb1, col_sb2 = st.columns(2)
-    with col_sb1:
-        if st.button("確認送出", key="submit_fb_btn", use_container_width=True):
-            if fb_content.strip():
-                clean_content = fb_content.strip().replace("\n", " ↵ ")
-                now_stamp = datetime.now(TAIWAN_TZ).strftime('%Y%m%d_%H%M%S')
-                clean_user_id = str(current_user).split(" ")[0].replace("/", "_")
-                
-                img_log_str = ""
-                if uploaded_img is not None:
-                    ext = uploaded_img.name.split(".")[-1]
-                    saved_filename = f"{now_stamp}_{current_unit}_{clean_user_id}.{ext}"
-                    saved_path = os.path.join(FEEDBACK_IMG_DIR, saved_filename)
-                    
-                    with open(saved_path, "wb") as f:
-                        f.write(uploaded_img.getvalue())
-                    img_log_str = f" | 截圖檔名: {saved_filename}"
-
-                    txt_saved_filename = f"{now_stamp}_{current_unit}_{clean_user_id}.txt"
-                    txt_saved_path = os.path.join(FEEDBACK_IMG_DIR, txt_saved_filename)
-                    with open(txt_saved_path, "w", encoding="utf-8") as f_txt:
-                        f_txt.write(f"類別: {fb_type}\n回報者: {current_user}\n時間: {now_stamp}\n詳細說明: {clean_content}")
-                
-                log_activity(f"【問題回報】類別:{fb_type} | 內容:{clean_content}{img_log_str}")
-                st.success("反饋已成功送出！感謝您的協助。")
-                time.sleep(0.8)
-                st.session_state["show_feedback_dialog"] = False
+    # ===== 頁籤 1：線上回報 =====
+    with tab_create:
+        if "fb_submitted_id" in st.session_state:
+            ticket_id = st.session_state["fb_submitted_id"]
+            st.success("回報資料已成功送出！")
+            st.markdown(f"""
+            <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; border-radius: 10px; padding: 16px; text-align: center; margin: 12px 0;">
+                <div style="font-size: 12px; color: #CBD5E1; font-family: monospace;">系統處理單號 (Ticket ID)</div>
+                <div style="font-size: 22px; font-weight: 800; color: #34D399; font-family: monospace; letter-spacing: 1.5px; margin-top: 6px;">
+                    {ticket_id}
+                </div>
+                <div style="font-size: 11px; color: #94A3B8; margin-top: 8px;">
+                    您可隨時至「歷史紀錄與查詢」頁籤追蹤管理員處置進度。
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button("確定並返回", key="confirm_fb_success_btn", use_container_width=True):
+                del st.session_state["fb_submitted_id"]
                 st.rerun()
-            else:
-                st.warning("請填寫詳細說明後再送出")
-    with col_sb2:
-        if st.button("關閉", key="close_fb_btn", use_container_width=True):
-            st.session_state["show_feedback_dialog"] = False
-            st.rerun()
+        else:
+            st.caption(f"回報人員：[{current_unit}] {current_user}")
+            fb_type = st.selectbox("反饋類別", ["Bug 問題回報", "功能改進建議", "班表資料不對", "其他"], key="fb_type_sel")
+            fb_content = st.text_area("詳細說明", placeholder="請輸入您遇到的問題或建議內容...", height=120, max_chars=500, key="fb_content_txt")
+            uploaded_img = st.file_uploader("上傳螢幕截圖 (選填，支援 PNG/JPG)", type=["png", "jpg", "jpeg"], key="fb_img_uploader")
+            
+            col_sb1, col_sb2 = st.columns(2)
+            with col_sb1:
+                if st.button("確認送出", key="submit_fb_btn", use_container_width=True):
+                    if fb_content.strip():
+                        clean_content = fb_content.strip()
+                        now_dt = datetime.now(TAIWAN_TZ)
+                        now_stamp = now_dt.strftime('%Y%m%d_%H%M%S')
+                        now_human = now_dt.strftime('%Y-%m-%d %H:%M:%S')
+                        clean_user_id = str(current_user).replace(" ", "_").replace("/", "_")
+                        
+                        ticket_id = f"FB-{now_dt.strftime('%Y%m%d-%H%M%S')}-{current_unit}"
+                        base_name = f"{now_stamp}_{current_unit}_{clean_user_id}"
+                        
+                        txt_path = os.path.join(FEEDBACK_IMG_DIR, f"{base_name}.txt")
+                        with open(txt_path, "w", encoding="utf-8") as f_txt:
+                            f_txt.write(f"處理編號: {ticket_id}\n狀態: 待處理\n類別: {fb_type}\n單位: {current_unit}\n回報者: {current_user}\n時間: {now_human}\n管理員回覆: 尚無回覆\n詳細說明:\n{clean_content}")
 
-if st.session_state.get("show_feedback_dialog", False):
-    show_feedback_modal()
+                        img_log_str = ""
+                        if uploaded_img is not None:
+                            ext = uploaded_img.name.split(".")[-1]
+                            saved_filename = f"{base_name}.{ext}"
+                            saved_path = os.path.join(FEEDBACK_IMG_DIR, saved_filename)
+                            with open(saved_path, "wb") as f_img:
+                                f_img.write(uploaded_img.getvalue())
+                            img_log_str = f" | 截圖檔名: {saved_filename}"
+                        
+                        log_activity(f"【問題回報】單號:{ticket_id} | 類別:{fb_type} | 內容:{clean_content.replace('\n', ' ')}{img_log_str}")
+                        st.session_state["fb_submitted_id"] = ticket_id
+                        st.rerun()
+                    else:
+                        st.warning("請填寫詳細說明後再送出")
+            with col_sb2:
+                if st.button("關閉", key="close_fb_btn_1", use_container_width=True):
+                    st.rerun()
+
+    # ===== 頁籤 2：歷史紀錄與查詢 (自動記憶登入組員) =====
+    with tab_history:
+        st.caption(f"自動檢索組員 [{current_user}] 之歷史回報紀錄")
+        
+        user_records = []
+        if os.path.exists(FEEDBACK_IMG_DIR):
+            for fname in os.listdir(FEEDBACK_IMG_DIR):
+                if fname.endswith(".txt"):
+                    fpath = os.path.join(FEEDBACK_IMG_DIR, fname)
+                    try:
+                        with open(fpath, "r", encoding="utf-8") as f:
+                            content = f.read()
+                            lines = content.split("\n")
+                            info = {}
+                            desc_lines = []
+                            is_desc = False
+                            for line in lines:
+                                if line.startswith("詳細說明:"):
+                                    is_desc = True
+                                    continue
+                                if is_desc:
+                                    desc_lines.append(line)
+                                elif ":" in line:
+                                    k, v = line.split(":", 1)
+                                    info[k.strip()] = v.strip()
+                            info["詳細說明"] = "\n".join(desc_lines).strip()
+                            
+                            reporter = info.get("回報者", "")
+                            if current_user in reporter or str(current_user).split()[0] in reporter or reporter in current_user:
+                                user_records.append(info)
+                    except: pass
+
+        search_id = st.text_input("或輸入其他處理單號 (Ticket ID) 進行反查", placeholder="例如: FB-20260901-145716-TTN", key="search_ticket_input").strip()
+        
+        searched_record = None
+        if search_id:
+            for fname in os.listdir(FEEDBACK_IMG_DIR):
+                if fname.endswith(".txt"):
+                    fpath = os.path.join(FEEDBACK_IMG_DIR, fname)
+                    try:
+                        with open(fpath, "r", encoding="utf-8") as f:
+                            content = f.read()
+                            if search_id.upper() in content.upper():
+                                lines = content.split("\n")
+                                info = {}
+                                desc_lines = []
+                                is_desc = False
+                                for line in lines:
+                                    if line.startswith("詳細說明:"):
+                                        is_desc = True
+                                        continue
+                                    if is_desc:
+                                        desc_lines.append(line)
+                                    elif ":" in line:
+                                        k, v = line.split(":", 1)
+                                        info[k.strip()] = v.strip()
+                                info["詳細說明"] = "\n".join(desc_lines).strip()
+                                searched_record = info
+                                break
+                    except: pass
+
+        if searched_record:
+            st.markdown("---")
+            st.markdown("**單號反查結果：**")
+            status = searched_record.get("狀態", "待處理")
+            status_colors = {
+                "待處理": ("#F59E0B", "rgba(245, 158, 11, 0.15)"),
+                "處理中": ("#38BDF8", "rgba(56, 189, 248, 0.15)"),
+                "已完成": ("#34D399", "rgba(52, 211, 153, 0.15)"),
+                "已不處理": ("#94A3B8", "rgba(148, 163, 184, 0.15)")
+            }
+            txt_color, bg_color = status_colors.get(status, ("#F59E0B", "rgba(245, 158, 11, 0.15)"))
+
+            st.markdown(f"""
+            <div style="background: {bg_color}; border: 1px solid {txt_color}; border-radius: 10px; padding: 12px; margin-top: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 11px; color: #CBD5E1; font-family: monospace;">單號：{searched_record.get("處理編號", searched_record.get("單號", "未知"))}</span>
+                    <span style="font-size: 14px; font-weight: 800; color: {txt_color}; font-family: monospace;">【{status}】</span>
+                </div>
+                <div style="font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
+                    提報時間：{searched_record.get("時間", "未知")}<br>
+                    類別：{searched_record.get("類別", "無")}
+                </div>
+                <div style="margin-top: 8px; font-size: 12px; color: #F8FAFC;">
+                    說明：{searched_record.get("詳細說明", "無")}
+                </div>
+            </div>
+            <div style="margin-top: 8px; font-size: 12px;">
+                <strong style="color: #38BDF8;">管理員最新回覆：</strong>
+                <div style="background: rgba(30, 41, 59, 0.7); padding: 8px 10px; border-radius: 6px; margin-top: 4px; color: #F8FAFC; border-left: 3px solid #38BDF8;">
+                    {searched_record.get("管理員回覆", "尚無回覆")}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        st.markdown("**您的歷史回報清單：**")
+        if user_records:
+            user_records = sorted(user_records, key=lambda x: x.get("時間", ""), reverse=True)
+            for rec in user_records:
+                status = rec.get("狀態", "待處理")
+                status_colors = {
+                    "待處理": ("#F59E0B", "rgba(245, 158, 11, 0.15)"),
+                    "處理中": ("#38BDF8", "rgba(56, 189, 248, 0.15)"),
+                    "已完成": ("#34D399", "rgba(52, 211, 153, 0.15)"),
+                    "已不處理": ("#94A3B8", "rgba(148, 163, 184, 0.15)")
+                }
+                txt_color, bg_color = status_colors.get(status, ("#F59E0B", "rgba(245, 158, 11, 0.15)"))
+                ticket_no = rec.get("處理編號", rec.get("單號", "未知"))
+                
+                st.markdown(f"""
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 12px; font-weight: 800; color: #38BDF8; font-family: monospace;">{ticket_no}</span>
+                        <span style="font-size: 12px; font-weight: 800; color: {txt_color}; font-family: monospace; background: {bg_color}; padding: 2px 6px; border-radius: 4px; border: 1px solid {txt_color};">
+                            {status}
+                        </span>
+                    </div>
+                    <div style="font-size: 11px; color: #94A3B8; margin-top: 4px; font-family: monospace;">
+                        時間：{rec.get("時間", "未知")} ｜ 類別：{rec.get("類別", "一般")}
+                    </div>
+                    <div style="font-size: 12px; color: #CBD5E1; margin-top: 6px; background: rgba(30, 41, 59, 0.4); padding: 6px 8px; border-radius: 4px;">
+                        {rec.get("詳細說明", "")}
+                    </div>
+                    <div style="font-size: 11.5px; color: #38BDF8; margin-top: 6px;">
+                        管理員回覆：<span style="color: #F8FAFC;">{rec.get("管理員回覆", "尚無回覆")}</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("您目前尚無歷史回報紀錄。")
 
 @st.dialog("完整月班表檢視", width="large")
 def show_crew_schedule_modal(emp_input, unit_label, badge_title="Inspector | C.L.F"):
@@ -960,7 +1108,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                 st.rerun()
     st.stop()
 
-# ==================== 管理員專用：Database 智慧控制台 (Tab 極簡優化版) ====================
+# ==================== 管理員專用：Database 智慧控制台 ====================
 if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -985,11 +1133,10 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             st.session_state["nav_mode"] = "home"
             st.rerun()
 
-    # --- 三大管理分頁 ---
     tab_status, tab_gallery, tab_logs = st.tabs([
-        "📊 數據與檔案維護", 
-        "💬 回報與截圖中心", 
-        "📜 系統操作日誌"
+        "數據與檔案維護", 
+        "回報與客服工單中心", 
+        "系統操作日誌"
     ])
 
     # ===== TAB 1: 數據與檔案維護 =====
@@ -1060,94 +1207,202 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                     time.sleep(0.5); st.rerun()
                 except Exception as e: st.error(f"寫入失敗: {e}")
 
-    # ===== TAB 2: 問題與建議回報專區 (強化：顯示問題文字 + 一鍵清理) =====
+    # ===== TAB 2: 問題與建議回報專區 (表格優化與截圖檢視) =====
     with tab_gallery:
-        st.subheader("使用者問題與建議／截圖檢視專區 (Feedback Gallery)")
+        st.subheader("使用者問題與建議／客服工單管理中心")
         
-        saved_feedback_images = os.listdir(FEEDBACK_IMG_DIR) if os.path.exists(FEEDBACK_IMG_DIR) else []
-        saved_feedback_images = [img for img in saved_feedback_images if img.lower().endswith(('.png', '.jpg', '.jpeg'))]
-
-        if saved_feedback_images:
-            st.caption(f"目前共收集到 {len(saved_feedback_images)} 筆問題反饋（最新在前）")
-            sorted_imgs = sorted(saved_feedback_images, reverse=True)
-            
-            gallery_col1, gallery_col2 = st.columns(2)
-            for idx, img_filename in enumerate(sorted_imgs):
-                col_target = gallery_col1 if idx % 2 == 0 else gallery_col2
-                img_path = os.path.join(FEEDBACK_IMG_DIR, img_filename)
-                
-                # 尋找是否有同名的 .txt 文字說明檔
-                base_name = os.path.splitext(img_filename)[0]
-                txt_path = os.path.join(FEEDBACK_IMG_DIR, f"{base_name}.txt")
-                txt_details = "尚無文字詳細描述紀錄"
-                if os.path.exists(txt_path):
+        all_fb_records = []
+        if os.path.exists(FEEDBACK_IMG_DIR):
+            for fname in os.listdir(FEEDBACK_IMG_DIR):
+                if fname.endswith(".txt"):
+                    txt_path = os.path.join(FEEDBACK_IMG_DIR, fname)
+                    stem = os.path.splitext(fname)[0]
+                    
+                    img_path = None
+                    for ext in [".png", ".jpg", ".jpeg"]:
+                        test_img = os.path.join(FEEDBACK_IMG_DIR, f"{stem}{ext}")
+                        if os.path.exists(test_img):
+                            img_path = test_img
+                            break
+                    
+                    rec = {
+                        "stem": stem,
+                        "txt_path": txt_path,
+                        "img_path": img_path,
+                        "單號": stem,
+                        "狀態": "待處理",
+                        "類別": "其他",
+                        "單位": "全域",
+                        "回報者": "未知",
+                        "時間": "未知",
+                        "管理員回覆": "尚無回覆",
+                        "詳細說明": "無說明內容"
+                    }
+                    
                     try:
-                        with open(txt_path, "r", encoding="utf-8") as f_txt:
-                            txt_details = f_txt.read()
-                    except: pass
-                
-                with col_target:
-                    parts = img_filename.split("_")
-                    img_unit_str = parts[2] if len(parts) > 2 else "通用"
-                    img_user_str = parts[3].split(".")[0] if len(parts) > 3 else "匿名"
-
-                    st.markdown(f"""
-                    <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 12px;">
-                        <div style="font-size: 13px; font-weight: 800; color: #38BDF8; font-family: monospace;">
-                            [{img_unit_str}] 回報者: {img_user_str}
-                        </div>
-                        <div style="font-size: 11.5px; color: #F8FAFC; background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 6px; margin: 6px 0; font-family: monospace; white-space: pre-wrap;">
-                            {txt_details}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        with open(txt_path, "r", encoding="utf-8") as ft:
+                            lines = ft.readlines()
+                            desc_lines = []
+                            is_desc = False
+                            for line in lines:
+                                if line.startswith("詳細說明:"):
+                                    is_desc = True
+                                    continue
+                                if is_desc:
+                                    desc_lines.append(line)
+                                elif ":" in line:
+                                    k, v = line.split(":", 1)
+                                    k_clean = k.strip()
+                                    v_clean = v.strip()
+                                    if k_clean in ["處理編號", "單號"]: rec["單號"] = v_clean
+                                    elif k_clean == "狀態": rec["狀態"] = v_clean
+                                    elif k_clean == "類別": rec["類別"] = v_clean
+                                    elif k_clean == "單位": rec["單位"] = v_clean
+                                    elif k_clean == "回報者": rec["回報者"] = v_clean
+                                    elif k_clean == "時間": rec["時間"] = v_clean
+                                    elif k_clean in ["管理員回覆", "回覆"]: rec["管理員回覆"] = v_clean
+                            if desc_lines:
+                                rec["詳細說明"] = "".join(desc_lines).strip()
+                    except Exception as e:
+                        rec["詳細說明"] = f"解析檔案失敗: {e}"
                     
-                    st.image(img_path, use_container_width=True)
-                    
-                    c_btn1, c_btn2 = st.columns(2)
-                    with c_btn1:
-                        with open(img_path, "rb") as file_data:
-                            st.download_button(
-                                "下載截圖",
-                                data=file_data,
-                                file_name=img_filename,
-                                mime="image/png",
-                                key=f"dl_fb_img_{idx}"
-                            )
-                    with c_btn2:
-                        if st.button("標示已處理 (刪除)", key=f"del_fb_img_{idx}"):
-                            try:
-                                if os.path.exists(img_path): os.remove(img_path)
-                                if os.path.exists(txt_path): os.remove(txt_path)
-                                log_activity(f"管理員刪除問題反饋紀錄: {img_filename}")
-                                st.success("已移除該筆紀錄")
-                                time.sleep(0.5)
-                                st.rerun()
-                            except Exception as e: st.error(f"刪除失敗: {e}")
+                    all_fb_records.append(rec)
+        
+        all_fb_records = sorted(all_fb_records, key=lambda x: x["stem"], reverse=True)
+        
+        cnt_total = len(all_fb_records)
+        cnt_pending = sum(1 for r in all_fb_records if r["狀態"] == "待處理")
+        cnt_processing = sum(1 for r in all_fb_records if r["狀態"] == "處理中")
+        cnt_done = sum(1 for r in all_fb_records if r["狀態"] == "已完成")
+        
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        kpi1.metric("總回報單數", f"{cnt_total} 筆")
+        kpi2.metric("待處理", f"{cnt_pending} 筆", delta="-需處理" if cnt_pending > 0 else "清空", delta_color="inverse")
+        kpi3.metric("處理中", f"{cnt_processing} 筆")
+        kpi4.metric("已完成", f"{cnt_done} 筆")
+        
+        st.markdown("---")
+        
+        f_col1, f_col2, f_col3 = st.columns(3)
+        with f_col1:
+            filter_status = st.selectbox("狀態過濾", ["全部", "待處理", "處理中", "已完成", "已不處理"], index=0, key="admin_fb_filter_status")
+        with f_col2:
+            filter_unit = st.selectbox("單位過濾", ["全部", "TTN", "TTC", "TTS"], index=0, key="admin_fb_filter_unit")
+        with f_col3:
+            filter_category = st.selectbox("類別過濾", ["全部", "Bug 問題回報", "功能改進建議", "班表資料不對", "其他"], index=0, key="admin_fb_filter_cat")
+            
+        filtered_records = []
+        for r in all_fb_records:
+            if filter_status != "全部" and r["狀態"] != filter_status: continue
+            if filter_unit != "全部" and r["單位"] != filter_unit: continue
+            if filter_category != "全部" and r["類別"] != filter_category: continue
+            filtered_records.append(r)
+            
+        st.caption(f"共顯示 {len(filtered_records)} 筆紀錄")
+        
+        if filtered_records:
+            table_data = []
+            for r in filtered_records:
+                table_data.append({
+                    "單號": r["單號"],
+                    "時間": r["時間"],
+                    "單位": r["單位"],
+                    "回報者": r["回報者"],
+                    "類別": r["類別"],
+                    "狀態": r["狀態"],
+                    "截圖": "有圖檔" if r["img_path"] else "無截圖",
+                    "管理員回覆": r["管理員回覆"]
+                })
+            st.dataframe(pd.DataFrame(table_data), use_container_width=True, hide_index=True)
+            
+            st.markdown("### 工單明細處置與圖片檢視")
+            for idx, rec in enumerate(filtered_records):
+                with st.expander(f"[{rec['狀態']}] {rec['單號']} - {rec['回報者']} ({rec['時間']})"):
+                    col_info, col_img = st.columns([1.2, 1])
+                    with col_info:
+                        st.markdown(f"""
+                        **單號：** `{rec['單號']}`  
+                        **單位 / 回報者：** `{rec['單位']}` / `{rec['回報者']}`  
+                        **類別：** `{rec['類別']}`  
+                        **時間：** `{rec['時間']}`  
+                        **詳細說明：**
+                        ```text
+                        {rec['詳細說明']}
+                        ```
+                        """, unsafe_allow_html=True)
+                        
+                        m_status_idx = ["待處理", "處理中", "已完成", "已不處理"].index(rec["狀態"]) if rec["狀態"] in ["待處理", "處理中", "已完成", "已不處理"] else 0
+                        new_st = st.selectbox("處置狀態", ["待處理", "處理中", "已完成", "已不處理"], index=m_status_idx, key=f"sel_st_{idx}")
+                        new_reply = st.text_input("管理員回覆內容", value="" if rec["管理員回覆"] == "尚無回覆" else rec["管理員回覆"], placeholder="請輸入回覆...", key=f"ipt_rp_{idx}")
+                        
+                        col_b1, col_b2 = st.columns(2)
+                        with col_b1:
+                            if st.button("儲存處置更新", key=f"save_m_btn_{idx}", use_container_width=True):
+                                try:
+                                    lines_to_write = []
+                                    if os.path.exists(rec["txt_path"]):
+                                        with open(rec["txt_path"], "r", encoding="utf-8") as ft:
+                                            lines_to_write = ft.readlines()
+                                    
+                                    with open(rec["txt_path"], "w", encoding="utf-8") as ft:
+                                        has_st, has_rp = False, False
+                                        for line in lines_to_write:
+                                            if line.startswith("狀態:"):
+                                                ft.write(f"狀態: {new_st}\n")
+                                                has_st = True
+                                            elif line.startswith("管理員回覆:"):
+                                                ft.write(f"管理員回覆: {new_reply.strip() if new_reply.strip() else '尚無回覆'}\n")
+                                                has_rp = True
+                                            else:
+                                                ft.write(line)
+                                        if not has_st: ft.write(f"狀態: {new_st}\n")
+                                        if not has_rp: ft.write(f"管理員回覆: {new_reply.strip() if new_reply.strip() else '尚無回覆'}\n")
+                                    
+                                    log_activity(f"管理員處置工單 [{rec['單號']}] -> 狀態:{new_st}")
+                                    st.success("處置成功！")
+                                    time.sleep(0.3)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"寫入失敗: {e}")
+                        with col_b2:
+                            if st.button("刪除工單", key=f"del_fb_{idx}", use_container_width=True):
+                                try:
+                                    if os.path.exists(rec["txt_path"]): os.remove(rec["txt_path"])
+                                    if rec["img_path"] and os.path.exists(rec["img_path"]): os.remove(rec["img_path"])
+                                    log_activity(f"管理員刪除工單: {rec['單號']}")
+                                    st.success("已刪除工單")
+                                    time.sleep(0.3)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"刪除失敗: {e}")
+                                    
+                    with col_img:
+                        st.markdown("**附件截圖檢視：**")
+                        if rec["img_path"] and os.path.exists(rec["img_path"]):
+                            st.image(rec["img_path"], use_container_width=True)
+                            with open(rec["img_path"], "rb") as f_img:
+                                st.download_button(
+                                    "下載圖檔",
+                                    data=f_img.getvalue(),
+                                    file_name=os.path.basename(rec["img_path"]),
+                                    mime="image/png",
+                                    key=f"dl_adm_img_{idx}",
+                                    use_container_width=True
+                                )
+                        else:
+                            st.info("此工單無上傳截圖附件。")
         else:
-            st.info("尚無任何組員上傳問題截圖或建議")
+            st.info("目前無符合條件的回報紀錄。")
 
-    # ===== TAB 3: 系統操作日誌 (強化：快捷過濾標籤) =====
+    # ===== TAB 3: 系統操作日誌 =====
     with tab_logs:
         st.subheader("系統操作活動紀錄日誌 (Activity Log)")
         
-        st.write("**快速篩選標籤**")
-        flg1, flg2, flg3, flg4 = st.columns(4)
-        with flg1:
-            if st.button("全部顯示", key="log_flg_all"): st.session_state["admin_log_kw"] = ""
-        with flg2:
-            if st.button("僅看【問題回報】", key="log_flg_fb"): st.session_state["admin_log_kw"] = "問題回報"
-        with flg3:
-            if st.button("僅看【VIP/登入】", key="log_flg_login"): st.session_state["admin_log_kw"] = "登入"
-        with flg4:
-            if st.button("僅看【檔案上傳】", key="log_flg_up"): st.session_state["admin_log_kw"] = "上傳"
-
-        curr_kw = st.session_state.get("admin_log_kw", "")
-        col_log1, col_log2 = st.columns([2, 1])
+        col_log1, col_log2 = st.columns([2.5, 1])
         with col_log1:
-            log_filter_keyword = st.text_input("搜尋關鍵字", value=curr_kw, placeholder="例如: 員編 / 換班 / 問題回報", key="admin_log_search_input")
+            log_filter_keyword = st.text_input("搜尋關鍵字", placeholder="輸入員編、換班或問題回報...", key="admin_log_search_input")
         with col_log2:
-            st.write("")
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
             if st.button("清空歷史日誌", key="admin_clear_log_btn"):
                 if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
                 st.rerun()
@@ -1246,7 +1501,7 @@ if app_mode == "繪製個人月班表圖檔":
     </div>
     """, unsafe_allow_html=True)
 
-    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A", key="user_input_field")
+    target_input = st.text_input("輸入 員編 或 姓名", value="A", key="user_input_field")
 
     if st.button("立即生成個人班表圖片檔"):
         current_input = st.session_state.get("user_input_field", "").strip()
@@ -1635,8 +1890,7 @@ col_f1, col_f2 = st.columns(2)
 
 with col_f1:
     if st.button("問題回報與建議", key="btn_footer_feedback_left", use_container_width=True):
-        st.session_state["show_feedback_dialog"] = True
-        st.rerun()
+        show_feedback_modal()
 
 with col_f2:
     admin_btn_label = f"ADMIN PANEL [{current_unit_label}]" if st.session_state.get("admin_logged_in", False) else f"C.L.F EDITION [{current_unit_label}]"
