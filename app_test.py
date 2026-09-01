@@ -652,15 +652,15 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
 
 @st.dialog("完整月班表檢視", width="large")
 def show_crew_schedule_modal(emp_input, unit_label, badge_title="Inspector | C.L.F"):
-    with st.spinner(f"正在讀取資料與繪製【{emp_input}】的完整月班表，請稍候..."):
-        try:
-            start_dt, dates, emp_id, emp_name, cells = process_file_data(emp_input)
+    try:
+        start_dt, dates, emp_id, emp_name, cells = process_file_data(emp_input)
+        with st.spinner(f"正在繪製【{emp_name}】的完整月班表，請稍候..."):
             buf = render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label, badge_title=badge_title)
-            st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
+            st.success(f"已成功載入【{emp_name}】({emp_id}) 之完整月班表")
             render_zoomable_image(buf)
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"{unit_label}_班表_{emp_name}.png", mime="image/png", key=f"modal_dl_btn_{emp_id}")
-        except Exception as e:
-            st.error(f"載入完整班表時發生錯誤: {e}")
+    except Exception as e:
+        st.error(f"載入完整班表時發生錯誤: {e}")
 
 # ==================== 獨立檢視指定組員完整班表 (Inspector Mode) ====================
 if st.session_state.get("inspect_emp_target") is not None:
@@ -678,15 +678,15 @@ if st.session_state.get("inspect_emp_target") is not None:
         st.session_state["inspect_emp_target"] = None
         st.rerun()
 
-    with st.spinner(f"正在繪製【{target_emp}】的完整月班表..."):
-        try:
-            start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
+    try:
+        start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
+        with st.spinner(f"正在繪製【{emp_name}】的完整月班表，請稍候..."):
             buf = render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, current_unit, badge_title="Inspector | C.L.F")
-            st.success(f"已成功載入 {emp_name} ({emp_id}) 之完整月班表")
+            st.success(f"已成功載入【{emp_name}】({emp_id}) 之完整月班表")
             render_zoomable_image(buf)
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"{current_unit}_班表_{emp_name}.png", mime="image/png")
-        except Exception as e:
-            st.error(f"載入完整班表時發生錯誤: {e}")
+    except Exception as e:
+        st.error(f"載入完整班表時發生錯誤: {e}")
 
     st.stop()
 
@@ -1007,17 +1007,19 @@ if app_mode == "繪製個人月班表圖檔":
 
     if st.button("立即生成個人班表圖片檔"):
         current_input = st.session_state.get("user_input_field", "").strip()
-        if not current_input: st.warning("請輸入員編或姓名")
+        if not current_input:
+            st.warning("請輸入員編或姓名")
         else:
             log_activity(f"生成個人班表圖檔查詢: {current_input}")
-            with st.spinner("正在解析資料與繪製個人月班表，請稍候..."):
-                try:
-                    start_dt, dates, emp_id, emp_name, cells = process_file_data(current_input)
+            try:
+                start_dt, dates, emp_id, emp_name, cells = process_file_data(current_input)
+                with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
                     buf = render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, current_unit_label, badge_title="Producer | C.L.F")
-                    st.success("個人班表圖片生成成功")
-                    render_zoomable_image(buf)
-                    st.download_button("點此下載班表影像檔", data=buf, file_name=f"{current_unit_label}_班表_{emp_name}.png", mime="image/png")
-                except Exception as e: st.error(f"錯誤：{e}")
+                st.success(f"【{emp_name}】個人班表圖片生成成功！")
+                render_zoomable_image(buf)
+                st.download_button("點此下載班表影像檔", data=buf, file_name=f"{current_unit_label}_班表_{emp_name}.png", mime="image/png")
+            except Exception as e:
+                st.error(f"錯誤：{e}")
 
 elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
     if is_module_maintenance(current_unit_label, "window_filter"):
