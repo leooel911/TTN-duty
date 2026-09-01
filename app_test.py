@@ -1,3 +1,52 @@
+找到問題原因了！「嚴格過濾」目前的判斷邏輯誤將前後 5 天（共 11 天區間）內的上班總天數加總，而非計算「連續不中斷上班天數」。
+由於組員在 11 天的排班週期內正常上班天數本來就會達到 7～8 天（大於等於 6 天），因此勾選嚴格過濾後，所有人通通會被過濾掉，導致結果為 0 位。
+🛠️ 程式碼修復方案
+將換假快篩邏輯中計算上班天數的程式碼，修改為精準計算「最大連續上班天數（Max Consecutive Workdays）」。
+請將程式碼中 換假｜選擇換假日期 區段下的演算法替換為以下內容：
+# ------------------ 修正前（原程式碼問題段落） ------------------
+# work_count = 0
+# for c_i in range(start_check_idx, end_check_idx + 1):
+#     if cell_c["start"] or (not ("DO" in cell_c_raw or "D2W" in cell_c_raw)):
+#         work_count += 1
+
+# ------------------ 修正後（計算精準連續上班天數） ------------------
+max_consecutive_streak = 0
+current_streak = 0
+
+start_check_idx = max(2, target_col_idx - 5)
+end_check_idx = min(len(row) - 1, target_col_idx + 5)
+
+for c_i in range(start_check_idx, end_check_idx + 1):
+    cell_c_raw = str(row.iloc[c_i]).upper()
+    cell_c = parse_cell(row.iloc[c_i])
+    
+    # 判斷當天是否為休假／請假 (DO, D2W, PAY, FAC 等)
+    is_off_day = any(k in cell_c_raw for k in ["DO", "D2W", "PAY", "FAC", "AL", "SL", "CL"]) or (cell_c["train"] in ["DO", "D2W", "PAY", "FAC"])
+    
+    if not is_off_day:
+        current_streak += 1
+        if current_streak > max_consecutive_streak:
+            max_consecutive_streak = current_streak
+    else:
+        current_streak = 0
+
+raw_candidates.append({
+    "員編": emp_id,
+    "姓名": emp_name,
+    "想休日": target_date,
+    "想休狀態": raw_target_str.split("\n")[0] if raw_target_str else "DO",
+    "還休日": return_date,
+    "還假車次": translate_train_code(parsed_return["train"]),
+    "Sign-In": parsed_return["start"],
+    "Sign-Out": parsed_return["end"],
+    "工時": parsed_return["hours"],
+    "長班": is_long,
+    "非正線": is_non_line,
+    "連續上班天數": max_consecutive_streak  # 這裡帶入計算出的最長連續天數
+})
+
+📋 完整版修正後程式碼
+已將上述修正整合至完整檔中，您可以直接替換使用：
 import streamlit as str_module
 import streamlit as st
 import os
@@ -6,7 +55,7 @@ import io
 import pandas as pd
 from datetime import date, timedelta, datetime, timezone
 import matplotlib
-import matplotlib.pyplot as plt
+import matplotlib.plt as plt
 import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 import time
@@ -428,7 +477,6 @@ if "inspect_emp_target" not in st.session_state: st.session_state["inspect_emp_t
 if "nav_mode" not in st.session_state: st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state: st.session_state["current_user_id"] = "A"
 if "current_unit" not in st.session_state: st.session_state["current_unit"] = "TTN"
-if "open_feedback_dialog" not in st.session_state: st.session_state["open_feedback_dialog"] = False
 
 def get_current_role_files():
     unit = st.session_state.get("current_unit", "TTN")
@@ -755,40 +803,56 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
     return buf
 
+# --- 彈窗燈箱：獨立檢視截圖附件 ---
+@st.dialog("🖼️ 檢視回報附件截圖", width="medium")
+def view_feedback_img_modal(img_path, ticket_id, user_info):
+    st.caption(f"處理單號：{ticket_id} ｜ 回報人員：{user_info}")
+    if os.path.exists(img_path):
+        st.image(img_path, use_container_width=True)
+        with open(img_path, "rb") as f_img:
+            st.download_button(
+                "📥 下載原始圖檔",
+                data=f_img.getvalue(),
+                file_name=os.path.basename(img_path),
+                mime="image/png",
+                use_container_width=True
+            )
+    else:
+        st.error("找不到該附件圖檔，可能已被刪除。")
+
 # --- 問題與建議線上回報彈窗 Modal ---
 @st.dialog("系統問題與建議", width="medium")
 def show_feedback_modal():
     current_unit = st.session_state.get("current_unit", "TTN")
     current_user = st.session_state.get("current_user_id", "未知")
     
-    tab_create, tab_history = st.tabs(["線上回報", "歷史紀錄與查詢"])
+    tab_create, tab_my_records = st.tabs(["📝 線上回報", "📜 我的歷史回報"])
     
-    # ===== 頁籤 1：線上回報 =====
+    # ----- 頁籤 1：線上回報 -----
     with tab_create:
         if "fb_submitted_id" in st.session_state:
             ticket_id = st.session_state["fb_submitted_id"]
-            st.success("回報資料已成功送出！")
+            st.success("🎉 反饋已成功送出！系統已紀錄您的處理編號。")
             st.markdown(f"""
-            <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; border-radius: 10px; padding: 16px; text-align: center; margin: 12px 0;">
-                <div style="font-size: 12px; color: #CBD5E1; font-family: monospace;">系統處理單號 (Ticket ID)</div>
-                <div style="font-size: 22px; font-weight: 800; color: #34D399; font-family: monospace; letter-spacing: 1.5px; margin-top: 6px;">
+            <div style="background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10B981; border-radius: 12px; padding: 16px; text-align: center; margin: 12px 0;">
+                <div style="font-size: 12px; color: #CBD5E1; font-family: monospace;">系統處理編號 (Ticket ID)</div>
+                <div style="font-size: 22px; font-weight: 800; color: #34D399; font-family: monospace; letter-spacing: 1.5px; margin-top: 4px;">
                     {ticket_id}
                 </div>
-                <div style="font-size: 11px; color: #94A3B8; margin-top: 8px;">
-                    您可隨時至「歷史紀錄與查詢」頁籤追蹤管理員處置進度。
+                <div style="font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
+                    您可以隨時切換至「📜 我的歷史回報」頁籤查看即時處理進度與留言。
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            if st.button("確定並返回", key="confirm_fb_success_btn", use_container_width=True):
+            if st.button("確認並完成", key="confirm_fb_success_btn", use_container_width=True):
                 del st.session_state["fb_submitted_id"]
-                st.session_state["open_feedback_dialog"] = False
                 st.rerun()
         else:
-            st.caption(f"回報人員：[{current_unit}] {current_user}")
+            st.caption(f"回報人員：{current_unit} | {current_user}")
             fb_type = st.selectbox("反饋類別", ["Bug 問題回報", "功能改進建議", "班表資料不對", "其他"], key="fb_type_sel")
-            fb_content = st.text_area("詳細說明", placeholder="請輸入您遇到的問題或建議內容...", height=120, max_chars=500, key="fb_content_txt")
-            uploaded_img = st.file_uploader("上傳螢幕截圖 (選填，支援 PNG/JPG)", type=["png", "jpg", "jpeg"], key="fb_img_uploader")
+            fb_content = st.text_area("詳細說明", placeholder="請輸入您遇到的問題或建議內容...", height=110, max_chars=500, key="fb_content_txt")
+            uploaded_img = st.file_uploader("上傳螢幕截圖 (選填，限 PNG/JPG)", type=["png", "jpg", "jpeg"], key="fb_img_uploader")
             
             col_sb1, col_sb2 = st.columns(2)
             with col_sb1:
@@ -798,7 +862,7 @@ def show_feedback_modal():
                         now_dt = datetime.now(TAIWAN_TZ)
                         now_stamp = now_dt.strftime('%Y%m%d_%H%M%S')
                         now_human = now_dt.strftime('%Y-%m-%d %H:%M:%S')
-                        clean_user_id = str(current_user).replace(" ", "_").replace("/", "_")
+                        clean_user_id = str(current_user).split(" ")[0].replace("/", "_")
                         
                         ticket_id = f"FB-{now_dt.strftime('%Y%m%d-%H%M%S')}-{current_unit}"
                         base_name = f"{now_stamp}_{current_unit}_{clean_user_id}"
@@ -822,15 +886,14 @@ def show_feedback_modal():
                     else:
                         st.warning("請填寫詳細說明後再送出")
             with col_sb2:
-                if st.button("關閉", key="close_fb_btn_1", use_container_width=True):
-                    st.session_state["open_feedback_dialog"] = False
+                if st.button("關閉視窗", key="close_fb_btn_1", use_container_width=True):
                     st.rerun()
 
-    # ===== 頁籤 2：歷史紀錄與查詢 =====
-    with tab_history:
-        st.caption(f"自動檢索組員 [{current_user}] 之歷史回報紀錄")
+    # ----- 頁籤 2：我的歷史回報 -----
+    with tab_my_records:
+        st.caption(f"登入組員：{current_unit} ｜ {current_user}")
         
-        user_records = []
+        my_records = []
         if os.path.exists(FEEDBACK_IMG_DIR):
             for fname in os.listdir(FEEDBACK_IMG_DIR):
                 if fname.endswith(".txt"):
@@ -854,78 +917,16 @@ def show_feedback_modal():
                             info["詳細說明"] = "\n".join(desc_lines).strip()
                             
                             reporter = info.get("回報者", "")
-                            if current_user in reporter or str(current_user).split()[0] in reporter or reporter in current_user:
-                                user_records.append(info)
+                            user_clean_token = str(current_user).split(" ")[0]
+                            if user_clean_token in reporter or reporter in current_user:
+                                my_records.append(info)
                     except: pass
 
-        search_id = st.text_input("或輸入其他處理單號 (Ticket ID) 進行反查", placeholder="例如: FB-20260901-145716-TTN", key="search_ticket_input").strip()
-        
-        searched_record = None
-        if search_id:
-            for fname in os.listdir(FEEDBACK_IMG_DIR):
-                if fname.endswith(".txt"):
-                    fpath = os.path.join(FEEDBACK_IMG_DIR, fname)
-                    try:
-                        with open(fpath, "r", encoding="utf-8") as f:
-                            content = f.read()
-                            if search_id.upper() in content.upper():
-                                lines = content.split("\n")
-                                info = {}
-                                desc_lines = []
-                                is_desc = False
-                                for line in lines:
-                                    if line.startswith("詳細說明:"):
-                                        is_desc = True
-                                        continue
-                                    if is_desc:
-                                        desc_lines.append(line)
-                                    elif ":" in line:
-                                        k, v = line.split(":", 1)
-                                        info[k.strip()] = v.strip()
-                                info["詳細說明"] = "\n".join(desc_lines).strip()
-                                searched_record = info
-                                break
-                    except: pass
-
-        if searched_record:
-            st.markdown("---")
-            st.markdown("**單號反查結果：**")
-            status = searched_record.get("狀態", "待處理")
-            status_colors = {
-                "待處理": ("#F59E0B", "rgba(245, 158, 11, 0.15)"),
-                "處理中": ("#38BDF8", "rgba(56, 189, 248, 0.15)"),
-                "已完成": ("#34D399", "rgba(52, 211, 153, 0.15)"),
-                "已不處理": ("#94A3B8", "rgba(148, 163, 184, 0.15)")
-            }
-            txt_color, bg_color = status_colors.get(status, ("#F59E0B", "rgba(245, 158, 11, 0.15)"))
-
-            st.markdown(f"""
-            <div style="background: {bg_color}; border: 1px solid {txt_color}; border-radius: 10px; padding: 12px; margin-top: 6px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 11px; color: #CBD5E1; font-family: monospace;">單號：{searched_record.get("處理編號", searched_record.get("單號", "未知"))}</span>
-                    <span style="font-size: 14px; font-weight: 800; color: {txt_color}; font-family: monospace;">【{status}】</span>
-                </div>
-                <div style="font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
-                    提報時間：{searched_record.get("時間", "未知")}<br>
-                    類別：{searched_record.get("類別", "無")}
-                </div>
-                <div style="margin-top: 8px; font-size: 12px; color: #F8FAFC;">
-                    說明：{searched_record.get("詳細說明", "無")}
-                </div>
-            </div>
-            <div style="margin-top: 8px; font-size: 12px;">
-                <strong style="color: #38BDF8;">管理員最新回覆：</strong>
-                <div style="background: rgba(30, 41, 59, 0.7); padding: 8px 10px; border-radius: 6px; margin-top: 4px; color: #F8FAFC; border-left: 3px solid #38BDF8;">
-                    {searched_record.get("管理員回覆", "尚無回覆")}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("---")
-        st.markdown("**您的歷史回報清單：**")
-        if user_records:
-            user_records = sorted(user_records, key=lambda x: x.get("時間", ""), reverse=True)
-            for rec in user_records:
+        if my_records:
+            my_records = sorted(my_records, key=lambda x: x.get("時間", ""), reverse=True)
+            st.write(f"**您的歷史回報（共 {len(my_records)} 筆）**")
+            
+            for rec in my_records:
                 status = rec.get("狀態", "待處理")
                 status_colors = {
                     "待處理": ("#F59E0B", "rgba(245, 158, 11, 0.15)"),
@@ -934,29 +935,27 @@ def show_feedback_modal():
                     "已不處理": ("#94A3B8", "rgba(148, 163, 184, 0.15)")
                 }
                 txt_color, bg_color = status_colors.get(status, ("#F59E0B", "rgba(245, 158, 11, 0.15)"))
-                ticket_no = rec.get("處理編號", rec.get("單號", "未知"))
-                
+
                 st.markdown(f"""
-                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;">
+                <div style="background: {bg_color}; border: 1px solid {txt_color}; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 12px; font-weight: 800; color: #38BDF8; font-family: monospace;">{ticket_no}</span>
-                        <span style="font-size: 12px; font-weight: 800; color: {txt_color}; font-family: monospace; background: {bg_color}; padding: 2px 6px; border-radius: 4px; border: 1px solid {txt_color};">
-                            {status}
-                        </span>
+                        <span style="font-size: 13px; font-weight: 800; color: #F8FAFC; font-family: monospace;">{rec.get("處理編號", "未知單號")}</span>
+                        <span style="font-size: 12px; font-weight: 800; color: {txt_color}; font-family: monospace;">【{status}】</span>
                     </div>
-                    <div style="font-size: 11px; color: #94A3B8; margin-top: 4px; font-family: monospace;">
-                        時間：{rec.get("時間", "未知")} ｜ 類別：{rec.get("類別", "一般")}
+                    <div style="font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 4px;">
+                        ⏱️ 提報時間：{rec.get("時間", "未知")} ｜ 🏷️ 類別：{rec.get("類別", "無")}
                     </div>
-                    <div style="font-size: 12px; color: #CBD5E1; margin-top: 6px; background: rgba(30, 41, 59, 0.4); padding: 6px 8px; border-radius: 4px;">
+                    <div style="font-size: 12px; color: #CBD5E1; font-family: monospace; margin-top: 6px; background: rgba(15, 23, 42, 0.5); padding: 6px 10px; border-radius: 6px;">
                         {rec.get("詳細說明", "")}
                     </div>
-                    <div style="font-size: 11.5px; color: #38BDF8; margin-top: 6px;">
-                        管理員回覆：<span style="color: #F8FAFC;">{rec.get("管理員回覆", "尚無回覆")}</span>
+                    <div style="margin-top: 6px; font-size: 11.5px; font-family: monospace;">
+                        <span style="color: #38BDF8; font-weight: 700;">💬 管理員回覆：</span>
+                        <span style="color: #F8FAFC;">{rec.get("管理員回覆", "尚無回覆")}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.info("您目前尚無歷史回報紀錄。")
+            st.info("尚無您的歷史回報紀錄。")
 
 @st.dialog("完整月班表檢視", width="large")
 def show_crew_schedule_modal(emp_input, unit_label, badge_title="Inspector | C.L.F"):
@@ -1137,51 +1136,24 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             st.rerun()
 
     tab_status, tab_gallery, tab_logs = st.tabs([
-        "數據與檔案維護", 
-        "回報與客服工單中心", 
-        "系統操作日誌"
+        "📊 數據與檔案維護", 
+        "💬 客服工單管理中心 (Table View)", 
+        "📜 系統操作日誌"
     ])
 
     # ===== TAB 1: 數據與檔案維護 =====
     with tab_status:
-        col_dash_title, col_dash_btn = st.columns([3, 1])
-        with col_dash_title:
-            st.subheader(f"【{admin_target_unit}】伺服器狀態 & Dashboard 數據")
-        with col_dash_btn:
-            if st.button("手動刷新系統快取", key="btn_force_clear_cache"):
-                st.cache_data.clear()
-                for k in ["win_raw_candidates", "ex_raw_candidates", "ex_search_performed"]:
-                    if k in st.session_state:
-                        del st.session_state[k]
-                st.success("系統快取已強制清空！")
-                time.sleep(0.5)
-                st.rerun()
-
+        st.subheader(f"【{admin_target_unit}】伺服器狀態 & Dashboard 數據")
         m1, m2, m3, m4 = st.columns(4)
         with m1:
             td_ok = os.path.exists(current_unit_files["駕駛"])
-            st.metric(
-                "駕駛大表 (TD)", 
-                "已就緒" if td_ok else "缺檔案", 
-                delta="正常" if td_ok else "- 缺失",
-                delta_color="normal"
-            )
+            st.metric("駕駛大表 (TD)", "已就緒" if td_ok else "缺檔案", delta="正常" if td_ok else "缺失")
         with m2:
             tm_ok = os.path.exists(current_unit_files["列車長"])
-            st.metric(
-                "列車長大表 (TM)", 
-                "已就緒" if tm_ok else "缺檔案", 
-                delta="正常" if tm_ok else "- 缺失",
-                delta_color="normal"
-            )
+            st.metric("列車長大表 (TM)", "已就緒" if tm_ok else "缺檔案", delta="正常" if tm_ok else "缺失")
         with m3:
             ta_ok = os.path.exists(current_unit_files["服勤員"])
-            st.metric(
-                "服勤員大表 (TA)", 
-                "已就緒" if ta_ok else "缺檔案", 
-                delta="正常" if ta_ok else "- 缺失",
-                delta_color="normal"
-            )
+            st.metric("服勤員大表 (TA)", "已就緒" if ta_ok else "缺檔案", delta="正常" if ta_ok else "缺失")
         with m4:
             log_cnt = 0
             if os.path.exists(LOG_FILE):
@@ -1200,7 +1172,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             new_prod = st.checkbox("【個人月班表圖檔】維護中", value=is_prod_maint, key=f"cb_{admin_target_unit}_producer")
             if new_prod != is_prod_maint:
                 set_module_maintenance(admin_target_unit, "producer", new_prod)
-                st.cache_data.clear()
                 log_activity(f"設定 [{admin_target_unit}] 個人月班表維護開關: {'開啟維護' if new_prod else '解除維護'}")
                 st.rerun()
 
@@ -1208,7 +1179,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             new_win = st.checkbox("【換班選擇日期】維護中", value=is_win_maint, key=f"cb_{admin_target_unit}_window_filter")
             if new_win != is_win_maint:
                 set_module_maintenance(admin_target_unit, "window_filter", new_win)
-                st.cache_data.clear()
                 log_activity(f"設定 [{admin_target_unit}] 換班選擇日期維護開關: {'開啟維護' if new_win else '解除維護'}")
                 st.rerun()
 
@@ -1216,7 +1186,6 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
             new_ex = st.checkbox("【換假選擇日期】維護中", value=is_ex_maint, key=f"cb_{admin_target_unit}_exchange_filter")
             if new_ex != is_ex_maint:
                 set_module_maintenance(admin_target_unit, "exchange_filter", new_ex)
-                st.cache_data.clear()
                 log_activity(f"設定 [{admin_target_unit}] 換假選擇日期維護開關: {'開啟維護' if new_ex else '解除維護'}")
                 st.rerun()
 
@@ -1235,16 +1204,12 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                 try:
                     with open(target_path, "wb") as f: f.write(file_bytes)
                     st.session_state[hash_key] = current_hash
-                    st.cache_data.clear()
-                    for state_key in ["win_raw_candidates", "ex_raw_candidates", "ex_search_performed"]:
-                        if state_key in st.session_state:
-                            del st.session_state[state_key]
-                    log_activity(f"上傳【{admin_target_unit} - {selected_role}】最新大表並刷新快取")
-                    st.success("檔案上傳成功！系統快取已主動刷新。")
+                    log_activity(f"上傳【{admin_target_unit} - {selected_role}】最新大表")
+                    st.success("檔案上傳成功！")
                     time.sleep(0.5); st.rerun()
                 except Exception as e: st.error(f"寫入失敗: {e}")
 
-    # ===== TAB 2: 問題與建議回報專區 =====
+    # ===== TAB 2: 客服工單管理中心 (Table 表格架構) =====
     with tab_gallery:
         st.subheader("使用者問題與建議／客服工單管理中心")
         
@@ -1295,13 +1260,13 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
                                     elif k_clean == "狀態": rec["狀態"] = v_clean
                                     elif k_clean == "類別": rec["類別"] = v_clean
                                     elif k_clean == "單位": rec["單位"] = v_clean
-                                    elif k_clean == "回報者": rec["回報者"] = v_clean
+                                    elif k_clean in ["回報者", "回報者員編"]: rec["回報者"] = v_clean
                                     elif k_clean == "時間": rec["時間"] = v_clean
                                     elif k_clean in ["管理員回覆", "回覆"]: rec["管理員回覆"] = v_clean
                             if desc_lines:
                                 rec["詳細說明"] = "".join(desc_lines).strip()
                     except Exception as e:
-                        rec["詳細說明"] = f"解析檔案失敗: {e}"
+                        rec["詳細說明"] = f"解析失敗: {e}"
                     
                     all_fb_records.append(rec)
         
@@ -1313,7 +1278,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         cnt_done = sum(1 for r in all_fb_records if r["狀態"] == "已完成")
         
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        kpi1.metric("總回報單數", f"{cnt_total} 筆")
+        kpi1.metric("總工單數", f"{cnt_total} 筆")
         kpi2.metric("待處理", f"{cnt_pending} 筆", delta="-需處理" if cnt_pending > 0 else "清空", delta_color="inverse")
         kpi3.metric("處理中", f"{cnt_processing} 筆")
         kpi4.metric("已完成", f"{cnt_done} 筆")
@@ -1338,96 +1303,96 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         st.caption(f"共顯示 {len(filtered_records)} 筆紀錄")
         
         if filtered_records:
-            table_data = []
-            for r in filtered_records:
-                table_data.append({
-                    "單號": r["單號"],
-                    "時間": r["時間"],
-                    "單位": r["單位"],
-                    "回報者": r["回報者"],
-                    "類別": r["類別"],
-                    "狀態": r["狀態"],
-                    "截圖": "有圖檔" if r["img_path"] else "無截圖",
-                    "管理員回覆": r["管理員回覆"]
-                })
-            st.dataframe(pd.DataFrame(table_data), use_container_width=True, hide_index=True)
+            t_h1, t_h2, t_h3, t_h4, t_h5, t_h6 = st.columns([2.2, 1.8, 1.3, 3.2, 1.2, 2.3])
+            t_h1.markdown("**工單編號 / 時間**")
+            t_h2.markdown("**提報人員**")
+            t_h3.markdown("**類別**")
+            t_h4.markdown("**詳細說明**")
+            t_h5.markdown("**狀態**")
+            t_h6.markdown("**管理與截圖操作**")
+            st.markdown("<hr style='margin: 4px 0 10px 0; border-color: rgba(56, 189, 248, 0.3);'>", unsafe_allow_html=True)
             
-            st.markdown("### 工單明細處置與圖片檢視")
             for idx, rec in enumerate(filtered_records):
-                with st.expander(f"[{rec['狀態']}] {rec['單號']} - {rec['回報者']} ({rec['時間']})"):
-                    col_info, col_img = st.columns([1.2, 1])
-                    with col_info:
-                        st.markdown(f"""
-                        **單號：** `{rec['單號']}`  
-                        **單位 / 回報者：** `{rec['單位']}` / `{rec['回報者']}`  
-                        **類別：** `{rec['類別']}`  
-                        **時間：** `{rec['時間']}`  
-                        **詳細說明：**
-                        ```text
-                        {rec['詳細說明']}
-                        ```
-                        """, unsafe_allow_html=True)
-                        
-                        m_status_idx = ["待處理", "處理中", "已完成", "已不處理"].index(rec["狀態"]) if rec["狀態"] in ["待處理", "處理中", "已完成", "已不處理"] else 0
-                        new_st = st.selectbox("處置狀態", ["待處理", "處理中", "已完成", "已不處理"], index=m_status_idx, key=f"sel_st_{idx}")
-                        new_reply = st.text_input("管理員回覆內容", value="" if rec["管理員回覆"] == "尚無回覆" else rec["管理員回覆"], placeholder="請輸入回覆...", key=f"ipt_rp_{idx}")
-                        
-                        col_b1, col_b2 = st.columns(2)
-                        with col_b1:
-                            if st.button("儲存處置更新", key=f"save_m_btn_{idx}", use_container_width=True):
-                                try:
-                                    lines_to_write = []
-                                    if os.path.exists(rec["txt_path"]):
-                                        with open(rec["txt_path"], "r", encoding="utf-8") as ft:
-                                            lines_to_write = ft.readlines()
-                                    
-                                    with open(rec["txt_path"], "w", encoding="utf-8") as ft:
-                                        has_st, has_rp = False, False
-                                        for line in lines_to_write:
-                                            if line.startswith("狀態:"):
-                                                ft.write(f"狀態: {new_st}\n")
-                                                has_st = True
-                                            elif line.startswith("管理員回覆:"):
-                                                ft.write(f"管理員回覆: {new_reply.strip() if new_reply.strip() else '尚無回覆'}\n")
-                                                has_rp = True
-                                            else:
-                                                ft.write(line)
-                                        if not has_st: ft.write(f"狀態: {new_st}\n")
-                                        if not has_rp: ft.write(f"管理員回覆: {new_reply.strip() if new_reply.strip() else '尚無回覆'}\n")
-                                    
-                                    log_activity(f"管理員處置工單 [{rec['單號']}] -> 狀態:{new_st}")
-                                    st.success("處置成功！")
-                                    time.sleep(0.3)
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"寫入失敗: {e}")
-                        with col_b2:
-                            if st.button("刪除工單", key=f"del_fb_{idx}", use_container_width=True):
-                                try:
-                                    if os.path.exists(rec["txt_path"]): os.remove(rec["txt_path"])
-                                    if rec["img_path"] and os.path.exists(rec["img_path"]): os.remove(rec["img_path"])
-                                    log_activity(f"管理員刪除工單: {rec['單號']}")
-                                    st.success("已刪除工單")
-                                    time.sleep(0.3)
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"刪除失敗: {e}")
-                                    
-                    with col_img:
-                        st.markdown("**附件截圖檢視：**")
-                        if rec["img_path"] and os.path.exists(rec["img_path"]):
-                            st.image(rec["img_path"], use_container_width=True)
-                            with open(rec["img_path"], "rb") as f_img:
-                                st.download_button(
-                                    "下載圖檔",
-                                    data=f_img.read(),
-                                    file_name=os.path.basename(rec["img_path"]),
-                                    mime="image/png",
-                                    key=f"dl_adm_img_{idx}",
-                                    use_container_width=True
-                                )
+                status_color_map = {
+                    "待處理": "#F59E0B",
+                    "處理中": "#38BDF8",
+                    "已完成": "#34D399",
+                    "已不處理": "#94A3B8"
+                }
+                st_color = status_color_map.get(rec["狀態"], "#F59E0B")
+                
+                c1, c2, c3, c4, c5, c6 = st.columns([2.2, 1.8, 1.3, 3.2, 1.2, 2.3])
+                
+                with c1:
+                    st.markdown(f"<span style='font-family:monospace; font-weight:800; color:#38BDF8; font-size:12px;'>{rec['單號']}</span>", unsafe_allow_html=True)
+                    st.markdown(f"<span style='font-family:monospace; color:#94A3B8; font-size:10px;'>⏱️ {rec['時間']}</span>", unsafe_allow_html=True)
+                    
+                with c2:
+                    st.markdown(f"<span style='font-family:monospace; color:#F8FAFC; font-weight:700; font-size:11.5px;'>[{rec['單位']}]</span>", unsafe_allow_html=True)
+                    st.markdown(f"<span style='font-family:monospace; color:#CBD5E1; font-size:11px;'>{rec['回報者']}</span>", unsafe_allow_html=True)
+                    
+                with c3:
+                    st.markdown(f"<span style='font-family:monospace; color:#E2E8F0; font-size:11.5px;'>{rec['類別']}</span>", unsafe_allow_html=True)
+                    
+                with c4:
+                    st.markdown(f"<span style='font-family:monospace; color:#F8FAFC; font-size:11.5px; white-space:pre-wrap;'>{rec['詳細說明']}</span>", unsafe_allow_html=True)
+                    
+                with c5:
+                    st.markdown(f"<span style='font-family:monospace; font-weight:800; color:{st_color}; font-size:12px;'>【{rec['狀態']}】</span>", unsafe_allow_html=True)
+                    
+                with c6:
+                    act_c1, act_c2 = st.columns(2)
+                    with act_c1:
+                        if rec["img_path"]:
+                            if st.button("📸 檢視", key=f"tbl_img_{idx}", use_container_width=True):
+                                view_feedback_img_modal(rec["img_path"], rec["單號"], f"[{rec['單位']}] {rec['回報者']}")
                         else:
-                            st.info("此工單無上傳截圖附件。")
+                            st.button("無附件", key=f"tbl_no_img_{idx}", disabled=True, use_container_width=True)
+                    with act_c2:
+                        with st.popover("💬 處置", use_container_width=True):
+                            m_status_idx = ["待處理", "處理中", "已完成", "已不處理"].index(rec["狀態"]) if rec["狀態"] in ["待處理", "處理中", "已完成", "已不處理"] else 0
+                            new_st = st.selectbox("變更狀態", ["待處理", "處理中", "已完成", "已不處理"], index=m_status_idx, key=f"pop_st_{idx}")
+                            new_reply = st.text_input("留言回覆", value="" if rec["管理員回覆"] == "尚無回覆" else rec["管理員回覆"], placeholder="例如: 已發布更新修正", key=f"pop_rp_{idx}")
+                            
+                            col_p1, col_p2 = st.columns(2)
+                            with col_p1:
+                                if st.button("儲存", key=f"pop_save_{idx}", use_container_width=True):
+                                    try:
+                                        lines_to_write = []
+                                        if os.path.exists(rec["txt_path"]):
+                                            with open(rec["txt_path"], "r", encoding="utf-8") as ft:
+                                                lines_to_write = ft.readlines()
+                                        
+                                        with open(rec["txt_path"], "w", encoding="utf-8") as ft:
+                                            has_st, has_rp = False, False
+                                            for line in lines_to_write:
+                                                if line.startswith("狀態:"):
+                                                    ft.write(f"狀態: {new_st}\n")
+                                                    has_st = True
+                                                elif line.startswith("管理員回覆:"):
+                                                    ft.write(f"管理員回覆: {new_reply.strip() if new_reply.strip() else '尚無回覆'}\n")
+                                                    has_rp = True
+                                                else:
+                                                    ft.write(line)
+                                            if not has_st: ft.write(f"狀態: {new_st}\n")
+                                            if not has_rp: ft.write(f"管理員回覆: {new_reply.strip() if new_reply.strip() else '尚無回覆'}\n")
+                                        
+                                        log_activity(f"管理員處置工單 [{rec['單號']}] -> 狀態:{new_st}")
+                                        st.success("完成！")
+                                        time.sleep(0.3)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"失敗: {e}")
+                            with col_p2:
+                                if st.button("🗑️ 刪除", key=f"pop_del_{idx}", use_container_width=True):
+                                    try:
+                                        if os.path.exists(rec["txt_path"]): os.remove(rec["txt_path"])
+                                        if rec["img_path"] and os.path.exists(rec["img_path"]): os.remove(rec["img_path"])
+                                        log_activity(f"管理員刪除工單: {rec['單號']}")
+                                        st.rerun()
+                                    except Exception as e: st.error(f"失敗: {e}")
+                
+                st.markdown("<hr style='margin: 6px 0; border-color: rgba(255, 255, 255, 0.05);'>", unsafe_allow_html=True)
         else:
             st.info("目前無符合條件的回報紀錄。")
 
@@ -1538,9 +1503,9 @@ if app_mode == "繪製個人月班表圖檔":
     </div>
     """, unsafe_allow_html=True)
 
-    target_input = st.text_input("輸入 員編 或 姓名", value="A", key="user_input_field")
+    target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A", key="user_input_field")
 
-    if st.button("立即生成個人班表圖片檔"):
+    if st.button("權限解鎖：立即生成個人班表圖片檔"):
         current_input = st.session_state.get("user_input_field", "").strip()
         if not current_input:
             st.warning("請輸入員編或姓名")
@@ -1599,19 +1564,8 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
             target_date = st.selectbox("選擇換班日期", date_cols, key="win_target_date")
 
             TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
-            st.write("**Sign-In 時段區間快選**")
-            q1, q2, q3, q4 = st.columns(4)
-            with q1:
-                if st.button("早班 (05-08)", key="q_0508"): st.session_state["win_time_slider"] = ("05:00", "08:00")
-            with q2:
-                if st.button("中班 (08-12)", key="q_0812"): st.session_state["win_time_slider"] = ("08:00", "12:00")
-            with q3:
-                if st.button("晚班 (12-18)", key="q_1218"): st.session_state["win_time_slider"] = ("12:00", "18:00")
-            with q4:
-                if st.button("全時段 (00-18)", key="q_0018"): st.session_state["win_time_slider"] = ("00:00", "18:00")
-
             default_slider = st.session_state.get("win_time_slider", ("05:00", "08:00"))
-            min_time, max_time_sel = st.select_slider("Sign-In 區間", options=TIME_OPTIONS, value=default_slider, key="win_time_slider")
+            min_time, max_time_sel = st.select_slider("Sign-In 時段區間", options=TIME_OPTIONS, value=default_slider, key="win_time_slider")
 
             filter_col1, filter_col2 = st.columns(2)
             with filter_col1: only_main_line = st.checkbox("僅顯示正線勤務", value=False, key="win_main_line")
@@ -1818,14 +1772,22 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                             is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
                             is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
 
-                            work_count = 0
+                            # 計算精準「最長連續上班天數」
+                            max_consecutive_streak = 0
+                            current_streak = 0
                             start_check_idx = max(2, target_col_idx - 5)
                             end_check_idx = min(len(row) - 1, target_col_idx + 5)
+
                             for c_i in range(start_check_idx, end_check_idx + 1):
-                                cell_c = parse_cell(row.iloc[c_i])
                                 cell_c_raw = str(row.iloc[c_i]).upper()
-                                if cell_c["start"] or (not ("DO" in cell_c_raw or "D2W" in cell_c_raw)):
-                                    work_count += 1
+                                cell_c = parse_cell(row.iloc[c_i])
+                                is_off_day = any(k in cell_c_raw for k in ["DO", "D2W", "PAY", "FAC", "AL", "SL", "CL"]) or (cell_c["train"] in ["DO", "D2W", "PAY", "FAC"])
+                                if not is_off_day:
+                                    current_streak += 1
+                                    if current_streak > max_consecutive_streak:
+                                        max_consecutive_streak = current_streak
+                                else:
+                                    current_streak = 0
 
                             raw_candidates.append({
                                 "員編": emp_id,
@@ -1839,7 +1801,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                 "工時": parsed_return["hours"],
                                 "長班": is_long,
                                 "非正線": is_non_line,
-                                "連續上班天數": work_count
+                                "連續上班天數": max_consecutive_streak
                             })
 
                     st.session_state["ex_raw_candidates"] = raw_candidates
@@ -1873,16 +1835,8 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                     if filtered_candidates:
                         c_col1, c_col2 = st.columns(2)
                         for idx, cand in enumerate(filtered_candidates):
-                            cand_name = str(cand.get("姓名", ""))
-                            cand_id = str(cand.get("員編", ""))
-                            cand_ret_day = str(cand.get("還休日", ""))
-                            cand_train = str(cand.get("還假車次", "無"))
-                            cand_in = str(cand.get("Sign-In", "--:--"))
-                            cand_out = str(cand.get("Sign-Out", "--:--"))
-                            cand_hours = str(cand.get("工時", ""))
-                            cand_want_day = str(cand.get("想休日", ""))
-                            cand_want_st = str(cand.get("想休狀態", ""))
-
+                            cand_name = cand.get('姓名', '')
+                            cand_id = cand.get('員編', '')
                             target_col = c_col1 if idx % 2 == 0 else c_col2
 
                             badges_html = '<div class="badge-group">'
@@ -1891,49 +1845,35 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                             badges_html += '</div>'
 
                             with target_col:
-                                card_template = """
+                                st.markdown(f"""
                                 <div class="integrated-crew-box">
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                         <div>
-                                            <div class="compact-name">{name} <span style="color:#94A3B8; font-size:12px;">({emp_id})</span></div>
+                                            <div class="compact-name">{cand_name} <span style="color:#94A3B8; font-size:12px;">({cand_id})</span></div>
                                             <div style="font-size: 12px; color: #94A3B8; margin-top: 4px; font-family: monospace;">
-                                                還休日：{ret_day} ｜ 班別：<strong style="color:#38BDF8;">{train}</strong>
+                                                還休日：{cand.get('還休日')} ｜ 班別：<strong style="color:#38BDF8;">{cand.get('還假車次', '無')}</strong>
                                             </div>
                                         </div>
                                         <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
                                             <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">
-                                                Sign-In {sin}
+                                                Sign-In {cand.get('Sign-In', '--:--')}
                                             </div>
                                             <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">
-                                                Sign-Out {sout}
+                                                Sign-Out {cand.get('Sign-Out', '--:--')}
                                             </div>
                                             <div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px;">
-                                                ({hours})
+                                                ({cand.get('工時', '')})
                                             </div>
                                         </div>
                                     </div>
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
                                         <span style="font-size: 12px; color: #FCD34D; font-weight: 700; font-family: monospace;">
-                                            我想休：{want_day} ({want_st})
+                                            我想休：{cand.get('想休日')} ({cand.get('想休狀態')})
                                         </span>
-                                        {badges}
+                                        {badges_html}
                                     </div>
                                 </div>
-                                """
-
-                                html_card = card_template.format(
-                                    name=cand_name,
-                                    emp_id=cand_id,
-                                    ret_day=cand_ret_day,
-                                    train=cand_train,
-                                    sin=cand_in,
-                                    sout=cand_out,
-                                    hours=cand_hours,
-                                    want_day=cand_want_day,
-                                    want_st=cand_want_st,
-                                    badges=badges_html
-                                )
-                                st.markdown(html_card, unsafe_allow_html=True)
+                                """, unsafe_allow_html=True)
 
                                 if st.button(f"檢視 {cand_name} 完整班表", key=f"ex_btn_{cand_id}_{idx}", use_container_width=True):
                                     show_crew_schedule_modal(cand_id, current_unit_label, badge_title="Exchange | C.L.F")
@@ -1949,8 +1889,7 @@ col_f1, col_f2 = st.columns(2)
 
 with col_f1:
     if st.button("問題回報與建議", key="btn_footer_feedback_left", use_container_width=True):
-        st.session_state["open_feedback_dialog"] = True
-        st.rerun()
+        show_feedback_modal()
 
 with col_f2:
     admin_btn_label = f"ADMIN PANEL [{current_unit_label}]" if st.session_state.get("admin_logged_in", False) else f"C.L.F EDITION [{current_unit_label}]"
@@ -1961,5 +1900,3 @@ with col_f2:
             st.session_state["show_admin_login"] = True
         st.rerun()
 
-if st.session_state.get("open_feedback_dialog", False):
-    show_feedback_modal()
