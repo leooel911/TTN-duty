@@ -157,6 +157,54 @@ st.markdown("""
     .test-env-title { color: #FDE68A; font-size: 13px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
     .test-env-sub { color: #FCD34D; font-size: 10px; font-weight: 600; letter-spacing: 1px; opacity: 0.9; }
 
+    /* 管理員維護模式檢視提示橫幅 */
+    .admin-maint-banner {
+        border: 1px solid rgba(245, 158, 11, 0.6);
+        border-left: 5px solid #F59E0B;
+        border-radius: 12px;
+        padding: 12px 18px;
+        margin-bottom: 1.2rem;
+        background: rgba(245, 158, 11, 0.12);
+        backdrop-filter: blur(8px);
+        color: #FDE68A;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    /* 使用者端質感維護卡片（High-Tech Amber Glass） */
+    .user-maint-banner {
+        border: 1px solid rgba(245, 158, 11, 0.45);
+        border-left: 5px solid #F59E0B;
+        border-radius: 16px;
+        padding: 22px 24px;
+        margin-top: 15px;
+        margin-bottom: 22px;
+        background: radial-gradient(circle at 50% 0%, rgba(69, 41, 10, 0.6) 0%, rgba(24, 18, 11, 0.75) 100%);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+        text-align: center;
+    }
+    .user-maint-title {
+        color: #FDE68A;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 1.8px;
+        font-family: monospace;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+    .user-maint-sub {
+        color: #CBD5E1;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.8px;
+        font-family: monospace;
+        margin-top: 4px;
+        opacity: 0.85;
+    }
+
     .header-container { 
         display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
         width: 100%; margin-bottom: 1.2rem; padding: 20px 16px;
@@ -811,6 +859,7 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     col_ctrl1, col_ctrl2 = st.columns(2)
     with col_ctrl1:
         if st.button("← 返回一般系統首頁", key="admin_back_to_home_btn"):
+            st.session_state["current_unit"] = admin_target_unit
             st.session_state["nav_mode"] = "home"
             st.rerun()
     with col_ctrl2:
@@ -965,10 +1014,29 @@ if st.session_state["last_app_mode"] != app_mode:
 
 st.markdown("---")
 
+is_admin_user = st.session_state.get("admin_logged_in", False)
+
 if app_mode == "繪製個人月班表圖檔":
-    if is_module_maintenance(current_unit_label, "producer") and not st.session_state.get("admin_logged_in", False):
-        st.warning(f"[ 系統維護中 ] 【{current_unit_label}】繪製個人月班表圖檔系統維護中")
-        st.stop()
+    if is_module_maintenance(current_unit_label, "producer"):
+        if not is_admin_user:
+            st.markdown(f"""
+            <div class="user-maint-banner">
+                <div class="user-maint-title">🛠️ SYSTEM MAINTENANCE // 系統維護中</div>
+                <div style="font-size: 16px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
+                    【{current_unit_label}】個人月班表圖檔生成系統進行維護中
+                </div>
+                <div class="user-maint-sub">
+                    當前模組正在進行資料維護與排班結構優化，暫不開放服務，請稍後再試。
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            st.stop()
+        else:
+            st.markdown(f"""
+            <div class="admin-maint-banner">
+                🛠️ <strong>【管理員維護模式檢視】</strong> 當前【{current_unit_label} - 個人月班表圖檔】模組已設為「維護中」（一般組員已被阻擋），您目前正以管理員身分進行預覽與功能測試。
+            </div>
+            """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="section-header-box">
@@ -994,9 +1062,26 @@ if app_mode == "繪製個人月班表圖檔":
                 except Exception as e: st.error(f"錯誤：{e}")
 
 elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
-    if is_module_maintenance(current_unit_label, "window_filter") and not st.session_state.get("admin_logged_in", False):
-        st.warning(f"[ 系統維護中 ] 【{current_unit_label}】換班選擇日期快篩系統維護中")
-        st.stop()
+    if is_module_maintenance(current_unit_label, "window_filter"):
+        if not is_admin_user:
+            st.markdown(f"""
+            <div class="user-maint-banner">
+                <div class="user-maint-title">🛠️ SYSTEM MAINTENANCE // 系統維護中</div>
+                <div style="font-size: 16px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
+                    【{current_unit_label}】換班選擇日期快篩系統進行維護中
+                </div>
+                <div class="user-maint-sub">
+                    當前模組正在進行資料維護與排班結構優化，暫不開放服務，請稍後再試。
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            st.stop()
+        else:
+            st.markdown(f"""
+            <div class="admin-maint-banner">
+                🛠️ <strong>【管理員維護模式檢視】</strong> 當前【{current_unit_label} - 換班選擇日期快篩】模組已設為「維護中」（一般組員已被阻擋），您目前正以管理員身分進行預覽與功能測試。
+            </div>
+            """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="section-header-box">
@@ -1124,9 +1209,26 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                 else: st.info("在指定條件內，找不到符合的人員")
 
 elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
-    if is_module_maintenance(current_unit_label, "exchange_filter") and not st.session_state.get("admin_logged_in", False):
-        st.warning(f"[ 系統維護中 ] 【{current_unit_label}】換假選擇日期快篩系統維護中")
-        st.stop()
+    if is_module_maintenance(current_unit_label, "exchange_filter"):
+        if not is_admin_user:
+            st.markdown(f"""
+            <div class="user-maint-banner">
+                <div class="user-maint-title">🛠️ SYSTEM MAINTENANCE // 系統維護中</div>
+                <div style="font-size: 16px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
+                    【{current_unit_label}】換假選擇日期快篩系統進行維護中
+                </div>
+                <div class="user-maint-sub">
+                    當前模組正在進行資料維護與排班結構優化，暫不開放服務，請稍後再試。
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            st.stop()
+        else:
+            st.markdown(f"""
+            <div class="admin-maint-banner">
+                🛠️ <strong>【管理員維護模式檢視】</strong> 當前【{current_unit_label} - 換假選擇日期快篩】模組已設為「維護中」（一般組員已被阻擋），您目前正以管理員身分進行預覽與功能測試。
+            </div>
+            """, unsafe_allow_html=True)
 
     st.markdown("""
     <div class="section-header-box">
