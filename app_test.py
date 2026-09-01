@@ -220,26 +220,28 @@ st.markdown("""
     .test-env-title { color: #FDE68A; font-size: 11px !important; font-weight: 800; letter-spacing: 1px; }
     .test-env-sub { color: #FCD34D; font-size: 9.5px !important; font-weight: 500; opacity: 0.85; margin-top: 1px; }
 
-    /* 頁尾淡色極簡問題回報按鈕樣式 */
-    div.stButton > button[key*="btn_footer_feedback_text"] {
-        background: transparent !important;
-        border: none !important;
+    /* 頁尾左右對稱極簡雙按鈕樣式 */
+    div.stButton > button[key*="btn_footer_feedback_left"],
+    div.stButton > button[key*="btn_footer_admin_right"] {
+        background: rgba(30, 41, 59, 0.45) !important;
+        border: 1px solid rgba(56, 189, 248, 0.25) !important;
         color: #94A3B8 !important;
         font-size: 11px !important;
-        font-weight: 500 !important;
-        text-decoration: underline !important;
-        padding: 2px 8px !important;
-        min-height: 24px !important;
-        height: 24px !important;
-        box-shadow: none !important;
+        font-weight: 600 !important;
+        border-radius: 20px !important;
+        padding: 4px 10px !important;
+        min-height: 32px !important;
+        height: 32px !important;
         letter-spacing: 0.5px !important;
-        margin-bottom: 4px !important;
+        transition: all 0.25s ease !important;
+        box-shadow: none !important;
     }
-    div.stButton > button[key*="btn_footer_feedback_text"]:hover {
+    div.stButton > button[key*="btn_footer_feedback_left"]:hover,
+    div.stButton > button[key*="btn_footer_admin_right"]:hover {
+        background: rgba(56, 189, 248, 0.15) !important;
+        border-color: #38BDF8 !important;
         color: #38BDF8 !important;
-        background: transparent !important;
-        border: none !important;
-        text-shadow: 0 0 8px rgba(56, 189, 248, 0.5) !important;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.25) !important;
     }
 
     /* 管理員維護模式檢視提示橫幅 */
@@ -348,14 +350,6 @@ st.markdown("""
         font-weight: 800 !important;
         font-family: monospace !important;
         line-height: 1.2 !important;
-    }
-    .footer-badge-container {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        margin-top: 1.8rem;
-        margin-bottom: 1rem;
     }
 
     div.stButton > button, div.stFormSubmitButton > button { 
@@ -1590,18 +1584,21 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
         except Exception as e:
             st.error(f"讀取換假資料時發生錯誤：{e}")
 
-# --- 底部頁尾區塊（含極簡問題回報文字按鈕與 C.L.F EDITION 貼紙） ---
-st.markdown('<div class="footer-badge-container">', unsafe_allow_html=True)
+# --- 底部頁尾區塊（左右 1:1 對稱雙膠囊按鈕：左問題與建議 ｜ 右管理員系統） ---
+st.markdown('<div style="margin-top: 2rem; padding-top: 0.8rem; border-top: 1px dashed rgba(255,255,255,0.08);"></div>', unsafe_allow_html=True)
 
-if st.button("問題回報與建議", key="btn_footer_feedback_text"):
-    st.session_state["show_feedback_dialog"] = True
-    st.rerun()
+col_f1, col_f2 = st.columns(2)
 
-footer_label = f"ADMIN PANEL [{current_unit_label}] // C.L.F EDITION" if st.session_state.get("admin_logged_in", False) else f"C.L.F EDITION [{current_unit_label}]"
-if st.button(footer_label, key="bottom_footer_badge"):
-    if st.session_state.get("admin_logged_in", False):
-        st.session_state["nav_mode"] = "admin_panel" if st.session_state["nav_mode"] == "home" else "home"
-    else: st.session_state["show_admin_login"] = True
-    st.rerun()
+with col_f1:
+    if st.button("問題回報與建議", key="btn_footer_feedback_left", use_container_width=True):
+        st.session_state["show_feedback_dialog"] = True
+        st.rerun()
 
-st.markdown('</div>', unsafe_allow_html=True)
+with col_f2:
+    admin_btn_label = f"管理員後台 [{current_unit_label}]" if st.session_state.get("admin_logged_in", False) else f"管理員系統 [{current_unit_label}]"
+    if st.button(admin_btn_label, key="btn_footer_admin_right", use_container_width=True):
+        if st.session_state.get("admin_logged_in", False):
+            st.session_state["nav_mode"] = "admin_panel" if st.session_state["nav_mode"] == "home" else "home"
+        else:
+            st.session_state["show_admin_login"] = True
+        st.rerun()
