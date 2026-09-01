@@ -3,6 +3,7 @@ import time
 import hashlib
 import pandas as pd
 import streamlit as st
+from datetime import datetime
 from config import UNITS, LOG_FILE, FEEDBACK_IMG_DIR
 from modules.utils import (
     is_module_maintenance, set_module_maintenance, log_activity, safe_read_excel
@@ -39,6 +40,9 @@ def render_admin_panel():
         "系統操作日誌"
     ])
 
+    # ---------------------------------------------------------
+    # TAB 1: 數據與檔案維護
+    # ---------------------------------------------------------
     with tab_status:
         st.subheader(f"【{admin_target_unit}】伺服器狀態 & Dashboard 數據")
         m1, m2, m3, m4 = st.columns(4)
@@ -106,6 +110,9 @@ def render_admin_panel():
                     time.sleep(0.5); st.rerun()
                 except Exception as e: st.error(f"寫入失敗: {e}")
 
+    # ---------------------------------------------------------
+    # TAB 2: 客服工單管理中心
+    # ---------------------------------------------------------
     with tab_gallery:
         st.subheader("使用者問題與建議／客服工單管理中心")
         
@@ -292,30 +299,58 @@ def render_admin_panel():
         else:
             st.info("目前無符合條件的回報紀錄。")
 
+    # ---------------------------------------------------------
+    # TAB 3: 系統操作日誌 (無痕加入「匯出 CSV」與「動作分佈圖表」)
+    # ---------------------------------------------------------
     with tab_logs:
         st.subheader("系統操作活動紀錄日誌 (Activity Log)")
         
-        col_log1, col_log2 = st.columns([2.5, 1])
+        col_log1, col_log2, col_log3 = st.columns([2, 1, 1])
         with col_log1:
             log_filter_keyword = st.text_input("搜尋關鍵字", placeholder="輸入員編、換班或問題回報...", key="admin_log_search_input")
         with col_log2:
             st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-            if st.button("清空歷史日誌", key="admin_clear_log_btn"):
+            # 🌟 新增：匯出日誌 CSV 按鈕
+            if os.path.exists(LOG_FILE):
+                with open(LOG_FILE, "r", encoding="utf-8") as f:
+                    log_raw_data = f.read()
+                st.download_button(
+                    label="📥 下載日誌 CSV",
+                    data=log_raw_data,
+                    file_name=f"Activity_Log_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    key="admin_download_log_btn",
+                    use_container_width=True
+                )
+        with col_log3:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            if st.button("清空歷史日誌", key="admin_clear_log_btn", use_container_width=True):
                 if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
                 st.rerun()
 
         if os.path.exists(LOG_FILE):
             with open(LOG_FILE, "r", encoding="utf-8") as f: logs = f.readlines()
             parsed_logs = []
-            for line in reversed(logs[-80:]):
+            for line in reversed(logs[-100:]): # 顯示最近 100 筆
                 if log_filter_keyword and log_filter_keyword.lower() not in line.lower(): continue
                 parts = [p.strip() for p in line.split("|")]
                 if len(parts) >= 5:
                     parsed_logs.append({
-                        "時間": parts[0], "單位": parts[1].replace("單位: ", ""),
+                        "時間": parts[0], 
+                        "單位": parts[1].replace("單位: ", ""),
                         "操作者": parts[2].replace("操作者員編: ", ""),
-                        "裝置": parts[3].replace("裝置: ", ""), "動作": " | ".join(parts[4:]).replace("動作: ", "")
+                        "裝置": parts[3].replace("裝置: ", ""), 
+                        "動作": " | ".join(parts[4:]).replace("動作: ", "")
                     })
-            if parsed_logs: st.dataframe(pd.DataFrame(parsed_logs), use_container_width=True, hide_index=True)
+            
+            if parsed_logs:
+                df_parsed = pd.DataFrame(parsed_logs)
+                
+                # 🌟 新增：熱門操作長條圖統計 (讓數據一目了然)
+                with st.expander("📊 查看熱門動作統計圖表", expanded=False):
+                    action_counts = df_parsed["動作"].value_counts().head(10)
+                    st.bar_chart(action_counts)
+
+                st.dataframe(df_parsed, use_container_width=True, hide_index=True)
             else: st.info("查無符合過濾條件的日誌")
         else: st.info("尚無任何紀錄")
