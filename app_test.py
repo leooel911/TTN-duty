@@ -74,7 +74,7 @@ def is_module_maintenance(unit, module_key):
     flag_path = get_maintenance_flag_path(unit, module_key)
     return os.path.exists(flag_path)
 
-# --- 升級版毛玻璃與極致行動端空間利用 (Mobile Compact UX Upgrade) ---
+# --- 升級版毛玻璃與極致行動端空間利用 (Mobile Compact UX Upgrade & Input Border Fix) ---
 st.markdown("""
 <style>
     /* 隱藏 Streamlit 原生 Header 與 Menu 提升 Native App 質感 */
@@ -103,19 +103,25 @@ st.markdown("""
         min-height: 42px !important;
     }
 
-    /* 輸入框行動端質感與 Focus 狀態 Glow 效果 */
-    div[data-testid="stTextInput"] input {
+    /* 修正輸入框雙重外框與兩側邊角未填滿漏洞 (BaseWeb Container Fix) */
+    div[data-testid="stTextInput"] div[data-baseweb="input"] {
         background: rgba(15, 23, 42, 0.75) !important;
-        border: 1px solid rgba(56, 189, 248, 0.3) !important;
+        border: 1px solid rgba(56, 189, 248, 0.35) !important;
         border-radius: 10px !important;
-        color: #F8FAFC !important;
-        padding: 8px 12px !important;
-        font-family: monospace !important;
+        padding: 2px 4px !important;
         transition: all 0.25s ease !important;
     }
-    div[data-testid="stTextInput"] input:focus {
+    div[data-testid="stTextInput"] input {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #F8FAFC !important;
+        padding: 6px 10px !important;
+        font-family: monospace !important;
+    }
+    div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within {
         border-color: #38BDF8 !important;
-        box-shadow: 0 0 12px rgba(56, 189, 248, 0.3) !important;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
     }
 
     /* 三大系統按鈕選項方格化卡片極簡化 */
