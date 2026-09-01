@@ -74,16 +74,12 @@ def is_module_maintenance(unit, module_key):
     flag_path = get_maintenance_flag_path(unit, module_key)
     return os.path.exists(flag_path)
 
-# --- 升級版毛玻璃與行動端自適應視覺設計 (Glassmorphism & Mobile UX Upgrade) ---
+# --- 升級版毛玻璃與極致行動端空間利用 (Mobile Compact UX Upgrade) ---
 st.markdown("""
 <style>
     /* 隱藏 Streamlit 原生 Header 與 Menu 提升 Native App 質感 */
-    header[data-testid="stHeader"] {
-        background: transparent !important;
-    }
-    div[data-testid="stToolbar"] {
-        visibility: hidden !important;
-    }
+    header[data-testid="stHeader"] { background: transparent !important; }
+    div[data-testid="stToolbar"] { visibility: hidden !important; }
     footer { visibility: hidden !important; }
 
     .stApp { 
@@ -94,19 +90,17 @@ st.markdown("""
     
     /* 桌面端與行動端寬度適配 */
     @media (min-width: 1024px) {
-        .block-container { padding: 3rem 1.5rem 3rem 1.5rem !important; max-width: 1050px !important; }
+        .block-container { padding: 2.5rem 1.5rem 2.5rem 1.5rem !important; max-width: 1050px !important; }
     }
     @media (max-width: 1023px) {
-        .block-container { padding: 1.2rem 0.8rem 2rem 0.8rem !important; max-width: 100% !important; }
+        .block-container { padding: 0.8rem 0.6rem 1.5rem 0.6rem !important; max-width: 100% !important; }
     }
 
     /* 強制所有 Streamlit 按鈕容器具備 100% 滿寬能力 */
-    div[data-testid="stButton"], div.stButton {
-        width: 100% !important;
-    }
+    div[data-testid="stButton"], div.stButton { width: 100% !important; }
     div[data-testid="stButton"] > button, div.stButton > button {
         width: 100% !important;
-        min-height: 44px !important;
+        min-height: 42px !important;
     }
 
     /* 輸入框行動端質感與 Focus 狀態 Glow 效果 */
@@ -115,7 +109,7 @@ st.markdown("""
         border: 1px solid rgba(56, 189, 248, 0.3) !important;
         border-radius: 10px !important;
         color: #F8FAFC !important;
-        padding: 10px 14px !important;
+        padding: 8px 12px !important;
         font-family: monospace !important;
         transition: all 0.25s ease !important;
     }
@@ -124,40 +118,34 @@ st.markdown("""
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.3) !important;
     }
 
-    /* 三大系統按鈕選項方格化卡片設計 */
+    /* 三大系統按鈕選項方格化卡片極簡化 */
     div[role="radiogroup"] {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 6px !important;
         width: 100%;
-        margin-top: 8px;
-        margin-bottom: 12px;
+        margin-top: 4px !important;
+        margin-bottom: 8px !important;
     }
     div[role="radiogroup"] > label {
         background: rgba(30, 41, 59, 0.65) !important;
         border: 1px solid rgba(56, 189, 248, 0.25) !important;
-        border-left: 5px solid #38BDF8 !important;
-        border-radius: 12px !important;
-        padding: 12px 16px !important;
+        border-left: 4px solid #38BDF8 !important;
+        border-radius: 10px !important;
+        padding: 8px 12px !important;
         margin: 0 !important;
         cursor: pointer !important;
         transition: all 0.2s ease-in-out !important;
         width: 100% !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-    div[role="radiogroup"] > label:hover {
-        background: rgba(30, 58, 138, 0.5) !important;
-        border-color: #38BDF8 !important;
-        transform: translateY(-1px);
     }
     div[role="radiogroup"] > label[data-checked="true"], div[role="radiogroup"] > label:has(input:checked) {
         background: rgba(30, 64, 175, 0.65) !important;
         border-color: #60A5FA !important;
         border-left-color: #60A5FA !important;
-        box-shadow: 0 0 14px rgba(96, 165, 250, 0.3);
+        box-shadow: 0 0 10px rgba(96, 165, 250, 0.25);
     }
     div[role="radiogroup"] > label p {
-        font-size: 14.5px !important;
+        font-size: 13.5px !important;
         font-weight: 700 !important;
         color: #F8FAFC !important;
     }
@@ -169,29 +157,41 @@ st.markdown("""
     }
 
     .online-dot {
-        width: 7px; height: 7px; background-color: #4ADE80; border-radius: 50%;
+        width: 6px; height: 6px; background-color: #4ADE80; border-radius: 50%;
         display: inline-block; animation: online-green-pulse 2.5s infinite ease-in-out;
-        box-shadow: 0 0 8px #4ADE80; margin: 0 6px; vertical-align: middle;
+        box-shadow: 0 0 8px #4ADE80; margin: 0 5px; vertical-align: middle;
     }
 
+    /* 手機極致壓縮版 Header */
+    .header-container { 
+        display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+        width: 100%; margin-bottom: 0.6rem !important; padding: 10px 10px !important;
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 14px;
+    }
+    .main-title { color: #F8FAFC !important; font-size: 16px !important; font-weight: 800; letter-spacing: 1.2px; margin: 0; font-family: monospace; }
+    .title-subtitle { color: #FFFFFF; font-size: 10px !important; font-weight: 700; letter-spacing: 0.8px; font-family: monospace; margin-top: 2px; }
+
+    /* 測試環境橫幅精簡 */
     .test-env-banner {
-        border: 1px solid rgba(245, 158, 11, 0.5); border-radius: 12px; padding: 8px 12px; margin-bottom: 1rem;
+        border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 5px 10px !important; margin-bottom: 0.6rem !important;
         text-align: center; background: rgba(39, 28, 12, 0.55); backdrop-filter: blur(12px); font-family: monospace;
     }
-    .test-env-title { color: #FDE68A; font-size: 12px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; }
-    .test-env-sub { color: #FCD34D; font-size: 9.5px; font-weight: 600; letter-spacing: 0.8px; opacity: 0.9; }
+    .test-env-title { color: #FDE68A; font-size: 11px !important; font-weight: 800; letter-spacing: 1px; }
+    .test-env-sub { color: #FCD34D; font-size: 9px !important; font-weight: 500; opacity: 0.85; }
 
     /* 管理員維護模式檢視提示橫幅 */
     .admin-maint-banner {
         border: 1px solid rgba(245, 158, 11, 0.6);
         border-left: 5px solid #F59E0B;
-        border-radius: 12px;
-        padding: 10px 14px;
-        margin-bottom: 1rem;
+        border-radius: 10px;
+        padding: 8px 12px;
+        margin-bottom: 0.8rem;
         background: rgba(245, 158, 11, 0.12);
         backdrop-filter: blur(8px);
         color: #FDE68A;
-        font-size: 12px;
+        font-size: 11.5px;
         font-weight: 700;
         letter-spacing: 0.5px;
     }
@@ -200,21 +200,21 @@ st.markdown("""
     .user-maint-banner {
         border: 1px solid rgba(245, 158, 11, 0.45);
         border-left: 5px solid #F59E0B;
-        border-radius: 14px;
-        padding: 18px 20px;
-        margin-top: 12px;
-        margin-bottom: 18px;
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-top: 10px;
+        margin-bottom: 14px;
         background: radial-gradient(circle at 50% 0%, rgba(69, 41, 10, 0.6) 0%, rgba(24, 18, 11, 0.75) 100%);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
-        box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
         text-align: center;
     }
     .user-maint-title {
         color: #FDE68A;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 800;
-        letter-spacing: 1.5px;
+        letter-spacing: 1.2px;
         font-family: monospace;
         text-transform: uppercase;
         margin-bottom: 4px;
@@ -229,58 +229,13 @@ st.markdown("""
         opacity: 0.85;
     }
 
-    .header-container { 
-        display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
-        width: 100%; margin-bottom: 1rem; padding: 14px 12px;
-        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-        background: rgba(15, 23, 42, 0.55);
-        border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 16px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    }
-    .main-title { color: #F8FAFC !important; font-size: 18px; font-weight: 800; letter-spacing: 1.5px; margin: 0; font-family: monospace; }
-    .title-subtitle { color: #FFFFFF; font-size: 11px; font-weight: 700; letter-spacing: 1px; font-family: monospace; margin-top: 4px; }
-
-    .footer-badge-container { display: flex; justify-content: center; align-items: center; width: 100%; margin-top: 2rem; margin-bottom: 1rem; }
-    .footer-badge-container div.stButton > button { 
-        background: rgba(15, 23, 42, 0.4) !important; backdrop-filter: blur(12px) !important;
-        border: 1px solid rgba(51, 65, 85, 0.5) !important; border-left: 2px solid #38BDF8 !important;
-        color: #94A3B8 !important; font-size: 9px !important; font-weight: 600 !important; letter-spacing: 1.5px !important; 
-        text-transform: uppercase !important; padding: 6px 14px !important; border-radius: 6px !important;
-        font-family: monospace !important; width: auto !important; margin: 0 auto !important; min-height: unset !important; transition: all 0.25s ease !important;
-    }
-
     .section-header-box { 
         background: rgba(30, 41, 59, 0.45); 
         backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid #3B82F6; border-radius: 14px; padding: 14px 16px; margin-top: 12px; margin-bottom: 14px; 
+        border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid #3B82F6; border-radius: 12px; padding: 10px 14px !important; margin-top: 8px !important; margin-bottom: 10px !important; 
     }
-    .section-title { color: #F8FAFC; font-size: 15px; font-weight: 700; margin: 0; }
-    .section-subtitle { color: #94A3B8; font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 3px; font-family: monospace; }
-
-    /* 行動端自適應資料狀態卡片 */
-    .mobile-status-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-top: 10px;
-        padding-top: 8px;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    .mobile-status-item {
-        font-size: 11px;
-        color: #94A3B8;
-        font-family: monospace;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: rgba(15, 23, 42, 0.35);
-        padding: 5px 10px;
-        border-radius: 6px;
-    }
-    .mobile-status-label {
-        color: #38BDF8;
-        font-weight: 700;
-    }
+    .section-title { color: #F8FAFC; font-size: 14px !important; font-weight: 700; margin: 0; }
+    .section-subtitle { color: #94A3B8; font-size: 9.5px !important; font-weight: 500; text-transform: uppercase; font-family: monospace; }
 
     /* 一體化卡片上半部主體 */
     .integrated-crew-box {
@@ -295,13 +250,13 @@ st.markdown("""
         border-top-right-radius: 12px;
         border-bottom-left-radius: 0px !important;
         border-bottom-right-radius: 0px !important;
-        padding: 14px 14px 10px 14px;
+        padding: 12px 12px 8px 12px;
         margin-bottom: 0px !important;
         box-shadow: 0 6px 20px rgba(0,0,0,0.25);
     }
 
     div.stButton > button, div.stFormSubmitButton > button { 
-        font-weight: 700 !important; padding: 0.5rem 1rem !important; border-radius: 0.5rem !important; 
+        font-weight: 700 !important; padding: 0.4rem 0.8rem !important; border-radius: 0.5rem !important; 
         background: rgba(30, 41, 59, 0.6) !important; 
         border: 1px solid rgba(255, 255, 255, 0.12) !important;
         color: #38BDF8 !important; width: 100% !important; 
@@ -982,26 +937,26 @@ tm_time = get_file_mtime_str(active_files["列車長"])
 ta_time = get_file_mtime_str(active_files["服勤員"])
 sched_range = get_schedule_range()
 
+# 方案一：折疊收納式（預設極致壓縮高度）
 st.markdown(f"""
-<div class="section-header-box" style="border-left-color: #60A5FA;">
-    <div class="section-title">[{current_unit_label}] 目前系統排班週期 & 資料狀態</div>
-    <div style="font-size: 17px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; margin-top: 4px;">
-        {sched_range if len(missing_files) < 3 else "資料庫異常：請洽管理員！"}
+<div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 !important;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="section-title" style="font-size: 13px !important;">[{current_unit_label}] 排班週期</span>
+        <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
+            {sched_range if len(missing_files) < 3 else "資料庫異常"}
+        </span>
     </div>
-    <div class="mobile-status-grid">
-        <div class="mobile-status-item">
-            <span class="mobile-status-label">駕駛</span>
-            <span>{td_time}</span>
+    <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
+        <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+            <span>點擊檢視各大表更新時間</span>
+            <span style="font-size: 9px; color: #64748B;">▼</span>
+        </summary>
+        <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1);">
+            <div style="display: flex; justify-content: space-between;"><span>駕駛 (TD)</span><span>{td_time}</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>列車長 (TM)</span><span>{tm_time}</span></div>
+            <div style="display: flex; justify-content: space-between;"><span>服勤員 (TA)</span><span>{ta_time}</span></div>
         </div>
-        <div class="mobile-status-item">
-            <span class="mobile-status-label">列車長</span>
-            <span>{tm_time}</span>
-        </div>
-        <div class="mobile-status-item">
-            <span class="mobile-status-label">服勤員</span>
-            <span>{ta_time}</span>
-        </div>
-    </div>
+    </details>
 </div>
 """, unsafe_allow_html=True)
 
@@ -1074,7 +1029,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                     【{current_unit_label}】換班選擇日期快篩系統進行維護中
                 </div>
                 <div class="user-maint-sub">
-                    當前模組正在進行資料維護與排班結構優化，暫不開放服務，請稍後再試。
+                    正在進行系統維護，暫不開放服務，請稍後再試。
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -1221,7 +1176,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                     【{current_unit_label}】換假選擇日期快篩系統進行維護中
                 </div>
                 <div class="user-maint-sub">
-                    當前模組正在進行資料維護與排班結構優化，暫不開放服務，請稍後再試。
+                    正在進行系統維護，暫不開放服務，請稍後再試。
                 </div>
             </div>
             """, unsafe_allow_html=True)
