@@ -345,6 +345,28 @@ st.markdown("""
         color: #38BDF8 !important; width: 100% !important; 
         transition: all 0.2s ease !important; letter-spacing: 0.5px; font-family: monospace;
     }
+
+    /* 管理員 Tab 樣式優化 */
+    div[data-baseweb="tab-list"] {
+        gap: 8px !important;
+        background: rgba(15, 23, 42, 0.5) !important;
+        padding: 6px !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(56, 189, 248, 0.2) !important;
+    }
+    button[data-baseweb="tab"] {
+        border-radius: 8px !important;
+        color: #94A3B8 !important;
+        font-weight: 700 !important;
+        font-size: 12.5px !important;
+        padding: 8px 16px !important;
+        background: transparent !important;
+    }
+    button[aria-selected="true"] {
+        background: rgba(56, 189, 248, 0.2) !important;
+        color: #38BDF8 !important;
+        border: 1px solid rgba(56, 189, 248, 0.4) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -734,6 +756,7 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
     return buf
 
+# --- 問題與建議線上回報彈窗 Modal（同時儲存同名 .txt 以供後台精確讀取文字） ---
 @st.dialog("系統問題與建議回報", width="small")
 def show_feedback_modal():
     current_unit = st.session_state.get("current_unit", "TTN")
@@ -751,11 +774,11 @@ def show_feedback_modal():
         if st.button("確認送出", key="submit_fb_btn", use_container_width=True):
             if fb_content.strip():
                 clean_content = fb_content.strip().replace("\n", " ↵ ")
+                now_stamp = datetime.now(TAIWAN_TZ).strftime('%Y%m%d_%H%M%S')
+                clean_user_id = str(current_user).split(" ")[0].replace("/", "_")
                 
                 img_log_str = ""
                 if uploaded_img is not None:
-                    now_stamp = datetime.now(TAIWAN_TZ).strftime('%Y%m%d_%H%M%S')
-                    clean_user_id = str(current_user).split(" ")[0].replace("/", "_")
                     ext = uploaded_img.name.split(".")[-1]
                     saved_filename = f"{now_stamp}_{current_unit}_{clean_user_id}.{ext}"
                     saved_path = os.path.join(FEEDBACK_IMG_DIR, saved_filename)
@@ -763,6 +786,11 @@ def show_feedback_modal():
                     with open(saved_path, "wb") as f:
                         f.write(uploaded_img.getvalue())
                     img_log_str = f" | 截圖檔名: {saved_filename}"
+
+                    txt_saved_filename = f"{now_stamp}_{current_unit}_{clean_user_id}.txt"
+                    txt_saved_path = os.path.join(FEEDBACK_IMG_DIR, txt_saved_filename)
+                    with open(txt_saved_path, "w", encoding="utf-8") as f_txt:
+                        f_txt.write(f"類別: {fb_type}\n回報者: {current_user}\n時間: {now_stamp}\n詳細說明: {clean_content}")
                 
                 log_activity(f"【問題回報】類別:{fb_type} | 內容:{clean_content}{img_log_str}")
                 st.success("反饋已成功送出！感謝您的協助。")
@@ -922,11 +950,8 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                     st.session_state["admin_logged_in"] = True
                     st.session_state["nav_mode"] = "admin_panel"
                     st.session_state["show_admin_login"] = False
-                    
-                    # 修正重點：解鎖後台時，更新頂部顯示的身分名稱
                     curr_op = st.session_state.get("user_input_field", "A")
                     st.session_state["current_user_id"] = f"ADMIN ({curr_op})"
-                    
                     log_activity("管理員登入後台")
                     st.rerun()
                 else: st.error("管理員密碼錯誤")
@@ -935,7 +960,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                 st.rerun()
     st.stop()
 
-# ==================== 管理員專用：Database 智慧控制台 ====================
+# ==================== 管理員專用：Database 智慧控制台 (Tab 極簡優化版) ====================
 if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("admin_logged_in", False):
     st.markdown("""
     <div class="section-header-box">
@@ -944,173 +969,204 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
     </div>
     """, unsafe_allow_html=True)
 
-    admin_target_unit = st.selectbox("選擇要維護的營運單位", ["TTN", "TTC", "TTS"], key="admin_target_unit_sel")
-    current_unit_files = UNITS[admin_target_unit]
-
-    col_ctrl1, col_ctrl2 = st.columns(2)
-    with col_ctrl1:
+    col_unit_sel, col_btn_home, col_btn_logout = st.columns([2, 1, 1])
+    with col_unit_sel:
+        admin_target_unit = st.selectbox("維護目標單位", ["TTN", "TTC", "TTS"], key="admin_target_unit_sel", label_visibility="collapsed")
+        current_unit_files = UNITS[admin_target_unit]
+    with col_btn_home:
         if st.button("返回一般系統首頁", key="admin_back_to_home_btn"):
             st.session_state["current_unit"] = admin_target_unit
             st.session_state["nav_mode"] = "home"
             st.rerun()
-    with col_ctrl2:
+    with col_btn_logout:
         if st.button("登出管理員身分", key="admin_logout_btn_top"):
             log_activity("管理員登出後台")
             st.session_state["admin_logged_in"] = False
             st.session_state["nav_mode"] = "home"
             st.rerun()
 
-    st.markdown("---")
+    # --- 三大管理分頁 ---
+    tab_status, tab_gallery, tab_logs = st.tabs([
+        "📊 數據與檔案維護", 
+        "💬 回報與截圖中心", 
+        "📜 系統操作日誌"
+    ])
 
-    st.subheader(f"【{admin_target_unit}】伺服器狀態 & Dashboard 數據")
-    m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        td_ok = os.path.exists(current_unit_files["駕駛"])
-        st.metric("駕駛大表 (TD)", "已就緒" if td_ok else "缺檔案", delta="正常" if td_ok else "缺失")
-    with m2:
-        tm_ok = os.path.exists(current_unit_files["列車長"])
-        st.metric("列車長大表 (TM)", "已就緒" if tm_ok else "缺檔案", delta="正常" if tm_ok else "缺失")
-    with m3:
-        ta_ok = os.path.exists(current_unit_files["服勤員"])
-        st.metric("服勤員大表 (TA)", "已就緒" if ta_ok else "缺檔案", delta="正常" if ta_ok else "缺失")
-    with m4:
-        log_cnt = 0
-        if os.path.exists(LOG_FILE):
-            with open(LOG_FILE, "r", encoding="utf-8") as f: log_cnt = len(f.readlines())
-        st.metric("系統日誌累計", f"{log_cnt} 筆", delta="Activity")
+    # ===== TAB 1: 數據與檔案維護 =====
+    with tab_status:
+        st.subheader(f"【{admin_target_unit}】伺服器狀態 & Dashboard 數據")
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            td_ok = os.path.exists(current_unit_files["駕駛"])
+            st.metric("駕駛大表 (TD)", "已就緒" if td_ok else "缺檔案", delta="正常" if td_ok else "缺失")
+        with m2:
+            tm_ok = os.path.exists(current_unit_files["列車長"])
+            st.metric("列車長大表 (TM)", "已就緒" if tm_ok else "缺檔案", delta="正常" if tm_ok else "缺失")
+        with m3:
+            ta_ok = os.path.exists(current_unit_files["服勤員"])
+            st.metric("服勤員大表 (TA)", "已就緒" if ta_ok else "缺檔案", delta="正常" if ta_ok else "缺失")
+        with m4:
+            log_cnt = 0
+            if os.path.exists(LOG_FILE):
+                with open(LOG_FILE, "r", encoding="utf-8") as f: log_cnt = len(f.readlines())
+            st.metric("系統日誌累計", f"{log_cnt} 筆", delta="Activity")
 
-    st.markdown("---")
-    st.subheader(f"各大系統模組維護開關控制（當前控制單位：{admin_target_unit}）")
+        st.markdown("---")
+        st.subheader(f"四大系統模組維護開關控制（當前控制單位：{admin_target_unit}）")
 
-    is_prod_maint = is_module_maintenance(admin_target_unit, "producer")
-    is_win_maint = is_module_maintenance(admin_target_unit, "window_filter")
-    is_ex_maint = is_module_maintenance(admin_target_unit, "exchange_filter")
+        is_prod_maint = is_module_maintenance(admin_target_unit, "producer")
+        is_win_maint = is_module_maintenance(admin_target_unit, "window_filter")
+        is_ex_maint = is_module_maintenance(admin_target_unit, "exchange_filter")
 
-    col_m1, col_m2, col_m3 = st.columns(3)
-    with col_m1:
-        new_prod = st.checkbox(
-            "【個人月班表圖檔】維護中",
-            value=is_prod_maint,
-            key=f"cb_{admin_target_unit}_producer"
-        )
-        if new_prod != is_prod_maint:
-            set_module_maintenance(admin_target_unit, "producer", new_prod)
-            log_activity(f"設定 [{admin_target_unit}] 個人月班表維護開關: {'開啟維護' if new_prod else '解除維護'}")
-            st.rerun()
+        col_m1, col_m2, col_m3 = st.columns(3)
+        with col_m1:
+            new_prod = st.checkbox("【個人月班表圖檔】維護中", value=is_prod_maint, key=f"cb_{admin_target_unit}_producer")
+            if new_prod != is_prod_maint:
+                set_module_maintenance(admin_target_unit, "producer", new_prod)
+                log_activity(f"設定 [{admin_target_unit}] 個人月班表維護開關: {'開啟維護' if new_prod else '解除維護'}")
+                st.rerun()
 
-    with col_m2:
-        new_win = st.checkbox(
-            "【換班選擇日期】維護中",
-            value=is_win_maint,
-            key=f"cb_{admin_target_unit}_window_filter"
-        )
-        if new_win != is_win_maint:
-            set_module_maintenance(admin_target_unit, "window_filter", new_win)
-            log_activity(f"設定 [{admin_target_unit}] 換班選擇日期維護開關: {'開啟維護' if new_win else '解除維護'}")
-            st.rerun()
+        with col_m2:
+            new_win = st.checkbox("【換班選擇日期】維護中", value=is_win_maint, key=f"cb_{admin_target_unit}_window_filter")
+            if new_win != is_win_maint:
+                set_module_maintenance(admin_target_unit, "window_filter", new_win)
+                log_activity(f"設定 [{admin_target_unit}] 換班選擇日期維護開關: {'開啟維護' if new_win else '解除維護'}")
+                st.rerun()
 
-    with col_m3:
-        new_ex = st.checkbox(
-            "【換假選擇日期】維護中",
-            value=is_ex_maint,
-            key=f"cb_{admin_target_unit}_exchange_filter"
-        )
-        if new_ex != is_ex_maint:
-            set_module_maintenance(admin_target_unit, "exchange_filter", new_ex)
-            log_activity(f"設定 [{admin_target_unit}] 換假選擇日期維護開關: {'開啟維護' if new_ex else '解除維護'}")
-            st.rerun()
+        with col_m3:
+            new_ex = st.checkbox("【換假選擇日期】維護中", value=is_ex_maint, key=f"cb_{admin_target_unit}_exchange_filter")
+            if new_ex != is_ex_maint:
+                set_module_maintenance(admin_target_unit, "exchange_filter", new_ex)
+                log_activity(f"設定 [{admin_target_unit}] 換假選擇日期維護開關: {'開啟維護' if new_ex else '解除維護'}")
+                st.rerun()
 
-    st.markdown("---")
-    st.subheader(f"【{admin_target_unit}】班表維護控制台")
-    selected_role = st.selectbox("選擇目前要維護的職位類別", ["駕駛", "列車長", "服勤員"], index=2, key="admin_role_select_box")
-    target_path = current_unit_files[selected_role]
+        st.markdown("---")
+        st.subheader(f"【{admin_target_unit}】班表維護控制台")
+        selected_role = st.selectbox("選擇目前要維護的職位類別", ["駕駛", "列車長", "服勤員"], index=2, key="admin_role_select_box")
+        target_path = current_unit_files[selected_role]
 
-    uploaded_file_update = st.file_uploader(f"上傳【{admin_target_unit} - {selected_role}】最新大表 (.xlsx)", type=["xlsx", "xls", "csv"], key=f"up_{admin_target_unit}_{selected_role}")
-    if uploaded_file_update is not None:
-        file_bytes = uploaded_file_update.getvalue()
-        current_hash = hashlib.md5(file_bytes).hexdigest()
-        hash_key = f"hash_{admin_target_unit}_{selected_role}"
+        uploaded_file_update = st.file_uploader(f"上傳【{admin_target_unit} - {selected_role}】最新大表 (.xlsx)", type=["xlsx", "xls", "csv"], key=f"up_{admin_target_unit}_{selected_role}")
+        if uploaded_file_update is not None:
+            file_bytes = uploaded_file_update.getvalue()
+            current_hash = hashlib.md5(file_bytes).hexdigest()
+            hash_key = f"hash_{admin_target_unit}_{selected_role}"
 
-        if st.session_state.get(hash_key) != current_hash:
-            try:
-                with open(target_path, "wb") as f: f.write(file_bytes)
-                st.session_state[hash_key] = current_hash
-                log_activity(f"上傳【{admin_target_unit} - {selected_role}】最新大表")
-                st.success("檔案上傳成功！")
-                time.sleep(0.5); st.rerun()
-            except Exception as e: st.error(f"寫入失敗: {e}")
+            if st.session_state.get(hash_key) != current_hash:
+                try:
+                    with open(target_path, "wb") as f: f.write(file_bytes)
+                    st.session_state[hash_key] = current_hash
+                    log_activity(f"上傳【{admin_target_unit} - {selected_role}】最新大表")
+                    st.success("檔案上傳成功！")
+                    time.sleep(0.5); st.rerun()
+                except Exception as e: st.error(f"寫入失敗: {e}")
 
-    st.markdown("---")
-    st.subheader("使用者問題與建議／截圖檢視專區 (Feedback Gallery)")
-    
-    saved_feedback_images = os.listdir(FEEDBACK_IMG_DIR) if os.path.exists(FEEDBACK_IMG_DIR) else []
-    saved_feedback_images = [img for img in saved_feedback_images if img.lower().endswith(('.png', '.jpg', '.jpeg'))]
-
-    if saved_feedback_images:
-        st.caption(f"目前共收集到 {len(saved_feedback_images)} 張問題截圖（最新在前）")
-        sorted_imgs = sorted(saved_feedback_images, reverse=True)
+    # ===== TAB 2: 問題與建議回報專區 (強化：顯示問題文字 + 一鍵清理) =====
+    with tab_gallery:
+        st.subheader("使用者問題與建議／截圖檢視專區 (Feedback Gallery)")
         
-        gallery_col1, gallery_col2 = st.columns(2)
-        for idx, img_filename in enumerate(sorted_imgs):
-            col_target = gallery_col1 if idx % 2 == 0 else gallery_col2
-            img_path = os.path.join(FEEDBACK_IMG_DIR, img_filename)
+        saved_feedback_images = os.listdir(FEEDBACK_IMG_DIR) if os.path.exists(FEEDBACK_IMG_DIR) else []
+        saved_feedback_images = [img for img in saved_feedback_images if img.lower().endswith(('.png', '.jpg', '.jpeg'))]
+
+        if saved_feedback_images:
+            st.caption(f"目前共收集到 {len(saved_feedback_images)} 筆問題反饋（最新在前）")
+            sorted_imgs = sorted(saved_feedback_images, reverse=True)
             
-            with col_target:
-                parts = img_filename.split("_")
-                img_time_str = parts[0] if len(parts) > 0 else "未知時間"
-                img_unit_str = parts[2] if len(parts) > 2 else "通用"
-                img_user_str = parts[3].split(".")[0] if len(parts) > 3 else "匿名"
-
-                st.markdown(f"""
-                <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 10px; margin-bottom: 12px;">
-                    <div style="font-size: 12px; font-weight: 800; color: #38BDF8; font-family: monospace;">
-                        [{img_unit_str}] 回報者: {img_user_str}
-                    </div>
-                    <div style="font-size: 10px; color: #94A3B8; font-family: monospace; margin-bottom: 6px;">
-                        檔名: {img_filename}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            gallery_col1, gallery_col2 = st.columns(2)
+            for idx, img_filename in enumerate(sorted_imgs):
+                col_target = gallery_col1 if idx % 2 == 0 else gallery_col2
+                img_path = os.path.join(FEEDBACK_IMG_DIR, img_filename)
                 
-                st.image(img_path, use_container_width=True)
+                # 尋找是否有同名的 .txt 文字說明檔
+                base_name = os.path.splitext(img_filename)[0]
+                txt_path = os.path.join(FEEDBACK_IMG_DIR, f"{base_name}.txt")
+                txt_details = "尚無文字詳細描述紀錄"
+                if os.path.exists(txt_path):
+                    try:
+                        with open(txt_path, "r", encoding="utf-8") as f_txt:
+                            txt_details = f_txt.read()
+                    except: pass
                 
-                with open(img_path, "rb") as file_data:
-                    st.download_button(
-                        f"下載圖片檔 ({img_filename})",
-                        data=file_data,
-                        file_name=img_filename,
-                        mime="image/png",
-                        key=f"dl_fb_img_{idx}"
-                    )
-    else:
-        st.info("尚無任何組員上傳問題截圖")
+                with col_target:
+                    parts = img_filename.split("_")
+                    img_unit_str = parts[2] if len(parts) > 2 else "通用"
+                    img_user_str = parts[3].split(".")[0] if len(parts) > 3 else "匿名"
 
-    st.markdown("---")
-    st.subheader("系統操作活動紀錄日誌 (Activity Log)")
-    col_log1, col_log2 = st.columns([1, 3])
-    with col_log1:
-        log_filter_keyword = st.text_input("搜尋日誌關鍵字", placeholder="例如: 員編 / 換班 / 問題回報")
-    with col_log2:
-        st.write("")
-        if st.button("清空歷史日誌"):
-            if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
-            st.rerun()
+                    st.markdown(f"""
+                    <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                        <div style="font-size: 13px; font-weight: 800; color: #38BDF8; font-family: monospace;">
+                            [{img_unit_str}] 回報者: {img_user_str}
+                        </div>
+                        <div style="font-size: 11.5px; color: #F8FAFC; background: rgba(15, 23, 42, 0.6); padding: 8px; border-radius: 6px; margin: 6px 0; font-family: monospace; white-space: pre-wrap;">
+                            {txt_details}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.image(img_path, use_container_width=True)
+                    
+                    c_btn1, c_btn2 = st.columns(2)
+                    with c_btn1:
+                        with open(img_path, "rb") as file_data:
+                            st.download_button(
+                                "下載截圖",
+                                data=file_data,
+                                file_name=img_filename,
+                                mime="image/png",
+                                key=f"dl_fb_img_{idx}"
+                            )
+                    with c_btn2:
+                        if st.button("標示已處理 (刪除)", key=f"del_fb_img_{idx}"):
+                            try:
+                                if os.path.exists(img_path): os.remove(img_path)
+                                if os.path.exists(txt_path): os.remove(txt_path)
+                                log_activity(f"管理員刪除問題反饋紀錄: {img_filename}")
+                                st.success("已移除該筆紀錄")
+                                time.sleep(0.5)
+                                st.rerun()
+                            except Exception as e: st.error(f"刪除失敗: {e}")
+        else:
+            st.info("尚無任何組員上傳問題截圖或建議")
 
-    if os.path.exists(LOG_FILE):
-        with open(LOG_FILE, "r", encoding="utf-8") as f: logs = f.readlines()
-        parsed_logs = []
-        for line in reversed(logs[-50:]):
-            if log_filter_keyword and log_filter_keyword.lower() not in line.lower(): continue
-            parts = [p.strip() for p in line.split("|")]
-            if len(parts) >= 5:
-                parsed_logs.append({
-                    "時間": parts[0], "單位": parts[1].replace("單位: ", ""),
-                    "操作者": parts[2].replace("操作者員編: ", ""),
-                    "裝置": parts[3].replace("裝置: ", ""), "動作": " | ".join(parts[4:]).replace("動作: ", "")
-                })
-        if parsed_logs: st.dataframe(pd.DataFrame(parsed_logs), use_container_width=True, hide_index=True)
-        else: st.info("查無符合過濾條件的日誌")
-    else: st.info("尚無任何紀錄")
+    # ===== TAB 3: 系統操作日誌 (強化：快捷過濾標籤) =====
+    with tab_logs:
+        st.subheader("系統操作活動紀錄日誌 (Activity Log)")
+        
+        st.write("**快速篩選標籤**")
+        flg1, flg2, flg3, flg4 = st.columns(4)
+        with flg1:
+            if st.button("全部顯示", key="log_flg_all"): st.session_state["admin_log_kw"] = ""
+        with flg2:
+            if st.button("僅看【問題回報】", key="log_flg_fb"): st.session_state["admin_log_kw"] = "問題回報"
+        with flg3:
+            if st.button("僅看【VIP/登入】", key="log_flg_login"): st.session_state["admin_log_kw"] = "登入"
+        with flg4:
+            if st.button("僅看【檔案上傳】", key="log_flg_up"): st.session_state["admin_log_kw"] = "上傳"
+
+        curr_kw = st.session_state.get("admin_log_kw", "")
+        col_log1, col_log2 = st.columns([2, 1])
+        with col_log1:
+            log_filter_keyword = st.text_input("搜尋關鍵字", value=curr_kw, placeholder="例如: 員編 / 換班 / 問題回報", key="admin_log_search_input")
+        with col_log2:
+            st.write("")
+            if st.button("清空歷史日誌", key="admin_clear_log_btn"):
+                if os.path.exists(LOG_FILE): os.remove(LOG_FILE)
+                st.rerun()
+
+        if os.path.exists(LOG_FILE):
+            with open(LOG_FILE, "r", encoding="utf-8") as f: logs = f.readlines()
+            parsed_logs = []
+            for line in reversed(logs[-80:]):
+                if log_filter_keyword and log_filter_keyword.lower() not in line.lower(): continue
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) >= 5:
+                    parsed_logs.append({
+                        "時間": parts[0], "單位": parts[1].replace("單位: ", ""),
+                        "操作者": parts[2].replace("操作者員編: ", ""),
+                        "裝置": parts[3].replace("裝置: ", ""), "動作": " | ".join(parts[4:]).replace("動作: ", "")
+                    })
+            if parsed_logs: st.dataframe(pd.DataFrame(parsed_logs), use_container_width=True, hide_index=True)
+            else: st.info("查無符合過濾條件的日誌")
+        else: st.info("尚無任何紀錄")
 
     st.stop()
 
