@@ -1160,13 +1160,28 @@ if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get("a
         m1, m2, m3, m4 = st.columns(4)
         with m1:
             td_ok = os.path.exists(current_unit_files["駕駛"])
-            st.metric("駕駛大表 (TD)", "已就緒" if td_ok else "缺檔案", delta="正常" if td_ok else "缺失")
+            st.metric(
+                "駕駛大表 (TD)", 
+                "已就緒" if td_ok else "缺檔案", 
+                delta="正常" if td_ok else "- 缺失",
+                delta_color="normal"
+            )
         with m2:
             tm_ok = os.path.exists(current_unit_files["列車長"])
-            st.metric("列車長大表 (TM)", "已就緒" if tm_ok else "缺檔案", delta="正常" if tm_ok else "缺失")
+            st.metric(
+                "列車長大表 (TM)", 
+                "已就緒" if tm_ok else "缺檔案", 
+                delta="正常" if tm_ok else "- 缺失",
+                delta_color="normal"
+            )
         with m3:
             ta_ok = os.path.exists(current_unit_files["服勤員"])
-            st.metric("服勤員大表 (TA)", "已就緒" if ta_ok else "缺檔案", delta="正常" if ta_ok else "缺失")
+            st.metric(
+                "服勤員大表 (TA)", 
+                "已就緒" if ta_ok else "缺檔案", 
+                delta="正常" if ta_ok else "- 缺失",
+                delta_color="normal"
+            )
         with m4:
             log_cnt = 0
             if os.path.exists(LOG_FILE):
