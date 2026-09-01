@@ -74,6 +74,32 @@ def is_module_maintenance(unit, module_key):
     flag_path = get_maintenance_flag_path(unit, module_key)
     return os.path.exists(flag_path)
 
+# --- 姓名顯示邏輯（去除姓氏，兩字姓名顯示全名） ---
+def format_display_name(name):
+    if not name or str(name).strip().upper() in ["NAN", "NONE", ""]:
+        return ""
+    clean_name = str(name).strip()
+    if len(clean_name) <= 2:
+        return clean_name
+    return clean_name[1:]
+
+def get_employee_name(unit_key, emp_input):
+    input_clean = str(emp_input).strip().upper()
+    unit_files = UNITS.get(unit_key, UNITS["TTN"])
+    for role in ["駕駛", "列車長", "服勤員"]:
+        path = unit_files[role]
+        if os.path.exists(path):
+            try:
+                df = safe_read_excel(path, header=3)
+                df.columns = [str(c).strip() for c in df.columns]
+                for _, row in df.iterrows():
+                    emp_id = str(row.iloc[0]).strip().upper()
+                    emp_name = str(row.iloc[1]).strip().upper()
+                    if emp_id == input_clean or emp_name == input_clean:
+                        return str(row.iloc[1]).strip()
+            except: pass
+    return ""
+
 # --- 升級版毛玻璃與極致行動端空間利用 (Mobile Compact UX Upgrade & Input Border Fix) ---
 st.markdown("""
 <style>
@@ -722,7 +748,12 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     st.session_state["authenticated"] = True
                     st.session_state["admin_logged_in"] = False 
                     st.session_state["current_unit"] = selected_unit
-                    st.session_state["current_user_id"] = f"VIP_USER ({clean_emp if clean_emp != 'A' else '全域通行'})"
+                    
+                    emp_real_name = get_employee_name(selected_unit, clean_emp)
+                    disp_name = format_display_name(emp_real_name)
+                    name_suffix = f" {disp_name}" if disp_name else ""
+                    st.session_state["current_user_id"] = f"VIP_USER ({clean_emp}{name_suffix} 全域通行)" if clean_emp == 'A' else f"VIP_USER ({clean_emp}{name_suffix})"
+                    
                     log_activity("VIP 身分登入系統")
                     st.rerun()
                 elif entered_key == ADMIN_PASSWORD:
@@ -737,7 +768,12 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                         st.session_state["authenticated"] = True
                         st.session_state["admin_logged_in"] = False
                         st.session_state["current_unit"] = selected_unit
-                        st.session_state["current_user_id"] = clean_emp
+                        
+                        # 抓取對應人員姓名並進行去姓處理
+                        emp_real_name = get_employee_name(selected_unit, clean_emp)
+                        disp_name = format_display_name(emp_real_name)
+                        st.session_state["current_user_id"] = f"{clean_emp} {disp_name}".strip()
+                        
                         log_activity("使用者登入系統")
                         st.rerun()
                     else: st.error("非所屬單位組員，或輸入不存在的編號，請確認員編。")
