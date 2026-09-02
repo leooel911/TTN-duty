@@ -159,13 +159,16 @@ def render_user_home():
             if date_cols:
                 target_date = st.selectbox("選擇換班日期", date_cols, key="win_target_date")
                 
+                # 依職位動態決定早班與全時段之起始報到時間（駕駛早班 03:00 起算，其餘職位 05:00）
+                morn_start_time = "03:00" if selected_role == "駕駛" else "05:00"
+
                 st.write("**快捷選擇時段：**")
                 q_col1, q_col2, q_col3, q_col4 = st.columns(4)
                 if q_col1.button("全時段", key="btn_win_all", use_container_width=True):
-                    st.session_state["win_time_slider"] = ("04:00", "18:00")
+                    st.session_state["win_time_slider"] = (morn_start_time, "18:00")
                     st.rerun()
                 if q_col2.button("早班", key="btn_win_morn", use_container_width=True):
-                    st.session_state["win_time_slider"] = ("05:00", "10:00")
+                    st.session_state["win_time_slider"] = (morn_start_time, "10:00")
                     st.rerun()
                 if q_col3.button("中班", key="btn_win_noon", use_container_width=True):
                     st.session_state["win_time_slider"] = ("10:00", "13:00")
@@ -173,8 +176,9 @@ def render_user_home():
                 if q_col4.button("晚班", key="btn_win_night", use_container_width=True):
                     st.session_state["win_time_slider"] = ("13:00", "18:00")
                     st.rerun()                
+
                 TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
-                default_slider = st.session_state.get("win_time_slider", ("05:00", "08:00"))
+                default_slider = st.session_state.get("win_time_slider", (morn_start_time, "10:00"))
                 min_time, max_time_sel = st.select_slider("Sign-In 時段區間", options=TIME_OPTIONS, value=default_slider, key="win_time_slider")
 
                 filter_col1, filter_col2 = st.columns(2)
