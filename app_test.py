@@ -727,11 +727,14 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
             if dt in active_transport:
                 draw_bold_text(ax, x + CW - 0.004, ry + RH - 0.004, active_transport[dt], ha="right", va="top", color="#7C3AED", fontproperties=fp(10.5))
 
+            # --- 【右下角】繪製預估總工時 ---
             if d.get("hours"): 
                 draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"], tr, note) else "#000000", fontproperties=fp(11.5))
-                do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l or "OGC" in l), "")
-                if do_match and do_match != tr:
-                    draw_bold_text(ax, x + CW - 0.004, ry + 0.026, do_match, ha="right", va="bottom", color=C_DO_TXT, fontproperties=fp(10.5))
+            
+            # --- 【左下角】精準定位繪製 DO2W / D2W 等國定/輪休出勤標籤 ---
+            do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l or "OGC" in l), "")
+            if do_match and do_match != tr and not is_pure_hol:
+                draw_bold_text(ax, x + 0.005, ry + 0.003, do_match, ha="left", va="bottom", color=C_DO_TXT, fontproperties=fp(11.5))
 
             cx = x + CW / 2
             if is_pure_hol: 
