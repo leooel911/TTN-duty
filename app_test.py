@@ -768,6 +768,32 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     plt.tight_layout(pad=0); plt.savefig(buf, format="png", dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.1); buf.seek(0); plt.close()
     return buf
 
+# --- 系統轉移正式網址導引彈窗 Modal ---
+@st.dialog("🚀 系統移轉重要公告", width="medium")
+def show_migration_modal():
+    st.markdown("""
+    <div style="text-align: center; padding: 10px 0;">
+        <div style="font-size: 20px; font-weight: 800; color: #F59E0B; margin-bottom: 10px; font-family: monospace;">
+            ⚠️ 本站為測試/舊版環境
+        </div>
+        <div style="font-size: 14px; color: #CBD5E1; line-height: 1.6; margin-bottom: 16px;">
+            TTN 排班系統已全面升級並移至<b>正式版伺服器</b>！<br>
+            為了保障您的班表資料精準度與最新功能體驗，請點擊下方按鈕轉移至正式網域。
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.link_button(
+        "🔗 點此立即前往全新正式版系統",
+        "https://ttn-duty-67oojxou2eeubgzyp5do2q.streamlit.app/#77159391",
+        use_container_width=True
+    )
+    
+    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+    
+    if st.button("繼續留在測試版（僅供測試）", key="btn_stay_test_env", use_container_width=True):
+        st.rerun()
+
 # --- 彈窗燈箱：獨立檢視截圖附件 ---
 @st.dialog("檢視回報附件截圖", width="medium")
 def view_feedback_img_modal(img_path, ticket_id, user_info):
@@ -933,6 +959,11 @@ def show_crew_schedule_modal(emp_input, unit_label, badge_title="Inspector | C.L
             st.download_button("下載此組員月班表圖檔", data=buf, file_name=f"{unit_label}_班表_{emp_name}.png", mime="image/png", key=f"modal_dl_btn_{emp_id}")
     except Exception as e:
         st.error(f"載入完整班表時發生錯誤: {e}")
+
+# 【核心功能】：使用者開網頁時自動跳出正式版轉移公告
+if "shown_migration_modal" not in st.session_state:
+    st.session_state["shown_migration_modal"] = True
+    show_migration_modal()
 
 if st.session_state.get("inspect_emp_target") is not None:
     target_emp = st.session_state["inspect_emp_target"]
