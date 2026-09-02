@@ -6,7 +6,7 @@ import io
 import pandas as pd
 from datetime import date, timedelta, datetime, timezone
 import matplotlib
-import matplotlib.pyplot as plt
+import matplotlib.plt as plt
 import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 import time
@@ -778,7 +778,7 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     return buf
 
 # --- 系統轉移正式網址導引彈窗 Modal ---
-@st.dialog(" 系統移轉重要公告", width="medium")
+@st.dialog("系統移轉重要公告", width="medium")
 def show_migration_modal():
     st.markdown("""
     <div style="text-align: center; padding: 10px 0;">
@@ -786,14 +786,14 @@ def show_migration_modal():
             ⚠️ 本站為Alpha測試版環境 ⚠️
         </div>
         <div style="font-size: 14px; color: #CBD5E1; line-height: 1.6; margin-bottom: 16px;">
-             系統已全面升級並移至<b>正式版伺服器</b>！<br>
-             為了保障您的班表資料精準度與最新功能體驗，請點擊下方按鈕轉移至正式網域。
+            系統已全面升級並移至<b>正式版伺服器</b>！<br>
+            為了保障您的班表資料精準度與最新功能體驗，請點擊下方按鈕轉移至正式網域。
         </div>
     </div>
     """, unsafe_allow_html=True)
     
     st.link_button(
-        " 點此立即前往全新正式版系統",
+        "點此立即前往全新正式版系統",
         "https://ttn-duty-67oojxou2eeubgzyp5do2q.streamlit.app/#77159391",
         use_container_width=True
     )
@@ -1791,7 +1791,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                 if c_i == target_col_idx:
                                     is_off = False  # 換假後補上班
                                 elif c_i == return_col_idx:
-                                    is_off = True   # 換假後改休假
+                                    is_off = True    # 換假後改休假
                                 else:
                                     is_off = is_cell_off_day(row.iloc[c_i])
 
