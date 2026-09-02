@@ -382,21 +382,21 @@ def render_user_home():
                                 parsed_target = parse_cell(row.iloc[target_col_idx])
                                 raw_target_str = str(row.iloc[target_col_idx]).strip()
                                 
-                                # 想休日判斷：必須為純休假
+                                # 想休日：對方必須是純休假 (is_cell_off_day == True)
                                 is_target_do = is_cell_off_day(row.iloc[target_col_idx])
                                 if not is_target_do: continue
 
                                 parsed_return = parse_cell(row.iloc[return_col_idx])
                                 raw_return_str = str(row.iloc[return_col_idx]).strip()
                                 
-                                # 還休日判斷：必須為上班日（含有班別/含 DO2W/DO3W 出勤）
+                                # 還休日：對方必須是上班日 (is_cell_off_day == False，包含帶有 DO2W/DO3W 但有排班者)
                                 is_return_do = is_cell_off_day(row.iloc[return_col_idx])
                                 if is_return_do: continue
 
                                 is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
                                 is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
 
-                                # 提取還休日特有的輪休/國定出勤標籤（如 DO2W, DO3W）
+                                # 抓取還休日上的出勤標籤（如 DO2W / DO3W）
                                 return_do_tag = next((l.strip() for l in raw_return_str.split('\n') if any(k in l.upper() for k in ["DO", "D2W", "PAY", "FAC"]) and l.strip() != parsed_return["train"]), "")
 
                                 max_consecutive_streak = calculate_consecutive_work_days(row, target_col_idx, return_col_idx)
