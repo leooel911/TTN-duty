@@ -111,7 +111,7 @@ def render_user_home():
                 except Exception as e:
                     st.error(f"錯誤：{e}")
 
-    elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
+    elif app_mode == "換班｜選擇換班日期":
         if is_module_maintenance(current_unit_label, "window_filter"):
             if not is_admin_user:
                 st.markdown(f"""
@@ -261,7 +261,7 @@ def render_user_home():
                                     show_crew_schedule_modal(r['員編'], current_unit_label, badge_title="Window Filter | C.L.F")
                     else: st.info("在指定條件內，找不到符合的人員")
 
-    elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
+    elif app_mode == "換假｜選擇換假日期":
         if is_module_maintenance(current_unit_label, "exchange_filter"):
             if not is_admin_user:
                 st.markdown(f"""
