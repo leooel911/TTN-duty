@@ -62,29 +62,34 @@ C_TOWN_TXT = "#000000"
 
 CUSTOM_CSS = """
 <style>
+    /* 全域隱藏預設頁眉頁尾 */
     header[data-testid="stHeader"] { background: transparent !important; }
     div[data-testid="stToolbar"] { visibility: hidden !important; }
     footer { visibility: hidden !important; }
 
+    /* 背景質感：深藍黑極簡漸層 */
     .stApp { 
         background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, #020617 100%) !important; 
         color: #F8FAFC !important; 
         background-attachment: fixed !important;
     }
     
+    /* 容器邊距（針對手機與桌面板分流優化） */
     @media (min-width: 1024px) {
         .block-container { padding: 2.5rem 1.5rem 2.5rem 1.5rem !important; max-width: 1050px !important; }
     }
     @media (max-width: 1023px) {
-        .block-container { padding: 0.8rem 0.6rem 1.5rem 0.6rem !important; max-width: 100% !important; }
+        .block-container { padding: 1rem 0.75rem 2rem 0.75rem !important; max-width: 100% !important; }
     }
 
+    /* 按鈕通用寬度設定 */
     div[data-testid="stButton"], div.stButton { width: 100% !important; }
     div[data-testid="stButton"] > button, div.stButton > button {
         width: 100% !important;
         min-height: 42px !important;
     }
 
+    /* 輸入框美化 */
     div[data-testid="stTextInput"] div[data-baseweb="input"],
     div[data-testid="stTextArea"] div[data-baseweb="textarea"] {
         background: rgba(15, 23, 42, 0.75) !important;
@@ -108,7 +113,10 @@ CUSTOM_CSS = """
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
     }
 
-    /* 下拉選單美化 */
+    /* 下拉選單 (stSelectbox) 滿版美化 */
+    div[data-baseweb="select"] {
+        width: 100% !important;
+    }
     div[data-baseweb="select"] > div {
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid rgba(56, 189, 248, 0.3) !important;
@@ -118,39 +126,77 @@ CUSTOM_CSS = """
         border-color: #38BDF8 !important;
     }
 
-    /* === 模式選擇按鈕 (st.radio) 恢復原版結構並放大文字/內距 === */
-    div[role="radiogroup"] {
+    /* ========================================================= */
+    /* === 重磅修復：模式選擇按鈕 (st.radio) 手機版 100% 滿版專業卡片 === */
+    /* ========================================================= */
+    
+    /* 1. 外層容器強制滿版，消除縮寬現象 */
+    div[data-testid="stRadio"],
+    div[data-testid="stRadio"] > div,
+    div[data-testid="stRadio"] div[role="radiogroup"] {
+        width: 100% !important;
+        max-width: 100% !important;
         display: flex !important;
         flex-direction: column !important;
+        align-items: stretch !important;
         gap: 8px !important;
-        width: 100% !important;
-        margin-top: 6px !important;
-        margin-bottom: 12px !important;
     }
+
+    /* 2. 隱藏預設單選圓點 */
+    div[role="radiogroup"] label div[data-testid="stRadioButtonCustomIcon"],
+    div[role="radiogroup"] label input,
+    div[role="radiogroup"] label > div:first-child {
+        display: none !important;
+    }
+
+    /* 3. 卡片外框設定：滿版、平滑圓角、深色微光 */
     div[role="radiogroup"] > label {
-        background: rgba(30, 41, 59, 0.65) !important;
-        border: 1px solid rgba(56, 189, 248, 0.25) !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        background: rgba(30, 41, 59, 0.7) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
         border-left: 4px solid #38BDF8 !important;
-        border-radius: 10px !important;
-        padding: 10px 16px !important;  /* 內距加大，按鈕更高大氣 */
+        border-radius: 8px !important;
+        padding: 12px 16px !important;
         margin: 0 !important;
         cursor: pointer !important;
         transition: all 0.2s ease-in-out !important;
-        width: 100% !important;
     }
+
+    /* 4. 解決文字被截斷問題：允許折行與完全顯示 */
+    div[role="radiogroup"] label p {
+        font-size: 14.5px !important;
+        font-weight: 700 !important;
+        color: #E2E8F0 !important;
+        margin: 0 !important;
+        white-space: normal !important;      /* 關鍵：禁止文字自動被省略號截斷 */
+        text-overflow: clip !important;       /* 關鍵：徹底關閉截斷 */
+        word-break: break-word !important;
+        line-height: 1.4 !important;
+    }
+
+    /* 5. Hover 懸停效果 */
+    div[role="radiogroup"] > label:hover {
+        background: rgba(51, 65, 85, 0.8) !important;
+        border-color: rgba(56, 189, 248, 0.4) !important;
+    }
+
+    /* 6. 選取狀態 (Active) 藍光高亮卡片 */
     div[role="radiogroup"] > label[data-checked="true"], 
     div[role="radiogroup"] > label:has(input:checked) {
-        background: rgba(30, 64, 175, 0.65) !important;
+        background: rgba(30, 64, 175, 0.5) !important;
         border-color: #60A5FA !important;
         border-left-color: #60A5FA !important;
-        box-shadow: 0 0 12px rgba(96, 165, 250, 0.3) !important;
+        box-shadow: 0 0 12px rgba(96, 165, 250, 0.25) !important;
     }
-    div[role="radiogroup"] > label p {
-        font-size: 15px !important;      /* 文字由原本的 13.5px 放大至 15px */
-        font-weight: 700 !important;
-        color: #F8FAFC !important;
-        margin: 0 !important;
+
+    div[role="radiogroup"] > label[data-checked="true"] p,
+    div[role="radiogroup"] > label:has(input:checked) p {
+        color: #FFFFFF !important;
+        font-weight: 800 !important;
     }
+
+    /* ========================================================= */
 
     @keyframes online-green-pulse {
         0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6); }
@@ -166,13 +212,13 @@ CUSTOM_CSS = """
 
     .header-container { 
         display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
-        width: 100%; margin-bottom: 0.6rem !important; padding: 10px 10px !important;
+        width: 100%; margin-bottom: 0.6rem !important; padding: 12px 10px !important;
         backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
         background: rgba(15, 23, 42, 0.55);
         border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 14px;
     }
     .main-title { color: #F8FAFC !important; font-size: 16px !important; font-weight: 800; letter-spacing: 1.2px; margin: 0; font-family: monospace; }
-    .title-subtitle { color: #FFFFFF; font-size: 10px !important; font-weight: 700; letter-spacing: 0.8px; font-family: monospace; margin-top: 2px; }
+    .title-subtitle { color: #94A3B8; font-size: 10px !important; font-weight: 600; letter-spacing: 0.8px; font-family: monospace; margin-top: 3px; }
 
     .test-env-banner {
         border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 6px 10px !important; margin-bottom: 0.8rem !important;
