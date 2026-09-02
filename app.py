@@ -101,7 +101,9 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     log_activity("管理員登入後台")
                     st.rerun()
                 elif entered_key == CREW_ACCESS_PASSWORD:
-                    if verify_crew_membership(selected_unit, clean_emp):
+                    if clean_emp not in PILOT_ALLOW_LIST:
+                        st.error("您的員編尚未開放第一階段試用權限，請洽管理員。")
+                    elif verify_crew_membership(selected_unit, clean_emp):
                         st.session_state["authenticated"] = True
                         st.session_state["admin_logged_in"] = False
                         st.session_state["nav_mode"] = "home"
@@ -113,7 +115,8 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                         
                         log_activity("使用者登入系統")
                         st.rerun()
-                    else: st.error("非所屬單位組員，或輸入不存在的編號，請確認員編。")
+                    else:
+                        st.error("非所屬單位組員，或輸入不存在的編號，請確認員編。")
                 else: st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
@@ -135,7 +138,7 @@ st.markdown(f"""
 st.markdown("""
 <div class="test-env-banner">
     <div class="test-env-title">測試環境運行中（TEST ENVIRONMENT）</div>
-    <div class="test-env-sub">目前為內部測試階段｜本頁底部可聯繫團隊</div>
+    <div class="test-env-sub">目前為內部測試階段｜本頁尾端可聯繫團隊</div>
 </div>
 """, unsafe_allow_html=True)
 
