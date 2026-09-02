@@ -47,25 +47,26 @@ def render_user_home():
         </details>
     </div>
     """, unsafe_allow_html=True)
-     # 上方自訂標題文字與樣式
-        st.markdown("<div style='font-size: 13px; font-weight: 700; color: #94A3B8; margin-bottom: 8px;'>選擇系統操作模式</div>", unsafe_allow_html=True)
 
-        app_mode = st.radio(
-            "系統操作模式選擇",
-            [
-                "繪製個人月班表圖檔",
-                "換班｜選擇換班日期",
-                "換假｜選擇換假日期"
-            ],
-            horizontal=False,
-            label_visibility="collapsed"
-        )
+    # 上方自訂標題文字與樣式
+    st.markdown("<div style='font-size: 13px; font-weight: 700; color: #94A3B8; margin-bottom: 8px;'>選擇系統操作模式</div>", unsafe_allow_html=True)
 
-        if "last_app_mode" not in st.session_state: st.session_state["last_app_mode"] = app_mode
-        if st.session_state["last_app_mode"] != app_mode:
-            st.session_state["last_app_mode"] = app_mode
+    app_mode = st.radio(
+        "系統操作模式選擇",
+        [
+            "繪製個人月班表圖檔",
+            "換班｜選擇換班日期",
+            "換假｜選擇換假日期"
+        ],
+        horizontal=False,
+        label_visibility="collapsed"
+    )
 
-        st.markdown("---")
+    if "last_app_mode" not in st.session_state: st.session_state["last_app_mode"] = app_mode
+    if st.session_state["last_app_mode"] != app_mode:
+        st.session_state["last_app_mode"] = app_mode
+
+    st.markdown("---")
 
     is_admin_user = st.session_state.get("admin_logged_in", False)
 
@@ -157,7 +158,7 @@ def render_user_home():
 
             if date_cols:
                 target_date = st.selectbox("選擇換班日期", date_cols, key="win_target_date")
-               
+                
                 st.write("**快捷選擇時段：**")
                 q_col1, q_col2, q_col3, q_col4 = st.columns(4)
                 if q_col1.button("全時段", key="btn_win_all", use_container_width=True):
@@ -171,7 +172,7 @@ def render_user_home():
                     st.rerun()
                 if q_col4.button("晚班", key="btn_win_night", use_container_width=True):
                     st.session_state["win_time_slider"] = ("13:00", "18:00")
-                    st.rerun()               
+                    st.rerun()                
                 TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
                 default_slider = st.session_state.get("win_time_slider", ("05:00", "08:00"))
                 min_time, max_time_sel = st.select_slider("Sign-In 時段區間", options=TIME_OPTIONS, value=default_slider, key="win_time_slider")
