@@ -48,29 +48,24 @@ def render_user_home():
     </div>
     """, unsafe_allow_html=True)
      # 上方自訂標題文字與樣式
-    st.markdown("<div style='font-size: 13px; font-weight: 700; color: #94A3B8; margin-bottom: 8px; letter-spacing: 0.5px;'>選擇系統操作模式</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size: 13px; font-weight: 700; color: #94A3B8; margin-bottom: 8px;'>選擇系統操作模式</div>", unsafe_allow_html=True)
 
-    # 採用無圓點的 Segmented Control 切換列
-    app_mode = st.segmented_control(
-        "系統操作模式選擇",
-        options=[
-            "繪製個人月班表圖檔", 
-            "換班｜選擇換班日期",
-            "換假｜選擇換假日期"
-        ],
-        default="換假｜選擇換假日期",
-        label_visibility="collapsed"
-    )
+        app_mode = st.radio(
+            "系統操作模式選擇",
+            [
+                "繪製個人月班表圖檔",
+                "換班｜選擇換班日期",
+                "換假｜選擇換假日期"
+            ],
+            horizontal=False,
+            label_visibility="collapsed"
+        )
 
-    # 舊版 Streamlit 相容防呆
-    if app_mode is None:
-        app_mode = "換假｜選擇換假日期"
+        if "last_app_mode" not in st.session_state: st.session_state["last_app_mode"] = app_mode
+        if st.session_state["last_app_mode"] != app_mode:
+            st.session_state["last_app_mode"] = app_mode
 
-    if "last_app_mode" not in st.session_state: st.session_state["last_app_mode"] = app_mode
-    if st.session_state["last_app_mode"] != app_mode:
-        st.session_state["last_app_mode"] = app_mode
-
-    st.markdown("---")
+        st.markdown("---")
 
     is_admin_user = st.session_state.get("admin_logged_in", False)
 
