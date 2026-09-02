@@ -389,15 +389,16 @@ def render_user_home():
                                 parsed_return = parse_cell(row.iloc[return_col_idx])
                                 raw_return_str = str(row.iloc[return_col_idx]).strip()
                                 
-                                # 還休日：對方必須是上班日 (is_cell_off_day == False，包含帶有 DO2W/DO3W 但有排班者)
+                                # 還休日：對方必須是上班日 (is_cell_off_day == False)
                                 is_return_do = is_cell_off_day(row.iloc[return_col_idx])
                                 if is_return_do: continue
 
                                 is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
                                 is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
 
-                                # 抓取還休日上的出勤標籤（如 DO2W / DO3W）
-                                return_do_tag = next((l.strip() for l in raw_return_str.split('\n') if any(k in l.upper() for k in ["DO", "D2W", "PAY", "FAC"]) and l.strip() != parsed_return["train"]), "")
+                                # 【核心修正】：使用 Regex 精準抓取 DO2W, DO3W, D2W, DO1 等出勤標籤（忽略換行符號干擾）
+                                do_match = re.search(r'(DO\d*W?|D\d+W|PAY|FAC|OGC)', raw_return_str, re.IGNORECASE)
+                                return_do_tag = do_match.group(1).upper() if do_match else ""
 
                                 max_consecutive_streak = calculate_consecutive_work_days(row, target_col_idx, return_col_idx)
 
@@ -458,7 +459,7 @@ def render_user_home():
                                 badges_html = '<div class="badge-group">'
                                 if cand.get('長班'): badges_html += '<span class="long-badge">長班</span>'
                                 if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
-                                if do_tag: badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.4) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
+                                if do_tag: badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
                                 badges_html += '</div>'
 
                                 streak_cnt = cand.get('連續上班天數', 0)
