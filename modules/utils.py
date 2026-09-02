@@ -167,8 +167,12 @@ def calculate_hours(start_str, end_str):
 def is_valid_train_code(tr):
     if not tr: return False
     tr_clean = str(tr).strip().upper()
-    leave_codes = ["PAY", "FAC", "DO", "D2W", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
-    if tr_clean in leave_codes or "OGC" in tr_clean: return False
+    # 【關鍵修復】：只要開頭是 DO 或 D2W，絕對不視為車次（避免 DO1, DO2, DO3 誤判）
+    if tr_clean.startswith("DO") or tr_clean.startswith("D2W") or "OGC" in tr_clean:
+        return False
+    leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
+    if tr_clean in leave_codes:
+        return False
     return bool(re.match(r'^[A-Z]+\d+', tr_clean))
 
 def is_overtime(h, tr, note):
@@ -220,7 +224,7 @@ def parse_cell(raw):
         line_clean = line.strip()
         if re.match(r'^\d{1,2}:\d{2}$', line_clean) or re.search(r'^\(?\d+h\d*m?\)?$', line_clean, re.IGNORECASE):
             continue
-        if re.match(r'^(DO\d*W?|D\d+W|OGC)$', line_clean, re.IGNORECASE):
+        if re.match(r'^(DO\d*W?|D\d+W|OGC)$', line_clean, re.IGNORECASE) and start_time:
             continue
         if not real_train:
             real_train = line_clean
