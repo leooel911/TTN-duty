@@ -47,12 +47,14 @@ def render_user_home():
         </details>
     </div>
     """, unsafe_allow_html=True)
-
-    app_mode = st.radio("系統操作模式選擇", [
-        "繪製個人月班表圖檔", 
-        "換班｜選擇換班日期（Alpha測試版）",
-        "換假｜選擇換假日期（Alpha測試版）"
-    ], horizontal=False, label_visibility="collapsed")
+            # 上方自訂標題文字與樣式
+            st.markdown("<div style='font-size: 14px; font-weight: 800; color: #F8FAFC; margin-bottom: 6px; font-family: monospace;'>選擇系統操作模式</div>", unsafe_allow_html=True)
+            
+            app_mode = st.radio("系統操作模式選擇", [
+                "繪製個人月班表圖檔", 
+                "換班｜選擇換班日期",
+                "換假｜選擇換假日期"
+            ], horizontal=False, label_visibility="collapsed")
 
     if "last_app_mode" not in st.session_state: st.session_state["last_app_mode"] = app_mode
     if st.session_state["last_app_mode"] != app_mode:
