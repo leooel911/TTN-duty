@@ -774,10 +774,10 @@ def show_migration_modal():
     st.markdown("""
     <div style="text-align: center; padding: 10px 0;">
         <div style="font-size: 20px; font-weight: 800; color: #F59E0B; margin-bottom: 10px; font-family: monospace;">
-            ⚠️ 本站為測試版環境
+            ⚠️ 本站為測試版環境 ⚠️
         </div>
         <div style="font-size: 14px; color: #CBD5E1; line-height: 1.6; margin-bottom: 16px;">
-             換班系統已全面升級並移至<b>正式版伺服器</b>！<br>
+             系統已全面升級並移至<b>正式版伺服器</b>！<br>
             為了保障您的班表資料精準度與最新功能體驗，請點擊下方按鈕轉移至正式網域。
         </div>
     </div>
