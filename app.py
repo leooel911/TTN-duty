@@ -1,5 +1,5 @@
 import streamlit as st
-from config import CUSTOM_CSS, ADMIN_PASSWORD, CREW_ACCESS_PASSWORD
+from config import CUSTOM_CSS, ADMIN_PASSWORD, CREW_ACCESS_PASSWORD, PILOT_ALLOW_LIST
 from modules.utils import format_display_name, get_employee_name, log_activity
 from modules.services import verify_crew_membership, process_file_data
 from modules.drawing import render_schedule_figure
