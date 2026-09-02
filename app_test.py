@@ -774,7 +774,7 @@ def show_migration_modal():
     st.markdown("""
     <div style="text-align: center; padding: 10px 0;">
         <div style="font-size: 20px; font-weight: 800; color: #F59E0B; margin-bottom: 10px; font-family: monospace;">
-            ⚠️ 本站為測試版環境 ⚠️
+            ⚠️ 本站為Alpha測試版環境 ⚠️
         </div>
         <div style="font-size: 14px; color: #CBD5E1; line-height: 1.6; margin-bottom: 16px;">
              系統已全面升級並移至<b>正式版伺服器</b>！<br>
@@ -791,7 +791,7 @@ def show_migration_modal():
     
     st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
     
-    if st.button("繼續留在測試版（僅供內部測試）", key="btn_stay_test_env", use_container_width=True):
+    if st.button("繼續留在Alpha測試版（僅供內部測試）", key="btn_stay_test_env", use_container_width=True):
         st.rerun()
 
 # --- 彈窗燈箱：獨立檢視截圖附件 ---
