@@ -318,39 +318,41 @@ def render_user_home():
                     with ex_c2: 
                         target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date")
 
-                    # 防呆機制：動態排除已選擇的「想休假日期」
-                    return_date_options = [d for d in date_cols if d != target_date]
-                    
-                    # 清理 Session State，避免 Streamlit 記憶到已被過濾掉的日期而報錯
+                    # === 動態計算想休假當週（週日~週六）且排除當天之可還假選單 ===
+                    same_week_options = []
+                    target_week_str = ""
+                    try:
+                        t_m, t_d = map(int, target_date.split('/'))
+                        t_dt = date(2026, t_m, t_d)
+                        
+                        t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
+                        t_sat = t_sun + timedelta(days=6)
+                        target_week_str = f"{t_sun.month}/{t_sun.day:02d} (日) ~ {t_sat.month}/{t_sat.day:02d} (六)"
+
+                        for d_str in date_cols:
+                            if d_str == target_date:
+                                continue
+                            try:
+                                d_m, d_d = map(int, d_str.split('/'))
+                                d_dt = date(2026, d_m, d_d)
+                                if t_sun <= d_dt <= t_sat:
+                                    same_week_options.append(d_str)
+                            except:
+                                pass
+                    except:
+                        pass
+
+                    return_date_options = same_week_options if same_week_options else [d for d in date_cols if d != target_date]
+
+                    # Session State 防呆校正：若原選日期不在當週選單內，自動更新為選單第一項
                     if "ex_return_date" in st.session_state and st.session_state["ex_return_date"] not in return_date_options:
                         if return_date_options:
                             st.session_state["ex_return_date"] = return_date_options[0]
 
                     with ex_c3: 
                         return_date = st.selectbox("選擇可還假日期", return_date_options, key="ex_return_date")
-                    is_cross_week = False
-                    target_week_str = ""
-                    try:
-                        t_m, t_d = map(int, target_date.split('/'))
-                        r_m, r_d = map(int, return_date.split('/'))
-                        t_dt = date(2026, t_m, t_d)
-                        r_dt = date(2026, r_m, r_d)
 
-                        t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
-                        t_sat = t_sun + timedelta(days=6)
-                        target_week_str = f"{t_sun.month}/{t_sun.day:02d} (日) ~ {t_sat.month}/{t_sat.day:02d} (六)"
-
-                        r_sun = r_dt - timedelta(days=(r_dt.weekday() + 1) % 7)
-                        
-                        if t_sun != r_sun:
-                            is_cross_week = True
-                    except:
-                        pass
-
-                    if is_cross_week:
-                        st.warning(f"**跨週警示**：您選擇的還假日期「{return_date}」與想休假日期「{target_date}」不在同一週！（想休假當週規範區間為：{target_week_str}）")
-                    else:
-                        st.caption(f"**同一週換假區間：{target_week_str}**")
+                    st.caption(f"💡 **同一週規範換假區間：{target_week_str}**（還假選單已自動鎖定於當週區間）")
 
                     col_f1, col_f2 = st.columns(2)
                     with col_f1:
