@@ -165,10 +165,10 @@ def render_user_home():
                     st.session_state["win_time_slider"] = ("04:00", "18:00")
                     st.rerun()
                 if q_col2.button("早班", key="btn_win_morn", use_container_width=True):
-                    st.session_state["win_time_slider"] = ("05:00", "08:00")
+                    st.session_state["win_time_slider"] = ("05:00", "10:00")
                     st.rerun()
                 if q_col3.button("中班", key="btn_win_noon", use_container_width=True):
-                    st.session_state["win_time_slider"] = ("08:00", "13:00")
+                    st.session_state["win_time_slider"] = ("10:00", "13:00")
                     st.rerun()
                 if q_col4.button("晚班", key="btn_win_night", use_container_width=True):
                     st.session_state["win_time_slider"] = ("13:00", "18:00")
@@ -352,7 +352,7 @@ def render_user_home():
                     with ex_c3: 
                         return_date = st.selectbox("選擇可還假日期", return_date_options, key="ex_return_date")
 
-                    st.caption(f"💡 **同一週規範換假區間：{target_week_str}**（還假選單已自動鎖定於當週區間）")
+                    st.caption(f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）")
 
                     col_f1, col_f2 = st.columns(2)
                     with col_f1:
