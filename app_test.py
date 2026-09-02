@@ -582,7 +582,13 @@ def is_cell_off_day(raw_val):
     raw_str = str(raw_val).strip().upper()
     if raw_str in ["NAN", "NONE", "", "."]:
         return True
+    
     parsed = parse_cell(raw_val)
+    
+    # 國定假日出勤特例：即使包含 DO / D2W，只要有「報到時間」且有「有效班別」(如 Nxxxx 或正線/備勤班別)，即視為「上班日」
+    if parsed["start"] and (is_valid_train_code(parsed["train"]) or parsed["train"].startswith("N")):
+        return False
+
     off_keywords = ["DO", "D2W", "PAY", "FAC", "AL", "SL", "CL", "ML"]
     if any(k in raw_str for k in off_keywords) or parsed["train"] in off_keywords:
         return True
@@ -778,7 +784,7 @@ def show_migration_modal():
         </div>
         <div style="font-size: 14px; color: #CBD5E1; line-height: 1.6; margin-bottom: 16px;">
              系統已全面升級並移至<b>正式版伺服器</b>！<br>
-            為了保障您的班表資料精準度與最新功能體驗，請點擊下方按鈕轉移至正式網域。
+             為了保障您的班表資料精準度與最新功能體驗，請點擊下方按鈕轉移至正式網域。
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1757,12 +1763,16 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
 
                             parsed_target = parse_cell(row.iloc[target_col_idx])
                             raw_target_str = str(row.iloc[target_col_idx]).strip()
-                            is_target_do = ("DO" in raw_target_str.upper()) or ("D2W" in raw_target_str.upper())
+                            
+                            # 想休日判定：呼叫 is_cell_off_day()，若 D2W 有含 Nxxxx 班別出勤則回傳 False，不列入想休日可幫代班之名單
+                            is_target_do = is_cell_off_day(row.iloc[target_col_idx])
                             if not is_target_do: continue
 
                             parsed_return = parse_cell(row.iloc[return_col_idx])
                             raw_return_str = str(row.iloc[return_col_idx]).strip().upper()
-                            is_return_do = ("DO" in raw_return_str) or ("D2W" in raw_return_str)
+                            
+                            # 還休日判定：呼叫 is_cell_off_day()，若為真正的休假(True)則不能還假；若為 D2W+Nxxxx 則為上班日(False)，可作為還假標的
+                            is_return_do = is_cell_off_day(row.iloc[return_col_idx])
                             if is_return_do: continue
 
                             is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
