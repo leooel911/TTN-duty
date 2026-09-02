@@ -318,9 +318,16 @@ def render_user_home():
                     with ex_c2: 
                         target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date")
 
-                    with ex_c3: 
-                        return_date = st.selectbox("選擇可還假日期", date_cols, index=min(1, len(date_cols)-1), key="ex_return_date")
+                    # 防呆機制：動態排除已選擇的「想休假日期」
+                    return_date_options = [d for d in date_cols if d != target_date]
+                    
+                    # 清理 Session State，避免 Streamlit 記憶到已被過濾掉的日期而報錯
+                    if "ex_return_date" in st.session_state and st.session_state["ex_return_date"] not in return_date_options:
+                        if return_date_options:
+                            st.session_state["ex_return_date"] = return_date_options[0]
 
+                    with ex_c3: 
+                        return_date = st.selectbox("選擇可還假日期", return_date_options, key="ex_return_date")
                     is_cross_week = False
                     target_week_str = ""
                     try:
