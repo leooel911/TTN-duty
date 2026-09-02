@@ -58,6 +58,19 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
 
     col1, col2, col3 = st.columns([1, 2.4, 1])
     with col2:
+        with st.expander("登入前系統說明與試用須知（點擊展開）", expanded=False):
+            st.markdown("""
+            <div style="font-size: 12px; color: #CBD5E1; line-height: 1.6; font-family: monospace;">
+                <b>系統開放試用公告</b><br>
+                本系統目前為正式環境第一階段特定人員試用。<br><br>
+                <b>重要提醒：</b><br>
+                1. 本系統產出之班表僅供協助個人調假與換班快篩參考，<b>實際班表請務必以公司官方公告為準</b>。<br>
+                2. 班表相關資料屬內部營運資訊，請勿外流授權碼與班表截圖。<br>
+                3. 若發現資料有誤，請善用登入後頁尾端的<b>「問題回報」</b>功能。
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         with st.form("auth_form"):
             selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
             entered_emp = st.text_input("使用者員編", value="A", placeholder="例如: 023300", max_chars=10)
