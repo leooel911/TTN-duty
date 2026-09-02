@@ -108,7 +108,7 @@ CUSTOM_CSS = """
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
     }
 
-    /* === 下拉選單選框美化 (stSelectbox) === */
+    /* 下拉選單美化 */
     div[data-baseweb="select"] > div {
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid rgba(56, 189, 248, 0.3) !important;
@@ -118,7 +118,7 @@ CUSTOM_CSS = """
         border-color: #38BDF8 !important;
     }
 
-    /* === 模式選擇按鈕 (st.radio) 大卡片化優化 === */
+    /* === 模式選擇按鈕 (st.radio) 大卡片化 & 四角一致性強制修復 === */
     div[role="radiogroup"] {
         display: flex !important;
         flex-direction: column !important;
@@ -129,39 +129,60 @@ CUSTOM_CSS = """
     }
     
     /* 隱藏左側單選圓點 */
-    div[role="radiogroup"] > label div:first-child,
-    div[data-testid="stRadio"] div[role="radiogroup"] label div:first-child {
+    div[role="radiogroup"] label div[data-testid="stRadioButtonCustomIcon"],
+    div[role="radiogroup"] label > div:first-child,
+    div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
 
-    /* 大卡片按鈕外觀 */
-    div[role="radiogroup"] > label {
+    /* 強制每一個卡片（含第一個與最後一個）都有獨立一致的 10px 圓角 */
+    div[role="radiogroup"] > label,
+    div[role="radiogroup"] > label:first-child,
+    div[role="radiogroup"] > label:last-child,
+    div[role="radiogroup"] > label:nth-child(n) {
         width: 100% !important;
         box-sizing: border-box !important;
         background: rgba(30, 41, 59, 0.75) !important;
         border: 1px solid rgba(255, 255, 255, 0.12) !important;
         border-radius: 10px !important;
+        border-top-left-radius: 10px !important;
+        border-top-right-radius: 10px !important;
+        border-bottom-left-radius: 10px !important;
+        border-bottom-right-radius: 10px !important;
         padding: 14px 20px !important;
         margin: 0 !important;
         cursor: pointer !important;
         transition: all 0.2s ease-in-out !important;
+        overflow: hidden !important;
+    }
+
+    /* 邊框清理 */
+    div[role="radiogroup"] > label * {
+        border: none !important;
+        box-shadow: none !important;
     }
 
     /* 滑鼠懸停 Hover */
-    div[role="radiogroup"] > label:hover {
+    div[role="radiogroup"] > label:hover,
+    div[role="radiogroup"] > label:first-child:hover,
+    div[role="radiogroup"] > label:last-child:hover {
         background: rgba(51, 65, 85, 0.85) !important;
-        border-color: rgba(56, 189, 248, 0.5) !important;
+        border: 1px solid rgba(56, 189, 248, 0.5) !important;
+        border-radius: 10px !important;
     }
 
-    /* 選取狀態 (Active/Selected) 亮藍外框與深藍光彩 */
+    /* 選取狀態 (Active/Selected) 全面亮藍外框與光芒 */
     div[role="radiogroup"] > label[data-checked="true"], 
-    div[role="radiogroup"] > label:has(input:checked) {
+    div[role="radiogroup"] > label:has(input:checked),
+    div[role="radiogroup"] > label:first-child:has(input:checked),
+    div[role="radiogroup"] > label:last-child:has(input:checked) {
         background: rgba(37, 99, 235, 0.25) !important;
         border: 1.5px solid #3B82F6 !important;
+        border-radius: 10px !important;
         box-shadow: 0 0 12px rgba(59, 130, 246, 0.35) !important;
     }
 
-    /* 卡片內文字樣式 */
+    /* 文字放大與高亮 */
     div[role="radiogroup"] > label p {
         font-size: 15px !important;
         font-weight: 700 !important;
@@ -169,7 +190,6 @@ CUSTOM_CSS = """
         margin: 0 !important;
     }
 
-    /* 選取狀態下的文字顏色高亮 */
     div[role="radiogroup"] > label[data-checked="true"] p,
     div[role="radiogroup"] > label:has(input:checked) p {
         color: #60A5FA !important;
