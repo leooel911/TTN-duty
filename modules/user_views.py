@@ -382,19 +382,22 @@ def render_user_home():
                                 parsed_target = parse_cell(row.iloc[target_col_idx])
                                 raw_target_str = str(row.iloc[target_col_idx]).strip()
                                 
-                                # 【關鍵更新 1】：精準判斷想休日是否為「純休假」（非 DO2W/DO3W 出勤）
+                                # 想休日判斷：必須為純休假
                                 is_target_do = is_cell_off_day(row.iloc[target_col_idx])
                                 if not is_target_do: continue
 
                                 parsed_return = parse_cell(row.iloc[return_col_idx])
-                                raw_return_str = str(row.iloc[return_col_idx]).strip().upper()
+                                raw_return_str = str(row.iloc[return_col_idx]).strip()
                                 
-                                # 【關鍵更新 2】：精準判斷還休日是否為「上班日」（含有班別/含 DO2W/DO3W 排班）
+                                # 還休日判斷：必須為上班日（含有班別/含 DO2W/DO3W 出勤）
                                 is_return_do = is_cell_off_day(row.iloc[return_col_idx])
                                 if is_return_do: continue
 
                                 is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
                                 is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
+
+                                # 提取還休日特有的輪休/國定出勤標籤（如 DO2W, DO3W）
+                                return_do_tag = next((l.strip() for l in raw_return_str.split('\n') if any(k in l.upper() for k in ["DO", "D2W", "PAY", "FAC"]) and l.strip() != parsed_return["train"]), "")
 
                                 max_consecutive_streak = calculate_consecutive_work_days(row, target_col_idx, return_col_idx)
 
@@ -410,6 +413,7 @@ def render_user_home():
                                     "工時": parsed_return["hours"],
                                     "長班": is_long,
                                     "非正線": is_non_line,
+                                    "出勤標記": return_do_tag,
                                     "連續上班天數": max_consecutive_streak
                                 })
 
@@ -448,9 +452,13 @@ def render_user_home():
                                 cand_id = cand.get('員編', '')
                                 target_col = c_col1 if idx % 2 == 0 else c_col2
 
+                                do_tag = cand.get('出勤標記', '')
+                                do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if do_tag else ""
+
                                 badges_html = '<div class="badge-group">'
                                 if cand.get('長班'): badges_html += '<span class="long-badge">長班</span>'
                                 if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
+                                if do_tag: badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.4) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
                                 badges_html += '</div>'
 
                                 streak_cnt = cand.get('連續上班天數', 0)
@@ -463,7 +471,7 @@ def render_user_home():
                                             <div>
                                                 <div class="compact-name">{cand_name} <span style="color:#94A3B8; font-size:12px;">({cand_id})</span></div>
                                                 <div style="font-size: 12px; color: #94A3B8; margin-top: 4px; font-family: monospace;">
-                                                    還休日：{cand.get('還休日')} ｜ 班別：<strong style="color:#38BDF8;">{cand.get('還假車次', '無')}</strong>
+                                                    還休日：{cand.get('還休日')}{do_tag_display} ｜ 班別：<strong style="color:#38BDF8;">{cand.get('還假車次', '無')}</strong>
                                                 </div>
                                             </div>
                                             <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
