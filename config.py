@@ -118,80 +118,72 @@ CUSTOM_CSS = """
         border-color: #38BDF8 !important;
     }
 
-    /* === 模式選擇按鈕 (st.radio) 大卡片化 & 四角一致性強制修復 === */
+    /* === 模式選擇按鈕 (st.radio) 滿版大卡片與四角圓角對齊修復 === */
+    div[data-testid="stRadio"],
+    div[data-testid="stRadio"] > div,
     div[role="radiogroup"] {
+        width: 100% !important;
         display: flex !important;
         flex-direction: column !important;
+        align-items: stretch !important; /* 解除縮寬，強制 100% 滿版 */
         gap: 10px !important;
-        width: 100% !important;
-        margin-top: 6px !important;
-        margin-bottom: 12px !important;
     }
-    
-    /* 隱藏左側單選圓點 */
+
+    /* 隱藏預設單選圓點 */
     div[role="radiogroup"] label div[data-testid="stRadioButtonCustomIcon"],
-    div[role="radiogroup"] label > div:first-child,
-    div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
+    div[role="radiogroup"] label input,
+    div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
 
-    /* 強制每一個卡片（含第一個與最後一個）都有獨立一致的 10px 圓角 */
-    div[role="radiogroup"] > label,
-    div[role="radiogroup"] > label:first-child,
-    div[role="radiogroup"] > label:last-child,
-    div[role="radiogroup"] > label:nth-child(n) {
+    /* 重置卡片外框 */
+    div[role="radiogroup"] label[data-baseweb="radio"],
+    div[role="radiogroup"] > label {
         width: 100% !important;
         box-sizing: border-box !important;
         background: rgba(30, 41, 59, 0.75) !important;
         border: 1px solid rgba(255, 255, 255, 0.12) !important;
         border-radius: 10px !important;
-        border-top-left-radius: 10px !important;
-        border-top-right-radius: 10px !important;
-        border-bottom-left-radius: 10px !important;
-        border-bottom-right-radius: 10px !important;
-        padding: 14px 20px !important;
+        padding: 12px 18px !important;
         margin: 0 !important;
         cursor: pointer !important;
         transition: all 0.2s ease-in-out !important;
         overflow: hidden !important;
     }
 
-    /* 邊框清理 */
-    div[role="radiogroup"] > label * {
+    /* 清理內部容器背景，防止右邊被方形遮擋 */
+    div[role="radiogroup"] label > div:last-child {
+        width: 100% !important;
+        background: transparent !important;
         border: none !important;
-        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
 
-    /* 滑鼠懸停 Hover */
-    div[role="radiogroup"] > label:hover,
-    div[role="radiogroup"] > label:first-child:hover,
-    div[role="radiogroup"] > label:last-child:hover {
+    /* Hover 懸停狀態 */
+    div[role="radiogroup"] label[data-baseweb="radio"]:hover,
+    div[role="radiogroup"] > label:hover {
         background: rgba(51, 65, 85, 0.85) !important;
-        border: 1px solid rgba(56, 189, 248, 0.5) !important;
-        border-radius: 10px !important;
+        border-color: rgba(56, 189, 248, 0.5) !important;
     }
 
-    /* 選取狀態 (Active/Selected) 全面亮藍外框與光芒 */
-    div[role="radiogroup"] > label[data-checked="true"], 
-    div[role="radiogroup"] > label:has(input:checked),
-    div[role="radiogroup"] > label:first-child:has(input:checked),
-    div[role="radiogroup"] > label:last-child:has(input:checked) {
+    /* Selected 選取高亮狀態 (四邊藍框加光芒) */
+    div[role="radiogroup"] label:has(input:checked),
+    div[role="radiogroup"] label[data-checked="true"] {
         background: rgba(37, 99, 235, 0.25) !important;
         border: 1.5px solid #3B82F6 !important;
-        border-radius: 10px !important;
         box-shadow: 0 0 12px rgba(59, 130, 246, 0.35) !important;
     }
 
-    /* 文字放大與高亮 */
-    div[role="radiogroup"] > label p {
+    /* 卡片文字樣式 */
+    div[role="radiogroup"] label p {
         font-size: 15px !important;
         font-weight: 700 !important;
         color: #E2E8F0 !important;
         margin: 0 !important;
     }
 
-    div[role="radiogroup"] > label[data-checked="true"] p,
-    div[role="radiogroup"] > label:has(input:checked) p {
+    div[role="radiogroup"] label:has(input:checked) p {
         color: #60A5FA !important;
         font-weight: 800 !important;
     }
