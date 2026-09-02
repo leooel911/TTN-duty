@@ -53,6 +53,7 @@ TITLE = "TRAIN CREW DUTY CALENDAR"
 ADMIN_PASSWORD = "Lf090000"
 CREW_ACCESS_PASSWORD = "0096"
 PILOT_ALLOW_LIST = {"A021987", "A019702", "A023293", "A023442", "A023423", "A026495", "A026662", "A026663", "A026679", "A021578", "A024373"}
+
 C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#475569", "#F1F5F9"
 C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
 C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
@@ -107,35 +108,72 @@ CUSTOM_CSS = """
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
     }
 
-    div[role="radiogroup"] {
-        display: flex;
-        flex-direction: column;
-        gap: 6px !important;
-        width: 100%;
-        margin-top: 4px !important;
-        margin-bottom: 8px !important;
-    }
-    div[role="radiogroup"] > label {
-        background: rgba(30, 41, 59, 0.65) !important;
-        border: 1px solid rgba(56, 189, 248, 0.25) !important;
-        border-left: 4px solid #38BDF8 !important;
+    /* === 下拉選單選框美化 (stSelectbox) === */
+    div[data-baseweb="select"] > div {
+        background-color: rgba(15, 23, 42, 0.8) !important;
+        border: 1px solid rgba(56, 189, 248, 0.3) !important;
         border-radius: 10px !important;
-        padding: 8px 12px !important;
+    }
+    div[data-baseweb="select"]:hover > div {
+        border-color: #38BDF8 !important;
+    }
+
+    /* === 模式選擇按鈕 (st.radio) 大卡片化優化 === */
+    div[role="radiogroup"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        width: 100% !important;
+        margin-top: 6px !important;
+        margin-bottom: 12px !important;
+    }
+    
+    /* 隱藏左側單選圓點 */
+    div[role="radiogroup"] > label div:first-child,
+    div[data-testid="stRadio"] div[role="radiogroup"] label div:first-child {
+        display: none !important;
+    }
+
+    /* 大卡片按鈕外觀 */
+    div[role="radiogroup"] > label {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        background: rgba(30, 41, 59, 0.75) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 10px !important;
+        padding: 14px 20px !important;
         margin: 0 !important;
         cursor: pointer !important;
         transition: all 0.2s ease-in-out !important;
-        width: 100% !important;
     }
-    div[role="radiogroup"] > label[data-checked="true"], div[role="radiogroup"] > label:has(input:checked) {
-        background: rgba(30, 64, 175, 0.65) !important;
-        border-color: #60A5FA !important;
-        border-left-color: #60A5FA !important;
-        box-shadow: 0 0 10px rgba(96, 165, 250, 0.25);
+
+    /* 滑鼠懸停 Hover */
+    div[role="radiogroup"] > label:hover {
+        background: rgba(51, 65, 85, 0.85) !important;
+        border-color: rgba(56, 189, 248, 0.5) !important;
     }
+
+    /* 選取狀態 (Active/Selected) 亮藍外框與深藍光彩 */
+    div[role="radiogroup"] > label[data-checked="true"], 
+    div[role="radiogroup"] > label:has(input:checked) {
+        background: rgba(37, 99, 235, 0.25) !important;
+        border: 1.5px solid #3B82F6 !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.35) !important;
+    }
+
+    /* 卡片內文字樣式 */
     div[role="radiogroup"] > label p {
-        font-size: 13.5px !important;
+        font-size: 15px !important;
         font-weight: 700 !important;
-        color: #F8FAFC !important;
+        color: #E2E8F0 !important;
+        margin: 0 !important;
+    }
+
+    /* 選取狀態下的文字顏色高亮 */
+    div[role="radiogroup"] > label[data-checked="true"] p,
+    div[role="radiogroup"] > label:has(input:checked) p {
+        color: #60A5FA !important;
+        font-weight: 800 !important;
     }
 
     @keyframes online-green-pulse {
