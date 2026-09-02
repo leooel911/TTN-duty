@@ -384,7 +384,7 @@ def render_user_home():
                                 parsed_target = parse_cell(row.iloc[target_col_idx])
                                 raw_target_str = str(row.iloc[target_col_idx]).strip().upper()
                                 
-                                # 想休日：必須是純休假 (不能請假，也不能有上班車次)
+                                # 想休日：必須是純休假 (is_cell_off_day == True)
                                 is_target_leave = any(k in raw_target_str for k in leave_codes) or parsed_target["train"] in leave_codes
                                 is_target_do = is_cell_off_day(row.iloc[target_col_idx])
                                 if not is_target_do or is_target_leave: continue
@@ -393,7 +393,7 @@ def render_user_home():
                                 raw_return_str = str(row.iloc[return_col_idx]).strip()
                                 raw_return_upper = raw_return_str.upper()
 
-                                # 還休日關鍵過濾：排除請假/特休 (PAY, FAC)，排除純休假 (DO)
+                                # 還休日：必須是上班日 (is_cell_off_day == False，且非請假格)
                                 is_return_leave = any(k in raw_return_upper for k in leave_codes) or parsed_return["train"] in leave_codes
                                 is_return_do = is_cell_off_day(row.iloc[return_col_idx])
                                 
