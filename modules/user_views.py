@@ -207,6 +207,12 @@ def render_user_home():
                                 is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                 is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
 
+                                # 擷取 DO2W, DO3W 等出勤標記
+                                do_tag = parsed.get("note", "")
+                                if not do_tag:
+                                    do_match = re.search(r'(DO\d*W?|D\d+W|OGC)', str(cell_raw), re.IGNORECASE)
+                                    do_tag = do_match.group(1).upper() if do_match else ""
+
                                 next_day_sign_in = "無記錄"
                                 if target_col_idx + 1 < len(row):
                                     next_parsed = parse_cell(row.iloc[target_col_idx + 1])
@@ -217,7 +223,8 @@ def render_user_home():
                                     "Sign-In": start_t, "Sign-Out": parsed["end"],
                                     "車次": translate_train_code(parsed["train"]),
                                     "隔日Sign-In": next_day_sign_in, "長班": is_long,
-                                    "非正線": is_non_line, "請假": is_leave
+                                    "非正線": is_non_line, "請假": is_leave,
+                                    "出勤標記": do_tag
                                 })
 
                     st.session_state["win_raw_candidates"] = raw_candidates
@@ -242,9 +249,13 @@ def render_user_home():
                         for idx, r in enumerate(filtered_results):
                             target_col = c_col1 if idx % 2 == 0 else c_col2
                             with target_col:
+                                do_tag = r.get('出勤標記', '')
+                                do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if do_tag else ""
+
                                 badges_html = '<div class="badge-group">'
                                 if r['長班']: badges_html += '<span class="long-badge">長班</span>'
                                 if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
+                                if do_tag: badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
                                 badges_html += '</div>'
 
                                 st.markdown(f"""
@@ -252,7 +263,7 @@ def render_user_home():
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                         <div>
                                             <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
-                                            <div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{r['車次']}</div>
+                                            <div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{r['車次']}{do_tag_display}</div>
                                         </div>
                                         <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
                                             <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-In {r['Sign-In']}</div>
@@ -384,7 +395,7 @@ def render_user_home():
                                 parsed_target = parse_cell(row.iloc[target_col_idx])
                                 raw_target_str = str(row.iloc[target_col_idx]).strip().upper()
                                 
-                                # 想休日：必須是純休假 (is_cell_off_day == True)
+                                # 想休日：必須是純休假
                                 is_target_leave = any(k in raw_target_str for k in leave_codes) or parsed_target["train"] in leave_codes
                                 is_target_do = is_cell_off_day(row.iloc[target_col_idx])
                                 if not is_target_do or is_target_leave: continue
@@ -393,7 +404,7 @@ def render_user_home():
                                 raw_return_str = str(row.iloc[return_col_idx]).strip()
                                 raw_return_upper = raw_return_str.upper()
 
-                                # 還休日：必須是上班日 (is_cell_off_day == False，且非請假格)
+                                # 還休日：必須是上班日
                                 is_return_leave = any(k in raw_return_upper for k in leave_codes) or parsed_return["train"] in leave_codes
                                 is_return_do = is_cell_off_day(row.iloc[return_col_idx])
                                 
