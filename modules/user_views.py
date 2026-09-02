@@ -389,16 +389,18 @@ def render_user_home():
                                 parsed_return = parse_cell(row.iloc[return_col_idx])
                                 raw_return_str = str(row.iloc[return_col_idx]).strip()
                                 
-                                # 還休日：對方必須是上班日 (is_cell_off_day == False)
+                                # 還休日：對方必須是上班日 (is_cell_off_day == False，包含 DO2W/DO3W 出勤者)
                                 is_return_do = is_cell_off_day(row.iloc[return_col_idx])
                                 if is_return_do: continue
 
                                 is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
                                 is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
 
-                                # 【核心修正】：使用 Regex 精準抓取 DO2W, DO3W, D2W, DO1 等出勤標籤（忽略換行符號干擾）
-                                do_match = re.search(r'(DO\d*W?|D\d+W|PAY|FAC|OGC)', raw_return_str, re.IGNORECASE)
-                                return_do_tag = do_match.group(1).upper() if do_match else ""
+                                # 從 parsed_return['note'] 或 raw_return_str 中精準擷取出 DO2W / DO3W 等出勤標籤
+                                return_do_tag = parsed_return.get("note", "")
+                                if not return_do_tag:
+                                    do_match = re.search(r'(DO\d*W?|D\d+W|PAY|FAC|OGC)', raw_return_str, re.IGNORECASE)
+                                    return_do_tag = do_match.group(1).upper() if do_match else ""
 
                                 max_consecutive_streak = calculate_consecutive_work_days(row, target_col_idx, return_col_idx)
 
