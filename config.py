@@ -74,7 +74,7 @@ CUSTOM_CSS = """
         background-attachment: fixed !important;
     }
     
-    /* 容器邊距（針對手機與桌面板分流優化） */
+    /* 容器邊距 */
     @media (min-width: 1024px) {
         .block-container { padding: 2.5rem 1.5rem 2.5rem 1.5rem !important; max-width: 1050px !important; }
     }
@@ -127,31 +127,34 @@ CUSTOM_CSS = """
     }
 
     /* ========================================================= */
-    /* === 重磅修復：模式選擇按鈕 (st.radio) 手機版 100% 滿版專業卡片 === */
+    /* === 模式選擇按鈕 (st.radio) 強效 100% 單欄直立修復 === */
     /* ========================================================= */
     
-    /* 1. 外層容器強制滿版，消除縮寬現象 */
+    /* 強制 Radio 群組父層容器獨佔一欄、禁止橫排折行 */
     div[data-testid="stRadio"],
     div[data-testid="stRadio"] > div,
     div[data-testid="stRadio"] div[role="radiogroup"] {
         width: 100% !important;
         max-width: 100% !important;
         display: flex !important;
-        flex-direction: column !important;
+        flex-direction: column !important; /* 強制垂直排列 */
+        flex-wrap: nowrap !important;      /* 禁止橫向折行併排 */
         align-items: stretch !important;
         gap: 8px !important;
     }
 
-    /* 2. 隱藏預設單選圓點 */
+    /* 隱藏預設單選圓點 */
     div[role="radiogroup"] label div[data-testid="stRadioButtonCustomIcon"],
     div[role="radiogroup"] label input,
     div[role="radiogroup"] label > div:first-child {
         display: none !important;
     }
 
-    /* 3. 卡片外框設定：滿版、平滑圓角、深色微光 */
+    /* 強制每一個選項卡片獨立佔據 100% 寬度，絕對無法併排 */
     div[role="radiogroup"] > label {
         width: 100% !important;
+        flex: 1 1 100% !important;         /* 關鍵：強制獨佔整行 */
+        max-width: 100% !important;
         box-sizing: border-box !important;
         background: rgba(30, 41, 59, 0.7) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -161,27 +164,28 @@ CUSTOM_CSS = """
         margin: 0 !important;
         cursor: pointer !important;
         transition: all 0.2s ease-in-out !important;
+        display: block !important;
     }
 
-    /* 4. 解決文字被截斷問題：允許折行與完全顯示 */
+    /* 解決文字截斷問題 */
     div[role="radiogroup"] label p {
         font-size: 14.5px !important;
         font-weight: 700 !important;
         color: #E2E8F0 !important;
         margin: 0 !important;
-        white-space: normal !important;      /* 關鍵：禁止文字自動被省略號截斷 */
-        text-overflow: clip !important;       /* 關鍵：徹底關閉截斷 */
+        white-space: normal !important;      /* 允許文字完整顯示不截斷 */
+        text-overflow: clip !important;
         word-break: break-word !important;
         line-height: 1.4 !important;
     }
 
-    /* 5. Hover 懸停效果 */
+    /* Hover 懸停效果 */
     div[role="radiogroup"] > label:hover {
         background: rgba(51, 65, 85, 0.8) !important;
         border-color: rgba(56, 189, 248, 0.4) !important;
     }
 
-    /* 6. 選取狀態 (Active) 藍光高亮卡片 */
+    /* 選取狀態 (Active) 藍光高亮卡片 */
     div[role="radiogroup"] > label[data-checked="true"], 
     div[role="radiogroup"] > label:has(input:checked) {
         background: rgba(30, 64, 175, 0.5) !important;
