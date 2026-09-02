@@ -769,29 +769,29 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
     return buf
 
 # --- 系統轉移正式網址導引彈窗 Modal ---
-@st.dialog("🚀 系統移轉重要公告", width="medium")
+@st.dialog(" 系統移轉重要公告", width="medium")
 def show_migration_modal():
     st.markdown("""
     <div style="text-align: center; padding: 10px 0;">
         <div style="font-size: 20px; font-weight: 800; color: #F59E0B; margin-bottom: 10px; font-family: monospace;">
-            ⚠️ 本站為測試/舊版環境
+            ⚠️ 本站為測試版環境
         </div>
         <div style="font-size: 14px; color: #CBD5E1; line-height: 1.6; margin-bottom: 16px;">
-            TTN 排班系統已全面升級並移至<b>正式版伺服器</b>！<br>
+             換班系統已全面升級並移至<b>正式版伺服器</b>！<br>
             為了保障您的班表資料精準度與最新功能體驗，請點擊下方按鈕轉移至正式網域。
         </div>
     </div>
     """, unsafe_allow_html=True)
     
     st.link_button(
-        "🔗 點此立即前往全新正式版系統",
+        " 點此立即前往全新正式版系統",
         "https://ttn-duty-67oojxou2eeubgzyp5do2q.streamlit.app/#77159391",
         use_container_width=True
     )
     
     st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
     
-    if st.button("繼續留在測試版（僅供測試）", key="btn_stay_test_env", use_container_width=True):
+    if st.button("繼續留在測試版（僅供內部測試）", key="btn_stay_test_env", use_container_width=True):
         st.rerun()
 
 # --- 彈窗燈箱：獨立檢視截圖附件 ---
