@@ -371,6 +371,8 @@ def render_user_home():
                         target_col_idx = next((idx for idx, col in enumerate(all_cols) if idx >= 2 and target_date in str(col)), -1)
                         return_col_idx = next((idx for idx, col in enumerate(all_cols) if idx >= 2 and return_date in str(col)), -1)
 
+                        leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
+
                         if target_col_idx != -1 and return_col_idx != -1:
                             for _, row in df_ex.iterrows():
                                 emp_id = str(row.iloc[0]).strip()
@@ -380,26 +382,29 @@ def render_user_home():
                                 if target_col_idx >= len(row) or return_col_idx >= len(row): continue
 
                                 parsed_target = parse_cell(row.iloc[target_col_idx])
-                                raw_target_str = str(row.iloc[target_col_idx]).strip()
+                                raw_target_str = str(row.iloc[target_col_idx]).strip().upper()
                                 
-                                # 想休日：對方必須是純休假 (is_cell_off_day == True)
+                                # 想休日：必須是純休假 (不能請假，也不能有上班車次)
+                                is_target_leave = any(k in raw_target_str for k in leave_codes) or parsed_target["train"] in leave_codes
                                 is_target_do = is_cell_off_day(row.iloc[target_col_idx])
-                                if not is_target_do: continue
+                                if not is_target_do or is_target_leave: continue
 
                                 parsed_return = parse_cell(row.iloc[return_col_idx])
                                 raw_return_str = str(row.iloc[return_col_idx]).strip()
-                                
-                                # 還休日：對方必須是上班日 (is_cell_off_day == False，包含 DO2W/DO3W 出勤者)
+                                raw_return_upper = raw_return_str.upper()
+
+                                # 還休日關鍵過濾：排除請假/特休 (PAY, FAC)，排除純休假 (DO)
+                                is_return_leave = any(k in raw_return_upper for k in leave_codes) or parsed_return["train"] in leave_codes
                                 is_return_do = is_cell_off_day(row.iloc[return_col_idx])
-                                if is_return_do: continue
+                                
+                                if is_return_do or is_return_leave: continue
 
                                 is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
                                 is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
 
-                                # 從 parsed_return['note'] 或 raw_return_str 中精準擷取出 DO2W / DO3W 等出勤標籤
                                 return_do_tag = parsed_return.get("note", "")
                                 if not return_do_tag:
-                                    do_match = re.search(r'(DO\d*W?|D\d+W|PAY|FAC|OGC)', raw_return_str, re.IGNORECASE)
+                                    do_match = re.search(r'(DO\d*W?|D\d+W|OGC)', raw_return_str, re.IGNORECASE)
                                     return_do_tag = do_match.group(1).upper() if do_match else ""
 
                                 max_consecutive_streak = calculate_consecutive_work_days(row, target_col_idx, return_col_idx)
