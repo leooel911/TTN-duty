@@ -5,7 +5,8 @@ from datetime import date, timedelta
 from config import UNITS
 from modules.utils import (
     get_file_mtime_str, is_module_maintenance, log_activity, 
-    safe_read_excel, parse_cell, translate_train_code, is_town_shift, is_overtime
+    safe_read_excel, parse_cell, translate_train_code, is_town_shift, is_overtime,
+    is_cell_off_day
 )
 from modules.services import (
     get_current_role_files, get_schedule_range, process_file_data, 
@@ -48,7 +49,6 @@ def render_user_home():
     </div>
     """, unsafe_allow_html=True)
 
-    # 上方自訂標題文字與樣式
     st.markdown("<div style='font-size: 13px; font-weight: 700; color: #94A3B8; margin-bottom: 8px;'>選擇系統操作模式</div>", unsafe_allow_html=True)
 
     app_mode = st.radio(
@@ -159,7 +159,6 @@ def render_user_home():
             if date_cols:
                 target_date = st.selectbox("選擇換班日期", date_cols, key="win_target_date")
                 
-                # 依職位動態決定早班與全時段之起始報到時間（駕駛早班 03:00 起算，其餘職位 05:00）
                 morn_start_time = "03:00" if selected_role == "駕駛" else "05:00"
 
                 st.write("**快捷選擇時段：**")
@@ -322,7 +321,6 @@ def render_user_home():
                     with ex_c2: 
                         target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date")
 
-                    # === 動態計算想休假當週（週日~週六）且排除當天之可還假選單 ===
                     same_week_options = []
                     target_week_str = ""
                     try:
@@ -348,7 +346,6 @@ def render_user_home():
 
                     return_date_options = same_week_options if same_week_options else [d for d in date_cols if d != target_date]
 
-                    # Session State 防呆校正：若原選日期不在當週選單內，自動更新為選單第一項
                     if "ex_return_date" in st.session_state and st.session_state["ex_return_date"] not in return_date_options:
                         if return_date_options:
                             st.session_state["ex_return_date"] = return_date_options[0]
@@ -384,12 +381,16 @@ def render_user_home():
 
                                 parsed_target = parse_cell(row.iloc[target_col_idx])
                                 raw_target_str = str(row.iloc[target_col_idx]).strip()
-                                is_target_do = ("DO" in raw_target_str.upper()) or ("D2W" in raw_target_str.upper())
+                                
+                                # 【關鍵更新 1】：精準判斷想休日是否為「純休假」（非 DO2W/DO3W 出勤）
+                                is_target_do = is_cell_off_day(row.iloc[target_col_idx])
                                 if not is_target_do: continue
 
                                 parsed_return = parse_cell(row.iloc[return_col_idx])
                                 raw_return_str = str(row.iloc[return_col_idx]).strip().upper()
-                                is_return_do = ("DO" in raw_return_str) or ("D2W" in raw_return_str)
+                                
+                                # 【關鍵更新 2】：精準判斷還休日是否為「上班日」（含有班別/含 DO2W/DO3W 排班）
+                                is_return_do = is_cell_off_day(row.iloc[return_col_idx])
                                 if is_return_do: continue
 
                                 is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
