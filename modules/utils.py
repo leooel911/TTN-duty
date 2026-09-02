@@ -101,7 +101,6 @@ def log_activity(input_str):
     except: pass
 
 def load_activity_logs():
-    """解析實體 LOG_FILE 文字檔為 DataFrame 格式，供管理員後台讀取分析與下載"""
     logs = []
     if os.path.exists(LOG_FILE):
         try:
@@ -168,7 +167,7 @@ def calculate_hours(start_str, end_str):
 def is_valid_train_code(tr):
     if not tr: return False
     tr_clean = str(tr).strip().upper()
-    leave_codes = ["PAY", "FAC", "DO", "D2W", "AL", "SL", "CL", "ML"]
+    leave_codes = ["PAY", "FAC", "DO", "D2W", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
     if tr_clean in leave_codes or "OGC" in tr_clean: return False
     return bool(re.match(r'^[A-Z]+\d+', tr_clean))
 
@@ -198,43 +197,39 @@ def is_town_shift(tr, note):
 
 def parse_cell(raw):
     if pd.isna(raw) or not str(raw).strip():
-        return dict(start="", train="", end="", hours="", note="")
+        return dict(start="", train="無", end="", hours="", note="")
 
     raw_str = str(raw).strip()
     lines = [l.strip() for l in raw_str.replace('\r', '').split('\n') if l.strip() and l.strip() != "."]
     if not lines:
-        return dict(start="", train="", end="", hours="", note="")
+        return dict(start="", train="無", end="", hours="", note="")
 
-    # 1. 使用 Regex 精準擷取 Sign-In / Sign-Out 時間 (如 07:46, 16:31)
+    leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
+    raw_upper = raw_str.upper()
+
     times = re.findall(r'\b\d{1,2}:\d{2}\b', raw_str)
     start_time = pad_time(times[0]) if len(times) >= 1 else ""
     end_time = pad_time(times[1]) if len(times) >= 2 else ""
-
-    # 2. 自動計算預估工時
     hours = calculate_hours(start_time, end_time)
 
-    # 3. 擷取特有的 DO2W, DO3W, D2W, PAY, FAC 等出勤/假別標記
-    do_match = re.search(r'(DO\d*W?|D\d+W|PAY|FAC|OGC)', raw_str, re.IGNORECASE)
+    do_match = re.search(r'(DO\d*W?|D\d+W|OGC)', raw_str, re.IGNORECASE)
     note_tag = do_match.group(1).upper() if do_match else ""
 
     real_train = ""
     for line in lines:
         line_clean = line.strip()
-        # 跳過時間與工時行
         if re.match(r'^\d{1,2}:\d{2}$', line_clean) or re.search(r'^\(?\d+h\d*m?\)?$', line_clean, re.IGNORECASE):
             continue
-        # 若有報到時間，跳過純 DO/D2W 標籤行以優先尋找真實車次 (如 NF1020)
-        if re.match(r'^(DO\d*W?|D\d+W|PAY|FAC|OGC)$', line_clean, re.IGNORECASE) and start_time:
+        if re.match(r'^(DO\d*W?|D\d+W|OGC)$', line_clean, re.IGNORECASE):
             continue
         if not real_train:
             real_train = line_clean
 
-    if not real_train and note_tag:
-        real_train = note_tag
+    found_leave = next((k for k in leave_codes if k in raw_upper), "")
+    if found_leave and not is_valid_train_code(real_train):
+        return dict(start=start_time, end=end_time, train=found_leave, hours=hours, note=found_leave)
 
     clean_real_train = re.sub(r'[#%]', '', real_train).strip() if real_train else "無"
-
-    # 組合 Note 備註字串
     notes = [l for l in lines if l not in times and l != clean_real_train and not re.search(r'^\(?\d+h\d*m?\)?$', l, re.IGNORECASE)]
     note_final = " ".join(notes) if notes else note_tag
 
@@ -249,21 +244,22 @@ def parse_cell(raw):
 def is_cell_off_day(raw_val):
     if pd.isna(raw_val) or not str(raw_val).strip():
         return True
-    raw_str = str(raw_val).strip()
-    if raw_str.upper() in ["NAN", "NONE", "", "."]:
+    raw_str = str(raw_val).strip().upper()
+    if raw_str in ["NAN", "NONE", "", "."]:
         return True
 
-    # 【最高優先權】：只要儲存格內出現 Sign-In / Sign-Out 時間格式 (\b\d{1,2}:\d{2}\b)，100% 強制判定為「上班日」(回傳 False)
-    if re.search(r'\b\d{1,2}:\d{2}\b', raw_str):
-        return False
-
     parsed = parse_cell(raw_val)
-    if parsed.get("start") and str(parsed.get("start")).strip():
+    train_code = str(parsed.get("train", "")).strip().upper()
+    leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
+
+    if train_code in leave_codes or any(k in raw_str for k in leave_codes):
+        if not is_valid_train_code(train_code):
+            return True
+
+    if is_valid_train_code(train_code) or train_code.startswith("N"):
         return False
 
-    train_code = str(parsed.get("train", "")).strip().upper()
-    pure_off_codes = ["DO", "D2W", "DO1", "DO2", "DO3", "PAY", "FAC", "AL", "SL", "CL", "ML", "無", "NAN", ""]
-    if train_code and train_code not in pure_off_codes and not train_code.startswith("DO"):
+    if parsed.get("start") and train_code not in leave_codes and not train_code.startswith("DO"):
         return False
 
     return True
