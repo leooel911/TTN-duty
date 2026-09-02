@@ -137,7 +137,7 @@ st.markdown(f"""
 
 st.markdown("""
 <div class="test-env-banner">
-    <div class="test-env-title">測試環境運行中（TEST ENVIRONMENT）</div>
+    <div class="test-env-title">Bata測試環境運行中（BATA TEST ENVIRONMENT）</div>
     <div class="test-env-sub">目前為內部測試階段｜本頁尾端可聯繫團隊</div>
 </div>
 """, unsafe_allow_html=True)
