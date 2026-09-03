@@ -15,6 +15,9 @@ from modules.services import (
 from modules.drawing import render_schedule_figure
 from modules.components import render_zoomable_image, show_crew_schedule_modal
 
+def reset_ex_search():
+    st.session_state["ex_search_performed"] = False
+
 def render_user_home():
     active_files = get_current_role_files()
     current_unit_label = st.session_state.get("current_unit", "TTN")
@@ -151,10 +154,8 @@ def render_user_home():
         selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2, key="win_selected_role")
         target_path = active_files[selected_role]
 
-        # 動態判定該職位對應的預設早班起算時間
         morn_start_time = "03:00" if selected_role == "駕駛" else "05:00"
 
-        # 安全防護：職位切換或 Key 缺失時，正確初始化與重置 win_time_slider
         if "last_win_selected_role" not in st.session_state or st.session_state["last_win_selected_role"] != selected_role:
             st.session_state["last_win_selected_role"] = selected_role
             st.session_state["win_time_slider"] = (morn_start_time, "10:00")
@@ -175,15 +176,19 @@ def render_user_home():
                 q_col1, q_col2, q_col3, q_col4 = st.columns(4)
                 if q_col1.button("全時段", key="btn_win_all", use_container_width=True):
                     st.session_state["win_time_slider"] = (morn_start_time, "18:00")
+                    st.session_state.pop("win_raw_candidates", None)
                     st.rerun()
                 if q_col2.button("早班", key="btn_win_morn", use_container_width=True):
                     st.session_state["win_time_slider"] = (morn_start_time, "10:00")
+                    st.session_state.pop("win_raw_candidates", None)
                     st.rerun()
                 if q_col3.button("中班", key="btn_win_noon", use_container_width=True):
                     st.session_state["win_time_slider"] = ("10:00", "13:00")
+                    st.session_state.pop("win_raw_candidates", None)
                     st.rerun()
                 if q_col4.button("晚班", key="btn_win_night", use_container_width=True):
                     st.session_state["win_time_slider"] = ("13:00", "18:00")
+                    st.session_state.pop("win_raw_candidates", None)
                     st.rerun()                
 
                 TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
@@ -216,13 +221,11 @@ def render_user_home():
                             parsed = parse_cell(cell_raw)
                             start_t = parsed["start"]
                             
-                            # 核心更新：呼叫 is_cell_off_day()，非休假（工作日/DO2W/已排班DO3W）或有 Sign-In 時間者納入
                             is_off = is_cell_off_day(cell_raw)
 
                             if not is_off or start_t:
                                 tr_upper = str(parsed["train"]).strip().upper()
                                 raw_cell_upper = str(cell_raw).upper()
-                                # 請假判定（排除 DO2W/DO3W 出勤）
                                 is_leave = any(k in raw_cell_upper for k in leave_codes) or tr_upper in leave_codes
                                 is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                 is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
@@ -255,7 +258,6 @@ def render_user_home():
                     filtered_results = []
 
                     for r in raw_list:
-                        # 安全防護：具備具體 Sign-In 時間者才進行時段過濾，無時間 (Sign-In --:--) 保留
                         if r["Sign-In"] != "--:--":
                             if not (min_time <= r["Sign-In"] <= max_time_sel): continue
                         if only_main_line and (r["非正線"] or r["請假"]): continue
@@ -337,7 +339,7 @@ def render_user_home():
             st.session_state["ex_search_performed"] = False
 
         ex_c1, ex_c2, ex_c3 = st.columns(3)
-        with ex_c1: selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], key="ex_role_select")
+        with ex_c1: selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], key="ex_role_select", on_change=reset_ex_search)
 
         sample_path = active_files.get(selected_role, "")
         
@@ -353,13 +355,14 @@ def render_user_home():
                     st.warning("目前的班表檔案中無法解析出有效的日期欄位。")
                 else:
                     with ex_c2: 
-                        target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date")
+                        target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date", on_change=reset_ex_search)
 
                     same_week_options = []
                     target_week_str = ""
                     try:
+                        current_year = date.today().year
                         t_m, t_d = map(int, target_date.split('/'))
-                        t_dt = date(2026, t_m, t_d)
+                        t_dt = date(current_year, t_m, t_d)
                         
                         t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
                         t_sat = t_sun + timedelta(days=6)
@@ -369,7 +372,7 @@ def render_user_home():
                             if d_str == target_date: continue
                             try:
                                 d_m, d_d = map(int, d_str.split('/'))
-                                d_dt = date(2026, d_m, d_d)
+                                d_dt = date(current_year, d_m, d_d)
                                 if t_sun <= d_dt <= t_sat:
                                     same_week_options.append(d_str)
                             except: pass
@@ -382,7 +385,7 @@ def render_user_home():
                             st.session_state["ex_return_date"] = return_date_options[0]
 
                     with ex_c3: 
-                        return_date = st.selectbox("選擇可還假日期", return_date_options, key="ex_return_date")
+                        return_date = st.selectbox("選擇可還假日期", return_date_options, key="ex_return_date", on_change=reset_ex_search)
 
                     st.caption(f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）")
 
@@ -415,7 +418,6 @@ def render_user_home():
                                 parsed_target = parse_cell(row.iloc[target_col_idx])
                                 raw_target_str = str(row.iloc[target_col_idx]).strip().upper()
                                 
-                                # 想休日：必須為純休假（未排班 DO3W 會被正確算為 True）
                                 is_target_leave = any(k in raw_target_str for k in leave_codes) or parsed_target["train"] in leave_codes
                                 is_target_do = is_cell_off_day(row.iloc[target_col_idx])
                                 if not is_target_do or is_target_leave: continue
@@ -424,7 +426,6 @@ def render_user_home():
                                 raw_return_str = str(row.iloc[return_col_idx]).strip()
                                 raw_return_upper = raw_return_str.upper()
 
-                                # 還休日：必須為上班日（DO2W 與已排班 DO3W 會被正確算為 False 允許還假）
                                 is_return_leave = any(k in raw_return_upper for k in leave_codes) or parsed_return["train"] in leave_codes
                                 is_return_do = is_cell_off_day(row.iloc[return_col_idx])
                                 
@@ -503,7 +504,6 @@ def render_user_home():
                                 streak_cnt = cand.get('連續上班天數', 0)
                                 streak_color = "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
 
-                                # --- 警示橫幅與卡片邊框動態邏輯 ---
                                 has_holiday_work = bool(re.search(r'(DO[23]W|D[23]W|OGC)', do_tag, re.IGNORECASE))
                                 card_border_color = "rgba(56, 189, 248, 0.25)"
                                 warning_banner_html = ""
