@@ -1,625 +1,346 @@
 import os
 import re
+import io
+import pandas as pd
 import streamlit as st
-from datetime import date, timedelta
-from config import UNITS
-from modules.utils import (
-    get_file_mtime_str, is_module_maintenance, log_activity, 
-    safe_read_excel, parse_cell, translate_train_code, is_town_shift, is_overtime,
-    is_cell_off_day
-)
-from modules.services import (
-    get_current_role_files, get_schedule_range, process_file_data, 
-    calculate_consecutive_work_days
-)
-from modules.drawing import render_schedule_figure
-from modules.components import render_zoomable_image, show_crew_schedule_modal
+from datetime import datetime, timezone, timedelta
+from config import DATA_DIR, LOG_FILE, TAIWAN_TZ, UNITS
 
-# --- 自動重置狀態回呼函數 ---
-def reset_win_search():
-    """切換換班條件時，自動清空舊的換班快照"""
-    st.session_state.pop("win_raw_candidates", None)
+def get_maintenance_flag_path(unit, module_key):
+    return os.path.join(DATA_DIR, f"maintenance_{unit}_{module_key}.flag")
 
-def reset_ex_search():
-    """切換換假條件時，自動清空舊的換假快照"""
-    st.session_state["ex_search_performed"] = False
-    st.session_state.pop("ex_raw_candidates", None)
+def set_module_maintenance(unit, module_key, is_maint):
+    if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR, exist_ok=True)
+    flag_path = get_maintenance_flag_path(unit, module_key)
+    if is_maint:
+        with open(flag_path, "w") as f: f.write("ON")
+    else:
+        if os.path.exists(flag_path): os.remove(flag_path)
 
-def render_user_home():
-    active_files = get_current_role_files()
-    current_unit_label = st.session_state.get("current_unit", "TTN")
-    missing_files = [role for role in ["駕駛", "列車長", "服勤員"] if not os.path.exists(active_files[role]) or os.path.getsize(active_files[role]) == 0]
+def is_module_maintenance(unit, module_key):
+    flag_path = get_maintenance_flag_path(unit, module_key)
+    return os.path.exists(flag_path)
 
-    if missing_files: st.error(f"【{current_unit_label}】資料庫異常或尚無檔案：請洽管理員上傳！")
+def format_display_name(name):
+    """將姓名遮罩顯示 (如: 張小明 -> 小明)"""
+    if not name or str(name).strip().upper() in ["NAN", "NONE", ""]:
+        return ""
+    clean_name = str(name).strip()
+    if len(clean_name) <= 2:
+        return clean_name
+    return clean_name[1:]
 
-    td_time = get_file_mtime_str(active_files["駕駛"])
-    tm_time = get_file_mtime_str(active_files["列車長"])
-    ta_time = get_file_mtime_str(active_files["服勤員"])
-    sched_range = get_schedule_range()
+@st.cache_data(show_spinner=False)
+def safe_read_excel_cached(file_path_or_bytes, header=None, file_mtime=None):
+    try:
+        if isinstance(file_path_or_bytes, str):
+            if file_path_or_bytes.endswith('.xls'):
+                return pd.read_excel(file_path_or_bytes, header=header, engine='xlrd')
+            else:
+                try: return pd.read_excel(file_path_or_bytes, header=header, engine='openpyxl')
+                except: return pd.read_excel(file_path_or_bytes, header=header, engine='xlrd')
+        else:
+            file_bytes = file_path_or_bytes
+            try: return pd.read_excel(io.BytesIO(file_bytes), header=header, engine='openpyxl')
+            except: return pd.read_excel(io.BytesIO(file_bytes), header=header, engine='xlrd')
+    except Exception as e:
+        raise ValueError(f"無法解析 Excel 檔案格式 (錯誤: {e})")
 
-    st.markdown(f"""
-    <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 !important;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="section-title" style="font-size: 13px !important;">[{current_unit_label}] 排班週期</span>
-            <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
-                {sched_range if len(missing_files) < 3 else "資料庫異常"}
-            </span>
-        </div>
-        <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
-            <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
-                <span>點擊檢視各大表更新時間</span>
-                <span style="font-size: 9px; color: #64748B;">▼</span>
-            </summary>
-            <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1);">
-                <div style="display: flex; justify-content: space-between;"><span>駕駛 (TD)</span><span>{td_time}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>列車長 (TM)</span><span>{tm_time}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>服勤員 (TA)</span><span>{ta_time}</span></div>
-            </div>
-        </details>
-    </div>
-    """, unsafe_allow_html=True)
+def safe_read_excel(file_source, header=None):
+    if isinstance(file_source, str) and os.path.exists(file_source):
+        mtime = os.path.getmtime(file_source)
+        return safe_read_excel_cached(file_source, header=header, file_mtime=mtime)
+    elif hasattr(file_source, "getvalue"):
+        return safe_read_excel_cached(file_source.getvalue(), header=header)
+    else:
+        return safe_read_excel_cached(file_source, header=header)
 
-    st.markdown("<div style='font-size: 13px; font-weight: 700; color: #94A3B8; margin-bottom: 8px;'>選擇系統操作模式</div>", unsafe_allow_html=True)
+def get_employee_name(unit_key, emp_input):
+    input_clean = str(emp_input).strip().upper()
+    unit_files = UNITS.get(unit_key, UNITS["TTN"])
+    for role in ["駕駛", "列車長", "服勤員"]:
+        path = unit_files.get(role, "")
+        if os.path.exists(path):
+            try:
+                df = safe_read_excel(path, header=3)
+                df.columns = [str(c).strip() for c in df.columns]
+                for _, row in df.iterrows():
+                    emp_id = str(row.iloc[0]).strip().upper()
+                    emp_name = str(row.iloc[1]).strip().upper()
+                    if emp_id == input_clean or emp_name == input_clean:
+                        return str(row.iloc[1]).strip()
+            except: pass
+    return ""
 
-    app_mode = st.radio(
-        "系統操作模式選擇",
-        [
-            "繪製個人月班表圖檔",
-            "換班｜選擇換班日期",
-            "換假｜選擇換假日期"
-        ],
-        horizontal=False,
-        label_visibility="collapsed"
+def parse_device_info(ua_string):
+    ua = ua_string.lower()
+    if "iphone" in ua: device = "iPhone"
+    elif "ipad" in ua: device = "iPad"
+    elif "android" in ua: device = "Android Phone"
+    elif "macintosh" in ua or "mac os" in ua: device = "Mac"
+    elif "windows" in ua: device = "Windows PC"
+    else: device = "Desktop / Other"
+
+    if "safari" in ua and "chrome" not in ua and "crios" not in ua: browser = "Safari"
+    elif "chrome" in ua or "crios" in ua: browser = "Chrome"
+    elif "line" in ua: browser = "LINE App"
+    elif "edg" in ua: browser = "Edge"
+    else: browser = "Browser"
+
+    return f"{device} [{browser}]"
+
+def log_activity(input_str):
+    try:
+        if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR, exist_ok=True)
+        now_tw = datetime.now(TAIWAN_TZ).strftime('%Y-%m-%d %H:%M:%S')
+        ua_raw = st.context.headers.get("user-agent", "") if hasattr(st, "context") else ""
+        device_info = parse_device_info(ua_raw) if ua_raw else "未知裝置"
+        current_operator = st.session_state.get("current_user_id", "未知")
+        current_unit = st.session_state.get("current_unit", "TTN")
+        log_entry = f"{now_tw} | 單位: {current_unit} | 操作者員編: {current_operator} | 裝置: {device_info} | 動作: {input_str}\n"
+        with open(LOG_FILE, "a", encoding="utf-8") as f: f.write(log_entry)
+    except: pass
+
+def load_activity_logs():
+    logs = []
+    if os.path.exists(LOG_FILE):
+        try:
+            with open(LOG_FILE, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            for line in reversed(lines):
+                line = line.strip()
+                if not line: continue
+                parts = line.split(" | ")
+                if len(parts) >= 5:
+                    timestamp = parts[0]
+                    unit = parts[1].replace("單位: ", "").strip()
+                    user_id = parts[2].replace("操作者員編: ", "").strip()
+                    device = parts[3].replace("裝置: ", "").strip()
+                    action = parts[4].replace("動作: ", "").strip()
+                    logs.append({
+                        "timestamp": timestamp,
+                        "unit": unit,
+                        "user_id": user_id,
+                        "user_name": get_employee_name(unit, user_id) or user_id,
+                        "device": device,
+                        "action": action,
+                        "details": action
+                    })
+                else:
+                    logs.append({
+                        "timestamp": "",
+                        "unit": "TTN",
+                        "user_id": "未知",
+                        "user_name": "未知",
+                        "device": "未知",
+                        "action": line,
+                        "details": line
+                    })
+        except Exception as e:
+            print(f"[Log Parsing Error] {e}")
+    return logs
+
+def get_file_mtime_str(path):
+    if os.path.exists(path):
+        mtime = os.path.getmtime(path)
+        dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(TAIWAN_TZ)
+        size_kb = os.path.getsize(path) / 1024
+        return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} ({size_kb:.1f} KB)"
+    return "尚無檔案"
+
+def pad_time(t_str):
+    if not t_str or ":" not in str(t_str): return str(t_str) if t_str else ""
+    parts = str(t_str).split(":")
+    return f"{int(parts[0]):02d}:{parts[1]}" if len(parts) == 2 else str(t_str)
+
+def calculate_hours(start_str, end_str):
+    if not start_str or not end_str or ":" not in start_str or ":" not in end_str: return ""
+    try:
+        sh, sm = map(int, start_str.split(":"))
+        eh, em = map(int, end_str.split(":"))
+        start_mins = sh * 60 + sm
+        end_mins = eh * 60 + em
+        if end_mins <= start_mins: end_mins += 24 * 60
+        diff_mins = end_mins - start_mins
+        return f"{diff_mins // 60}h{diff_mins % 60:02d}m"
+    except: return ""
+
+def is_valid_train_code(tr):
+    if not tr: return False
+    tr_clean = str(tr).strip().upper()
+    if tr_clean.startswith("DO") or tr_clean.startswith("D2W") or tr_clean.startswith("D3W") or "OGC" in tr_clean:
+        return False
+    leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
+    if tr_clean in leave_codes:
+        return False
+    return bool(re.match(r'^[A-Z]+\d+', tr_clean))
+
+def is_overtime(h, tr, note):
+    if not is_valid_train_code(tr) or not h: return False
+    try:
+        p = str(h).replace("h", ":").replace("m", "").split(":")
+        return (int(p[0]) * 60 + int(p[1])) > 510
+    except: return False
+
+def translate_train_code(tr):
+    if not tr: return "無"
+    tr_upper = str(tr).strip().upper()
+    mapping = {"PAY": "特休 (PAY)", "FAC": "家庭照顧假 (FAC)", "LEV": "公假 (LEV)", "MLP": "生理假 (MLP)", "MTR": "事假 (MTR)"}
+    return mapping.get(tr_upper, tr)
+
+def is_town_shift(tr, note):
+    tr_upper = str(tr).strip().upper()
+    note_upper = str(note).strip().upper()
+    combined_text = f"{tr_upper} {note_upper}"
+    if not tr or tr_upper in ["", "無", "NAN"]: return True
+    if tr_upper in ["PAY", "FAC"]: return False
+    keywords = ["TOWN", "STD", "TTN", "DTT", "OGT", "OGC", "FAC", "DS", "H9", "WRSL"]
+    for kw in keywords:
+        if re.search(rf"\b{kw}\d*", combined_text): return True
+    return not is_valid_train_code(tr_upper)
+
+def parse_cell(raw):
+    if pd.isna(raw) or not str(raw).strip():
+        return dict(start="", train="無", end="", hours="", note="")
+
+    raw_str = str(raw).strip()
+    lines = [l.strip() for l in raw_str.replace('\r', '').split('\n') if l.strip() and l.strip() != "."]
+    if not lines:
+        return dict(start="", train="無", end="", hours="", note="")
+
+    leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
+    raw_upper = raw_str.upper()
+
+    times = re.findall(r'\b\d{1,2}:\d{2}\b', raw_str)
+    start_time = pad_time(times[0]) if len(times) >= 1 else ""
+    end_time = pad_time(times[1]) if len(times) >= 2 else ""
+    hours = calculate_hours(start_time, end_time)
+
+    do_match = re.search(r'(DO\d*W?|D\d+W|OGC)', raw_str, re.IGNORECASE)
+    note_tag = do_match.group(1).upper() if do_match else ""
+
+    real_train = ""
+    for line in lines:
+        line_clean = line.strip()
+        if re.match(r'^\d{1,2}:\d{2}$', line_clean) or re.search(r'^\(?\d+h\d*m?\)?$', line_clean, re.IGNORECASE):
+            continue
+        if re.match(r'^(DO\d*W?|D\d+W|OGC)$', line_clean, re.IGNORECASE) and start_time:
+            continue
+        if not real_train:
+            real_train = line_clean
+
+    found_leave = next((k for k in leave_codes if k in raw_upper), "")
+    if found_leave and not is_valid_train_code(real_train):
+        return dict(start=start_time, end=end_time, train=found_leave, hours=hours, note=found_leave)
+
+    clean_real_train = re.sub(r'[#%]', '', real_train).strip() if real_train else "無"
+    notes = [l for l in lines if l not in times and l != clean_real_train and not re.search(r'^\(?\d+h\d*m?\)?$', l, re.IGNORECASE)]
+    note_final = " ".join(notes) if notes else note_tag
+
+    return dict(
+        start=start_time,
+        end=end_time,
+        train=clean_real_train if clean_real_train else "無",
+        hours=hours,
+        note=note_final
     )
 
-    if "last_app_mode" not in st.session_state: 
-        st.session_state["last_app_mode"] = app_mode
+def is_cell_off_day(raw_val):
+    """
+    精準判定是否為休假日 (DO/DO1/DO3/純休假/DO2W休假態)
+    - DO2W/DO3W/OGC 若有班別與時間，視為出勤態！
+    - DO2W/DO3W/OGC 若無班別與時間，視為休假態 (即可作為同日假換班對象)！
+    """
+    if pd.isna(raw_val) or not str(raw_val).strip():
+        return True
+    raw_str = str(raw_val).strip().upper()
+    if raw_str in ["NAN", "NONE", "", "."]:
+        return True
 
-    if st.session_state["last_app_mode"] != app_mode:
-        st.session_state["last_app_mode"] = app_mode
-        st.session_state.pop("win_raw_candidates", None)
-        st.session_state.pop("ex_raw_candidates", None)
-        st.session_state["ex_search_performed"] = False
+    parsed = parse_cell(raw_val)
+    train_code = str(parsed.get("train", "")).strip().upper()
+    has_time = bool(parsed.get("start"))
+    has_valid_train = is_valid_train_code(train_code)
 
-    st.markdown("---")
+    # 國定假日 (DO2W/D2W) 與 輪休加班 (DO3W/D3W) / OGC 判定
+    if re.search(r'(DO2W|D2W|DO3W|D3W|OGC)', raw_str):
+        if has_time or has_valid_train:
+            return False  # 有時間或車次 -> 當天出勤
+        return True       # 無時間與車次 -> 當天休假 (符合同日假換班對象)
 
-    is_admin_user = st.session_state.get("admin_logged_in", False)
+    if "PAY" in raw_str or train_code == "PAY":
+        return False  # PAY 特休算工時出勤態
 
-    # ==================== 模式一：繪製個人月班表圖檔 ====================
-    if app_mode == "繪製個人月班表圖檔":
-        if is_module_maintenance(current_unit_label, "producer"):
-            if not is_admin_user:
-                st.markdown(f"""
-                <div class="user-maint-banner">
-                    <div class="user-maint-title">SYSTEM MAINTENANCE // 系統維護中</div>
-                    <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 6px 0;">
-                        【{current_unit_label}】個人月班表圖檔生成系統進行維護中
-                    </div>
-                    <div class="user-maint-sub">
-                        正在進行系統維護，暫不開放服務，請稍後再試。
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                st.stop()
-            else:
-                st.markdown(f"""
-                <div class="admin-maint-banner">
-                    <strong>【管理員維護模式檢視】</strong> 當前【{current_unit_label} - 個人月班表圖檔】模組已設為「維護中」（一般組員已被阻擋），您目前正以管理員身分進行預覽與功能測試。
-                </div>
-                """, unsafe_allow_html=True)
+    leave_codes = ["FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
+    if train_code in leave_codes or any(k in raw_str for k in leave_codes):
+        if not has_valid_train and not train_code.startswith("N"):
+            return True
 
-        st.markdown("""
-        <div class="section-header-box">
-            <div class="section-title">個人班表圖檔生成</div>
-            <div class="section-subtitle">Personal Shift Schedule Image Generator</div>
-        </div>
-        """, unsafe_allow_html=True)
+    if has_valid_train or train_code.startswith("N"):
+        return False
 
-        target_input = st.text_input("輸入 員編 或 姓名 (例如: A023300 or 波莉)", value="A", key="user_input_field")
+    if has_time and train_code not in leave_codes and not train_code.startswith("DO"):
+        return False
 
-        if st.button("立即生成班表圖片檔"):
-            current_input = st.session_state.get("user_input_field", "").strip()
-            if not current_input:
-                st.warning("請輸入員編或姓名")
-            else:
-                log_activity(f"生成個人班表圖檔查詢: {current_input}")
-                try:
-                    start_dt, dates, emp_id, emp_name, cells = process_file_data(current_input)
-                    with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
-                        buf = render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, current_unit_label, badge_title="Producer | C.L.F")
-                    st.success(f"【{emp_name}】個人班表圖片生成成功！")
-                    render_zoomable_image(buf)
-                    st.download_button("點此下載班表影像檔", data=buf, file_name=f"{current_unit_label}_班表_{emp_name}.png", mime="image/png")
-                except Exception as e:
-                    st.error(f"錯誤：{e}")
+    return True
 
-    # ==================== 模式二：換班｜選擇換班日期 ====================
-    elif app_mode == "換班｜選擇換班日期":
-        if is_module_maintenance(current_unit_label, "window_filter"):
-            if not is_admin_user:
-                st.markdown(f"""
-                <div class="user-maint-banner">
-                    <div class="user-maint-title">SYSTEM MAINTENANCE // 系統維護中</div>
-                    <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 6px 0;">
-                        【{current_unit_label}】換班選擇日期快篩系統進行維護中
-                    </div>
-                    <div class="user-maint-sub">
-                        正在進行系統維護，暫不開放服務，請稍後再試。
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                st.stop()
-            else:
-                st.markdown(f"""
-                <div class="admin-maint-banner">
-                    <strong>【管理員維護模式檢視】</strong> 當前【{current_unit_label} - 換班選擇日期快篩】模組已設為「維護中」（一般組員已被阻擋），您目前正以管理員身分進行預覽與功能測試。
-                </div>
-                """, unsafe_allow_html=True)
-
-        st.markdown("""
-        <div class="section-header-box">
-            <div class="section-title">換班檢索｜指定 Sign-In 時段組員快篩</div>
-            <div class="section-subtitle">Duty Time Window & Sign-In Filter Matrix</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2, key="win_selected_role", on_change=reset_win_search)
-        target_path = active_files[selected_role]
-
-        morn_start_time = "03:00" if selected_role == "駕駛" else "05:00"
-
-        if "last_win_selected_role" not in st.session_state or st.session_state["last_win_selected_role"] != selected_role:
-            st.session_state["last_win_selected_role"] = selected_role
-            st.session_state["win_time_slider"] = (morn_start_time, "10:00")
-        elif "win_time_slider" not in st.session_state:
-            st.session_state["win_time_slider"] = (morn_start_time, "10:00")
-
-        if not os.path.exists(target_path):
-            st.error(f"找不到【{current_unit_label} - {selected_role}】的班表檔案，請先至管理員後台上傳")
-        else:
-            df_search = safe_read_excel(target_path, header=3)
-            df_search.columns = [str(c).strip() for c in df_search.columns]
-            date_cols = [re.search(r'(\d+/\d+)', str(col)).group(1) for col in df_search.columns[2:] if re.search(r'(\d+/\d+)', str(col))]
-
-            if date_cols:
-                target_date = st.selectbox("選擇換班日期", date_cols, key="win_target_date", on_change=reset_win_search)
-
-                st.write("**快捷選擇時段：**")
-                q_col1, q_col2, q_col3, q_col4 = st.columns(4)
-                if q_col1.button("全時段", key="btn_win_all", use_container_width=True):
-                    st.session_state["win_time_slider"] = (morn_start_time, "18:00")
-                    reset_win_search()
-                    st.rerun()
-                if q_col2.button("早班", key="btn_win_morn", use_container_width=True):
-                    st.session_state["win_time_slider"] = (morn_start_time, "10:00")
-                    reset_win_search()
-                    st.rerun()
-                if q_col3.button("中班", key="btn_win_noon", use_container_width=True):
-                    st.session_state["win_time_slider"] = ("10:00", "13:00")
-                    reset_win_search()
-                    st.rerun()
-                if q_col4.button("晚班", key="btn_win_night", use_container_width=True):
-                    st.session_state["win_time_slider"] = ("13:00", "18:00")
-                    reset_win_search()
-                    st.rerun()                
-
-                TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
-                min_time, max_time_sel = st.select_slider(
-                    "Sign-In 時段區間", 
-                    options=TIME_OPTIONS, 
-                    value=st.session_state.get("win_time_slider", (morn_start_time, "10:00")), 
-                    key="win_time_slider"
-                )
-
-                filter_col1, filter_col2 = st.columns(2)
-                with filter_col1: only_main_line = st.checkbox("僅顯示正線勤務", value=False, key="win_main_line")
-                with filter_col2: only_long_shift = st.checkbox("僅顯示長班 (>8.5h)", value=False, key="win_long_shift")
-
-                if st.button("搜尋可換班組員名單", key="btn_window_search"):
-                    log_activity(f"換班快篩 [{current_unit_label} - {selected_role}] 日期:{target_date}")
-                    all_cols_list = list(df_search.columns[2:])
-                    raw_candidates = []
-                    
-                    leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
-
-                    for _, row in df_search.iterrows():
-                        emp_id = str(row.iloc[0]).strip()
-                        emp_name = str(row.iloc[1]).strip()
-                        if not emp_id or emp_id.upper() in ["NAN", "NONE", ""]: continue
-
-                        target_col_idx = next((idx + 2 for idx, col in enumerate(all_cols_list) if target_date in str(col)), -1)
-                        if target_col_idx != -1 and target_col_idx < len(row):
-                            cell_raw = row.iloc[target_col_idx]
-                            parsed = parse_cell(cell_raw)
-                            start_t = parsed["start"]
-                            
-                            is_off = is_cell_off_day(cell_raw)
-
-                            if not is_off or start_t:
-                                tr_upper = str(parsed["train"]).strip().upper()
-                                raw_cell_upper = str(cell_raw).upper()
-                                is_leave = any(k in raw_cell_upper for k in leave_codes) or tr_upper in leave_codes
-                                is_non_line = is_town_shift(parsed["train"], parsed["note"])
-                                is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
-
-                                do_tag = parsed.get("note", "")
-                                if not do_tag:
-                                    do_match = re.search(r'(DO\d*W?|D\d+W|OGC)', str(cell_raw), re.IGNORECASE)
-                                    do_tag = do_match.group(1).upper() if do_match else ""
-
-                                next_day_sign_in = "無記錄"
-                                if target_col_idx + 1 < len(row):
-                                    next_parsed = parse_cell(row.iloc[target_col_idx + 1])
-                                    next_day_sign_in = next_parsed["start"] if next_parsed["start"] else (next_parsed["train"] if next_parsed["train"] else "無記錄")
-
-                                raw_candidates.append({
-                                    "日期": target_date, "員編": emp_id, "姓名": emp_name,
-                                    "Sign-In": start_t if start_t else "--:--", 
-                                    "Sign-Out": parsed["end"] if parsed["end"] else "--:--",
-                                    "車次": translate_train_code(parsed["train"]),
-                                    "隔日Sign-In": next_day_sign_in, "長班": is_long,
-                                    "非正線": is_non_line, "請假": is_leave,
-                                    "出勤標記": do_tag
-                                })
-
-                    st.session_state["win_raw_candidates"] = raw_candidates
-                    st.rerun()
-
-                if st.session_state.get("win_raw_candidates") is not None:
-                    raw_list = st.session_state["win_raw_candidates"]
-                    filtered_results = []
-
-                    for r in raw_list:
-                        if r["Sign-In"] != "--:--":
-                            if not (min_time <= r["Sign-In"] <= max_time_sel): continue
-                        if only_main_line and (r["非正線"] or r["請假"]): continue
-                        if only_long_shift and not r["長班"]: continue
-                        filtered_results.append(r)
-
-                    filtered_results = sorted(filtered_results, key=lambda x: (str(x["Sign-In"]), str(x["Sign-Out"])))
-
-                    st.markdown(f"### 換班可選人員名單（共符合 {len(filtered_results)} 筆）")
-
-                    if filtered_results:
-                        c_col1, c_col2 = st.columns(2)
-                        for idx, r in enumerate(filtered_results):
-                            target_col = c_col1 if idx % 2 == 0 else c_col2
-                            with target_col:
-                                do_tag = r.get('出勤標記', '')
-                                do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in r['車次']) else ""
-
-                                badges_html = '<div class="badge-group">'
-                                if r['長班']: badges_html += '<span class="long-badge">長班</span>'
-                                if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
-                                if do_tag: badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
-                                badges_html += '</div>'
-
-                                st.markdown(f"""
-                                <div class="integrated-crew-box">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                        <div>
-                                            <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
-                                            <div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{r['車次']}{do_tag_display}</div>
-                                        </div>
-                                        <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
-                                            <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-In {r['Sign-In']}</div>
-                                            <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-Out {r['Sign-Out']}</div>
-                                        </div>
-                                    </div>
-                                    <div style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
-                                        <span style="font-size: 11px; color: #94A3B8; font-family: monospace;">隔日 Sign-In：<strong style="color:#FCD34D;">{r['隔日Sign-In']}</strong></span>
-                                        {badges_html}
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-
-                                if st.button(f"檢視 {r['姓名']} 完整班表", key=f"win_btn_{r['員編']}_{idx}", use_container_width=True):
-                                    show_crew_schedule_modal(r['員編'], current_unit_label, badge_title="Window Filter | C.L.F")
-                    else: st.info("在指定條件內，找不到符合的人員")
-
-    # ==================== 模式三：換假｜選擇換假日期 ====================
-    elif app_mode == "換假｜選擇換假日期":
-        if is_module_maintenance(current_unit_label, "exchange_filter"):
-            if not is_admin_user:
-                st.markdown(f"""
-                <div class="user-maint-banner">
-                    <div class="user-maint-title">SYSTEM MAINTENANCE // 系統維護中</div>
-                    <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 6px 0;">
-                        【{current_unit_label}】換假選擇日期快篩系統進行維護中
-                    </div>
-                    <div class="user-maint-sub">
-                        正在進行系統維護，暫不開放服務，請稍後再試。
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                st.stop()
-            else:
-                st.markdown(f"""
-                <div class="admin-maint-banner">
-                    <strong>【管理員維護模式檢視】</strong> 當前【{current_unit_label} - 換假選擇日期快篩】模組已設為「維護中」（一般組員已被阻擋），您目前正以管理員身分進行預覽與功能測試。
-                </div>
-                """, unsafe_allow_html=True)
-
-        st.markdown("""
-        <div class="section-header-box">
-            <div class="section-title">換假檢索｜選擇換假日期快篩</div>
-            <div class="section-subtitle">Shift Exchange Date Filter Matrix</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        if "ex_search_performed" not in st.session_state:
-            st.session_state["ex_search_performed"] = False
-
-        ex_c1, ex_c2, ex_c3 = st.columns(3)
-        with ex_c1: selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], key="ex_role_select", on_change=reset_ex_search)
-
-        sample_path = active_files.get(selected_role, "")
+def calculate_rest_hours(sign_out_str, next_sign_in_str):
+    """計算 Sign-Out 到隔日 Sign-In 的休息小時數"""
+    if not sign_out_str or not next_sign_in_str or "--:--" in (sign_out_str, next_sign_in_str):
+        return None
+    try:
+        so_h, so_m = map(int, sign_out_str.split(":"))
+        si_h, si_m = map(int, next_sign_in_str.split(":"))
         
-        if not sample_path or not os.path.exists(sample_path):
-            st.error(f"找不到【{current_unit_label} - {selected_role}】的班表檔案，請先至管理員後台上傳")
-        else:
-            try:
-                df_ex = safe_read_excel(sample_path, header=3)
-                df_ex.columns = [str(c).strip() for c in df_ex.columns]
-                date_cols = [re.search(r'(\d+/\d+)', str(c)).group(1) for c in df_ex.columns[2:] if re.search(r'(\d+/\d+)', str(c))]
+        so_dt = datetime(2026, 1, 1, so_h, so_m)
+        si_dt = datetime(2026, 1, 2, si_h, si_m)
+        
+        diff_hours = (si_dt - so_dt).total_seconds() / 3600.0
+        return round(diff_hours, 1)
+    except:
+        return None
 
-                if not date_cols:
-                    st.warning("目前的班表檔案中無法解析出有效的日期欄位。")
-                else:
-                    with ex_c2: 
-                        target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date", on_change=reset_ex_search)
+def check_shift_legality(crew_row, target_col_idx, all_cols):
+    """
+    合規性驗證:
+    1. 班與班之間 Sign-Out 至 Sign-In 休息時間是否 >= 12h
+    2. 若 11h <= 休息時間 < 12h，檢查 7 天範圍內是否超過 1 次特例
+    """
+    window_start = max(2, target_col_idx - 6)
+    window_end = min(len(all_cols) - 1, target_col_idx + 6)
+    
+    eleven_hour_count = 0
+    min_interval_found = 99.0
+    has_under_11h = False
 
-                    # 【核心專業升級】：自動掃描所選日期，判斷是否包含國定假日 (DO2W / D2W / OGC)
-                    is_target_national_holiday = False
-                    target_col_name = next((col for col in df_ex.columns[2:] if target_date in str(col)), None)
-                    if target_col_name:
-                        col_series_str = df_ex[target_col_name].astype(str).str.upper()
-                        if col_series_str.str.contains(r'DO2W|D2W|OGC', regex=True).any():
-                            is_target_national_holiday = True
+    for idx in range(window_start, window_end):
+        if idx + 1 >= len(all_cols):
+            break
+        
+        c1 = parse_cell(crew_row.iloc[idx])
+        c2 = parse_cell(crew_row.iloc[idx + 1])
+        
+        if c1.get("end") and c2.get("start") and not is_cell_off_day(crew_row.iloc[idx]) and not is_cell_off_day(crew_row.iloc[idx + 1]):
+            rest_h = calculate_rest_hours(c1["end"], c2["start"])
+            if rest_h is not None:
+                if rest_h < min_interval_found:
+                    min_interval_found = rest_h
+                
+                if rest_h < 11.0:
+                    has_under_11h = True
+                elif 11.0 <= rest_h < 12.0:
+                    eleven_hour_count += 1
 
-                    same_week_options = []
-                    target_week_str = ""
-                    try:
-                        current_year = date.today().year
-                        t_m, t_d = map(int, target_date.split('/'))
-                        t_dt = date(current_year, t_m, t_d)
-                        
-                        t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
-                        t_sat = t_sun + timedelta(days=6)
-                        target_week_str = f"{t_sun.month}/{t_sun.day:02d} (日) ~ {t_sat.month}/{t_sat.day:02d} (六)"
+    illegal_reasons = []
+    if has_under_11h:
+        illegal_reasons.append(f"班間隔不足 11 小時 (最低 {min_interval_found}h)")
+    if eleven_hour_count > 1:
+        illegal_reasons.append(f"7 天內出現 {eleven_hour_count} 次 11~12 小時班間隔 (限 1 次)")
 
-                        for d_str in date_cols:
-                            if d_str == target_date: continue
-                            try:
-                                d_m, d_d = map(int, d_str.split('/'))
-                                d_dt = date(current_year, d_m, d_d)
-                                if t_sun <= d_dt <= t_sat:
-                                    same_week_options.append(d_str)
-                            except: pass
-                    except: pass
+    is_legal = len(illegal_reasons) == 0
+    warning_msg = "；".join(illegal_reasons) if illegal_reasons else ""
 
-                    SAME_DAY_SWAP_LABEL = "💡 【同日國定假換班】(免還假)"
-                    
-                    # 只有當選取日「判定為國定假日」時，才插入【同日國定假換班】選項！
-                    if is_target_national_holiday:
-                        return_date_options = [SAME_DAY_SWAP_LABEL] + (same_week_options if same_week_options else [d for d in date_cols if d != target_date])
-                    else:
-                        return_date_options = same_week_options if same_week_options else [d for d in date_cols if d != target_date]
-
-                    if "ex_return_date" in st.session_state and st.session_state["ex_return_date"] not in return_date_options:
-                        if return_date_options:
-                            st.session_state["ex_return_date"] = return_date_options[0]
-
-                    with ex_c3: 
-                        return_date = st.selectbox("選擇可還假日期", return_date_options, key="ex_return_date", on_change=reset_ex_search)
-
-                    # 動態資訊橫幅提示
-                    if is_target_national_holiday:
-                        st.markdown(f"""
-                        <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-size: 12px; color: #FDE68A;">
-                            <strong>國定假日自動偵測：</strong> 系統確認 <strong>{target_date}</strong> 屬國定假日/輪休 (DO2W)，已為您自動解鎖「同日國定假換班 (免還假)」選項！
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.caption(f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）")
-
-                    col_f1, col_f2 = st.columns(2)
-                    with col_f1:
-                        time_filter_options = ["不限"] + [f"{h:02d}:00 以後" for h in range(5, 17)]
-                        return_time_filter = st.selectbox("還假日 Sign-In 時間限制", options=time_filter_options, key="ex_time_filter")
-                    with col_f2:
-                        sort_order = st.selectbox("結果排序方式", ["依 Sign-In 時間 (由早至晚)", "依最早 Sign-Out", "依工時長短"], key="ex_sort_order")
-
-                    strict_limit = st.checkbox("嚴格過濾：排除換假後連續上班已達 6 天以上的人員", value=True, key="ex_strict_limit")
-
-                    if st.button("搜尋可換假組員名單", key="btn_ex_search"):
-                        log_activity(f"換假快篩 [{current_unit_label} - {selected_role}] 想休:{target_date} 還假:{return_date}")
-                        raw_candidates = []
-                        all_cols = list(df_ex.columns)
-                        
-                        is_same_day_swap = (return_date == SAME_DAY_SWAP_LABEL)
-                        target_col_idx = next((idx for idx, col in enumerate(all_cols) if idx >= 2 and target_date in str(col)), -1)
-                        return_col_idx = target_col_idx if is_same_day_swap else next((idx for idx, col in enumerate(all_cols) if idx >= 2 and return_date in str(col)), -1)
-
-                        leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
-
-                        if target_col_idx != -1 and return_col_idx != -1:
-                            for _, row in df_ex.iterrows():
-                                emp_id = str(row.iloc[0]).strip()
-                                emp_name = str(row.iloc[1]).strip()
-                                if not emp_id or emp_id.upper() in ["NAN", "NONE", ""]: continue
-                                if target_col_idx >= len(row) or return_col_idx >= len(row): continue
-
-                                parsed_target = parse_cell(row.iloc[target_col_idx])
-                                raw_target_str = str(row.iloc[target_col_idx]).strip().upper()
-                                
-                                is_target_leave = any(k in raw_target_str for k in leave_codes) or parsed_target["train"] in leave_codes
-                                if is_target_leave: continue
-
-                                parsed_return = parse_cell(row.iloc[return_col_idx])
-                                raw_return_str = str(row.iloc[return_col_idx]).strip()
-                                raw_return_upper = raw_return_str.upper()
-
-                                if is_same_day_swap:
-                                    is_b_off_on_target = is_cell_off_day(row.iloc[target_col_idx])
-                                    has_holiday_tag = bool(re.search(r'(DO[23]W|D[23]W|OGC)', raw_target_str, re.IGNORECASE))
-                                    if not (is_b_off_on_target and has_holiday_tag):
-                                        continue
-                                else:
-                                    is_target_do = is_cell_off_day(row.iloc[target_col_idx])
-                                    if not is_target_do: continue
-
-                                    is_return_leave = any(k in raw_return_upper for k in leave_codes) or parsed_return["train"] in leave_codes
-                                    is_return_do = is_cell_off_day(row.iloc[return_col_idx])
-                                    if is_return_do or is_return_leave: continue
-
-                                is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
-                                is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
-
-                                return_do_tag = parsed_return.get("note", "")
-                                if not return_do_tag:
-                                    do_match = re.search(r'(DO\d*W?|D\d+W|OGC)', raw_return_str, re.IGNORECASE)
-                                    return_do_tag = do_match.group(1).upper() if do_match else ""
-
-                                max_consecutive_streak = calculate_consecutive_work_days(row, target_col_idx, return_col_idx)
-
-                                raw_candidates.append({
-                                    "員編": emp_id,
-                                    "姓名": emp_name,
-                                    "想休日": target_date,
-                                    "想休狀態": raw_target_str.split("\n")[0] if raw_target_str else "DO",
-                                    "還休日": "免還假 (同日直換)" if is_same_day_swap else return_date,
-                                    "還假車次": translate_train_code(parsed_return["train"]),
-                                    "Sign-In": parsed_return["start"] if parsed_return["start"] else "--:--",
-                                    "Sign-Out": parsed_return["end"] if parsed_return["end"] else "--:--",
-                                    "工時": parsed_return["hours"],
-                                    "長班": is_long,
-                                    "非正線": is_non_line,
-                                    "出勤標記": return_do_tag,
-                                    "連續上班天數": max_consecutive_streak,
-                                    "是否同日假換班": is_same_day_swap
-                                })
-
-                        st.session_state["ex_raw_candidates"] = raw_candidates
-                        st.session_state["ex_search_performed"] = True
-                        st.rerun()
-
-                    if st.session_state.get("ex_search_performed"):
-                        raw_list = st.session_state.get("ex_raw_candidates", [])
-                        filtered_candidates = []
-
-                        for cand in raw_list:
-                            if return_time_filter != "不限":
-                                min_allowed = return_time_filter.split(" ")[0]
-                                if not cand["Sign-In"] or cand["Sign-In"] == "--:--" or cand["Sign-In"] < min_allowed:
-                                    continue
-
-                            if strict_limit and cand["連續上班天數"] >= 6:
-                                continue
-
-                            filtered_candidates.append(cand)
-
-                        if sort_order == "依 Sign-In 時間 (由早至晚)":
-                            filtered_candidates = sorted(filtered_candidates, key=lambda x: (x["Sign-In"] or "99:99", x["Sign-Out"] or "99:99"))
-                        elif sort_order == "依最早 Sign-Out":
-                            filtered_candidates = sorted(filtered_candidates, key=lambda x: (x["Sign-Out"] or "99:99", x["Sign-In"] or "99:99"))
-                        elif sort_order == "依工時長短":
-                            filtered_candidates = sorted(filtered_candidates, key=lambda x: x["工時"] or "0h00m", reverse=True)
-
-                        st.markdown(f"### 換假可選人員名單（共 {len(filtered_candidates)} 位）")
-
-                        if filtered_candidates:
-                            c_col1, c_col2 = st.columns(2)
-                            for idx, cand in enumerate(filtered_candidates):
-                                cand_name = cand.get('姓名', '')
-                                cand_id = cand.get('員編', '')
-                                target_col = c_col1 if idx % 2 == 0 else c_col2
-
-                                do_tag = cand.get('出勤標記', '')
-                                do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in cand.get('還假車次', '')) else ""
-
-                                is_same_day = cand.get('是否同日假換班', False)
-
-                                badges_html = '<div class="badge-group">'
-                                if is_same_day:
-                                    badges_html += '<span class="long-badge" style="background: rgba(16, 185, 129, 0.2) !important; color: #34D399 !important; border: 1px solid #10B981 !important;">同日假換班</span>'
-                                if cand.get('長班'): badges_html += '<span class="long-badge">長班</span>'
-                                if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
-                                if do_tag and not is_same_day: 
-                                    badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
-                                badges_html += '</div>'
-
-                                streak_cnt = cand.get('連續上班天數', 0)
-                                streak_color = "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
-
-                                has_holiday_work = bool(re.search(r'(DO[23]W|D[23]W|OGC)', do_tag, re.IGNORECASE))
-                                card_border_color = "rgba(56, 189, 248, 0.25)"
-                                warning_banner_html = ""
-
-                                if is_same_day:
-                                    card_border_color = "#10B981"
-                                    warning_banner_html = f"""
-                                    <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #6EE7B7; font-weight: 700; font-family: monospace;">
-                                        國定假換班提示：同日 1對1 出勤對調，無須擇日還假（對方承接中秋/國定國定出勤，計工時）。
-                                    </div>
-                                    """
-                                elif streak_cnt >= 7:
-                                    card_border_color = "#F43F5E"
-                                    warning_banner_html = f"""
-                                    <div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
-                                        注意：換假後連續上班達 {streak_cnt} 天（含 {do_tag if do_tag else '國定出勤'}），請注意七休一規範！
-                                    </div>
-                                    """
-                                elif has_holiday_work and streak_cnt == 6:
-                                    card_border_color = "#F59E0B"
-                                    warning_banner_html = f"""
-                                    <div style="background: rgba(245, 158, 11, 0.2); border: 1px solid #F59E0B; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDE68A; font-weight: 700; font-family: monospace;">
-                                        國定出勤提示：還休日為 {do_tag} 國定假日！換假後連班 {streak_cnt} 天，請留意班間隔與加給。
-                                    </div>
-                                    """
-                                elif has_holiday_work:
-                                    card_border_color = "#F59E0B"
-                                    warning_banner_html = f"""
-                                    <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.5); border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDE68A; font-weight: 600; font-family: monospace;">
-                                        國定假日警示：還休日包含 {do_tag} 國定/輪休出勤，請注意國定假日出勤規定！
-                                    </div>
-                                    """
-
-                                with target_col:
-                                    st.markdown(f"""
-                                    <div class="integrated-crew-box" style="border-color: {card_border_color} !important;">
-                                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                            <div>
-                                                <div class="compact-name">{cand_name} <span style="color:#94A3B8; font-size:12px;">({cand_id})</span></div>
-                                                <div style="font-size: 12px; color: #94A3B8; margin-top: 4px; font-family: monospace;">
-                                                    還休日：<strong style="color: {'#34D399' if is_same_day else '#94A3B8'};">{cand.get('還休日')}</strong>{do_tag_display} ｜ 班別：<strong style="color:#38BDF8;">{cand.get('還假車次', '無')}</strong>
-                                                </div>
-                                            </div>
-                                            <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
-                                                <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">
-                                                    Sign-In {cand.get('Sign-In', '--:--')}
-                                                </div>
-                                                <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">
-                                                    Sign-Out {cand.get('Sign-Out', '--:--')}
-                                                </div>
-                                                <div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px;">
-                                                    ({cand.get('工時', '')})
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
-                                            <span style="font-size: 11.5px; color: {streak_color}; font-weight: 700; font-family: monospace;">
-                                                換假後連續上班：{streak_cnt} 天
-                                            </span>
-                                            {badges_html}
-                                        </div>
-                                        {warning_banner_html}
-                                    </div>
-                                    """, unsafe_allow_html=True)
-
-                                    if st.button(f"檢視 {cand_name} 完整班表", key=f"ex_btn_{cand_id}_{idx}", use_container_width=True):
-                                        show_crew_schedule_modal(cand_id, current_unit_label, badge_title="Exchange | C.L.F")
-                        else:
-                            st.info("在指定條件內，找不到符合的可換假人員 (可嘗試放寬還假日 Sign-In 時間限制或取消嚴格過濾)")
-            except Exception as e:
-                st.error(f"讀取換假資料時發生錯誤：{e}")
+    return is_legal, warning_msg, {
+        "min_interval": min_interval_found if min_interval_found != 99.0 else None,
+        "eleven_hr_cnt": eleven_hour_count
+    }
