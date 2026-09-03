@@ -154,12 +154,11 @@ def render_user_home():
         # 動態判定該職位對應的預設早班起算時間
         morn_start_time = "03:00" if selected_role == "駕駛" else "05:00"
 
-        # 監聽職位切換：切換職位時自動重置時間滑桿為該職位預設早班時段
-        if "last_win_selected_role" not in st.session_state:
+        # 安全防護：職位切換或 Key 缺失時，正確初始化與重置 win_time_slider
+        if "last_win_selected_role" not in st.session_state or st.session_state["last_win_selected_role"] != selected_role:
             st.session_state["last_win_selected_role"] = selected_role
             st.session_state["win_time_slider"] = (morn_start_time, "10:00")
-        elif st.session_state["last_win_selected_role"] != selected_role:
-            st.session_state["last_win_selected_role"] = selected_role
+        elif "win_time_slider" not in st.session_state:
             st.session_state["win_time_slider"] = (morn_start_time, "10:00")
 
         if not os.path.exists(target_path):
@@ -191,7 +190,7 @@ def render_user_home():
                 min_time, max_time_sel = st.select_slider(
                     "Sign-In 時段區間", 
                     options=TIME_OPTIONS, 
-                    value=st.session_state["win_time_slider"], 
+                    value=st.session_state.get("win_time_slider", (morn_start_time, "10:00")), 
                     key="win_time_slider"
                 )
 
