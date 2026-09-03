@@ -6,7 +6,7 @@ from config import UNITS
 from modules.utils import (
     get_file_mtime_str, is_module_maintenance, log_activity, 
     safe_read_excel, parse_cell, translate_train_code, is_town_shift, is_overtime,
-    is_cell_off_day
+    is_cell_off_day, calculate_rest_hours, check_shift_legality
 )
 from modules.services import (
     get_current_role_files, get_schedule_range, process_file_data, 
@@ -369,6 +369,14 @@ def render_user_home():
                     with ex_c2: 
                         target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date", on_change=reset_ex_search)
 
+                    # 全表動態掃描：自動偵測「想休假日期」是否為國定假日 (DO2W / D2W / OGC)
+                    is_target_national_holiday = False
+                    target_col_name = next((col for col in df_ex.columns[2:] if target_date in str(col)), None)
+                    if target_col_name:
+                        col_series_str = df_ex[target_col_name].astype(str).str.upper()
+                        if col_series_str.str.contains(r'DO2W|D2W|OGC', regex=True).any():
+                            is_target_national_holiday = True
+
                     same_week_options = []
                     target_week_str = ""
                     try:
@@ -390,10 +398,13 @@ def render_user_home():
                             except: pass
                     except: pass
 
-                    # 【創新機制】：自動偵測想休假日期是否為國定假日 (DO2W/DO3W)
-                    # 若為國定假日，選單最上方帶入「同日國定假換班 (免還假)」選項！
                     SAME_DAY_SWAP_LABEL = "💡 【同日國定假換班】(免還假)"
-                    return_date_options = [SAME_DAY_SWAP_LABEL] + (same_week_options if same_week_options else [d for d in date_cols if d != target_date])
+                    
+                    # 只有當選取日「判定為國定假日」時，才動態插入【同日國定假換班】選項！
+                    if is_target_national_holiday:
+                        return_date_options = [SAME_DAY_SWAP_LABEL] + (same_week_options if same_week_options else [d for d in date_cols if d != target_date])
+                    else:
+                        return_date_options = same_week_options if same_week_options else [d for d in date_cols if d != target_date]
 
                     if "ex_return_date" in st.session_state and st.session_state["ex_return_date"] not in return_date_options:
                         if return_date_options:
@@ -402,8 +413,13 @@ def render_user_home():
                     with ex_c3: 
                         return_date = st.selectbox("選擇可還假日期", return_date_options, key="ex_return_date", on_change=reset_ex_search)
 
-                    if return_date == SAME_DAY_SWAP_LABEL:
-                        st.caption(f" **同日國定假換班模式：** 系統將尋找當天國定休假 (DO2W) 組員進行 1對1 出勤狀態對調，<b>無須另擇日還假</b>。")
+                    # 動態資訊提示橫幅
+                    if is_target_national_holiday:
+                        st.markdown(f"""
+                        <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-size: 12px; color: #FDE68A;">
+                            <strong>國定假日自動偵測：</strong> 系統確認 <strong>{target_date}</strong> 屬國定假日/輪休 (DO2W)，已為您自動解鎖「同日國定假換班 (免還假)」選項！
+                        </div>
+                        """, unsafe_allow_html=True)
                     else:
                         st.caption(f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）")
 
@@ -437,7 +453,6 @@ def render_user_home():
                                 parsed_target = parse_cell(row.iloc[target_col_idx])
                                 raw_target_str = str(row.iloc[target_col_idx]).strip().upper()
                                 
-                                # 想休日檢查
                                 is_target_leave = any(k in raw_target_str for k in leave_codes) or parsed_target["train"] in leave_codes
                                 if is_target_leave: continue
 
@@ -447,7 +462,7 @@ def render_user_home():
 
                                 if is_same_day_swap:
                                     # 「同日假換班」邏輯：
-                                    # 對方 (B) 在想休日當天必須是純 DO2W/DO3W 休假態 (無車次且無時間)
+                                    # 對方 (B) 在想休日當天必須是純 DO2W 休假態 (is_cell_off_day 為 True 且含國定標記)
                                     is_b_off_on_target = is_cell_off_day(row.iloc[target_col_idx])
                                     has_holiday_tag = bool(re.search(r'(DO[23]W|D[23]W|OGC)', raw_target_str, re.IGNORECASE))
                                     if not (is_b_off_on_target and has_holiday_tag):
@@ -497,7 +512,10 @@ def render_user_home():
                         filtered_candidates = []
 
                         for cand in raw_list:
-                            if return_time_filter != "不限":
+                            is_same_day = cand.get("是否同日假換班", False)
+
+                            # 非同日假換班時，才套用 Sign-In 時間過濾（同日假換班對方為休假態無 Sign-In 時間）
+                            if not is_same_day and return_time_filter != "不限":
                                 min_allowed = return_time_filter.split(" ")[0]
                                 if not cand["Sign-In"] or cand["Sign-In"] == "--:--" or cand["Sign-In"] < min_allowed:
                                     continue
@@ -540,7 +558,6 @@ def render_user_home():
                                 streak_cnt = cand.get('連續上班天數', 0)
                                 streak_color = "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
 
-                                # --- 警示橫幅與卡片邊框動態邏輯 ---
                                 has_holiday_work = bool(re.search(r'(DO[23]W|D[23]W|OGC)', do_tag, re.IGNORECASE))
                                 card_border_color = "rgba(56, 189, 248, 0.25)"
                                 warning_banner_html = ""
@@ -549,7 +566,7 @@ def render_user_home():
                                     card_border_color = "#10B981"
                                     warning_banner_html = f"""
                                     <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #6EE7B7; font-weight: 700; font-family: monospace;">
-                                        國定假換班提示：同日 1對1 出勤對調，無須擇日還假（對方承接中秋/國定勤務）。
+                                        國定假換班提示：同日 1對1 出勤對調，無須擇日還假（對方承接國定出勤，計工時）。
                                     </div>
                                     """
                                 elif streak_cnt >= 7:
@@ -563,7 +580,7 @@ def render_user_home():
                                     card_border_color = "#F59E0B"
                                     warning_banner_html = f"""
                                     <div style="background: rgba(245, 158, 11, 0.2); border: 1px solid #F59E0B; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDE68A; font-weight: 700; font-family: monospace;">
-                                        國定出勤提示：還休日為 {do_tag} 國定假日！換假後連班 {streak_cnt} 天，請注意加給與班間隔。
+                                        國定出勤提示：還休日為 {do_tag} 國定假日！換假後連班 {streak_cnt} 天，請留意班間隔與加給。
                                     </div>
                                     """
                                 elif has_holiday_work:
