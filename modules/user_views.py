@@ -215,11 +215,14 @@ def render_user_home():
                             cell_raw = row.iloc[target_col_idx]
                             parsed = parse_cell(cell_raw)
                             start_t = parsed["start"]
+                            
+                            # 核心更新：呼叫 is_cell_off_day()，非休假（工作日/DO2W/已排班DO3W）或有 Sign-In 時間者納入
+                            is_off = is_cell_off_day(cell_raw)
 
-                            if start_t:
+                            if not is_off or start_t:
                                 tr_upper = str(parsed["train"]).strip().upper()
                                 raw_cell_upper = str(cell_raw).upper()
-                                # 精準修正請假判定（不將 DO/D2W/D3W 誤判為請假）
+                                # 請假判定（排除 DO2W/DO3W 出勤）
                                 is_leave = any(k in raw_cell_upper for k in leave_codes) or tr_upper in leave_codes
                                 is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                 is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
@@ -236,7 +239,8 @@ def render_user_home():
 
                                 raw_candidates.append({
                                     "日期": target_date, "員編": emp_id, "姓名": emp_name,
-                                    "Sign-In": start_t, "Sign-Out": parsed["end"],
+                                    "Sign-In": start_t if start_t else "--:--", 
+                                    "Sign-Out": parsed["end"] if parsed["end"] else "--:--",
                                     "車次": translate_train_code(parsed["train"]),
                                     "隔日Sign-In": next_day_sign_in, "長班": is_long,
                                     "非正線": is_non_line, "請假": is_leave,
@@ -251,7 +255,9 @@ def render_user_home():
                     filtered_results = []
 
                     for r in raw_list:
-                        if not (min_time <= r["Sign-In"] <= max_time_sel): continue
+                        # 安全防護：具備具體 Sign-In 時間者才進行時段過濾，無時間 (Sign-In --:--) 保留
+                        if r["Sign-In"] != "--:--":
+                            if not (min_time <= r["Sign-In"] <= max_time_sel): continue
                         if only_main_line and (r["非正線"] or r["請假"]): continue
                         if only_long_shift and not r["長班"]: continue
                         filtered_results.append(r)
@@ -266,7 +272,7 @@ def render_user_home():
                             target_col = c_col1 if idx % 2 == 0 else c_col2
                             with target_col:
                                 do_tag = r.get('出勤標記', '')
-                                do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if do_tag else ""
+                                do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in r['車次']) else ""
 
                                 badges_html = '<div class="badge-group">'
                                 if r['長班']: badges_html += '<span class="long-badge">長班</span>'
@@ -409,7 +415,7 @@ def render_user_home():
                                 parsed_target = parse_cell(row.iloc[target_col_idx])
                                 raw_target_str = str(row.iloc[target_col_idx]).strip().upper()
                                 
-                                # 想休日：必須是純休假
+                                # 想休日：必須為純休假（未排班 DO3W 會被正確算為 True）
                                 is_target_leave = any(k in raw_target_str for k in leave_codes) or parsed_target["train"] in leave_codes
                                 is_target_do = is_cell_off_day(row.iloc[target_col_idx])
                                 if not is_target_do or is_target_leave: continue
@@ -418,7 +424,7 @@ def render_user_home():
                                 raw_return_str = str(row.iloc[return_col_idx]).strip()
                                 raw_return_upper = raw_return_str.upper()
 
-                                # 還休日：必須是上班日
+                                # 還休日：必須為上班日（DO2W 與已排班 DO3W 會被正確算為 False 允許還假）
                                 is_return_leave = any(k in raw_return_upper for k in leave_codes) or parsed_return["train"] in leave_codes
                                 is_return_do = is_cell_off_day(row.iloc[return_col_idx])
                                 
@@ -441,8 +447,8 @@ def render_user_home():
                                     "想休狀態": raw_target_str.split("\n")[0] if raw_target_str else "DO",
                                     "還休日": return_date,
                                     "還假車次": translate_train_code(parsed_return["train"]),
-                                    "Sign-In": parsed_return["start"],
-                                    "Sign-Out": parsed_return["end"],
+                                    "Sign-In": parsed_return["start"] if parsed_return["start"] else "--:--",
+                                    "Sign-Out": parsed_return["end"] if parsed_return["end"] else "--:--",
                                     "工時": parsed_return["hours"],
                                     "長班": is_long,
                                     "非正線": is_non_line,
@@ -461,7 +467,7 @@ def render_user_home():
                         for cand in raw_list:
                             if return_time_filter != "不限":
                                 min_allowed = return_time_filter.split(" ")[0]
-                                if not cand["Sign-In"] or cand["Sign-In"] < min_allowed:
+                                if not cand["Sign-In"] or cand["Sign-In"] == "--:--" or cand["Sign-In"] < min_allowed:
                                     continue
 
                             if strict_limit and cand["連續上班天數"] >= 6:
@@ -486,7 +492,7 @@ def render_user_home():
                                 target_col = c_col1 if idx % 2 == 0 else c_col2
 
                                 do_tag = cand.get('出勤標記', '')
-                                do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if do_tag else ""
+                                do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in cand.get('還假車次', '')) else ""
 
                                 badges_html = '<div class="badge-group">'
                                 if cand.get('長班'): badges_html += '<span class="long-badge">長班</span>'
