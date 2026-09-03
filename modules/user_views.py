@@ -70,6 +70,7 @@ def render_user_home():
 
     is_admin_user = st.session_state.get("admin_logged_in", False)
 
+    # ==================== 模式一：繪製個人月班表圖檔 ====================
     if app_mode == "繪製個人月班表圖檔":
         if is_module_maintenance(current_unit_label, "producer"):
             if not is_admin_user:
@@ -117,6 +118,7 @@ def render_user_home():
                 except Exception as e:
                     st.error(f"錯誤：{e}")
 
+    # ==================== 模式二：換班｜選擇換班日期 ====================
     elif app_mode == "換班｜選擇換班日期":
         if is_module_maintenance(current_unit_label, "window_filter"):
             if not is_admin_user:
@@ -149,6 +151,17 @@ def render_user_home():
         selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2, key="win_selected_role")
         target_path = active_files[selected_role]
 
+        # 動態判定該職位對應的預設早班起算時間
+        morn_start_time = "03:00" if selected_role == "駕駛" else "05:00"
+
+        # 監聽職位切換：切換職位時自動重置時間滑桿為該職位預設早班時段
+        if "last_win_selected_role" not in st.session_state:
+            st.session_state["last_win_selected_role"] = selected_role
+            st.session_state["win_time_slider"] = (morn_start_time, "10:00")
+        elif st.session_state["last_win_selected_role"] != selected_role:
+            st.session_state["last_win_selected_role"] = selected_role
+            st.session_state["win_time_slider"] = (morn_start_time, "10:00")
+
         if not os.path.exists(target_path):
             st.error(f"找不到【{current_unit_label} - {selected_role}】的班表檔案，請先至管理員後台上傳")
         else:
@@ -158,8 +171,6 @@ def render_user_home():
 
             if date_cols:
                 target_date = st.selectbox("選擇換班日期", date_cols, key="win_target_date")
-                
-                morn_start_time = "03:00" if selected_role == "駕駛" else "05:00"
 
                 st.write("**快捷選擇時段：**")
                 q_col1, q_col2, q_col3, q_col4 = st.columns(4)
@@ -177,8 +188,12 @@ def render_user_home():
                     st.rerun()                
 
                 TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
-                default_slider = st.session_state.get("win_time_slider", (morn_start_time, "10:00"))
-                min_time, max_time_sel = st.select_slider("Sign-In 時段區間", options=TIME_OPTIONS, value=default_slider, key="win_time_slider")
+                min_time, max_time_sel = st.select_slider(
+                    "Sign-In 時段區間", 
+                    options=TIME_OPTIONS, 
+                    value=st.session_state["win_time_slider"], 
+                    key="win_time_slider"
+                )
 
                 filter_col1, filter_col2 = st.columns(2)
                 with filter_col1: only_main_line = st.checkbox("僅顯示正線勤務", value=False, key="win_main_line")
@@ -203,11 +218,10 @@ def render_user_home():
                             if start_t:
                                 tr_upper = str(parsed["train"]).strip().upper()
                                 raw_cell_upper = str(cell_raw).upper()
-                                is_leave = any(k in raw_cell_upper for k in ["PAY", "FAC", "AL", "SL", "CL"]) or tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W"]
+                                is_leave = any(k in raw_cell_upper for k in ["PAY", "FAC", "AL", "SL", "CL"]) or tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W", "D3W"]
                                 is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                 is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
 
-                                # 擷取 DO2W, DO3W 等出勤標記
                                 do_tag = parsed.get("note", "")
                                 if not do_tag:
                                     do_match = re.search(r'(DO\d*W?|D\d+W|OGC)', str(cell_raw), re.IGNORECASE)
@@ -281,6 +295,7 @@ def render_user_home():
                                     show_crew_schedule_modal(r['員編'], current_unit_label, badge_title="Window Filter | C.L.F")
                     else: st.info("在指定條件內，找不到符合的人員")
 
+    # ==================== 模式三：換假｜選擇換假日期 ====================
     elif app_mode == "換假｜選擇換假日期":
         if is_module_maintenance(current_unit_label, "exchange_filter"):
             if not is_admin_user:
@@ -343,17 +358,14 @@ def render_user_home():
                         target_week_str = f"{t_sun.month}/{t_sun.day:02d} (日) ~ {t_sat.month}/{t_sat.day:02d} (六)"
 
                         for d_str in date_cols:
-                            if d_str == target_date:
-                                continue
+                            if d_str == target_date: continue
                             try:
                                 d_m, d_d = map(int, d_str.split('/'))
                                 d_dt = date(2026, d_m, d_d)
                                 if t_sun <= d_dt <= t_sat:
                                     same_week_options.append(d_str)
-                            except:
-                                pass
-                    except:
-                        pass
+                            except: pass
+                    except: pass
 
                     return_date_options = same_week_options if same_week_options else [d for d in date_cols if d != target_date]
 
@@ -483,9 +495,35 @@ def render_user_home():
                                 streak_cnt = cand.get('連續上班天數', 0)
                                 streak_color = "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
 
+                                # --- 警示橫幅與卡片邊框動態邏輯 ---
+                                has_holiday_work = bool(re.search(r'(DO[23]W|D[23]W|OGC)', do_tag, re.IGNORECASE))
+                                card_border_color = "rgba(56, 189, 248, 0.25)"
+                                warning_banner_html = ""
+
+                                if streak_cnt >= 7:
+                                    card_border_color = "#F43F5E"
+                                    warning_banner_html = f"""
+                                    <div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
+                                        🚨 違法風險：換假後連續上班達 {streak_cnt} 天（含 {do_tag if do_tag else '國定出勤'}），請注意七休一規範！
+                                    </div>
+                                    """
+                                elif has_holiday_work and streak_cnt == 6:
+                                    card_border_color = "#F59E0B"
+                                    warning_banner_html = f"""
+                                    <div style="background: rgba(245, 158, 11, 0.2); border: 1px solid #F59E0B; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDE68A; font-weight: 700; font-family: monospace;">
+                                        ⚠️ 國定出勤提示：本區間含 {do_tag} 出勤，換假後連班 {streak_cnt} 天，請留意排班間隔。
+                                    </div>
+                                    """
+                                elif has_holiday_work:
+                                    warning_banner_html = f"""
+                                    <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #93C5FD; font-weight: 600; font-family: monospace;">
+                                        💡 國定假日提示：還假日包含 {do_tag} 國定/輪休出勤標記。
+                                    </div>
+                                    """
+
                                 with target_col:
                                     st.markdown(f"""
-                                    <div class="integrated-crew-box">
+                                    <div class="integrated-crew-box" style="border-color: {card_border_color} !important;">
                                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                             <div>
                                                 <div class="compact-name">{cand_name} <span style="color:#94A3B8; font-size:12px;">({cand_id})</span></div>
@@ -511,6 +549,7 @@ def render_user_home():
                                             </span>
                                             {badges_html}
                                         </div>
+                                        {warning_banner_html}
                                     </div>
                                     """, unsafe_allow_html=True)
 
