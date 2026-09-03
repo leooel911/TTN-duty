@@ -203,6 +203,8 @@ def render_user_home():
                     log_activity(f"換班快篩 [{current_unit_label} - {selected_role}] 日期:{target_date}")
                     all_cols_list = list(df_search.columns[2:])
                     raw_candidates = []
+                    
+                    leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
 
                     for _, row in df_search.iterrows():
                         emp_id = str(row.iloc[0]).strip()
@@ -218,7 +220,8 @@ def render_user_home():
                             if start_t:
                                 tr_upper = str(parsed["train"]).strip().upper()
                                 raw_cell_upper = str(cell_raw).upper()
-                                is_leave = any(k in raw_cell_upper for k in ["PAY", "FAC", "AL", "SL", "CL"]) or tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W", "D3W"]
+                                # 精準修正請假判定（不將 DO/D2W/D3W 誤判為請假）
+                                is_leave = any(k in raw_cell_upper for k in leave_codes) or tr_upper in leave_codes
                                 is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                 is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
 
@@ -504,7 +507,7 @@ def render_user_home():
                                     card_border_color = "#F43F5E"
                                     warning_banner_html = f"""
                                     <div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
-                                         風險：換假後連續上班達 {streak_cnt} 天（含 {do_tag if do_tag else '國定出勤'}），請注意七休一規範！
+                                         注意：換假後連續上班達 {streak_cnt} 天（含 {do_tag if do_tag else '國定出勤'}），請注意七休一規範！
                                     </div>
                                     """
                                 elif has_holiday_work and streak_cnt == 6:
@@ -517,7 +520,7 @@ def render_user_home():
                                 elif has_holiday_work:
                                     warning_banner_html = f"""
                                     <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #93C5FD; font-weight: 600; font-family: monospace;">
-                                        國定假日提示：還假日包含 {do_tag} 國定出勤標記。
+                                         國定假日提示：還假日包含 {do_tag} 國定/輪休出勤標記。
                                     </div>
                                     """
 
