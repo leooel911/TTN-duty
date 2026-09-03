@@ -72,7 +72,6 @@ def render_user_home():
         label_visibility="collapsed"
     )
 
-    # 【關鍵修復 1】：偵測模式切換時，自動徹底清空先前所有模式的舊查詢結果
     if "last_app_mode" not in st.session_state: 
         st.session_state["last_app_mode"] = app_mode
 
@@ -164,7 +163,6 @@ def render_user_home():
         </div>
         """, unsafe_allow_html=True)
 
-        # 【關鍵修復 2】：選單加入 on_change=reset_win_search，變更職位即清空舊名單
         selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2, key="win_selected_role", on_change=reset_win_search)
         target_path = active_files[selected_role]
 
@@ -353,7 +351,6 @@ def render_user_home():
             st.session_state["ex_search_performed"] = False
 
         ex_c1, ex_c2, ex_c3 = st.columns(3)
-        # 【關鍵修復 3】：選單加入 on_change=reset_ex_search，變更職位或日期即清空舊名單
         with ex_c1: selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], key="ex_role_select", on_change=reset_ex_search)
 
         sample_path = active_files.get(selected_role, "")
@@ -393,7 +390,10 @@ def render_user_home():
                             except: pass
                     except: pass
 
-                    return_date_options = same_week_options if same_week_options else [d for d in date_cols if d != target_date]
+                    # 【創新機制】：自動偵測想休假日期是否為國定假日 (DO2W/DO3W)
+                    # 若為國定假日，選單最上方帶入「同日國定假換班 (免還假)」選項！
+                    SAME_DAY_SWAP_LABEL = "💡 【同日國定假換班】(免還假)"
+                    return_date_options = [SAME_DAY_SWAP_LABEL] + (same_week_options if same_week_options else [d for d in date_cols if d != target_date])
 
                     if "ex_return_date" in st.session_state and st.session_state["ex_return_date"] not in return_date_options:
                         if return_date_options:
@@ -402,7 +402,10 @@ def render_user_home():
                     with ex_c3: 
                         return_date = st.selectbox("選擇可還假日期", return_date_options, key="ex_return_date", on_change=reset_ex_search)
 
-                    st.caption(f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）")
+                    if return_date == SAME_DAY_SWAP_LABEL:
+                        st.caption(f" **同日國定假換班模式：** 系統將尋找當天國定休假 (DO2W) 組員進行 1對1 出勤狀態對調，<b>無須另擇日還假</b>。")
+                    else:
+                        st.caption(f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）")
 
                     col_f1, col_f2 = st.columns(2)
                     with col_f1:
@@ -417,8 +420,10 @@ def render_user_home():
                         log_activity(f"換假快篩 [{current_unit_label} - {selected_role}] 想休:{target_date} 還假:{return_date}")
                         raw_candidates = []
                         all_cols = list(df_ex.columns)
+                        
+                        is_same_day_swap = (return_date == SAME_DAY_SWAP_LABEL)
                         target_col_idx = next((idx for idx, col in enumerate(all_cols) if idx >= 2 and target_date in str(col)), -1)
-                        return_col_idx = next((idx for idx, col in enumerate(all_cols) if idx >= 2 and return_date in str(col)), -1)
+                        return_col_idx = target_col_idx if is_same_day_swap else next((idx for idx, col in enumerate(all_cols) if idx >= 2 and return_date in str(col)), -1)
 
                         leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
 
@@ -427,24 +432,34 @@ def render_user_home():
                                 emp_id = str(row.iloc[0]).strip()
                                 emp_name = str(row.iloc[1]).strip()
                                 if not emp_id or emp_id.upper() in ["NAN", "NONE", ""]: continue
-
                                 if target_col_idx >= len(row) or return_col_idx >= len(row): continue
 
                                 parsed_target = parse_cell(row.iloc[target_col_idx])
                                 raw_target_str = str(row.iloc[target_col_idx]).strip().upper()
                                 
+                                # 想休日檢查
                                 is_target_leave = any(k in raw_target_str for k in leave_codes) or parsed_target["train"] in leave_codes
-                                is_target_do = is_cell_off_day(row.iloc[target_col_idx])
-                                if not is_target_do or is_target_leave: continue
+                                if is_target_leave: continue
 
                                 parsed_return = parse_cell(row.iloc[return_col_idx])
                                 raw_return_str = str(row.iloc[return_col_idx]).strip()
                                 raw_return_upper = raw_return_str.upper()
 
-                                is_return_leave = any(k in raw_return_upper for k in leave_codes) or parsed_return["train"] in leave_codes
-                                is_return_do = is_cell_off_day(row.iloc[return_col_idx])
-                                
-                                if is_return_do or is_return_leave: continue
+                                if is_same_day_swap:
+                                    # 「同日假換班」邏輯：
+                                    # 對方 (B) 在想休日當天必須是純 DO2W/DO3W 休假態 (無車次且無時間)
+                                    is_b_off_on_target = is_cell_off_day(row.iloc[target_col_idx])
+                                    has_holiday_tag = bool(re.search(r'(DO[23]W|D[23]W|OGC)', raw_target_str, re.IGNORECASE))
+                                    if not (is_b_off_on_target and has_holiday_tag):
+                                        continue
+                                else:
+                                    # 傳統跨日換假邏輯
+                                    is_target_do = is_cell_off_day(row.iloc[target_col_idx])
+                                    if not is_target_do: continue
+
+                                    is_return_leave = any(k in raw_return_upper for k in leave_codes) or parsed_return["train"] in leave_codes
+                                    is_return_do = is_cell_off_day(row.iloc[return_col_idx])
+                                    if is_return_do or is_return_leave: continue
 
                                 is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
                                 is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
@@ -461,7 +476,7 @@ def render_user_home():
                                     "姓名": emp_name,
                                     "想休日": target_date,
                                     "想休狀態": raw_target_str.split("\n")[0] if raw_target_str else "DO",
-                                    "還休日": return_date,
+                                    "還休日": "免還假 (同日直換)" if is_same_day_swap else return_date,
                                     "還假車次": translate_train_code(parsed_return["train"]),
                                     "Sign-In": parsed_return["start"] if parsed_return["start"] else "--:--",
                                     "Sign-Out": parsed_return["end"] if parsed_return["end"] else "--:--",
@@ -469,7 +484,8 @@ def render_user_home():
                                     "長班": is_long,
                                     "非正線": is_non_line,
                                     "出勤標記": return_do_tag,
-                                    "連續上班天數": max_consecutive_streak
+                                    "連續上班天數": max_consecutive_streak,
+                                    "是否同日假換班": is_same_day_swap
                                 })
 
                         st.session_state["ex_raw_candidates"] = raw_candidates
@@ -510,20 +526,33 @@ def render_user_home():
                                 do_tag = cand.get('出勤標記', '')
                                 do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in cand.get('還假車次', '')) else ""
 
+                                is_same_day = cand.get('是否同日假換班', False)
+
                                 badges_html = '<div class="badge-group">'
+                                if is_same_day:
+                                    badges_html += '<span class="long-badge" style="background: rgba(16, 185, 129, 0.2) !important; color: #34D399 !important; border: 1px solid #10B981 !important;">同日假換班</span>'
                                 if cand.get('長班'): badges_html += '<span class="long-badge">長班</span>'
                                 if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
-                                if do_tag: badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
+                                if do_tag and not is_same_day: 
+                                    badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
                                 badges_html += '</div>'
 
                                 streak_cnt = cand.get('連續上班天數', 0)
                                 streak_color = "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
 
+                                # --- 警示橫幅與卡片邊框動態邏輯 ---
                                 has_holiday_work = bool(re.search(r'(DO[23]W|D[23]W|OGC)', do_tag, re.IGNORECASE))
                                 card_border_color = "rgba(56, 189, 248, 0.25)"
                                 warning_banner_html = ""
 
-                                if streak_cnt >= 7:
+                                if is_same_day:
+                                    card_border_color = "#10B981"
+                                    warning_banner_html = f"""
+                                    <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #6EE7B7; font-weight: 700; font-family: monospace;">
+                                        國定假換班提示：同日 1對1 出勤對調，無須擇日還假（對方承接中秋/國定勤務）。
+                                    </div>
+                                    """
+                                elif streak_cnt >= 7:
                                     card_border_color = "#F43F5E"
                                     warning_banner_html = f"""
                                     <div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
@@ -534,13 +563,14 @@ def render_user_home():
                                     card_border_color = "#F59E0B"
                                     warning_banner_html = f"""
                                     <div style="background: rgba(245, 158, 11, 0.2); border: 1px solid #F59E0B; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDE68A; font-weight: 700; font-family: monospace;">
-                                        國定出勤提示：本區間含 {do_tag} 出勤，換假後連班 {streak_cnt} 天，請留意班間隔。
+                                        國定出勤提示：還休日為 {do_tag} 國定假日！換假後連班 {streak_cnt} 天，請注意加給與班間隔。
                                     </div>
                                     """
                                 elif has_holiday_work:
+                                    card_border_color = "#F59E0B"
                                     warning_banner_html = f"""
-                                    <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #93C5FD; font-weight: 600; font-family: monospace;">
-                                        國定假日提示：還假日包含 {do_tag} 國定/輪休出勤標記。
+                                    <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.5); border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDE68A; font-weight: 600; font-family: monospace;">
+                                        國定假日警示：還休日包含 {do_tag} 國定/輪休出勤，請注意國定假日出勤規定！
                                     </div>
                                     """
 
@@ -551,7 +581,7 @@ def render_user_home():
                                             <div>
                                                 <div class="compact-name">{cand_name} <span style="color:#94A3B8; font-size:12px;">({cand_id})</span></div>
                                                 <div style="font-size: 12px; color: #94A3B8; margin-top: 4px; font-family: monospace;">
-                                                    還休日：{cand.get('還休日')}{do_tag_display} ｜ 班別：<strong style="color:#38BDF8;">{cand.get('還假車次', '無')}</strong>
+                                                    還休日：<strong style="color: {'#34D399' if is_same_day else '#94A3B8'};">{cand.get('還休日')}</strong>{do_tag_display} ｜ 班別：<strong style="color:#38BDF8;">{cand.get('還假車次', '無')}</strong>
                                                 </div>
                                             </div>
                                             <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
