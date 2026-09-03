@@ -6,7 +6,7 @@ import io
 import pandas as pd
 from datetime import date, timedelta, datetime, timezone
 import matplotlib
-import matplotlib.pyplot as plt
+import matplotlib.plt as plt
 import matplotlib.font_manager as fm
 from matplotlib.patches import FancyBboxPatch
 import time
@@ -526,7 +526,7 @@ def calculate_hours(start_str, end_str):
 def is_valid_train_code(tr):
     if not tr: return False
     tr_clean = str(tr).strip().upper()
-    leave_codes = ["PAY", "FAC", "DO", "D2W", "AL", "SL", "CL", "ML"]
+    leave_codes = ["PAY", "FAC", "DO", "D2W", "D3W", "AL", "SL", "CL", "ML"]
     if tr_clean in leave_codes or "OGC" in tr_clean: return False
     return bool(re.match(r'^[A-Z]+\d+', tr_clean))
 
@@ -560,13 +560,13 @@ def parse_cell(raw):
     lines = [l.strip() for l in raw_str.split("\n") if l.strip() and l.strip() != "."]
     if not lines: return dict(start="", train="", end="", hours="", note="")
     times = [l for l in lines if re.match(r'^\d{1,2}:\d{2}$', l)]
-    if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0]): return dict(start="", train=lines[0], end="", hours="", note="")
+    if len(lines) == 1 and ("DO" in lines[0] or "D2W" in lines[0] or "D3W" in lines[0]): return dict(start="", train=lines[0], end="", hours="", note="")
 
     start_time = pad_time(times[0]) if times else ""
     end_time = pad_time(times[1]) if len(times) > 1 else ""
     hours = calculate_hours(start_time, end_time)
 
-    do_str = next((l for l in lines if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l), "")
+    do_str = next((l for l in lines if "DO" in l or "D2W" in l or "D3W" in l or "PAY" in l or "FAC" in l), "")
     real_train = next((l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and l != do_str and "h" not in l and "m" not in l), "")
     if not real_train:
         non_time_lines = [l for l in lines if not re.match(r'^\d{1,2}:\d{2}$', l) and "h" not in l and "m" not in l]
@@ -577,23 +577,47 @@ def parse_cell(raw):
     return dict(start=start_time, end=end_time, train=clean_real_train if clean_real_train else "無", hours=hours, note=" ".join(notes))
 
 def is_cell_off_day(raw_val):
+    """
+    判定是否為『純休假』
+    1. DO3W / D3W（國定假日）：
+       - 有帶班別與時間 -> 工作日 (False)
+       - 無帶班別與時間 -> 純休假 (True)
+    2. DO2W / D2W / PAY / OGC：
+       - 無論有無報到時間與班別 -> 一律算工作日 (False)
+    """
     if pd.isna(raw_val) or not str(raw_val).strip():
         return True
     raw_str = str(raw_val).strip().upper()
     if raw_str in ["NAN", "NONE", "", "."]:
         return True
-    
+
     parsed = parse_cell(raw_val)
-    
-    # 國定假日出勤特例：即使包含 DO / D2W，只要有「報到時間」且有「有效班別」(如 Nxxxx 或正線/備勤班別)，即視為「上班日」
-    if parsed["start"] and (is_valid_train_code(parsed["train"]) or parsed["train"].startswith("N")):
+
+    # 1. 精準修正 DO3W / D3W 特殊邏輯
+    if re.search(r'(DO3W|D3W)', raw_str):
+        has_time = bool(parsed["start"])
+        has_train = bool(parsed["train"]) and parsed["train"] not in ["無", "NAN", "DO3W", "D3W"] and is_valid_train_code(parsed["train"])
+        if has_time or has_train:
+            return False  # 有班別或時間 -> 算國定假日出勤（工作日）
+        else:
+            return True   # 無班別且無時間 -> 算國定假日休假（純休假）
+
+    # 2. DO2W / D2W / PAY / OGC 無條件視為工作日
+    if re.search(r'(DO2W|D2W|PAY|OGC)', raw_str):
         return False
 
-    off_keywords = ["DO", "D2W", "PAY", "FAC", "AL", "SL", "CL", "ML"]
+    # 3. 一般班別判定（有 Sign-In 時間者為工作日）
+    if parsed["start"]:
+        return False
+
+    # 純 DO、例休、或請假假別代碼且無時間者 -> 純休假
+    off_keywords = ["DO", "AL", "SL", "CL", "ML", "FAC", "LEV", "MLP", "MTR"]
     if any(k in raw_str for k in off_keywords) or parsed["train"] in off_keywords:
         return True
-    if not parsed["start"] and (not parsed["train"] or parsed["train"] == "無"):
+
+    if not parsed["start"] and (not parsed["train"] or parsed["train"] in ["無", "NAN"]):
         return True
+
     return False
 
 def process_file_data(input_str):
@@ -696,7 +720,7 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
             if item is not None:
                 dt, d, raw_cell_str = item
                 tr, note, hours = d["train"], d.get("note", ""), d.get("hours", "")
-                is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d["start"]
+                is_pure_hol = is_cell_off_day(raw_cell_str)
                 if is_pure_hol or tr.startswith("DO"): has_emp_do = True
                 elif tr in ["PAY", "FAC"] or "PAY" in raw_cell_str or "FAC" in raw_cell_str: has_emp_pay = True
                 elif is_town_shift(tr, note): has_emp_town = True
@@ -712,7 +736,7 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
             dt, d, raw_cell_str = item
             tr, note = d["train"], d.get("note", "")
 
-            is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d["start"]
+            is_pure_hol = is_cell_off_day(raw_cell_str)
             is_pay_shift = (tr in ["PAY", "FAC"]) or ("PAY" in raw_cell_str) or ("FAC" in raw_cell_str)
 
             bg = C_DO_BG if is_pure_hol else (C_PAY_BG if is_pay_shift else (C_TOWN_BG if is_town_shift(tr, note) else (C_WEEKEND_BG if ci in [0,6] else C_WORK_BG)))
@@ -732,13 +756,13 @@ def render_schedule_figure(start_dt, dates, emp_id, emp_name, cells, unit_label,
                 draw_bold_text(ax, x + CW - 0.004, ry + 0.003, f"({d['hours']})", ha="right", va="bottom", color=C_OT_TXT if is_overtime(d["hours"], tr, note) else "#000000", fontproperties=fp(11.5))
             
             # --- 【左下角】精準定位繪製 DO2W / D2W 等國定/輪休出勤標籤 ---
-            do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "PAY" in l or "FAC" in l or "OGC" in l), "")
+            do_match = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "D3W" in l or "PAY" in l or "FAC" in l or "OGC" in l), "")
             if do_match and do_match != tr and not is_pure_hol:
                 draw_bold_text(ax, x + 0.005, ry + 0.003, do_match, ha="left", va="bottom", color=C_DO_TXT, fontproperties=fp(11.5))
 
             cx = x + CW / 2
             if is_pure_hol: 
-                do_code = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l), "DO")
+                do_code = next((l for l in raw_cell_str.split('\n') if "DO" in l or "D2W" in l or "D3W" in l), "DO")
                 draw_bold_text(ax, cx, ry + RH * 0.48, do_code, ha="center", va="center", color=C_DO_TXT, fontproperties=fp(18))
             elif is_pay_shift and not d["start"]: 
                 draw_bold_text(ax, cx, ry + RH * 0.48, tr, ha="center", va="center", color=C_PAY_TXT, fontproperties=fp(18))
@@ -1591,11 +1615,24 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                         cell_raw = row.iloc[target_col_idx]
                         parsed = parse_cell(cell_raw)
                         start_t = parsed["start"]
+                        raw_cell_upper = str(cell_raw).upper()
 
-                        if start_t:
+                        # 提領出勤標記 (例如 DO2W, DO3W, D2W, D3W, OGC 等)
+                        do_tag = parsed.get("note", "")
+                        if not do_tag:
+                            do_match = re.search(r'(DO[23]W|D[23]W|OGC|DO\d*W?)', str(cell_raw), re.IGNORECASE)
+                            do_tag = do_match.group(1).upper() if do_match else ""
+
+                        # 核心判定：該日是否為工作日 (is_cell_off_day 回傳 False 者為工作日)
+                        is_off = is_cell_off_day(cell_raw)
+
+                        if not is_off or start_t:
                             tr_upper = str(parsed["train"]).strip().upper()
-                            raw_cell_upper = str(cell_raw).upper()
-                            is_leave = any(k in raw_cell_upper for k in ["PAY", "FAC", "AL", "SL", "CL"]) or tr_upper in ["PAY", "FAC", "AL", "SL", "CL", "DO", "D2W"]
+                            
+                            # 純請假判定 (剔除 DO2W/DO3W 等出勤標記)
+                            pure_leave_codes = ["AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
+                            is_leave = any(k in raw_cell_upper for k in pure_leave_codes) or tr_upper in pure_leave_codes
+                            
                             is_non_line = is_town_shift(parsed["train"], parsed["note"])
                             is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
 
@@ -1604,12 +1641,21 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                                 next_parsed = parse_cell(row.iloc[target_col_idx + 1])
                                 next_day_sign_in = next_parsed["start"] if next_parsed["start"] else (next_parsed["train"] if next_parsed["train"] else "無記錄")
 
+                            # 車次顯示名稱：有車次用車次，無車次但有 DO2W/DO3W 出勤標記則直接顯示標記名稱 (無待派班字樣)
+                            train_disp = translate_train_code(parsed["train"]) if (parsed["train"] and parsed["train"] != "無") else (do_tag if do_tag else "無")
+
                             raw_candidates.append({
-                                "日期": target_date, "員編": emp_id, "姓名": emp_name,
-                                "Sign-In": start_t, "Sign-Out": parsed["end"],
-                                "車次": translate_train_code(parsed["train"]),
-                                "隔日Sign-In": next_day_sign_in, "長班": is_long,
-                                "非正線": is_non_line, "請假": is_leave
+                                "日期": target_date, 
+                                "員編": emp_id, 
+                                "姓名": emp_name,
+                                "Sign-In": start_t if start_t else "--:--", 
+                                "Sign-Out": parsed["end"] if parsed["end"] else "--:--",
+                                "車次": train_disp,
+                                "隔日Sign-In": next_day_sign_in, 
+                                "長班": is_long,
+                                "非正線": is_non_line, 
+                                "請假": is_leave,
+                                "出勤標記": do_tag
                             })
 
                 st.session_state["win_raw_candidates"] = raw_candidates
@@ -1620,7 +1666,9 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                 filtered_results = []
 
                 for r in raw_list:
-                    if not (min_time <= r["Sign-In"] <= max_time_sel): continue
+                    # 時間過濾：有具體時間才做時段過濾，無時間 (Sign-In --:--) 則直接保留給組員選擇
+                    if r["Sign-In"] != "--:--":
+                        if not (min_time <= r["Sign-In"] <= max_time_sel): continue
                     if only_main_line and (r["非正線"] or r["請假"]): continue
                     if only_long_shift and not r["長班"]: continue
                     filtered_results.append(r)
@@ -1634,9 +1682,13 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                     for idx, r in enumerate(filtered_results):
                         target_col = c_col1 if idx % 2 == 0 else c_col2
                         with target_col:
+                            do_tag = r.get('出勤標記', '')
+                            do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in r['車次']) else ""
+
                             badges_html = '<div class="badge-group">'
                             if r['長班']: badges_html += '<span class="long-badge">長班</span>'
                             if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
+                            if do_tag: badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
                             badges_html += '</div>'
 
                             st.markdown(f"""
@@ -1644,7 +1696,7 @@ elif app_mode == "換班｜選擇換班日期（Alpha測試版）":
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                     <div>
                                         <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
-                                        <div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{r['車次']}</div>
+                                        <div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{r['車次']}{do_tag_display}</div>
                                     </div>
                                     <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
                                         <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-In {r['Sign-In']}</div>
@@ -1767,21 +1819,21 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                             parsed_target = parse_cell(row.iloc[target_col_idx])
                             raw_target_str = str(row.iloc[target_col_idx]).strip()
                             
-                            # 想休日判定：呼叫 is_cell_off_day()，若 D2W 有含 Nxxxx 班別出勤則回傳 False，不列入想休日可幫代班之名單
+                            # 想休日判定：呼叫 is_cell_off_day()，若為 True（純休假 / 未排班 DO3W）代表當天沒上班，可以幫別人上班
                             is_target_do = is_cell_off_day(row.iloc[target_col_idx])
                             if not is_target_do: continue
 
                             parsed_return = parse_cell(row.iloc[return_col_idx])
                             raw_return_str = str(row.iloc[return_col_idx]).strip().upper()
                             
-                            # 還休日判定：呼叫 is_cell_off_day()，若為真正的休假(True)則不能還假；若為 D2W+Nxxxx 則為上班日(False)，可作為還假標的
+                            # 還休日判定：呼叫 is_cell_off_day()，若為 True (純休假) 無班可還；若為 False (包含 DO2W / 已排班 DO3W 工作日) 則有班可還
                             is_return_do = is_cell_off_day(row.iloc[return_col_idx])
                             if is_return_do: continue
 
                             is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
                             is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
 
-                            # 精準模擬「換假後」前後 5 天的最大連續上班天數
+                            # 精準模擬「換假後」前後 5 天的最大連續上班天數（未排班 DO3W 會被算為休息中斷連班）
                             max_consecutive_streak = 0
                             current_streak = 0
                             start_check_idx = max(2, target_col_idx - 5)
@@ -1809,8 +1861,8 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                                 "想休狀態": raw_target_str.split("\n")[0] if raw_target_str else "DO",
                                 "還休日": return_date,
                                 "還假車次": translate_train_code(parsed_return["train"]),
-                                "Sign-In": parsed_return["start"],
-                                "Sign-Out": parsed_return["end"],
+                                "Sign-In": parsed_return["start"] if parsed_return["start"] else "--:--",
+                                "Sign-Out": parsed_return["end"] if parsed_return["end"] else "--:--",
                                 "工時": parsed_return["hours"],
                                 "長班": is_long,
                                 "非正線": is_non_line,
@@ -1828,7 +1880,7 @@ elif app_mode == "換假｜選擇換假日期（Alpha測試版）":
                     for cand in raw_list:
                         if return_time_filter != "不限":
                             min_allowed = return_time_filter.split(" ")[0]
-                            if not cand["Sign-In"] or cand["Sign-In"] < min_allowed:
+                            if cand["Sign-In"] != "--:--" and cand["Sign-In"] < min_allowed:
                                 continue
 
                         if strict_limit and cand["連續上班天數"] >= 6:
