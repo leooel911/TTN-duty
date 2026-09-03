@@ -167,8 +167,8 @@ def calculate_hours(start_str, end_str):
 def is_valid_train_code(tr):
     if not tr: return False
     tr_clean = str(tr).strip().upper()
-    # 【關鍵修復】：只要開頭是 DO 或 D2W，絕對不視為車次（避免 DO1, DO2, DO3 誤判）
-    if tr_clean.startswith("DO") or tr_clean.startswith("D2W") or "OGC" in tr_clean:
+    # 【關鍵修復】：只要開頭是 DO、D2W、D3W，或包含 OGC，絕對不視為獨立車次
+    if tr_clean.startswith("DO") or tr_clean.startswith("D2W") or tr_clean.startswith("D3W") or "OGC" in tr_clean:
         return False
     leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
     if tr_clean in leave_codes:
@@ -246,6 +246,15 @@ def parse_cell(raw):
     )
 
 def is_cell_off_day(raw_val):
+    """
+    判定是否為『純休假』 (回傳 True 表示純休假；回傳 False 表示工作日/實質出勤)
+    
+    1. DO3W / D3W（國定假日）：
+       - 帶有車次 (Nxxx / 有效車次) 或報到時間 -> 視為國定假日出勤（工作日 / False）
+       - 無車次且無報到時間 -> 視為國定假日放假（純休假 / True）
+    2. DO2W / D2W / PAY / OGC：
+       - 無論有無報到時間與車次，一律視為工作日（False），併入連班天數計算。
+    """
     if pd.isna(raw_val) or not str(raw_val).strip():
         return True
     raw_str = str(raw_val).strip().upper()
@@ -254,10 +263,24 @@ def is_cell_off_day(raw_val):
 
     parsed = parse_cell(raw_val)
     train_code = str(parsed.get("train", "")).strip().upper()
-    leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
 
+    # 1. 修正 DO3W / D3W（國定假日）邏輯
+    if re.search(r'(DO3W|D3W)', raw_str):
+        has_time = bool(parsed.get("start"))
+        has_train = is_valid_train_code(train_code) or train_code.startswith("N")
+        if has_time or has_train:
+            return False  # 有時間或有車次 -> 國定假日出勤 (工作日)
+        else:
+            return True   # 無時間且無車次 -> 國定假日放假 (純休假)
+
+    # 2. 修正 DO2W / D2W / PAY / OGC 邏輯：無條件視為工作日
+    if re.search(r'(DO2W|D2W|PAY|OGC)', raw_str):
+        return False
+
+    # 3. 一般假別與出勤判定
+    leave_codes = ["FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
     if train_code in leave_codes or any(k in raw_str for k in leave_codes):
-        if not is_valid_train_code(train_code):
+        if not is_valid_train_code(train_code) and not train_code.startswith("N"):
             return True
 
     if is_valid_train_code(train_code) or train_code.startswith("N"):
