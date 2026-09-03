@@ -15,8 +15,15 @@ from modules.services import (
 from modules.drawing import render_schedule_figure
 from modules.components import render_zoomable_image, show_crew_schedule_modal
 
+# --- 自動重置狀態回呼函數 ---
+def reset_win_search():
+    """切換換班條件時，自動清空舊的換班快照"""
+    st.session_state.pop("win_raw_candidates", None)
+
 def reset_ex_search():
+    """切換換假條件時，自動清空舊的換假快照"""
     st.session_state["ex_search_performed"] = False
+    st.session_state.pop("ex_raw_candidates", None)
 
 def render_user_home():
     active_files = get_current_role_files()
@@ -65,9 +72,15 @@ def render_user_home():
         label_visibility="collapsed"
     )
 
-    if "last_app_mode" not in st.session_state: st.session_state["last_app_mode"] = app_mode
+    # 【關鍵修復 1】：偵測模式切換時，自動徹底清空先前所有模式的舊查詢結果
+    if "last_app_mode" not in st.session_state: 
+        st.session_state["last_app_mode"] = app_mode
+
     if st.session_state["last_app_mode"] != app_mode:
         st.session_state["last_app_mode"] = app_mode
+        st.session_state.pop("win_raw_candidates", None)
+        st.session_state.pop("ex_raw_candidates", None)
+        st.session_state["ex_search_performed"] = False
 
     st.markdown("---")
 
@@ -151,7 +164,8 @@ def render_user_home():
         </div>
         """, unsafe_allow_html=True)
 
-        selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2, key="win_selected_role")
+        # 【關鍵修復 2】：選單加入 on_change=reset_win_search，變更職位即清空舊名單
+        selected_role = st.selectbox("選擇職位類別進行查詢", ["駕駛", "列車長", "服勤員"], index=2, key="win_selected_role", on_change=reset_win_search)
         target_path = active_files[selected_role]
 
         morn_start_time = "03:00" if selected_role == "駕駛" else "05:00"
@@ -170,25 +184,25 @@ def render_user_home():
             date_cols = [re.search(r'(\d+/\d+)', str(col)).group(1) for col in df_search.columns[2:] if re.search(r'(\d+/\d+)', str(col))]
 
             if date_cols:
-                target_date = st.selectbox("選擇換班日期", date_cols, key="win_target_date")
+                target_date = st.selectbox("選擇換班日期", date_cols, key="win_target_date", on_change=reset_win_search)
 
                 st.write("**快捷選擇時段：**")
                 q_col1, q_col2, q_col3, q_col4 = st.columns(4)
                 if q_col1.button("全時段", key="btn_win_all", use_container_width=True):
                     st.session_state["win_time_slider"] = (morn_start_time, "18:00")
-                    st.session_state.pop("win_raw_candidates", None)
+                    reset_win_search()
                     st.rerun()
                 if q_col2.button("早班", key="btn_win_morn", use_container_width=True):
                     st.session_state["win_time_slider"] = (morn_start_time, "10:00")
-                    st.session_state.pop("win_raw_candidates", None)
+                    reset_win_search()
                     st.rerun()
                 if q_col3.button("中班", key="btn_win_noon", use_container_width=True):
                     st.session_state["win_time_slider"] = ("10:00", "13:00")
-                    st.session_state.pop("win_raw_candidates", None)
+                    reset_win_search()
                     st.rerun()
                 if q_col4.button("晚班", key="btn_win_night", use_container_width=True):
                     st.session_state["win_time_slider"] = ("13:00", "18:00")
-                    st.session_state.pop("win_raw_candidates", None)
+                    reset_win_search()
                     st.rerun()                
 
                 TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
@@ -339,6 +353,7 @@ def render_user_home():
             st.session_state["ex_search_performed"] = False
 
         ex_c1, ex_c2, ex_c3 = st.columns(3)
+        # 【關鍵修復 3】：選單加入 on_change=reset_ex_search，變更職位或日期即清空舊名單
         with ex_c1: selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], key="ex_role_select", on_change=reset_ex_search)
 
         sample_path = active_files.get(selected_role, "")
