@@ -284,6 +284,35 @@ def is_cell_off_day(raw_val):
 
     return True
 
+def resets_work_streak(raw_val):
+    """
+    精準判定此天是否能「斷開/重置連續上班天數」 (依據勞基法七休一原則)
+    - 只有真正的例假/休息日 (DO1、無出勤之 DO3/DO3X、一般請假) 才能重置連班天數。
+    - 國定假日 (DO2, DO2W, D2W)、特休 (PAY)、輪休加班 (DO3W) 或有車次時間者，均『不可斷開連班』！
+    """
+    if pd.isna(raw_val) or not str(raw_val).strip():
+        return True  # 空白預設為休假，可斷班
+
+    raw_str = str(raw_val).strip().upper()
+    if raw_str in ["NAN", "NONE", "", "."]:
+        return True
+
+    parsed = parse_cell(raw_val)
+    train_code = str(parsed.get("train", "")).strip().upper()
+    has_time = bool(parsed.get("start"))
+    has_valid_train = is_valid_train_code(train_code)
+
+    # 1. 只要有報到時間或正線車次 -> 必定是上班，無法斷班
+    if has_time or has_valid_train:
+        return False
+
+    # 2. 國定假日 (DO2, DO2W, D2W, OGC) 與 特休 (PAY) -> 採計工時/工作態，『不可斷開連班天數』！
+    if re.search(r'(DO2W?|D2W|PAY|OGC)', raw_str):
+        return False
+
+    # 3. 只有真正的例假 (DO1)、無出勤之休息日 (DO3/DO3X)、其他一般請假 (FAC/AL/SL等) -> 才能重置連班
+    return True
+
 def calculate_rest_hours(sign_out_str, next_sign_in_str):
     """計算 Sign-Out 到隔日 Sign-In 的休息小時數"""
     if not sign_out_str or not next_sign_in_str or "--:--" in (sign_out_str, next_sign_in_str):
