@@ -417,7 +417,7 @@ def render_user_home():
                     if is_target_national_holiday:
                         st.markdown(f"""
                         <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-size: 12px; color: #FDE68A;">
-                            <strong>國定假日自動偵測：</strong> 系統確認 <strong>{target_date}</strong> 屬國定假日/輪休 (DO2W)，已為您自動解鎖「同日國定假換班 (免還假)」選項！
+                            <strong>國定假日自動偵測：</strong> 系統確認 <strong>{target_date}</strong> 屬國定假日/輪休 (DO2W)，已啟動「DO2W換上班【免還假】模式！
                         </div>
                         """, unsafe_allow_html=True)
                     else:
@@ -566,7 +566,7 @@ def render_user_home():
                                     card_border_color = "#10B981"
                                     warning_banner_html = f"""
                                     <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #6EE7B7; font-weight: 700; font-family: monospace;">
-                                        國定假換班提示：同日 1對1 出勤對調，無須擇日還假（對方承接國定出勤，計工時）。
+                                        國定假換班提示：同日 1對1 出勤對調，無須擇日還假（對方承接DO2W出勤）。
                                     </div>
                                     """
                                 elif streak_cnt >= 7:
@@ -580,7 +580,7 @@ def render_user_home():
                                     card_border_color = "#F59E0B"
                                     warning_banner_html = f"""
                                     <div style="background: rgba(245, 158, 11, 0.2); border: 1px solid #F59E0B; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDE68A; font-weight: 700; font-family: monospace;">
-                                        國定出勤提示：還休日為 {do_tag} 國定假日！換假後連班 {streak_cnt} 天，請留意班間隔與加給。
+                                        國定出勤提示：還休日為 {do_tag} 國定假日！換假後連班 {streak_cnt} 天，請留意班間隔。
                                     </div>
                                     """
                                 elif has_holiday_work:
