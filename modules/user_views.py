@@ -398,7 +398,7 @@ def render_user_home():
                             except: pass
                     except: pass
 
-                    SAME_DAY_SWAP_LABEL = "💡 【同日國定假換班】(免還假)"
+                    SAME_DAY_SWAP_LABEL = "【國定假日(DO2)換上班】(免還假)"
                     
                     # 只有當選取日「判定為國定假日」時，才動態插入【同日國定假換班】選項！
                     if is_target_national_holiday:
