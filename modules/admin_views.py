@@ -60,7 +60,7 @@ def create_backup_zip():
 
 
 def load_whitelist():
-  """讀取白名單；若檔案不存在或為空，回傳保底預設名單"""
+  """讀取白名單；若檔案不存在或為空，回傳保底預設名冊"""
   whitelist_path = os.path.join(DATA_DIR, "whitelist.json")
   if os.path.exists(whitelist_path):
     try:
@@ -294,7 +294,7 @@ def render_admin_panel():
           st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 3: 白名單帳號管理 (新增：大表組員自動下拉快選功能)
+  # Tab 3: 白名單帳號管理 (🔑 連動自動填入修復)
   # ---------------------------------------------------------
   with tab3:
     st.markdown("### 👤 白名單與 VIP 通行帳號管理")
@@ -350,31 +350,33 @@ def render_admin_panel():
     with col_wl_right:
       st.markdown("#### ➕ 新增/覆蓋白名單帳號")
 
-      # 🔑 自動建構【大表組員下拉快選單】
+      # 建立大表對照表與連動回呼函式
       crew_options = get_all_crew_options(current_unit)
       options_dict = {"-- 手動輸入 或 點此選取大表組員 --": {"uid": "", "name": ""}}
       for item in crew_options:
         options_dict[item["label"]] = {"uid": item["uid"], "name": item["name"]}
 
-      selected_label = st.selectbox(
+      def sync_crew_to_inputs():
+        selected = st.session_state.get("wl_quick_crew_select", "")
+        if selected in options_dict:
+          st.session_state["input_wl_uid"] = options_dict[selected]["uid"]
+          st.session_state["input_wl_uname"] = options_dict[selected]["name"]
+
+      st.selectbox(
           "⚡ 快速選取大表組員 (自動填入)",
           options=list(options_dict.keys()),
           key="wl_quick_crew_select",
+          on_change=sync_crew_to_inputs,
       )
-
-      auto_uid = options_dict[selected_label]["uid"]
-      auto_name = options_dict[selected_label]["name"]
 
       with st.form("add_whitelist_form"):
         new_uid = st.text_input(
             "員編 / 帳號 ID",
-            value=auto_uid,
             placeholder="例: A023300",
             key="input_wl_uid",
         )
         new_uname = st.text_input(
             "姓名",
-            value=auto_name,
             placeholder="例: 波莉",
             key="input_wl_uname",
         )
