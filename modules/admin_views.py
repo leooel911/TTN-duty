@@ -97,7 +97,7 @@ def save_whitelist(data):
 
 
 def load_system_config():
-  """讀取全域系統設定」"""
+  """讀取全域系統設定"""
   config_path = os.path.join(DATA_DIR, "system_config.json")
   if os.path.exists(config_path):
     try:
@@ -109,7 +109,6 @@ def load_system_config():
       "announcement": "目前為內部測試階段｜本頁面可聯繫後台管理者",
       "strict_streak_limit": 6,
       "enable_beta_notice": True,
-      "admin_password": "",
   }
 
 
@@ -295,7 +294,7 @@ def render_admin_panel():
           st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 3: 白名單帳號管理 (大表組員自動下拉快選)
+  # Tab 3: 白名單帳號管理 (🔑 連動自動填入修復)
   # ---------------------------------------------------------
   with tab3:
     st.markdown("### 👤 白名單與 VIP 通行帳號管理")
@@ -351,6 +350,7 @@ def render_admin_panel():
     with col_wl_right:
       st.markdown("#### ➕ 新增/覆蓋白名單帳號")
 
+      # 建立大表對照表與連動回呼函式
       crew_options = get_all_crew_options(current_unit)
       options_dict = {"-- 手動輸入 或 點此選取大表組員 --": {"uid": "", "name": ""}}
       for item in crew_options:
@@ -421,10 +421,10 @@ def render_admin_panel():
           st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 4: 全域系統參數 (🔑 補回管理員登入密碼變更功能)
+  # Tab 4: 全域系統參數
   # ---------------------------------------------------------
   with tab4:
-    st.markdown("### ⚙️ 全域系統參數與安全設定")
+    st.markdown("### ⚙️ 全域系統參數")
     sys_config = load_system_config()
 
     col_p1, col_p2 = st.columns(2)
@@ -437,21 +437,6 @@ def render_admin_panel():
           max_value=12,
           value=int(sys_config.get("strict_streak_limit", 6)),
           step=1,
-      )
-
-      st.markdown("---")
-      st.markdown("#### 🔑 管理員後台登入密碼設定")
-      new_admin_pwd = st.text_input(
-          "設定新管理員密碼",
-          type="password",
-          placeholder="留空則保持原密碼不變",
-          key="admin_pwd_input",
-      )
-      confirm_admin_pwd = st.text_input(
-          "確認新管理員密碼",
-          type="password",
-          placeholder="再次輸入新密碼",
-          key="admin_pwd_confirm",
       )
 
     with col_p2:
@@ -471,21 +456,12 @@ def render_admin_panel():
     if st.button(
         "💾 儲存全域系統設定", type="primary", use_container_width=True
     ):
-      pwd_msg = ""
-      if new_admin_pwd:
-        if new_admin_pwd != confirm_admin_pwd:
-          st.error("兩次輸入的新密碼不一致，請重新檢查！")
-          st.stop()
-        else:
-          sys_config["admin_password"] = new_admin_pwd.strip()
-          pwd_msg = "管理員密碼與"
-
       sys_config["announcement"] = announce_text.strip()
       sys_config["strict_streak_limit"] = streak_threshold
       sys_config["enable_beta_notice"] = enable_notice
       save_system_config(sys_config)
-      log_activity("管理員更新全域系統設定與安全參數")
-      st.success(f"{pwd_msg}全域系統設定已成功儲存！")
+      log_activity("管理員更新全域系統設定參數")
+      st.success("全域系統設定已成功儲存！")
       st.rerun()
 
   # ---------------------------------------------------------
@@ -558,7 +534,7 @@ def render_admin_panel():
     )
 
   # ---------------------------------------------------------
-  # 底部導航頁尾橫幅列 (僅會出現在頁面最下方一次)
+  # 底部導航頁尾橫幅列
   # ---------------------------------------------------------
   st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
   col_foot1, col_foot2 = st.columns(2)
