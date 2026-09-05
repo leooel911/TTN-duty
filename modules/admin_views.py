@@ -7,20 +7,53 @@ import zipfile
 from modules.components import render_zoomable_image
 from modules.drawing import render_schedule_figure
 from modules.services import (
+    get_employee_name,
     load_allowed_users,
     load_system_config,
     process_file_data,
     save_allowed_users,
     save_system_config,
 )
-from modules.utils import get_file_mtime_str
+from modules.utils import get_file_mtime_str, safe_read_excel
 import pandas as pd
 import streamlit as st
 
 MAINT_FILE = "maintenance.json"
 
 
-# --- 維護模式讀寫工具函式 ---
+# --- 工具函式：讀取大表中所有同仁清單 (供快捷選單使用) ---
+def get_all_excel_crew(current_unit):
+  data_dir = "data"
+  role_files = {
+      "駕駛": os.path.join(data_dir, f"{current_unit}_TD.xlsx"),
+      "列車長": os.path.join(data_dir, f"{current_unit}_TM.xlsx"),
+      "服勤員": os.path.join(data_dir, f"{current_unit}_TA.xlsx"),
+  }
+  crew_list = []
+  seen_ids = set()
+
+  for role_name, path in role_files.items():
+    if os.path.exists(path):
+      try:
+        df = safe_read_excel(path, header=3)
+        df.columns = [str(c).strip() for c in df.columns]
+        for _, row in df.iterrows():
+          eid = str(row.iloc[0]).strip().upper()
+          ename = str(row.iloc[1]).strip()
+          if (
+              eid
+              and eid not in seen_ids
+              and eid.upper() not in ["NAN", "NONE", "員編", "EMP_ID"]
+          ):
+            seen_ids.add(eid)
+            crew_list.append(
+                {"emp_id": eid, "name": ename, "role_type": role_name}
+            )
+      except Exception:
+        pass
+  return crew_list
+
+
 def load_maintenance_status():
   if not os.path.exists(MAINT_FILE):
     return {}
@@ -44,9 +77,7 @@ def save_maintenance_status(data):
 def render_admin_panel():
   current_unit = st.session_state.get("current_unit", "TTN")
 
-  # =========================================================
   # 🔝 頂部列：後台標題與「返回系統首頁」按鈕
-  # =========================================================
   col_title, col_btn = st.columns([3, 1])
   with col_title:
     st.markdown(f"## 🛡️ 後台管理控制台 [{current_unit}]")
@@ -78,7 +109,7 @@ def render_admin_panel():
   # =========================================================
   with tab1:
     st.markdown(f"### 📁 [{current_unit}] 班表 Excel 大表上傳管理")
-    st.info("💡 上傳後的 Excel 大表將立即生效於該單位的查詢與班表圖檔繪製。")
+    st.info("💡 上傳後的 Excel 大表將儲存並即時生效於查詢與班表圖檔繪製。")
 
     data_dir = "data"
     os.makedirs(data_dir, exist_ok=True)
@@ -189,7 +220,7 @@ def render_admin_panel():
         st.rerun()
 
   # =========================================================
-  # Tab 3: 白名單帳號管理 (關鍵字搜尋與即時編輯)
+  # Tab 3: 白名單帳號管理 (新增自動比對與快篩功能)
   # =========================================================
   with tab3:
     st.markdown("### 👥 動態白名單權限管理")
@@ -209,53 +240,133 @@ def render_admin_panel():
 
     st.markdown("---")
 
-    # 1. 新增人員表單
-    with st.expander("➕ 新增白名單人員", expanded=False):
-      with st.form("add_user_form"):
-        col_u1, col_u2 = st.columns(2)
-        with col_u1:
-          new_emp_id = (
-              st.text_input("員編", placeholder="例如: 023300")
-              .strip()
-              .upper()
+    # 1. 升級版：新增人員表單 (支援下拉快選 & 員編自動比對姓名)
+    with st.expander("➕ 新增白名單人員 (支援大表自動比對)", expanded=True):
+      add_mode = st.radio(
+          "選擇新增方式",
+          ["全大表名單快捷選擇 (推薦)", "手動輸入員編 (姓名自動帶入)"],
+          horizontal=True,
+          key="add_user_mode",
+      )
+
+      users = wl_data.get("users", [])
+
+      if add_mode == "全大表名單快捷選擇 (推薦)":
+        excel_crew = get_all_excel_crew(current_unit)
+        if not excel_crew:
+          st.warning("⚠️ 目前各大表尚未上傳，請先至第一頁籤上傳班表 Excel 檔。")
+        else:
+          options_map = {
+              f"[{c['emp_id']}] {c['name']} ({c['role_type']})": c
+              for c in excel_crew
+          }
+          selected_label = st.selectbox(
+              "選擇欲加入白名單之同仁",
+              options=list(options_map.keys()),
+              key="quick_select_crew",
           )
-          new_name = st.text_input("姓名", placeholder="例如: 張小明").strip()
-        with col_u2:
-          new_role = st.selectbox("角色權限", ["組員", "VIP"])
-          new_status = st.selectbox("帳號狀態", ["啟用", "停用"])
+          col_q1, col_q2 = st.columns(2)
+          with col_q1:
+            quick_role = st.selectbox(
+                "角色權限", ["VIP", "組員"], key="quick_role"
+            )
+          with col_q2:
+            quick_status = st.selectbox(
+                "帳號狀態", ["啟用", "停用"], key="quick_status"
+            )
 
-        btn_add_user = st.form_submit_button("新增至白名單", type="primary")
+          if st.button("➕ 加入所選同仁至白名單", type="primary"):
+            target_info = options_map[selected_label]
+            q_id = target_info["emp_id"]
+            q_name = target_info["name"]
 
-        if btn_add_user:
-          if not new_emp_id:
-            st.error("請輸入有效員編！")
-          else:
-            users = wl_data.get("users", [])
             existing = next(
-                (
-                    u
-                    for u in users
-                    if u.get("emp_id", "").upper() == new_emp_id
-                ),
-                None,
+                (u for u in users if u.get("emp_id", "").upper() == q_id), None
             )
             if existing:
-              existing["name"] = new_name
-              existing["role"] = new_role
-              existing["status"] = new_status
-              st.success(f"已更新員編 [{new_emp_id}] 資料！")
+              existing["name"] = q_name
+              existing["role"] = quick_role
+              existing["status"] = quick_status
+              st.success(f"已更新員編 [{q_id}] {q_name} 之權限資料！")
             else:
               users.append({
-                  "emp_id": new_emp_id,
-                  "name": new_name,
-                  "role": new_role,
-                  "status": new_status,
+                  "emp_id": q_id,
+                  "name": q_name,
+                  "role": quick_role,
+                  "status": quick_status,
               })
-              st.success(f"已新增員編 [{new_emp_id}] 至白名單！")
+              st.success(f"已成功新增 [{q_id}] {q_name} 至白名單！")
 
             wl_data["users"] = users
             save_allowed_users(wl_data)
             st.rerun()
+
+      else:
+        with st.form("add_user_form_manual"):
+          col_u1, col_u2 = st.columns(2)
+          with col_u1:
+            new_emp_id = (
+                st.text_input("員編", placeholder="例如: A021987")
+                .strip()
+                .upper()
+            )
+            new_name = st.text_input(
+                "姓名 (可留空，系統自動比對大表帶入)",
+                placeholder="若留空將自動帶入大表姓名",
+            ).strip()
+          with col_u2:
+            new_role = st.selectbox("角色權限", ["VIP", "組員"])
+            new_status = st.selectbox("帳號狀態", ["啟用", "停用"])
+
+          btn_add_user = st.form_submit_button(
+              "新增至白名單", type="primary"
+          )
+
+          if btn_add_user:
+            if not new_emp_id:
+              st.error("請輸入有效員編！")
+            else:
+              # 自動比對 Excel 大表帶入姓名
+              auto_fetched_name = get_employee_name(current_unit, new_emp_id)
+              final_name = (
+                  new_name
+                  if new_name
+                  else (
+                      auto_fetched_name
+                      if auto_fetched_name
+                      else f"組員_{new_emp_id}"
+                  )
+              )
+
+              existing = next(
+                  (
+                      u
+                      for u in users
+                      if u.get("emp_id", "").upper() == new_emp_id
+                  ),
+                  None,
+              )
+              if existing:
+                existing["name"] = final_name
+                existing["role"] = new_role
+                existing["status"] = new_status
+                st.success(
+                    f"已更新員編 [{new_emp_id}] 資料 (姓名: {final_name})！"
+                )
+              else:
+                users.append({
+                    "emp_id": new_emp_id,
+                    "name": final_name,
+                    "role": new_role,
+                    "status": new_status,
+                })
+                st.success(
+                    f"已新增員編 [{new_emp_id}] ({final_name}) 至白名單！"
+                )
+
+              wl_data["users"] = users
+              save_allowed_users(wl_data)
+              st.rerun()
 
     # 2. 🔍 白名單即時搜尋與多重篩選列
     st.markdown("#### 📋 現有白名單人員列表與檢索")
