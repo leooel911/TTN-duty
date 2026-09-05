@@ -1,10 +1,6 @@
+from datetime import date, datetime, timedelta
 import io
 import os
-from datetime import date, datetime, timedelta
-import matplotlib
-import matplotlib.font_manager as fm
-import matplotlib.pyplot as plt
-from matplotlib.patches import FancyBboxPatch
 
 from config import (
     C_DO_BG,
@@ -25,6 +21,11 @@ from config import (
     TITLE,
     TRANSPORT_PERIODS,
 )
+import matplotlib
+import matplotlib.font_manager as fm
+from matplotlib.patches import FancyBboxPatch
+import matplotlib.pyplot as plt
+from modules.services import load_system_config
 from modules.utils import is_overtime, is_town_shift
 
 matplotlib.use("Agg")
@@ -94,6 +95,10 @@ def render_schedule_figure(
 ):
   active_transport = parse_transport_periods(TRANSPORT_PERIODS)
   font_prop = setup_font()
+
+  # 載入動態設定之空值標籤
+  sys_cfg = load_system_config()
+  target_empty_label = sys_cfg.get("empty_shift_label", "--")
 
   def fp(size=9):
     return (
@@ -392,8 +397,8 @@ def render_schedule_figure(
             fontproperties=fp(18),
         )
       else:
-        # 💡 關鍵點：將 "無"、"nan"、"None" 或空白處改為顯示 "--"
-        display_tr = "--" if tr in ["無", "nan", "None", ""] else tr
+        # 動態轉譯：將 "無"、"nan" 或空白帶換為後台選定的標籤 (預設 "--")
+        display_tr = target_empty_label if tr in ["無", "nan", "None", ""] else tr
 
         draw_bold_text(
             ax,
