@@ -1,15 +1,22 @@
 import streamlit as st
-from config import ADMIN_PASSWORD, CREW_ACCESS_PASSWORD, CUSTOM_CSS
+from config import ADMIN_PASSWORD, CUSTOM_CSS
 from modules.admin_views import render_admin_panel
 from modules.components import render_zoomable_image, show_feedback_modal
 from modules.drawing import render_schedule_figure
 from modules.services import (
     is_user_allowed,
+    load_system_config,
     process_file_data,
     verify_crew_membership,
 )
 from modules.user_views import render_user_home
 from modules.utils import format_display_name, get_employee_name, log_activity
+
+# 載入全域動態設定
+sys_cfg = load_system_config()
+VIP_PASS_CODE = sys_cfg.get("vip_pass_code", "0900")
+CREW_PASS_CODE = sys_cfg.get("crew_pass_code", "0096")
+DEFAULT_EMP_ID = sys_cfg.get("default_emp_id", "A")
 
 st.set_page_config(
     page_title="TTN Shift Producer", page_icon="700st.png", layout="centered"
@@ -21,7 +28,7 @@ if "authenticated" not in st.session_state:
 if "admin_logged_in" not in st.session_state:
   st.session_state["admin_logged_in"] = False
 if "user_input_field" not in st.session_state:
-  st.session_state["user_input_field"] = "A"
+  st.session_state["user_input_field"] = DEFAULT_EMP_ID
 if "show_admin_login" not in st.session_state:
   st.session_state["show_admin_login"] = False
 if "inspect_emp_target" not in st.session_state:
@@ -29,7 +36,7 @@ if "inspect_emp_target" not in st.session_state:
 if "nav_mode" not in st.session_state:
   st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state:
-  st.session_state["current_user_id"] = "A"
+  st.session_state["current_user_id"] = DEFAULT_EMP_ID
 if "current_unit" not in st.session_state:
   st.session_state["current_unit"] = "TTN"
 
@@ -117,11 +124,9 @@ if not st.session_state["authenticated"] and not st.session_state.get(
     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     with st.form("auth_form"):
       selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
-
-      # 💡 標頭加上提示 (範例：023300)
       entered_emp = st.text_input(
           "使用者員編 (範例：023300)",
-          value="A",
+          value=DEFAULT_EMP_ID,
           placeholder="例如: 023300",
           max_chars=10,
       )
@@ -133,9 +138,9 @@ if not st.session_state["authenticated"] and not st.session_state.get(
       if btn_auth:
         clean_emp = entered_emp.strip().upper()
 
-        # ⚡ 1. 測試員 / VIP 通行碼 0900
-        if entered_key == "0900":
-          target_emp_id = clean_emp if clean_emp else "A"
+        # ⚡ 1. 測試員 / VIP 通行碼
+        if entered_key == VIP_PASS_CODE:
+          target_emp_id = clean_emp if clean_emp else DEFAULT_EMP_ID
           st.session_state["authenticated"] = True
           st.session_state["admin_logged_in"] = False
           st.session_state["nav_mode"] = "home"
@@ -168,10 +173,17 @@ if not st.session_state["authenticated"] and not st.session_state.get(
           st.rerun()
 
         # 🎫 3. 通用授權碼登入
-        elif entered_key == CREW_ACCESS_PASSWORD:
-          allowed, user_info = is_user_allowed(clean_emp)
+        elif entered_key == CREW_PASS_CODE:
+          if clean_emp == "A":
+            st.session_state["authenticated"] = True
+            st.session_state["admin_logged_in"] = False
+            st.session_state["nav_mode"] = "home"
+            st.session_state["current_unit"] = selected_unit
+            st.session_state["current_user_id"] = "VIP_USER (A 全域通行)"
+            log_activity("測試員 A 登入系統")
+            st.rerun()
 
-          # 防護過濾：確保 user_info 為 dict 形態
+          allowed, user_info = is_user_allowed(clean_emp)
           u_role = (
               user_info.get("role", "") if isinstance(user_info, dict) else ""
           )
@@ -193,8 +205,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
             disp_name = format_display_name(emp_real_name)
             u_name = u_name_from_info if u_name_from_info else disp_name
 
-            # 若白名單角色為 VIP，上方顯示 VIP_USER
-            if u_role == "VIP" or clean_emp == "A":
+            if u_role == "VIP":
               name_str = f" {u_name}" if u_name else ""
               st.session_state["current_user_id"] = (
                   f"VIP_USER ({clean_emp}{name_str})".strip()
@@ -218,7 +229,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
 # 主頁面 Header 資訊區
 # ---------------------------------------------------------
 current_unit_label = st.session_state.get("current_unit", "TTN")
-current_operator_id = st.session_state.get("current_user_id", "A")
+current_operator_id = st.session_state.get("current_user_id", DEFAULT_EMP_ID)
 
 st.markdown(
     f"""
@@ -281,7 +292,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
           st.session_state["admin_logged_in"] = True
           st.session_state["nav_mode"] = "admin_panel"
           st.session_state["show_admin_login"] = False
-          curr_op = st.session_state.get("user_input_field", "A")
+          curr_op = st.session_state.get("user_input_field", DEFAULT_EMP_ID)
           st.session_state["current_user_id"] = f"ADMIN ({curr_op})"
           log_activity("管理員登入後台")
           st.rerun()
