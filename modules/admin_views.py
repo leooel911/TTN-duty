@@ -37,7 +37,7 @@ def render_admin_panel():
 
     tab_status, tab_users, tab_gallery, tab_logs = st.tabs([
         "數據與檔案維護", 
-        "使用者權限管理",
+        "使用者權限與全系統開放",
         "客服工單管理中心 (Table View)", 
         "系統操作日誌"
     ])
@@ -64,7 +64,7 @@ def render_admin_panel():
             st.metric("系統日誌累計", f"{log_cnt} 筆", delta="Activity")
 
         st.markdown("---")
-        st.subheader(f"四大系統模組維護開關控制（當前控制單位：{admin_target_unit}）")
+        st.subheader(f"三大系統模組維護開關控制（當前控制單位：{admin_target_unit}）")
 
         is_prod_maint = is_module_maintenance(admin_target_unit, "producer")
         is_win_maint = is_module_maintenance(admin_target_unit, "window_filter")
@@ -113,36 +113,39 @@ def render_admin_panel():
                 except Exception as e: st.error(f"寫入失敗: {e}")
 
     # ---------------------------------------------------------
-    # TAB 2: 使用者權限管理 (已移除批次匯入)
+    # TAB 2: 使用者權限與全系統開放控制
     # ---------------------------------------------------------
     with tab_users:
-        st.subheader("使用者登入與存取權限控制（白名單機制）")
+        st.subheader("使用者登入門檻與全系統開放模式控制")
         
         data = load_allowed_users()
         users_list = data.get("users", [])
+        is_enabled = data.get("enabled", True)
 
-        # 1. 全域驗證開關
+        # 1. 全系統開放 / 白名單模式 Toggle 主控區
+        st.markdown("##### ⚙️ 存取驗證開關切換")
         col_sw1, col_sw2 = st.columns([3, 1])
         with col_sw1:
-            is_enabled = st.toggle("啟用全系統使用者白名單存取驗證", value=data.get("enabled", True), key="admin_user_whitelist_toggle")
-            if is_enabled != data.get("enabled", True):
-                data["enabled"] = is_enabled
+            toggle_state = st.toggle("啟用全系統使用者白名單存取驗證", value=is_enabled, key="admin_user_whitelist_toggle")
+            if toggle_state != is_enabled:
+                data["enabled"] = toggle_state
                 save_allowed_users(data)
-                log_activity(f"設定白名單驗證開關: {'開啟' if is_enabled else '關閉'}")
-                st.success(f"已{'開啟' if is_enabled else '關閉'}白名單驗證機制！")
+                log_activity(f"設定白名單驗證開關: {'開啟 (白名單管控)' if toggle_state else '關閉 (全系統開放)'}")
+                st.success(f"已切換為：{'【白名單管控模式】' if toggle_state else '【全系統開放模式】'}！")
                 time.sleep(0.3)
                 st.rerun()
 
+        # 系統動態模式狀態 Banner
         if not is_enabled:
-            st.info("💡 目前白名單驗證已【關閉】，所有組員輸入員編/姓名皆可使用系統。")
+            st.success("🌐 **當前模式：全系統開放中（白名單驗證已關閉）**\n\n所有在排班大表內的組員只要輸入正確員編/姓名與通用授權碼即可自由登入使用系統。")
         else:
-            st.warning("🔒 目前白名單驗證已【開啟】，僅下方列表中「啟用」狀態的人員可存取系統。")
+            st.warning("🔒 **當前模式：白名單嚴格管控中（白名單驗證已開啟）**\n\n僅下方列表中「啟用」狀態的人員可登入系統，非名單內人員將無法通過登入驗證。")
 
         st.markdown("---")
 
         sub_tab1, sub_tab2 = st.tabs(["📋 白名單人員總覽", "⚡ 關鍵字搜尋新增"])
 
-        # 子頁籤 1：白名單總覽
+        # 子頁籤 1：白名單總覽與快速處置
         with sub_tab1:
             if users_list:
                 df_u = pd.DataFrame(users_list)
@@ -163,13 +166,28 @@ def render_admin_panel():
                     hide_index=True
                 )
 
-                st.markdown("##### 🛠️ 快速操作區")
-                del_col1, del_col2 = st.columns([3, 1])
+                st.markdown("##### 🛠️ 快速人員權限處置")
+                del_col1, del_col2, del_col3 = st.columns([2.5, 1, 1])
                 with del_col1:
-                    target_emp_str = st.selectbox("選擇要操作的人員", [f"{u['emp_id']} - {u['name']}" for u in users_list], key="admin_user_op_select")
+                    target_emp_str = st.selectbox("選擇要操作的人員", [f"{u['emp_id']} - {u['name']} (目前: {u.get('status', '啟用')})" for u in users_list], key="admin_user_op_select")
+                
+                target_id = target_emp_str.split(" - ")[0]
+                target_obj = next((u for u in data["users"] if u["emp_id"] == target_id), None)
+
                 with del_col2:
+                    if target_obj:
+                        curr_st = target_obj.get("status", "啟用")
+                        toggle_btn_label = "🔴 停用帳號" if curr_st == "啟用" else "🟢 啟用帳號"
+                        if st.button(toggle_btn_label, key="btn_toggle_user_status", use_container_width=True):
+                            target_obj["status"] = "停用" if curr_st == "啟用" else "啟用"
+                            save_allowed_users(data)
+                            log_activity(f"管理員切換白名單人員狀態: {target_id} -> {target_obj['status']}")
+                            st.success(f"已更新 {target_id} 狀態為 {target_obj['status']}！")
+                            time.sleep(0.3)
+                            st.rerun()
+
+                with del_col3:
                     if st.button("❌ 刪除人員", key="btn_del_user_admin", use_container_width=True):
-                        target_id = target_emp_str.split(" - ")[0]
                         data["users"] = [u for u in data["users"] if u["emp_id"] != target_id]
                         save_allowed_users(data)
                         log_activity(f"管理員刪除白名單人員: {target_emp_str}")
