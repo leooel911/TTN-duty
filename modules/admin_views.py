@@ -257,11 +257,26 @@ def render_admin_panel():
         st.rerun()
 
   # =========================================================
-  # Tab 3: 白名單帳號管理 (支援單位自動連動與標記)
+  # Tab 3: 白名單帳號管理 (自動補全舊資料單位)
   # =========================================================
   with tab3:
     st.markdown(f"### 👥 動態白名單權限管理 [{current_unit}]")
     wl_data = load_allowed_users()
+
+    # 🛠️ 1. 自動檢測並補全舊資料的 unit 標籤 (避免舊名單隱藏)
+    users_list = wl_data.get("users", [])
+    has_legacy_repaired = False
+    for u in users_list:
+      if "unit" not in u or not u["unit"] or u["unit"] == "未指定":
+        if u.get("role") == "VIP" or str(u.get("emp_id")).upper() == "A":
+          u["unit"] = "全單位"
+        else:
+          u["unit"] = current_unit
+        has_legacy_repaired = True
+
+    if has_legacy_repaired:
+      wl_data["users"] = users_list
+      save_allowed_users(wl_data)
 
     is_enabled = wl_data.get("enabled", True)
     new_enabled = st.toggle(
@@ -280,7 +295,7 @@ def render_admin_panel():
 
     st.markdown("---")
 
-    # 1. 新增人員表單 (自動帶入目前單位)
+    # 2. 新增人員表單 (自動帶入目前單位)
     with st.expander(
         f"➕ 新增白名單人員至【{current_unit}】", expanded=True
     ):
@@ -293,8 +308,6 @@ def render_admin_panel():
           horizontal=True,
           key=f"add_user_mode_{current_unit}",
       )
-
-      users = wl_data.get("users", [])
 
       if add_mode == f"[{current_unit}] 排班大表名單快捷選擇":
         excel_crew = get_all_excel_crew(current_unit)
@@ -349,7 +362,12 @@ def render_admin_panel():
               user_unit_tag = "全單位" if quick_role == "VIP" else current_unit
 
               existing = next(
-                  (u for u in users if u.get("emp_id", "").upper() == q_id), None
+                  (
+                      u
+                      for u in users_list
+                      if u.get("emp_id", "").upper() == q_id
+                  ),
+                  None,
               )
               if existing:
                 existing["name"] = q_name
@@ -360,7 +378,7 @@ def render_admin_panel():
                     f"已更新員編 [{q_id}] {q_name} 之權限與單位 ({user_unit_tag})！"
                 )
               else:
-                users.append({
+                users_list.append({
                     "emp_id": q_id,
                     "name": q_name,
                     "role": quick_role,
@@ -371,7 +389,7 @@ def render_admin_panel():
                     f"已成功新增 [{q_id}] {q_name} 至 [{user_unit_tag}] 白名單！"
                 )
 
-              wl_data["users"] = users
+              wl_data["users"] = users_list
               save_allowed_users(wl_data)
               log_activity(
                   f"新增白名單: [{q_id}] {q_name} (單位:{user_unit_tag},"
@@ -433,7 +451,7 @@ def render_admin_panel():
               existing = next(
                   (
                       u
-                      for u in users
+                      for u in users_list
                       if u.get("emp_id", "").upper() == new_emp_id
                   ),
                   None,
@@ -448,7 +466,7 @@ def render_admin_panel():
                     f" {user_unit_tag})！"
                 )
               else:
-                users.append({
+                users_list.append({
                     "emp_id": new_emp_id,
                     "name": final_name,
                     "role": new_role,
@@ -460,7 +478,7 @@ def render_admin_panel():
                     f" {user_unit_tag}) 至白名單！"
                 )
 
-              wl_data["users"] = users
+              wl_data["users"] = users_list
               save_allowed_users(wl_data)
               log_activity(
                   f"手動新增白名單: [{new_emp_id}] {final_name}"
@@ -468,7 +486,7 @@ def render_admin_panel():
               )
               st.rerun()
 
-    # 2. 🔍 白名單即時搜尋與單位過濾列
+    # 3. 🔍 白名單即時搜尋與過濾列
     st.markdown("#### 📋 現有白名單人員列表與檢索")
 
     col_srch1, col_srch2, col_srch3, col_srch4 = st.columns([2, 1.2, 1, 1])
@@ -500,17 +518,15 @@ def render_admin_panel():
           "狀態篩選", ["全部", "啟用", "停用"], key="wl_filter_status"
       )
 
-    users_list = wl_data.get("users", [])
-
     filtered_users = []
     for u in users_list:
       emp = str(u.get("emp_id", "")).strip().upper()
       name = str(u.get("name", "")).strip().upper()
       role = u.get("role", "組員")
       status = u.get("status", "啟用")
-      u_unit = u.get("unit", "未指定")
+      u_unit = u.get("unit", "全單位" if role == "VIP" else current_unit)
 
-      # 單位連動邏輯：全域 VIP (A/VIP/全單位) 隨時可見，其餘組員依照所選單位連動
+      # 單位連動過濾邏輯
       if filter_unit_opt == f"目前單位 ({current_unit})":
         if (
             u_unit != current_unit
@@ -533,11 +549,7 @@ def render_admin_panel():
       if filter_status != "全部" and status != filter_status:
         continue
 
-      u["unit"] = (
-          u_unit
-          if u_unit != "未指定"
-          else ("全單位" if role == "VIP" else current_unit)
-      )
+      u["unit"] = u_unit
       filtered_users.append(u)
 
     st.caption(
@@ -553,7 +565,6 @@ def render_admin_panel():
         if col not in df_users.columns:
           df_users[col] = ""
 
-      # 調整欄位顯示順序
       df_users = df_users[["unit", "emp_id", "name", "role", "status"]]
 
       edited_df = st.data_editor(
@@ -599,7 +610,6 @@ def render_admin_panel():
         for orig in users_list:
           orig_emp = str(orig.get("emp_id", "")).strip().upper()
 
-          # 剔除被刪除的人員
           if orig_emp in deleted_emp_ids:
             continue
 
