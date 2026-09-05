@@ -57,7 +57,8 @@ TITLE = "TRAIN CREW DUTY CALENDAR"
 
 ADMIN_PASSWORD = "Lf090000"
 CREW_ACCESS_PASSWORD = "0096"
-PILOT_ALLOW_LIST = {"A021987", "A019702", "A023293", "A023442", "A023423", "A026495", "A026662", "A026663", "A026679", "A021578", "A024373"}
+
+# 💡 註：使用者白名單已全面改由管理員後台動態控制 (data/allowed_users.json)
 
 # 通用請假代碼集
 LEAVE_CODES = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
