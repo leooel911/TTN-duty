@@ -57,7 +57,7 @@ def create_backup_zip():
 # =========================================================
 # 👑 2. 管理員後台主視圖 (Admin Panel)
 # =========================================================
-def render_admin_home():
+def render_admin_panel():  # 🔑 已修正函式名稱以搭配 app.py 匯入
   st.markdown("## ⚙️ 系統管理後台 (Administrator Console)")
 
   current_unit = st.session_state.get("current_unit", "TTN")
@@ -208,14 +208,13 @@ def render_admin_home():
       st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 5: 系統日誌與備份 (包含新增的「清空紀錄」按鈕)
+  # Tab 5: 系統日誌與備份 (包含「清空紀錄」按鈕)
   # ---------------------------------------------------------
   with tab5:
     st.markdown("### 📜 系統操作日誌與資料打包備份")
 
     logs = load_activity_logs()
 
-    # 🔑 頁面標頭與右側清空按鈕
     col_log_title, col_log_btn = st.columns([3, 1])
 
     with col_log_title:
@@ -224,7 +223,7 @@ def render_admin_home():
     with col_log_btn:
       st.markdown(
           "<div style='height: 2px;'></div>", unsafe_allow_html=True
-      )  # 微調對齊
+      )
       if st.button(
           "🗑️ 清空紀錄",
           key="btn_clear_activity_logs",
@@ -235,10 +234,8 @@ def render_admin_home():
         st.success("已成功清空所有系統操作日誌！")
         st.rerun()
 
-    # 顯示操作日誌表格
     if logs:
       df_logs = pd.DataFrame(logs)
-      # 欄位重新命名對照
       rename_dict = {
           "timestamp": "紀錄時間",
           "unit": "單位",
@@ -280,3 +277,7 @@ def render_admin_home():
         type="primary",
         key="btn_download_backup",
     )
+
+
+# 相容別名宣告，避免任何舊模組引用失敗
+render_admin_home = render_admin_panel
