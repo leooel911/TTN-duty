@@ -113,7 +113,7 @@ def render_admin_panel():
                 except Exception as e: st.error(f"寫入失敗: {e}")
 
     # ---------------------------------------------------------
-    # TAB 2: 使用者權限管理 (新增)
+    # TAB 2: 使用者權限管理 (優化快速新增)
     # ---------------------------------------------------------
     with tab_users:
         st.subheader("使用者登入與存取權限控制（白名單機制）")
@@ -140,7 +140,7 @@ def render_admin_panel():
 
         st.markdown("---")
 
-        sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📋 白名單人員總覽", "➕ 單筆新增人員", "📥 批次匯入人員"])
+        sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📋 白名單人員總覽", "⚡ 快速新增人員", "📥 批次匯入人員"])
 
         # 子頁籤 1：白名單總覽
         with sub_tab1:
@@ -179,31 +179,104 @@ def render_admin_panel():
             else:
                 st.info("目前白名單內無任何使用者資料。")
 
-        # 子頁籤 2：單筆新增
+        # 子頁籤 2：快速新增人員 (支援大表下拉快選 + 手動自動查庫)
         with sub_tab2:
+            st.markdown("##### 🚀 方式一：從排班大表搜尋下拉一鍵加入 (最快)")
+            
+            # 從當前排班大表中搜尋尚未在白名單的人員
+            unadded_crew = []
+            for r_name in ["服勤員", "列車長", "駕駛"]:
+                p_path = current_unit_files.get(r_name, "")
+                if os.path.exists(p_path):
+                    try:
+                        df_c = safe_read_excel(p_path, header=3)
+                        for _, row_c in df_c.iterrows():
+                            c_id = str(row_c.iloc[0]).strip().upper()
+                            c_name = str(row_c.iloc[1]).strip()
+                            if c_id and c_id != "NAN" and c_name and c_name != "NAN":
+                                if not any(u["emp_id"] == c_id for u in data["users"]):
+                                    unadded_crew.append({
+                                        "emp_id": c_id,
+                                        "name": c_name,
+                                        "role": r_name,
+                                        "display": f"{c_id} - {c_name} ({r_name})"
+                                    })
+                    except Exception: pass
+
+            if unadded_crew:
+                sel_col1, sel_col2 = st.columns([3, 1])
+                with sel_col1:
+                    selected_crew_disp = st.selectbox(
+                        "輸入關鍵字搜尋大表人員 (可輸入員編數字或姓名關鍵字)",
+                        options=[c["display"] for c in unadded_crew],
+                        key="quick_add_crew_select"
+                    )
+                with sel_col2:
+                    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                    if st.button("⚡ 一鍵新增至白名單", key="btn_quick_add_crew", use_container_width=True):
+                        target_obj = next((c for c in unadded_crew if c["display"] == selected_crew_disp), None)
+                        if target_obj:
+                            data["users"].append({
+                                "emp_id": target_obj["emp_id"],
+                                "name": target_obj["name"],
+                                "role": target_obj["role"],
+                                "status": "啟用"
+                            })
+                            save_allowed_users(data)
+                            log_activity(f"一鍵新增白名單人員: {target_obj['name']} ({target_obj['emp_id']})")
+                            st.success(f"已成功新增：{target_obj['name']} ({target_obj['emp_id']})！")
+                            time.sleep(0.3)
+                            st.rerun()
+            else:
+                st.caption("目前大表中的所有人員皆已在白名單中！")
+
+            st.markdown("---")
+            st.markdown("##### ✍️ 方式二：手動輸入 (員編預設 `A`，姓名留空可自動查庫)")
+            
             with st.form("add_single_user_form_admin"):
-                new_id = st.text_input("員工編號 (例: A023300)").strip().upper()
-                new_name = st.text_input("姓名 (例: 江立夫)").strip()
+                new_id = st.text_input("員工編號 (例: A021987)", value="A", key="form_inp_empid").strip().upper()
+                new_name = st.text_input("姓名 (可留空，系統將自動從排班大表帶出)", value="", key="form_inp_empname").strip()
                 new_role = st.selectbox("職務類別", ["服勤員", "列車長", "駕駛", "管理員"])
                 submit_btn = st.form_submit_button("新增至白名單", use_container_width=True)
 
                 if submit_btn:
-                    if not new_id or not new_name:
-                        st.error("請填寫完整的員編與姓名！")
+                    if not new_id or new_id == "A":
+                        st.error("請填寫正確的員工編號！")
                     elif any(u["emp_id"] == new_id for u in data["users"]):
                         st.warning(f"員編「{new_id}」已存在於白名單中！")
                     else:
-                        data["users"].append({
-                            "emp_id": new_id,
-                            "name": new_name,
-                            "role": new_role,
-                            "status": "啟用"
-                        })
-                        save_allowed_users(data)
-                        log_activity(f"管理員新增白名單人員: {new_name} ({new_id})")
-                        st.success(f"成功新增：{new_name} ({new_id})！")
-                        time.sleep(0.3)
-                        st.rerun()
+                        # 若姓名留空，自動從排班大表尋找對應姓名
+                        auto_found_name = new_name
+                        auto_found_role = new_role
+                        
+                        if not auto_found_name:
+                            for r_name in ["服勤員", "列車長", "駕駛"]:
+                                p_path = current_unit_files.get(r_name, "")
+                                if os.path.exists(p_path):
+                                    try:
+                                        df_c = safe_read_excel(p_path, header=3)
+                                        for _, row_c in df_c.iterrows():
+                                            if str(row_c.iloc[0]).strip().upper() == new_id:
+                                                auto_found_name = str(row_c.iloc[1]).strip()
+                                                auto_found_role = r_name
+                                                break
+                                    except Exception: pass
+                                if auto_found_name: break
+
+                        if not auto_found_name:
+                            st.error(f"在大表中找不到員編「{new_id}」的資料，請手動填寫姓名！")
+                        else:
+                            data["users"].append({
+                                "emp_id": new_id,
+                                "name": auto_found_name,
+                                "role": auto_found_role,
+                                "status": "啟用"
+                            })
+                            save_allowed_users(data)
+                            log_activity(f"手動新增白名單人員: {auto_found_name} ({new_id})")
+                            st.success(f"成功新增：{auto_found_name} ({new_id}) [{auto_found_role}]！")
+                            time.sleep(0.3)
+                            st.rerun()
 
         # 子頁籤 3：批次匯入
         with sub_tab3:
