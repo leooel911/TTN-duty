@@ -344,17 +344,23 @@ def render_user_home():
                                 do_tag = r.get('出勤標記', '')
                                 do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in r['車次']) else ""
 
-                                # 班間休息小時數評估標籤
-                                rest_h = calculate_rest_hours(r.get("Sign-Out"), r.get("隔日Sign-In"))
-                                rest_badge_html = ""
-                                if rest_h is not None:
-                                    if rest_h < 11.0:
-                                        rest_badge_html = f'<span class="long-badge" style="background: rgba(225, 29, 72, 0.25) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">⚠️ 休息 {rest_h}h</span>'
-                                    elif rest_h < 12.0:
-                                        rest_badge_html = f'<span class="long-badge" style="background: rgba(245, 158, 11, 0.25) !important; color: #FDE68A !important; border: 1px solid #F59E0B !important;">⚡ 休息 {rest_h}h</span>'
+                                # 當日總工時標籤 (資訊 100% 精準且實用)
+                                shift_hours = r.get("工時", "")
+                                hours_badge_html = ""
+                                if shift_hours:
+                                    if r.get("長班"):
+                                        hours_badge_html = f'<span class="long-badge" style="background: rgba(225, 29, 72, 0.2) !important; color: #FB7185 !important; border: 1px solid rgba(244, 63, 94, 0.5) !important;">工時 {shift_hours}</span>'
                                     else:
-                                        rest_badge_html = f'<span class="long-badge" style="background: rgba(16, 185, 129, 0.15) !important; color: #34D399 !important; border: 1px solid #10B981 !important;">✓ 休息 {rest_h}h</span>'
-
+                                        hours_badge_html = f'<span class="long-badge" style="background: rgba(56, 189, 248, 0.15) !important; color: #38BDF8 !important; border: 1px solid rgba(56, 189, 248, 0.4) !important;">工時 {shift_hours}</span>'
+                                
+                                badges_html = '<div class="badge-group">'
+                                if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
+                                if hours_badge_html: badges_html += hours_badge_html
+                                if do_tag and any(k in do_tag for k in ['DO2', 'DO3', 'OGC', 'D2']):
+                                    badges_html += '<span class="long-badge" style="background: rgba(245, 158, 11, 0.25) !important; color: #FDE68A !important; border: 1px solid #F59E0B !important;">[DO2W]</span>'
+                                elif do_tag:
+                                    badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
+                                badges_html += '</div>'
                                 badges_html = '<div class="badge-group">'
                                 if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
                                 if rest_badge_html: badges_html += rest_badge_html
