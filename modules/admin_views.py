@@ -59,23 +59,29 @@ def create_backup_zip():
   return buf
 
 
-def load_whitelist():
-  """讀取白名單；若檔案不存在或為空，回傳保底預設名冊"""
+def load_whitelist(unit_code="TTN"):
+  """讀取指定營運單位的白名單（按單位獨立隔離；自動相容舊平舖格式）"""
   whitelist_path = os.path.join(DATA_DIR, "whitelist.json")
   if os.path.exists(whitelist_path):
     try:
       with open(whitelist_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-        if data:
-          return data
+        full_data = json.load(f)
+        # 舊格式相容轉換：若原本未按單位劃分，自動升級為現有單位的字典
+        if full_data and not any(k in UNITS for k in full_data.keys()):
+          full_data = {unit_code: full_data}
+
+        unit_data = full_data.get(unit_code, {})
+        if unit_data:
+          return unit_data
     except Exception:
       pass
 
+  # 單位預設保底白名單
   default_whitelist = {
       "ADMIN": {
           "name": "系統管理員",
           "role": "ADMIN",
-          "note": "預設管理員帳號",
+          "note": f"[{unit_code}] 預設管理員帳號",
           "created_at": "2026-09-06",
       },
       "A023300": {
@@ -88,12 +94,25 @@ def load_whitelist():
   return default_whitelist
 
 
-def save_whitelist(data):
-  """儲存白名單至 JSON 檔案"""
+def save_whitelist(unit_code, unit_data):
+  """儲存特定營運單位的白名單"""
   whitelist_path = os.path.join(DATA_DIR, "whitelist.json")
   os.makedirs(DATA_DIR, exist_ok=True)
+
+  full_data = {}
+  if os.path.exists(whitelist_path):
+    try:
+      with open(whitelist_path, "r", encoding="utf-8") as f:
+        full_data = json.load(f)
+        if full_data and not any(k in UNITS for k in full_data.keys()):
+          full_data = {"TTN": full_data}
+    except Exception:
+      full_data = {}
+
+  full_data[unit_code] = unit_data
+
   with open(whitelist_path, "w", encoding="utf-8") as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
+    json.dump(full_data, f, ensure_ascii=False, indent=2)
 
 
 def load_system_config():
@@ -109,6 +128,7 @@ def load_system_config():
       "announcement": "目前為內部測試階段｜本頁面可聯繫後台管理者",
       "strict_streak_limit": 6,
       "enable_beta_notice": True,
+      "admin_password": "",
   }
 
 
@@ -294,21 +314,21 @@ def render_admin_panel():
           st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 3: 白名單帳號管理 (🔑 連動自動填入修復)
+  # Tab 3: 白名單帳號管理 (按單位獨立隔離 + 下拉連動)
   # ---------------------------------------------------------
   with tab3:
-    st.markdown("### 👤 白名單與 VIP 通行帳號管理")
-    whitelist_data = load_whitelist()
+    st.markdown(f"### 👤 白名單與 VIP 通行帳號管理 [{current_unit}]")
+    whitelist_data = load_whitelist(current_unit)
 
     col_wl_left, col_wl_right = st.columns([2, 1])
 
     with col_wl_left:
-      st.markdown("#### 📋 現有白名單人員名冊")
+      st.markdown(f"#### 📋 現有白名單人員名冊 [{current_unit}]")
 
       search_keyword = st.text_input(
           "🔍 搜尋白名單人員 (可輸入員編、姓名、身份或備註)",
           placeholder="例: 波莉 或 A023300",
-          key="whitelist_search_kw",
+          key=f"whitelist_search_kw_{current_unit}",
       ).strip()
 
       if whitelist_data:
@@ -345,19 +365,18 @@ def render_admin_panel():
         else:
           st.warning(f"未找到包含「{search_keyword}」的白名單人員。")
       else:
-        st.info("目前尚無特定白名單設定紀錄。")
+        st.info(f"目前【{current_unit}】尚無特定白名單設定紀錄。")
 
     with col_wl_right:
-      st.markdown("#### ➕ 新增/覆蓋白名單帳號")
+      st.markdown(f"#### ➕ 新增/覆蓋白名單帳號 [{current_unit}]")
 
-      # 建立大表對照表與連動回呼函式
       crew_options = get_all_crew_options(current_unit)
       options_dict = {"-- 手動輸入 或 點此選取大表組員 --": {"uid": "", "name": ""}}
       for item in crew_options:
         options_dict[item["label"]] = {"uid": item["uid"], "name": item["name"]}
 
       def sync_crew_to_inputs():
-        selected = st.session_state.get("wl_quick_crew_select", "")
+        selected = st.session_state.get(f"wl_quick_crew_select_{current_unit}", "")
         if selected in options_dict:
           st.session_state["input_wl_uid"] = options_dict[selected]["uid"]
           st.session_state["input_wl_uname"] = options_dict[selected]["name"]
@@ -365,11 +384,11 @@ def render_admin_panel():
       st.selectbox(
           "⚡ 快速選取大表組員 (自動填入)",
           options=list(options_dict.keys()),
-          key="wl_quick_crew_select",
+          key=f"wl_quick_crew_select_{current_unit}",
           on_change=sync_crew_to_inputs,
       )
 
-      with st.form("add_whitelist_form"):
+      with st.form(f"add_whitelist_form_{current_unit}"):
         new_uid = st.text_input(
             "員編 / 帳號 ID",
             placeholder="例: A023300",
@@ -396,35 +415,37 @@ def render_admin_panel():
                 "note": new_note.strip(),
                 "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
             }
-            save_whitelist(whitelist_data)
+            save_whitelist(current_unit, whitelist_data)
             log_activity(
-                f"管理員新增白名單帳號：{new_uid.strip()} ({new_uname.strip()})"
+                f"管理員新增 [{current_unit}] 白名單：{new_uid.strip()} ({new_uname.strip()})"
             )
-            st.success(f"已成功新增/更新白名單帳號：{new_uid}")
+            st.success(f"已成功新增/更新【{current_unit}】白名單帳號：{new_uid}")
             st.rerun()
           else:
             st.warning("請填寫員編/帳號 ID")
 
       st.markdown("---")
-      st.markdown("#### 🗑️ 移除白名單帳號")
+      st.markdown(f"#### 🗑️ 移除白名單帳號 [{current_unit}]")
       if whitelist_data:
         del_uid = st.selectbox(
-            "選擇要移除的帳號", options=list(whitelist_data.keys())
+            "選擇要移除的帳號",
+            options=list(whitelist_data.keys()),
+            key=f"wl_del_select_{current_unit}",
         )
         if st.button(
             "確認刪除該帳號", type="secondary", use_container_width=True
         ):
           del whitelist_data[del_uid]
-          save_whitelist(whitelist_data)
-          log_activity(f"管理員移除白名單帳號：{del_uid}")
-          st.success(f"已成功移除帳號：{del_uid}")
+          save_whitelist(current_unit, whitelist_data)
+          log_activity(f"管理員移除 [{current_unit}] 白名單帳號：{del_uid}")
+          st.success(f"已成功移除【{current_unit}】帳號：{del_uid}")
           st.rerun()
 
   # ---------------------------------------------------------
   # Tab 4: 全域系統參數
   # ---------------------------------------------------------
   with tab4:
-    st.markdown("### ⚙️ 全域系統參數")
+    st.markdown("### ⚙️ 全域系統參數與安全設定")
     sys_config = load_system_config()
 
     col_p1, col_p2 = st.columns(2)
@@ -437,6 +458,21 @@ def render_admin_panel():
           max_value=12,
           value=int(sys_config.get("strict_streak_limit", 6)),
           step=1,
+      )
+
+      st.markdown("---")
+      st.markdown("#### 🔑 管理員後台登入密碼設定")
+      new_admin_pwd = st.text_input(
+          "設定新管理員密碼",
+          type="password",
+          placeholder="留空則保持原密碼不變",
+          key="admin_pwd_input",
+      )
+      confirm_admin_pwd = st.text_input(
+          "確認新管理員密碼",
+          type="password",
+          placeholder="再次輸入新密碼",
+          key="admin_pwd_confirm",
       )
 
     with col_p2:
@@ -456,16 +492,25 @@ def render_admin_panel():
     if st.button(
         "💾 儲存全域系統設定", type="primary", use_container_width=True
     ):
+      pwd_msg = ""
+      if new_admin_pwd:
+        if new_admin_pwd != confirm_admin_pwd:
+          st.error("兩次輸入的新密碼不一致，請重新檢查！")
+          st.stop()
+        else:
+          sys_config["admin_password"] = new_admin_pwd.strip()
+          pwd_msg = "管理員密碼與"
+
       sys_config["announcement"] = announce_text.strip()
       sys_config["strict_streak_limit"] = streak_threshold
       sys_config["enable_beta_notice"] = enable_notice
       save_system_config(sys_config)
-      log_activity("管理員更新全域系統設定參數")
-      st.success("全域系統設定已成功儲存！")
+      log_activity("管理員更新全域系統設定與安全參數")
+      st.success(f"{pwd_msg}全域系統設定已成功儲存！")
       st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 5: 系統日誌與備份 (含「清空紀錄」按鈕)
+  # Tab 5: 系統日誌與備份
   # ---------------------------------------------------------
   with tab5:
     st.markdown("### 📜 系統操作日誌與資料打包備份")
