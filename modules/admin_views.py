@@ -8,6 +8,7 @@ from config import UNITS, LOG_FILE, FEEDBACK_IMG_DIR
 from modules.utils import (
     is_module_maintenance, set_module_maintenance, log_activity, safe_read_excel
 )
+from modules.services import load_allowed_users, save_allowed_users
 from modules.components import view_feedback_img_modal
 
 def render_admin_panel():
@@ -34,8 +35,9 @@ def render_admin_panel():
             st.session_state["nav_mode"] = "home"
             st.rerun()
 
-    tab_status, tab_gallery, tab_logs = st.tabs([
+    tab_status, tab_users, tab_gallery, tab_logs = st.tabs([
         "數據與檔案維護", 
+        "使用者權限管理",
         "客服工單管理中心 (Table View)", 
         "系統操作日誌"
     ])
@@ -111,7 +113,127 @@ def render_admin_panel():
                 except Exception as e: st.error(f"寫入失敗: {e}")
 
     # ---------------------------------------------------------
-    # TAB 2: 客服工單管理中心
+    # TAB 2: 使用者權限管理 (新增)
+    # ---------------------------------------------------------
+    with tab_users:
+        st.subheader("使用者登入與存取權限控制（白名單機制）")
+        
+        data = load_allowed_users()
+        users_list = data.get("users", [])
+
+        # 1. 全域驗證開關
+        col_sw1, col_sw2 = st.columns([3, 1])
+        with col_sw1:
+            is_enabled = st.toggle("啟用全系統使用者白名單存取驗證", value=data.get("enabled", True), key="admin_user_whitelist_toggle")
+            if is_enabled != data.get("enabled", True):
+                data["enabled"] = is_enabled
+                save_allowed_users(data)
+                log_activity(f"設定白名單驗證開關: {'開啟' if is_enabled else '關閉'}")
+                st.success(f"已{'開啟' if is_enabled else '關閉'}白名單驗證機制！")
+                time.sleep(0.3)
+                st.rerun()
+
+        if not is_enabled:
+            st.info("💡 目前白名單驗證已【關閉】，所有組員輸入員編/姓名皆可使用系統。")
+        else:
+            st.warning("🔒 目前白名單驗證已【開啟】，僅下方列表中「啟用」狀態的人員可存取系統。")
+
+        st.markdown("---")
+
+        sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📋 白名單人員總覽", "➕ 單筆新增人員", "📥 批次匯入人員"])
+
+        # 子頁籤 1：白名單總覽
+        with sub_tab1:
+            if users_list:
+                df_u = pd.DataFrame(users_list)
+                
+                search_kw = st.text_input("🔍 關鍵字過濾員編或姓名", "", key="admin_user_search_kw").strip().upper()
+                if search_kw:
+                    df_u = df_u[df_u["emp_id"].astype(str).str.upper().str.contains(search_kw) | df_u["name"].astype(str).str.upper().str.contains(search_kw)]
+
+                st.dataframe(
+                    df_u,
+                    column_config={
+                        "emp_id": "員工編號",
+                        "name": "姓名",
+                        "role": "職務類別",
+                        "status": "帳號狀態"
+                    },
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+                st.markdown("##### 🛠️ 快速操作區")
+                del_col1, del_col2 = st.columns([3, 1])
+                with del_col1:
+                    target_emp_str = st.selectbox("選擇要操作的人員", [f"{u['emp_id']} - {u['name']}" for u in users_list], key="admin_user_op_select")
+                with del_col2:
+                    if st.button("❌ 刪除人員", key="btn_del_user_admin", use_container_width=True):
+                        target_id = target_emp_str.split(" - ")[0]
+                        data["users"] = [u for u in data["users"] if u["emp_id"] != target_id]
+                        save_allowed_users(data)
+                        log_activity(f"管理員刪除白名單人員: {target_emp_str}")
+                        st.success(f"已成功刪除 {target_emp_str}！")
+                        time.sleep(0.3)
+                        st.rerun()
+            else:
+                st.info("目前白名單內無任何使用者資料。")
+
+        # 子頁籤 2：單筆新增
+        with sub_tab2:
+            with st.form("add_single_user_form_admin"):
+                new_id = st.text_input("員工編號 (例: A023300)").strip().upper()
+                new_name = st.text_input("姓名 (例: 江立夫)").strip()
+                new_role = st.selectbox("職務類別", ["服勤員", "列車長", "駕駛", "管理員"])
+                submit_btn = st.form_submit_button("新增至白名單", use_container_width=True)
+
+                if submit_btn:
+                    if not new_id or not new_name:
+                        st.error("請填寫完整的員編與姓名！")
+                    elif any(u["emp_id"] == new_id for u in data["users"]):
+                        st.warning(f"員編「{new_id}」已存在於白名單中！")
+                    else:
+                        data["users"].append({
+                            "emp_id": new_id,
+                            "name": new_name,
+                            "role": new_role,
+                            "status": "啟用"
+                        })
+                        save_allowed_users(data)
+                        log_activity(f"管理員新增白名單人員: {new_name} ({new_id})")
+                        st.success(f"成功新增：{new_name} ({new_id})！")
+                        time.sleep(0.3)
+                        st.rerun()
+
+        # 子頁籤 3：批次匯入
+        with sub_tab3:
+            st.caption("請貼上批次資料，每行一筆，格式為：`員編,姓名,職務`（職務選填，預設為服勤員）")
+            bulk_text = st.text_area("文字貼上區", placeholder="A023300,江立夫,服勤員\nA022298,葉美君,服勤員", height=150, key="admin_bulk_user_text")
+            if st.button("開始批次匯入", key="btn_bulk_import_users", use_container_width=True):
+                if bulk_text.strip():
+                    count = 0
+                    lines = bulk_text.strip().split("\n")
+                    for line in lines:
+                        parts = [p.strip() for p in line.split(",")]
+                        if len(parts) >= 2:
+                            b_id, b_name = parts[0].upper(), parts[1]
+                            b_role = parts[2] if len(parts) >= 3 else "服勤員"
+                            if not any(u["emp_id"] == b_id for u in data["users"]):
+                                data["users"].append({
+                                    "emp_id": b_id,
+                                    "name": b_name,
+                                    "role": b_role,
+                                    "status": "啟用"
+                                })
+                                count += 1
+                    save_allowed_users(data)
+                    log_activity(f"管理員批次匯入白名單人員 {count} 筆")
+                    st.success(f"成功批次匯入 {count} 筆人員資料！")
+                    time.sleep(0.3)
+                    st.rerun()
+
+    # ---------------------------------------------------------
+    # TAB 3: 客服工單管理中心
     # ---------------------------------------------------------
     with tab_gallery:
         st.subheader("使用者問題與建議／客服工單管理中心")
@@ -300,7 +422,7 @@ def render_admin_panel():
             st.info("目前無符合條件的回報紀錄。")
 
     # ---------------------------------------------------------
-    # TAB 3: 系統操作日誌 (無痕加入「匯出 CSV」與「動作分佈圖表」)
+    # TAB 4: 系統操作日誌
     # ---------------------------------------------------------
     with tab_logs:
         st.subheader("系統操作活動紀錄日誌 (Activity Log)")
@@ -310,7 +432,6 @@ def render_admin_panel():
             log_filter_keyword = st.text_input("搜尋關鍵字", placeholder="輸入員編、換班或問題回報...", key="admin_log_search_input")
         with col_log2:
             st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-            # 🌟 新增：匯出日誌 CSV 按鈕
             if os.path.exists(LOG_FILE):
                 with open(LOG_FILE, "r", encoding="utf-8") as f:
                     log_raw_data = f.read()
@@ -346,7 +467,6 @@ def render_admin_panel():
             if parsed_logs:
                 df_parsed = pd.DataFrame(parsed_logs)
                 
-                # 🌟 新增：熱門操作長條圖統計 (讓數據一目了然)
                 with st.expander("📊 查看熱門動作統計圖表", expanded=False):
                     action_counts = df_parsed["動作"].value_counts().head(10)
                     st.bar_chart(action_counts)
