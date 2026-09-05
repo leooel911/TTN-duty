@@ -2,7 +2,7 @@ import os
 import re
 import streamlit as st
 from datetime import date, timedelta
-from config import UNITS
+from config import UNITS, NATIONAL_HOLIDAYS
 from modules.utils import (
     get_file_mtime_str, is_module_maintenance, log_activity, 
     safe_read_excel, parse_cell, translate_train_code, is_town_shift, is_overtime,
@@ -14,18 +14,6 @@ from modules.services import (
 )
 from modules.drawing import render_schedule_figure
 from modules.components import render_zoomable_image, show_crew_schedule_modal
-
-# --- 台灣國定節慶名稱對照表 ---
-HOLIDAY_MAP = {
-    "1/1": "元旦",
-    "2/16": "除夕", "2/17": "初一", "2/18": "初二", "2/19": "初三", "2/20": "初四",
-    "2/28": "和平紀念日",
-    "4/4": "兒童節", "4/5": "清明節",
-    "6/19": "端午節",
-    "9/25": "中秋節",
-    "10/10": "國慶日",
-    "12/25": "行憲紀念日"
-}
 
 # --- 自動重置狀態回呼函數 ---
 def reset_win_search():
@@ -386,9 +374,9 @@ def render_user_home():
                 if not date_cols:
                     st.warning("目前的班表檔案中無法解析出有效的日期欄位。")
                 else:
-                    # 精準比對節慶對照表與 Excel 欄位標題備註 (排除個別組員單元格挪移導致的誤判)
+                    # 直接與 config.py 的 NATIONAL_HOLIDAYS 以及 Excel 欄位標題備註對齊
                     def format_date_label(d_str):
-                        holiday_name = HOLIDAY_MAP.get(d_str)
+                        holiday_name = NATIONAL_HOLIDAYS.get(d_str)
                         if not holiday_name:
                             matching_col = next((c for c in df_ex.columns[2:] if d_str in str(c)), None)
                             if matching_col:
@@ -435,9 +423,9 @@ def render_user_home():
                                         same_week_options.append(d_str)
                             except: pass
 
-                        # 掃描當週日期是否屬於國定假日 (字典包含或欄位標題有註記)
+                        # 掃描當週日期是否屬於 NATIONAL_HOLIDAYS 字典或欄位標題有備註
                         for w_col in week_date_cols:
-                            if w_col in HOLIDAY_MAP:
+                            if w_col in NATIONAL_HOLIDAYS:
                                 is_week_has_do2w = True
                                 break
                             matching_col = next((c for c in df_ex.columns[2:] if w_col in str(c)), None)
