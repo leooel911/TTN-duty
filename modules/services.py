@@ -19,11 +19,8 @@ def load_allowed_users():
         os.makedirs("data")
     if not os.path.exists(ALLOWED_USERS_FILE):
         default_data = {
-            "enabled": True,  # 是否開啟存取限制
-            "users": [
-                {"emp_id": "A022298", "name": "葉美君", "role": "服勤員", "status": "啟用"},
-                {"emp_id": "A023300", "name": "江立夫", "role": "管理員", "status": "啟用"}
-            ]
+            "enabled": True,  # 是否開啟存取限制（預設開啟）
+            "users": []       # 預設為空清單，完全由後台動態新增管理
         }
         with open(ALLOWED_USERS_FILE, "w", encoding="utf-8") as f:
             json.dump(default_data, f, ensure_ascii=False, indent=2)
