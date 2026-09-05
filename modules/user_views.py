@@ -345,11 +345,11 @@ def render_user_home():
                                 do_tag = r.get('出勤標記', '')
                                 do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in r['車次']) else ""
 
-                                # 工時標籤：採用方案 A 藍青色 (極簡科技風格)
+                                # 工時標籤：使用獨立的 hours-badge (藍青色)
                                 shift_hours = r.get("工時", "")
-                                hours_badge_html = f'<span class="long-badge" style="background: rgba(56, 189, 248, 0.15) !important; color: #38BDF8 !important; border: 1px solid rgba(56, 189, 248, 0.4) !important;">工時 {shift_hours}</span>' if shift_hours else ""
+                                hours_badge_html = f'<span class="hours-badge">工時 {shift_hours}</span>' if shift_hours else ""
 
-                                # 組合所有貼紙與標籤 (獨立保留「長班」與「非正線」貼紙)
+                                # 組合所有標籤 (保留長班、非正線獨立貼紙)
                                 badges_html = '<div class="badge-group">'
                                 if r.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
                                 if r.get('長班'): badges_html += '<span class="long-badge">長班</span>'
