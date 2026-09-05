@@ -199,9 +199,9 @@ def render_admin_panel():
 
         # 子頁籤 2：關鍵字即時動態搜尋 + 下拉選單自動比對
         with sub_tab2:
-            st.markdown("##### 🔍 關鍵字即時搜尋 (輸入姓名關鍵字如 `立夫` 或員編數字)")
+            st.markdown("##### 🔍 關鍵字即時搜尋 (輸入姓名關鍵字如 `波莉` 或員編 `023300`)")
             
-            search_input_kw = st.text_input("輸入關鍵字 (例如: 立夫 / 21987)", value="", key="admin_live_search_kw_inp").strip()
+            search_input_kw = st.text_input("輸入關鍵字 (例如: 波莉 / 023300)", value="", key="admin_live_search_kw_inp").strip()
 
             if search_input_kw:
                 kw_upper = search_input_kw.upper()
@@ -256,8 +256,8 @@ def render_admin_panel():
             st.markdown("---")
             st.markdown("##### ✍️ 完全手動新增 (若排班大表中無此人時使用)")
             with st.form("add_custom_user_form"):
-                custom_id = st.text_input("員工編號 (例: A021987)", value="A", key="custom_user_id").strip().upper()
-                custom_name = st.text_input("姓名 (例: 江立夫)", key="custom_user_name").strip()
+                custom_id = st.text_input("員工編號 (例: 023300)", value="A", key="custom_user_id").strip().upper()
+                custom_name = st.text_input("姓名 (例: 波莉)", key="custom_user_name").strip()
                 custom_role = st.selectbox("職務類別", ["服勤員", "列車長", "駕駛", "管理員"], key="custom_user_role")
                 custom_sub = st.form_submit_button("手動新增至白名單", use_container_width=True)
 
