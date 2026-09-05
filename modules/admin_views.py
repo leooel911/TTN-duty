@@ -1,8 +1,8 @@
-from datetime import datetime
 import io
 import json
 import os
 import zipfile
+from datetime import datetime
 
 from config import DATA_DIR, LOG_FILE, UNITS
 from modules.utils import (
@@ -98,7 +98,7 @@ def save_whitelist(data):
 
 
 def load_system_config():
-  """讀取全域系統設定」"""
+  """讀取全域系統設定"""
   config_path = os.path.join(DATA_DIR, "system_config.json")
   if os.path.exists(config_path):
     try:
@@ -125,9 +125,24 @@ def save_system_config(config_data):
 # 👑 2. 管理員後台主視圖 (Admin Panel)
 # =========================================================
 def render_admin_panel():
-  st.markdown("## ⚙️ 系統管理後台 (Administrator Console)")
-
   current_unit = st.session_state.get("current_unit", "TTN")
+
+  # ---------------------------------------------------------
+  # 頂部標頭與返回首頁按鈕
+  # ---------------------------------------------------------
+  col_head_title, col_head_btn = st.columns([3, 1])
+  with col_head_title:
+    st.markdown("## ⚙️ 系統管理後台 (Administrator Console)")
+  with col_head_btn:
+    st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+    if st.button(
+        "🏠 返回前台首頁",
+        key="btn_top_return_home",
+        type="primary",
+        use_container_width=True,
+    ):
+      st.session_state["admin_logged_in"] = False
+      st.rerun()
 
   # 管理員五大分頁
   tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -444,6 +459,25 @@ def render_admin_panel():
         key="btn_download_backup",
     )
 
+  # ---------------------------------------------------------
+  # 底部導航頁尾橫幅列 (維持原截圖樣式)
+  # ---------------------------------------------------------
+  st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+  col_foot1, col_foot2 = st.columns(2)
+  with col_foot1:
+    if st.button(
+        "問題回報與建議", key="btn_admin_feedback_footer", use_container_width=True
+    ):
+      st.info("請聯繫系統維護團隊或寄送 Email 至系統管理員信箱。")
+  with col_foot2:
+    if st.button(
+        f"ADMIN PANEL [{current_unit}]",
+        key="btn_admin_footer_unit_switch",
+        use_container_width=True,
+    ):
+      st.session_state["admin_logged_in"] = False
+      st.rerun()
 
-# 相容別名宣告
+
+# 雙重相容別名宣告
 render_admin_home = render_admin_panel
