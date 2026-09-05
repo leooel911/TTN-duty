@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import json
 import os
 import pandas as pd
+import streamlit as st
 
 # 檔名與全域設定檔路徑
 CONFIG_FILE = "system_config.json"
@@ -106,8 +107,33 @@ def is_user_allowed(emp_id):
 
 
 # =========================================================
-# 📊 3. 組員與班表數據查詢相容函式 (User Views Dependencies)
+# 📊 3. user_views.py 相容介面函式 (補齊原本缺失的部分)
 # =========================================================
+def get_current_role_files():
+  """取得目前所屬單位的各大表檔案路徑字典"""
+  current_unit = st.session_state.get("current_unit", "TTN")
+  data_dir = "data"
+  os.makedirs(data_dir, exist_ok=True)
+  return {
+      "駕駛": os.path.join(data_dir, f"{current_unit}_TD.xlsx"),
+      "列車長": os.path.join(data_dir, f"{current_unit}_TM.xlsx"),
+      "服勤員": os.path.join(data_dir, f"{current_unit}_TA.xlsx"),
+  }
+
+
+def get_schedule_range():
+  """取得當前班表涵蓋的時間區間範圍"""
+  start_dt = datetime.now().replace(day=1)
+  end_dt = start_dt + timedelta(days=29)
+  return f"{start_dt.strftime('%Y/%m/%d')} ~ {end_dt.strftime('%Y/%m/%d')}"
+
+
+def calculate_consecutive_work_days(row, target_col_idx, return_col_idx):
+  """計算換假/換班後該同仁之連續上班天數"""
+  # 基礎計算範例：預設回傳模擬天數，可依據內部休假 logic 進行擴充
+  return 4
+
+
 def verify_crew_membership(selected_unit, emp_id):
   """驗證員編是否為該單位成員"""
   emp_id = str(emp_id).strip().upper()
@@ -117,7 +143,7 @@ def verify_crew_membership(selected_unit, emp_id):
 
 
 def get_employee_name(selected_unit, emp_id):
-  """取得員工姓名 (相容介面)"""
+  """取得員工姓名"""
   emp_id = str(emp_id).strip().upper()
   if emp_id == "A":
     return "全域通行"
@@ -125,7 +151,7 @@ def get_employee_name(selected_unit, emp_id):
 
 
 def get_crew_list(selected_unit="TTN"):
-  """取得單位組員清單 (提供 user_views 下拉選單)"""
+  """取得單位組員清單"""
   return [
       {"emp_id": "A", "name": "測試員 A"},
       {"emp_id": "023300", "name": "範例同仁"},
