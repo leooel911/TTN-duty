@@ -113,7 +113,7 @@ def render_admin_panel():
                 except Exception as e: st.error(f"寫入失敗: {e}")
 
     # ---------------------------------------------------------
-    # TAB 2: 使用者權限管理 (含關鍵字即時動態搜尋選單)
+    # TAB 2: 使用者權限管理 (已移除批次匯入)
     # ---------------------------------------------------------
     with tab_users:
         st.subheader("使用者登入與存取權限控制（白名單機制）")
@@ -140,7 +140,7 @@ def render_admin_panel():
 
         st.markdown("---")
 
-        sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📋 白名單人員總覽", "⚡ 關鍵字搜尋新增", "📥 批次匯入人員"])
+        sub_tab1, sub_tab2 = st.tabs(["📋 白名單人員總覽", "⚡ 關鍵字搜尋新增"])
 
         # 子頁籤 1：白名單總覽
         with sub_tab1:
@@ -179,7 +179,7 @@ def render_admin_panel():
             else:
                 st.info("目前白名單內無任何使用者資料。")
 
-        # 子頁籤 2：關鍵字即時動態搜尋 + 下拉選單自動自動比對
+        # 子頁籤 2：關鍵字即時動態搜尋 + 下拉選單自動比對
         with sub_tab2:
             st.markdown("##### 🔍 關鍵字即時搜尋 (輸入姓名關鍵字如 `立夫` 或員編數字)")
             
@@ -260,33 +260,6 @@ def render_admin_panel():
                         st.success(f"已成功新增：{custom_name} ({custom_id})！")
                         time.sleep(0.3)
                         st.rerun()
-
-        # 子頁籤 3：批次匯入
-        with sub_tab3:
-            st.caption("請貼上批次資料，每行一筆，格式為：`員編,姓名,職務`（職務選填，預設為服勤員）")
-            bulk_text = st.text_area("文字貼上區", placeholder="A023300,江立夫,服勤員\nA022298,葉美君,服勤員", height=150, key="admin_bulk_user_text")
-            if st.button("開始批次匯入", key="btn_bulk_import_users", use_container_width=True):
-                if bulk_text.strip():
-                    count = 0
-                    lines = bulk_text.strip().split("\n")
-                    for line in lines:
-                        parts = [p.strip() for p in line.split(",")]
-                        if len(parts) >= 2:
-                            b_id, b_name = parts[0].upper(), parts[1]
-                            b_role = parts[2] if len(parts) >= 3 else "服勤員"
-                            if not any(u["emp_id"] == b_id for u in data["users"]):
-                                data["users"].append({
-                                    "emp_id": b_id,
-                                    "name": b_name,
-                                    "role": b_role,
-                                    "status": "啟用"
-                                })
-                                count += 1
-                    save_allowed_users(data)
-                    log_activity(f"管理員批次匯入白名單人員 {count} 筆")
-                    st.success(f"成功批次匯入 {count} 筆人員資料！")
-                    time.sleep(0.3)
-                    st.rerun()
 
     # ---------------------------------------------------------
     # TAB 3: 客服工單管理中心
