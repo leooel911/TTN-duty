@@ -345,17 +345,14 @@ def render_user_home():
                                 do_tag = r.get('出勤標記', '')
                                 do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in r['車次']) else ""
 
-                                # 當日總工時標籤 (精準有用)
+                                # 工時標籤：採用方案 A 藍青色 (極簡科技風格)
                                 shift_hours = r.get("工時", "")
-                                hours_badge_html = ""
-                                if shift_hours:
-                                    if r.get("長班"):
-                                        hours_badge_html = f'<span class="long-badge" style="background: rgba(225, 29, 72, 0.2) !important; color: #FB7185 !important; border: 1px solid rgba(244, 63, 94, 0.5) !important;">工時 {shift_hours}</span>'
-                                    else:
-                                        hours_badge_html = f'<span class="long-badge" style="background: rgba(56, 189, 248, 0.15) !important; color: #38BDF8 !important; border: 1px solid rgba(56, 189, 248, 0.4) !important;">工時 {shift_hours}</span>'
+                                hours_badge_html = f'<span class="long-badge" style="background: rgba(56, 189, 248, 0.15) !important; color: #38BDF8 !important; border: 1px solid rgba(56, 189, 248, 0.4) !important;">工時 {shift_hours}</span>' if shift_hours else ""
 
+                                # 組合所有貼紙與標籤 (獨立保留「長班」與「非正線」貼紙)
                                 badges_html = '<div class="badge-group">'
-                                if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
+                                if r.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
+                                if r.get('長班'): badges_html += '<span class="long-badge">長班</span>'
                                 if hours_badge_html: badges_html += hours_badge_html
                                 if do_tag and any(k in do_tag for k in ['DO2', 'DO3', 'OGC', 'D2']):
                                     badges_html += '<span class="long-badge" style="background: rgba(245, 158, 11, 0.25) !important; color: #FDE68A !important; border: 1px solid #F59E0B !important;">[DO2W]</span>'
@@ -627,6 +624,7 @@ def render_user_home():
 
                                 badges_html = '<div class="badge-group">'
                                 if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
+                                if cand.get('長班'): badges_html += '<span class="long-badge">長班</span>'
                                 if cand.get('有DO2W標記') or (do_tag and any(k in do_tag for k in ['DO2', 'DO3', 'OGC', 'D2'])):
                                     badges_html += '<span class="long-badge" style="background: rgba(245, 158, 11, 0.25) !important; color: #FDE68A !important; border: 1px solid #F59E0B !important;">[DO2W]</span>'
                                 elif do_tag:
