@@ -128,7 +128,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
       if btn_auth:
         clean_emp = entered_emp.strip().upper()
 
-        # ⚡ 測試員快速通道：輸入 0900 即可直接登入並顯示 VIP
+        # ⚡ 1. 測試員快速通道：輸入 0900 直接放行並顯示 VIP
         if entered_key == "0900":
           target_emp_id = clean_emp if clean_emp else "A"
           st.session_state["authenticated"] = True
@@ -153,6 +153,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
         elif not clean_emp:
           st.error("請輸入有效的員編")
 
+        # 🔐 2. 管理員登入
         elif entered_key == ADMIN_PASSWORD:
           st.session_state["admin_logged_in"] = True
           st.session_state["current_unit"] = selected_unit
@@ -161,13 +162,17 @@ if not st.session_state["authenticated"] and not st.session_state.get(
           log_activity("管理員登入後台")
           st.rerun()
 
+        # 🎫 3. 一般授權碼登入（若白名單設為 VIP，上方會自動顯示 VIP_USER）
         elif entered_key == CREW_ACCESS_PASSWORD:
           allowed, user_info = is_user_allowed(clean_emp)
+          u_role = user_info.get("role", "") if user_info else ""
+
           if not allowed:
             st.error(
                 "您的員編尚未開放使用權限，請洽管理員於後台開通。"
             )
-          elif verify_crew_membership(selected_unit, clean_emp):
+          # 若白名單角色為 VIP，或者在大表內的組員，皆允許登入
+          elif verify_crew_membership(selected_unit, clean_emp) or u_role == "VIP":
             st.session_state["authenticated"] = True
             st.session_state["admin_logged_in"] = False
             st.session_state["nav_mode"] = "home"
@@ -175,11 +180,23 @@ if not st.session_state["authenticated"] and not st.session_state.get(
 
             emp_real_name = get_employee_name(selected_unit, clean_emp)
             disp_name = format_display_name(emp_real_name)
-            st.session_state["current_user_id"] = (
-                f"{clean_emp} {disp_name}".strip()
+            u_name = (
+                user_info.get("name")
+                if (user_info and user_info.get("name"))
+                else disp_name
             )
 
-            log_activity("使用者登入系統")
+            # 若白名單設定為 VIP，上方顯示 VIP_USER
+            if u_role == "VIP":
+              st.session_state["current_user_id"] = (
+                  f"VIP_USER ({clean_emp} {u_name})".strip()
+              )
+            else:
+              st.session_state["current_user_id"] = (
+                  f"{clean_emp} {u_name}".strip()
+              )
+
+            log_activity(f"使用者登入系統: {clean_emp} (角色: {u_role})")
             st.rerun()
           else:
             st.error(
