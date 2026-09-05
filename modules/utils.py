@@ -113,10 +113,12 @@ def safe_read_excel(file_source, header=None):
     return safe_read_excel_cached(file_source, header=header)
 
 
-def get_employee_name(unit_key, emp_input):
-  """全大表員編對照姓名檢索器"""
-  input_clean = str(emp_input).strip().upper()
+# ⚡ 高效記憶體快取：一次性載入單位組員姓名字典，解決重新整理卡頓
+@st.cache_data(show_spinner=False)
+def get_unit_employee_dict(unit_key):
+  """讀取大表並建置 {員編/姓名: 姓名} 之記憶體字典快取"""
   unit_files = UNITS.get(unit_key, UNITS.get("TTN", {}))
+  emp_dict = {}
   for role in ["駕駛", "列車長", "服勤員"]:
     path = unit_files.get(role, "")
     if os.path.exists(path):
@@ -125,12 +127,27 @@ def get_employee_name(unit_key, emp_input):
         df.columns = [str(c).strip() for c in df.columns]
         for _, row in df.iterrows():
           emp_id = str(row.iloc[0]).strip().upper()
-          emp_name = str(row.iloc[1]).strip().upper()
-          if emp_id == input_clean or emp_name == input_clean:
-            return str(row.iloc[1]).strip()
+          emp_name = str(row.iloc[1]).strip()
+          if (
+              emp_id
+              and emp_id not in ["NAN", "NONE", "員編", "EMP_ID"]
+              and emp_name
+          ):
+            emp_dict[emp_id] = emp_name
+            emp_dict[emp_name.upper()] = emp_name
       except Exception:
         pass
-  return ""
+  return emp_dict
+
+
+def get_employee_name(unit_key, emp_input):
+  """全大表員編對照姓名檢索器 (使用記憶體快取)"""
+  input_clean = str(emp_input).strip().upper()
+  if not input_clean or input_clean in ["NAN", "NONE", ""]:
+    return ""
+
+  emp_dict = get_unit_employee_dict(unit_key)
+  return emp_dict.get(input_clean, "")
 
 
 # =========================================================
@@ -190,9 +207,16 @@ def log_activity(input_str):
 
 def load_activity_logs():
   logs = []
-  if os.path.exists(LOG_FILE):
+  possible_log_paths = [
+      LOG_FILE,
+      "activity.log",
+      os.path.join(DATA_DIR, "activity.log"),
+  ]
+  log_path = next((p for p in possible_log_paths if os.path.exists(p)), None)
+
+  if log_path:
     try:
-      with open(LOG_FILE, "r", encoding="utf-8") as f:
+      with open(log_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
       for line in reversed(lines):
         line = line.strip()
