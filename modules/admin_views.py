@@ -143,57 +143,68 @@ def render_admin_panel():
 
         st.markdown("---")
 
-        sub_tab1, sub_tab2 = st.tabs(["📋 白名單人員總覽", "⚡ 關鍵字搜尋新增"])
+        sub_tab1, sub_tab2 = st.tabs(["📋 白名單人員總覽 (單鍵即時處置)", "⚡ 關鍵字搜尋新增"])
 
-        # 子頁籤 1：白名單總覽與快速處置
+        # 子頁籤 1：白名單總覽（每人單獨一列，附帶直覺按鈕）
         with sub_tab1:
             if users_list:
-                df_u = pd.DataFrame(users_list)
-                
                 search_kw = st.text_input("🔍 關鍵字過濾員編或姓名", "", key="admin_user_search_kw").strip().upper()
-                if search_kw:
-                    df_u = df_u[df_u["emp_id"].astype(str).str.upper().str.contains(search_kw) | df_u["name"].astype(str).str.upper().str.contains(search_kw)]
-
-                st.dataframe(
-                    df_u,
-                    column_config={
-                        "emp_id": "員工編號",
-                        "name": "姓名",
-                        "role": "職務類別",
-                        "status": "帳號狀態"
-                    },
-                    use_container_width=True,
-                    hide_index=True
-                )
-
-                st.markdown("##### 🛠️ 快速人員權限處置")
-                del_col1, del_col2, del_col3 = st.columns([2.5, 1, 1])
-                with del_col1:
-                    target_emp_str = st.selectbox("選擇要操作的人員", [f"{u['emp_id']} - {u['name']} (目前: {u.get('status', '啟用')})" for u in users_list], key="admin_user_op_select")
                 
-                target_id = target_emp_str.split(" - ")[0]
-                target_obj = next((u for u in data["users"] if u["emp_id"] == target_id), None)
+                filtered_users = users_list
+                if search_kw:
+                    filtered_users = [
+                        u for u in users_list 
+                        if search_kw in str(u.get("emp_id", "")).upper() or search_kw in str(u.get("name", "")).upper()
+                    ]
 
-                with del_col2:
-                    if target_obj:
-                        curr_st = target_obj.get("status", "啟用")
-                        toggle_btn_label = "🔴 停用帳號" if curr_st == "啟用" else "🟢 啟用帳號"
-                        if st.button(toggle_btn_label, key="btn_toggle_user_status", use_container_width=True):
-                            target_obj["status"] = "停用" if curr_st == "啟用" else "啟用"
-                            save_allowed_users(data)
-                            log_activity(f"管理員切換白名單人員狀態: {target_id} -> {target_obj['status']}")
-                            st.success(f"已更新 {target_id} 狀態為 {target_obj['status']}！")
-                            time.sleep(0.3)
-                            st.rerun()
+                if filtered_users:
+                    # 表頭
+                    h1, h2, h3, h4, h5 = st.columns([2.2, 2.2, 2.2, 2, 3])
+                    h1.markdown("**員工編號**")
+                    h2.markdown("**姓名**")
+                    h3.markdown("**職務類別**")
+                    h4.markdown("**帳號狀態**")
+                    h5.markdown("**一鍵處置操作**")
+                    st.markdown("<hr style='margin: 4px 0 10px 0; border-color: rgba(56, 189, 248, 0.3);'>", unsafe_allow_html=True)
 
-                with del_col3:
-                    if st.button("❌ 刪除人員", key="btn_del_user_admin", use_container_width=True):
-                        data["users"] = [u for u in data["users"] if u["emp_id"] != target_id]
-                        save_allowed_users(data)
-                        log_activity(f"管理員刪除白名單人員: {target_emp_str}")
-                        st.success(f"已成功刪除 {target_emp_str}！")
-                        time.sleep(0.3)
-                        st.rerun()
+                    # 逐列印出人員與操作按鈕
+                    for idx, u in enumerate(filtered_users):
+                        u_id = u.get("emp_id", "")
+                        u_name = u.get("name", "")
+                        u_role = u.get("role", "")
+                        u_status = u.get("status", "啟用")
+
+                        c1, c2, c3, c4, c5 = st.columns([2.2, 2.2, 2.2, 2, 3])
+                        with c1:
+                            st.markdown(f"<span style='font-family:monospace; font-weight:700; color:#38BDF8;'>{u_id}</span>", unsafe_allow_html=True)
+                        with c2:
+                            st.markdown(f"<span style='font-family:monospace; font-weight:700; color:#F8FAFC;'>{u_name}</span>", unsafe_allow_html=True)
+                        with c3:
+                            st.markdown(f"<span style='font-size:13px; color:#CBD5E1;'>{u_role}</span>", unsafe_allow_html=True)
+                        with c4:
+                            st_color = "#34D399" if u_status == "啟用" else "#F87171"
+                            st.markdown(f"<span style='font-weight:800; color:{st_color};'>【{u_status}】</span>", unsafe_allow_html=True)
+                        with c5:
+                            btn_c1, btn_c2 = st.columns(2)
+                            with btn_c1:
+                                toggle_label = "🔴 停用" if u_status == "啟用" else "🟢 啟用"
+                                if st.button(toggle_label, key=f"btn_st_{u_id}_{idx}", use_container_width=True):
+                                    target_obj = next((item for item in data["users"] if item["emp_id"] == u_id), None)
+                                    if target_obj:
+                                        target_obj["status"] = "停用" if u_status == "啟用" else "啟用"
+                                        save_allowed_users(data)
+                                        log_activity(f"管理員切換白名單人員狀態: {u_id} -> {target_obj['status']}")
+                                        st.rerun()
+                            with btn_c2:
+                                if st.button("❌ 刪除", key=f"btn_del_{u_id}_{idx}", use_container_width=True):
+                                    data["users"] = [item for item in data["users"] if item["emp_id"] != u_id]
+                                    save_allowed_users(data)
+                                    log_activity(f"管理員刪除白名單人員: {u_id} ({u_name})")
+                                    st.rerun()
+
+                        st.markdown("<hr style='margin: 4px 0; border-color: rgba(255, 255, 255, 0.05);'>", unsafe_allow_html=True)
+                else:
+                    st.info("查無符合過濾條件的人員。")
             else:
                 st.info("目前白名單內無任何使用者資料。")
 
