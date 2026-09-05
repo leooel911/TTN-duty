@@ -291,6 +291,7 @@ def render_user_home():
                                     "日期": target_date, "員編": emp_id, "姓名": emp_name,
                                     "Sign-In": start_t if start_t else "--:--", 
                                     "Sign-Out": parsed["end"] if parsed["end"] else "--:--",
+                                    "工時": parsed.get("hours", ""),
                                     "車次": translate_train_code(parsed["train"]),
                                     "隔日Sign-In": next_day_sign_in, "長班": is_long,
                                     "非正線": is_non_line, "請假": is_leave,
@@ -344,7 +345,7 @@ def render_user_home():
                                 do_tag = r.get('出勤標記', '')
                                 do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in r['車次']) else ""
 
-                                # 當日總工時標籤 (資訊 100% 精準且實用)
+                                # 當日總工時標籤 (精準有用)
                                 shift_hours = r.get("工時", "")
                                 hours_badge_html = ""
                                 if shift_hours:
@@ -352,18 +353,10 @@ def render_user_home():
                                         hours_badge_html = f'<span class="long-badge" style="background: rgba(225, 29, 72, 0.2) !important; color: #FB7185 !important; border: 1px solid rgba(244, 63, 94, 0.5) !important;">工時 {shift_hours}</span>'
                                     else:
                                         hours_badge_html = f'<span class="long-badge" style="background: rgba(56, 189, 248, 0.15) !important; color: #38BDF8 !important; border: 1px solid rgba(56, 189, 248, 0.4) !important;">工時 {shift_hours}</span>'
-                                
+
                                 badges_html = '<div class="badge-group">'
                                 if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
                                 if hours_badge_html: badges_html += hours_badge_html
-                                if do_tag and any(k in do_tag for k in ['DO2', 'DO3', 'OGC', 'D2']):
-                                    badges_html += '<span class="long-badge" style="background: rgba(245, 158, 11, 0.25) !important; color: #FDE68A !important; border: 1px solid #F59E0B !important;">[DO2W]</span>'
-                                elif do_tag:
-                                    badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
-                                badges_html += '</div>'
-                                badges_html = '<div class="badge-group">'
-                                if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
-                                if rest_badge_html: badges_html += rest_badge_html
                                 if do_tag and any(k in do_tag for k in ['DO2', 'DO3', 'OGC', 'D2']):
                                     badges_html += '<span class="long-badge" style="background: rgba(245, 158, 11, 0.25) !important; color: #FDE68A !important; border: 1px solid #F59E0B !important;">[DO2W]</span>'
                                 elif do_tag:
