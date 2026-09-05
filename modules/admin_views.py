@@ -66,7 +66,6 @@ def load_whitelist(unit_code="TTN"):
     try:
       with open(whitelist_path, "r", encoding="utf-8") as f:
         full_data = json.load(f)
-        # 舊格式相容轉換：若原本未按單位劃分，自動升級為現有單位的字典
         if full_data and not any(k in UNITS for k in full_data.keys()):
           full_data = {unit_code: full_data}
 
@@ -76,7 +75,6 @@ def load_whitelist(unit_code="TTN"):
     except Exception:
       pass
 
-  # 單位預設保底白名單
   default_whitelist = {
       "ADMIN": {
           "name": "系統管理員",
@@ -128,6 +126,7 @@ def load_system_config():
       "announcement": "目前為內部測試階段｜本頁面可聯繫後台管理者",
       "strict_streak_limit": 6,
       "enable_beta_notice": True,
+      "user_password": "",
       "admin_password": "",
   }
 
@@ -207,7 +206,7 @@ def render_admin_panel():
   tab1, tab2, tab3, tab4, tab5 = st.tabs([
       "📂 大表上傳與組員快查",
       "🛠️ 模組維護模式",
-      "👤 白名單帳號管理",
+      "👤 白名單與組員權限管理",
       "⚙️ 全域系統參數",
       "📜 系統日誌與備份",
   ])
@@ -314,10 +313,10 @@ def render_admin_panel():
           st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 3: 白名單帳號管理 (按單位獨立隔離 + 下拉連動)
+  # Tab 3: 白名單與組員權限管理
   # ---------------------------------------------------------
   with tab3:
-    st.markdown(f"### 👤 白名單與 VIP 通行帳號管理 [{current_unit}]")
+    st.markdown(f"### 👤 白名單與組員權限管理 [{current_unit}]")
     whitelist_data = load_whitelist(current_unit)
 
     col_wl_left, col_wl_right = st.columns([2, 1])
@@ -338,14 +337,14 @@ def render_admin_panel():
             wl_rows.append({
                 "員編/帳號": uid,
                 "姓名": info.get("name", info.get("姓名", "未設定")),
-                "身份標記": info.get("role", info.get("身份", "VIP")),
+                "身份權限": info.get("role", info.get("身份", "VIP")),
                 "備註": info.get("note", info.get("備註", "-")),
             })
           else:
             wl_rows.append({
                 "員編/帳號": uid,
                 "姓名": str(info),
-                "身份標記": "VIP",
+                "身份權限": "VIP",
                 "備註": "-",
             })
 
@@ -356,7 +355,7 @@ def render_admin_panel():
               for r in wl_rows
               if kw_lower in str(r["員編/帳號"]).lower()
               or kw_lower in str(r["姓名"]).lower()
-              or kw_lower in str(r["身份標記"]).lower()
+              or kw_lower in str(r["身份權限"]).lower()
               or kw_lower in str(r["備註"]).lower()
           ]
 
@@ -368,7 +367,7 @@ def render_admin_panel():
         st.info(f"目前【{current_unit}】尚無特定白名單設定紀錄。")
 
     with col_wl_right:
-      st.markdown(f"#### ➕ 新增/覆蓋白名單帳號 [{current_unit}]")
+      st.markdown(f"#### ➕ 新增 / 修改組員權限 [{current_unit}]")
 
       crew_options = get_all_crew_options(current_unit)
       options_dict = {"-- 手動輸入 或 點此選取大表組員 --": {"uid": "", "name": ""}}
@@ -400,11 +399,11 @@ def render_admin_panel():
             key="input_wl_uname",
         )
         new_role = st.selectbox(
-            "權限身份", ["VIP_USER (全域通行)", "ADMIN", "TESTER"]
+            "設定使用者權限身份", ["VIP_USER (全域通行)", "ADMIN", "TESTER"]
         )
-        new_note = st.text_input("備註說明", placeholder="例: 全域通行測試")
+        new_note = st.text_input("備註說明", placeholder="例: 全域通行權限設定")
         submit_wl = st.form_submit_button(
-            "新增至白名單", type="primary", use_container_width=True
+            "💾 儲存 / 更新組員權限", type="primary", use_container_width=True
         )
 
         if submit_wl:
@@ -417,35 +416,35 @@ def render_admin_panel():
             }
             save_whitelist(current_unit, whitelist_data)
             log_activity(
-                f"管理員新增 [{current_unit}] 白名單：{new_uid.strip()} ({new_uname.strip()})"
+                f"管理員更新 [{current_unit}] 組員權限：{new_uid.strip()} -> {new_role}"
             )
-            st.success(f"已成功新增/更新【{current_unit}】白名單帳號：{new_uid}")
+            st.success(f"已成功儲存/更新【{current_unit}】組員權限：{new_uid} ({new_role})")
             st.rerun()
           else:
             st.warning("請填寫員編/帳號 ID")
 
       st.markdown("---")
-      st.markdown(f"#### 🗑️ 移除白名單帳號 [{current_unit}]")
+      st.markdown(f"#### 🗑️ 移除白名單權限 [{current_unit}]")
       if whitelist_data:
         del_uid = st.selectbox(
-            "選擇要移除的帳號",
+            "選擇要移除權限的帳號",
             options=list(whitelist_data.keys()),
             key=f"wl_del_select_{current_unit}",
         )
         if st.button(
-            "確認刪除該帳號", type="secondary", use_container_width=True
+            "確認移除該權限", type="secondary", use_container_width=True
         ):
           del whitelist_data[del_uid]
           save_whitelist(current_unit, whitelist_data)
-          log_activity(f"管理員移除 [{current_unit}] 白名單帳號：{del_uid}")
-          st.success(f"已成功移除【{current_unit}】帳號：{del_uid}")
+          log_activity(f"管理員移除 [{current_unit}] 組員權限：{del_uid}")
+          st.success(f"已成功移除【{current_unit}】權限：{del_uid}")
           st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 4: 全域系統參數
+  # Tab 4: 全域系統參數 (修改：一般使用者/組員 通行密碼設定)
   # ---------------------------------------------------------
   with tab4:
-    st.markdown("### ⚙️ 全域系統參數與安全設定")
+    st.markdown("### ⚙️ 全域系統參數與權限設定")
     sys_config = load_system_config()
 
     col_p1, col_p2 = st.columns(2)
@@ -461,18 +460,18 @@ def render_admin_panel():
       )
 
       st.markdown("---")
-      st.markdown("#### 🔑 管理員後台登入密碼設定")
-      new_admin_pwd = st.text_input(
-          "設定新管理員密碼",
+      st.markdown("#### 🔑 一般使用者 / 組員 通行密碼設定")
+      new_user_pwd = st.text_input(
+          "設定新組員通行密碼",
           type="password",
-          placeholder="留空則保持原密碼不變",
-          key="admin_pwd_input",
+          placeholder="留空則保持原通行密碼不變",
+          key="user_pwd_input",
       )
-      confirm_admin_pwd = st.text_input(
-          "確認新管理員密碼",
+      confirm_user_pwd = st.text_input(
+          "確認新組員通行密碼",
           type="password",
           placeholder="再次輸入新密碼",
-          key="admin_pwd_confirm",
+          key="user_pwd_confirm",
       )
 
     with col_p2:
@@ -493,19 +492,19 @@ def render_admin_panel():
         "💾 儲存全域系統設定", type="primary", use_container_width=True
     ):
       pwd_msg = ""
-      if new_admin_pwd:
-        if new_admin_pwd != confirm_admin_pwd:
-          st.error("兩次輸入的新密碼不一致，請重新檢查！")
+      if new_user_pwd:
+        if new_user_pwd != confirm_user_pwd:
+          st.error("兩次輸入的新通行密碼不一致，請重新檢查！")
           st.stop()
         else:
-          sys_config["admin_password"] = new_admin_pwd.strip()
-          pwd_msg = "管理員密碼與"
+          sys_config["user_password"] = new_user_pwd.strip()
+          pwd_msg = "組員通行密碼與"
 
       sys_config["announcement"] = announce_text.strip()
       sys_config["strict_streak_limit"] = streak_threshold
       sys_config["enable_beta_notice"] = enable_notice
       save_system_config(sys_config)
-      log_activity("管理員更新全域系統設定與安全參數")
+      log_activity("管理員更新全域系統設定與組員通行密碼")
       st.success(f"{pwd_msg}全域系統設定已成功儲存！")
       st.rerun()
 
