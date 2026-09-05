@@ -3,8 +3,8 @@ import re
 import io
 import pandas as pd
 import streamlit as st
-from datetime import datetime, timezone, timedelta
-from config import DATA_DIR, LOG_FILE, TAIWAN_TZ, UNITS
+from datetime import datetime, timezone, timedelta, date
+from config import DATA_DIR, LOG_FILE, TAIWAN_TZ, UNITS, NATIONAL_HOLIDAYS, LEAVE_CODES
 
 def get_maintenance_flag_path(unit, module_key):
     return os.path.join(DATA_DIR, f"maintenance_{unit}_{module_key}.flag")
@@ -170,8 +170,7 @@ def is_valid_train_code(tr):
     tr_clean = str(tr).strip().upper()
     if tr_clean.startswith("DO") or tr_clean.startswith("D2W") or tr_clean.startswith("D3W") or "OGC" in tr_clean:
         return False
-    leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
-    if tr_clean in leave_codes:
+    if tr_clean in LEAVE_CODES:
         return False
     return bool(re.match(r'^[A-Z]+\d+', tr_clean))
 
@@ -208,7 +207,6 @@ def parse_cell(raw):
     if not lines:
         return dict(start="", train="無", end="", hours="", note="")
 
-    leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
     raw_upper = raw_str.upper()
 
     times = re.findall(r'\b\d{1,2}:\d{2}\b', raw_str)
@@ -229,7 +227,7 @@ def parse_cell(raw):
         if not real_train:
             real_train = line_clean
 
-    found_leave = next((k for k in leave_codes if k in raw_upper), "")
+    found_leave = next((k for k in LEAVE_CODES if k in raw_upper), "")
     if found_leave and not is_valid_train_code(real_train):
         return dict(start=start_time, end=end_time, train=found_leave, hours=hours, note=found_leave)
 
@@ -246,11 +244,6 @@ def parse_cell(raw):
     )
 
 def is_cell_off_day(raw_val):
-    """
-    精準判定是否為休假日 (DO/DO1/DO3/純休假/DO2W休假態)
-    - DO2W/DO3W/OGC 若有班別與時間，視為出勤態！
-    - DO2W/DO3W/OGC 若無班別與時間，視為休假態 (即可作為同日假換班對象)！
-    """
     if pd.isna(raw_val) or not str(raw_val).strip():
         return True
     raw_str = str(raw_val).strip().upper()
@@ -262,36 +255,29 @@ def is_cell_off_day(raw_val):
     has_time = bool(parsed.get("start"))
     has_valid_train = is_valid_train_code(train_code)
 
-    # 國定假日 (DO2W/D2W) 與 輪休加班 (DO3W/D3W) / OGC 判定
     if re.search(r'(DO2W|D2W|DO3W|D3W|OGC)', raw_str):
         if has_time or has_valid_train:
-            return False  # 有時間或車次 -> 當天出勤
-        return True       # 無時間與車次 -> 當天休假 (符合同日假換班對象)
+            return False
+        return True
 
     if "PAY" in raw_str or train_code == "PAY":
-        return False  # PAY 特休算工時出勤態
+        return False
 
-    leave_codes = ["FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
-    if train_code in leave_codes or any(k in raw_str for k in leave_codes):
+    if train_code in LEAVE_CODES or any(k in raw_str for k in LEAVE_CODES):
         if not has_valid_train and not train_code.startswith("N"):
             return True
 
     if has_valid_train or train_code.startswith("N"):
         return False
 
-    if has_time and train_code not in leave_codes and not train_code.startswith("DO"):
+    if has_time and train_code not in LEAVE_CODES and not train_code.startswith("DO"):
         return False
 
     return True
 
 def resets_work_streak(raw_val):
-    """
-    精準判定此天是否能「斷開/重置連續上班天數」 (依據勞基法七休一原則)
-    - 只有真正的例假/休息日 (DO1、無出勤之 DO3/DO3X、一般請假) 才能重置連班天數。
-    - 國定假日 (DO2, DO2W, D2W)、特休 (PAY)、輪休加班 (DO3W) 或有車次時間者，均『不可斷開連班』！
-    """
     if pd.isna(raw_val) or not str(raw_val).strip():
-        return True  # 空白預設為休假，可斷班
+        return True
 
     raw_str = str(raw_val).strip().upper()
     if raw_str in ["NAN", "NONE", "", "."]:
@@ -302,15 +288,12 @@ def resets_work_streak(raw_val):
     has_time = bool(parsed.get("start"))
     has_valid_train = is_valid_train_code(train_code)
 
-    # 1. 只要有報到時間或正線車次 -> 必定是上班，無法斷班
     if has_time or has_valid_train:
         return False
 
-    # 2. 國定假日 (DO2, DO2W, D2W, OGC) 與 特休 (PAY) -> 採計工時/工作態，『不可斷開連班天數』！
     if re.search(r'(DO2W?|D2W|PAY|OGC)', raw_str):
         return False
 
-    # 3. 只有真正的例假 (DO1)、無出勤之休息日 (DO3/DO3X)、其他一般請假 (FAC/AL/SL等) -> 才能重置連班
     return True
 
 def calculate_rest_hours(sign_out_str, next_sign_in_str):
@@ -330,11 +313,6 @@ def calculate_rest_hours(sign_out_str, next_sign_in_str):
         return None
 
 def check_shift_legality(crew_row, target_col_idx, all_cols):
-    """
-    合規性驗證:
-    1. 班與班之間 Sign-Out 至 Sign-In 休息時間是否 >= 12h
-    2. 若 11h <= 休息時間 < 12h，檢查 7 天範圍內是否超過 1 次特例
-    """
     window_start = max(2, target_col_idx - 6)
     window_end = min(len(all_cols) - 1, target_col_idx + 6)
     
@@ -373,3 +351,30 @@ def check_shift_legality(crew_row, target_col_idx, all_cols):
         "min_interval": min_interval_found if min_interval_found != 99.0 else None,
         "eleven_hr_cnt": eleven_hour_count
     }
+
+def check_week_has_holiday(target_date_str, date_cols, columns=None):
+    """檢查指定日期所在當週 (Sun~Sat) 是否包含國定假日或備註假日"""
+    try:
+        current_year = date.today().year
+        t_m, t_d = map(int, target_date_str.split('/'))
+        t_dt = date(current_year, t_m, t_d)
+        t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
+        t_sat = t_sun + timedelta(days=6)
+        week_str = f"{t_sun.month}/{t_sun.day:02d} (日) ~ {t_sat.month}/{t_sat.day:02d} (六)"
+
+        for d_str in date_cols:
+            try:
+                d_m, d_d = map(int, d_str.split('/'))
+                d_dt = date(current_year, d_m, d_d)
+                if t_sun <= d_dt <= t_sat:
+                    if d_str in NATIONAL_HOLIDAYS:
+                        return True, week_str
+                    if columns is not None:
+                        matching_col = next((c for c in columns[2:] if d_str in str(c)), None)
+                        if matching_col and re.search(r'[\(（]([^\)）]+)[\)）]', str(matching_col)):
+                            return True, week_str
+            except Exception:
+                pass
+        return False, week_str
+    except Exception:
+        return False, ""
