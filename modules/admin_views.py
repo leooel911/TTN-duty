@@ -4,6 +4,7 @@ import json
 import os
 import zipfile
 
+from config import LOG_FILE
 from modules.components import render_zoomable_image
 from modules.drawing import render_schedule_figure
 from modules.services import (
@@ -14,7 +15,12 @@ from modules.services import (
     save_allowed_users,
     save_system_config,
 )
-from modules.utils import get_file_mtime_str, safe_read_excel
+from modules.utils import (
+    get_file_mtime_str,
+    load_activity_logs,
+    log_activity,
+    safe_read_excel,
+)
 import pandas as pd
 import streamlit as st
 
@@ -148,6 +154,7 @@ def render_admin_panel():
           ):
             with open(file_path, "wb") as f:
               f.write(uploaded_file.getbuffer())
+            log_activity(f"後台覆蓋上傳 [{current_unit}] {role_name} 班表大表")
             st.success(f"✅ {role_name}班表大表已成功覆蓋更新！")
             st.rerun()
 
@@ -180,6 +187,7 @@ def render_admin_panel():
               current_unit,
               badge_title="Admin Inspector | C.L.F",
           )
+        log_activity(f"後台即時快查組員班表: [{emp_id}] {emp_name}")
         st.success(f"已成功載入【{emp_name}】({emp_id}) 之月班表圖檔")
         render_zoomable_image(buf)
       except Exception as e:
@@ -213,6 +221,10 @@ def render_admin_panel():
       if new_val != is_maint:
         maint_data[full_key] = new_val
         updated = True
+        log_activity(
+            f"變更維護模式: [{full_key}] ->"
+            f" {'開啟維護' if new_val else '關閉維護'}"
+        )
 
     if updated:
       if save_maintenance_status(maint_data):
@@ -220,7 +232,7 @@ def render_admin_panel():
         st.rerun()
 
   # =========================================================
-  # Tab 3: 白名單帳號管理 (取消預設值)
+  # Tab 3: 白名單帳號管理
   # =========================================================
   with tab3:
     st.markdown("### 👥 動態白名單權限管理")
@@ -235,12 +247,15 @@ def render_admin_panel():
     if new_enabled != is_enabled:
       wl_data["enabled"] = new_enabled
       save_allowed_users(wl_data)
+      log_activity(
+          f"變更白名單審核機制開關: {'啟用' if new_enabled else '關閉'}"
+      )
       st.toast("白名單開關狀態已更新！")
       st.rerun()
 
     st.markdown("---")
 
-    # 1. 新增人員表單 (無預設值設定)
+    # 1. 新增人員表單 (無預設值)
     with st.expander("➕ 新增白名單人員", expanded=True):
       add_mode = st.radio(
           "選擇新增方式",
@@ -318,6 +333,10 @@ def render_admin_panel():
 
               wl_data["users"] = users
               save_allowed_users(wl_data)
+              log_activity(
+                  f"新增白名單: [{q_id}] {q_name} (角色:{quick_role},"
+                  f" 狀態:{quick_status})"
+              )
               st.rerun()
 
       else:
@@ -398,6 +417,10 @@ def render_admin_panel():
 
               wl_data["users"] = users
               save_allowed_users(wl_data)
+              log_activity(
+                  f"手動新增白名單: [{new_emp_id}] {final_name}"
+                  f" (角色:{new_role}, 狀態:{new_status})"
+              )
               st.rerun()
 
     # 2. 🔍 白名單即時搜尋與多重篩選列
@@ -503,6 +526,7 @@ def render_admin_panel():
 
         wl_data["users"] = final_users
         save_allowed_users(wl_data)
+        log_activity("儲存白名單列表數據變更")
         st.success("✅ 白名單資料已成功更新並儲存！")
         st.rerun()
 
@@ -570,28 +594,62 @@ def render_admin_panel():
             "enable_whitelist": enable_wl,
         }
         if save_system_config(new_cfg):
+          log_activity("更新全域系統參數與金鑰設定")
           st.success("✅ 全域系統參數已成功儲存並即時生效！")
           st.rerun()
         else:
           st.error("❌ 儲存設定時發生錯誤，請檢查檔案權限。")
 
   # =========================================================
-  # Tab 5: 系統日誌與備份打包
+  # Tab 5: 系統日誌與備份打包 (解析 LOG_FILE 即時渲染)
   # =========================================================
   with tab5:
     st.markdown("### 📜 系統操作日誌與資料打包備份")
 
-    log_file = "activity.log"
-    if os.path.exists(log_file):
-      st.markdown("#### 🔍 最近操作日誌內容")
+    logs = load_activity_logs()
+
+    if logs:
+      st.markdown(f"#### 🔍 最近系統操作日誌 (共 {len(logs)} 筆)")
+      df_logs = pd.DataFrame(logs)
+      col_order = [
+          "timestamp",
+          "unit",
+          "user_id",
+          "user_name",
+          "device",
+          "action",
+      ]
+      existing_cols = [c for c in col_order if c in df_logs.columns]
+
+      df_logs_disp = df_logs[existing_cols].rename(
+          columns={
+              "timestamp": "紀錄時間",
+              "unit": "單位",
+              "user_id": "操作者員編",
+              "user_name": "姓名",
+              "device": "使用裝置",
+              "action": "操作動作細節",
+          }
+      )
+      st.dataframe(df_logs_disp, use_container_width=True, height=280)
+    elif os.path.exists(LOG_FILE):
       try:
-        with open(log_file, "r", encoding="utf-8") as f:
-          logs = f.readlines()
-        st.text_area("系統日誌 (最新 100 筆)", "".join(logs[-100:]), height=200)
+        with open(LOG_FILE, "r", encoding="utf-8") as f:
+          raw_lines = f.readlines()
+        if raw_lines:
+          st.text_area(
+              "系統原始日誌 (最新 100 筆)",
+              "".join(raw_lines[-100:]),
+              height=220,
+          )
+        else:
+          st.info("日誌紀錄檔目前為空，尚無操作紀錄。")
       except Exception as e:
-        st.error(f"讀取日誌失敗: {e}")
+        st.error(f"讀取日誌發生錯誤: {e}")
     else:
-      st.info("尚無日誌紀錄檔。")
+      st.info(
+          "尚無日誌紀錄檔（系統將於使用者進行班表查詢、換班/換假檢索或變更後台設定時自動建立）。"
+      )
 
     st.markdown("---")
     st.markdown("#### 📦 一鍵備份全站數據與設定")
@@ -604,17 +662,18 @@ def render_admin_panel():
             "system_config.json",
             "maintenance.json",
             "config.py",
-            "activity.log",
+            LOG_FILE,
         ]:
           if os.path.exists(fname):
-            zf.write(fname)
+            zf.write(
+                fname,
+                os.path.basename(fname),
+            )
         if os.path.exists("data"):
           for root, _, files in os.walk("data"):
             for file in files:
-              zf.write(
-                  os.path.join(root, file),
-                  os.path.relpath(os.path.join(root, file), "."),
-              )
+              full_p = os.path.join(root, file)
+              zf.write(full_p, os.path.relpath(full_p, "."))
       buf.seek(0)
       return buf
 
