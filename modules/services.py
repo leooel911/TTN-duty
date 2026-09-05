@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import pandas as pd
 import streamlit as st
 from datetime import date, datetime
@@ -9,6 +10,58 @@ from modules.utils import (
     is_valid_train_code, is_cell_off_day
 )
 
+# ==================== 使用者白名單存取權限管理 ====================
+ALLOWED_USERS_FILE = "data/allowed_users.json"
+
+def load_allowed_users():
+    """讀取允許登入的使用者白名單 JSON"""
+    if not os.path.exists("data"):
+        os.makedirs("data")
+    if not os.path.exists(ALLOWED_USERS_FILE):
+        default_data = {
+            "enabled": True,  # 是否開啟存取限制
+            "users": [
+                {"emp_id": "A022298", "name": "葉美君", "role": "服勤員", "status": "啟用"},
+                {"emp_id": "A023300", "name": "江立夫", "role": "管理員", "status": "啟用"}
+            ]
+        }
+        with open(ALLOWED_USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(default_data, f, ensure_ascii=False, indent=2)
+        return default_data
+    
+    try:
+        with open(ALLOWED_USERS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"enabled": False, "users": []}
+
+def save_allowed_users(data):
+    """儲存白名單資料至 JSON"""
+    if not os.path.exists("data"):
+        os.makedirs("data")
+    with open(ALLOWED_USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def is_user_allowed(user_input):
+    """檢查輸入的員編或姓名是否允許使用系統"""
+    data = load_allowed_users()
+    # 若權限控制未開啟，直接放行
+    if not data.get("enabled", True):
+        return True, "驗證關閉"
+    
+    query = str(user_input).strip().upper()
+    if not query:
+        return False, "無效輸入"
+
+    for u in data.get("users", []):
+        if u.get("status") == "啟用":
+            emp_id = str(u.get("emp_id", "")).strip().upper()
+            emp_name = str(u.get("name", "")).strip().upper()
+            if query == emp_id or query == emp_name:
+                return True, u.get("name")
+    return False, "無存取權限"
+
+# ==================== 班表資料檢索與處理邏輯 ====================
 def get_current_role_files():
     current_unit = st.session_state.get("current_unit", "TTN")
     return UNITS.get(current_unit, UNITS["TTN"])
