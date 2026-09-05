@@ -21,7 +21,7 @@ import streamlit as st
 MAINT_FILE = "maintenance.json"
 
 
-# --- 工具函式：讀取大表中所有同仁清單 (供快捷選單使用) ---
+# --- 工具函式：讀取大表中所有同仁清單 ---
 def get_all_excel_crew(current_unit):
   data_dir = "data"
   role_files = {
@@ -220,7 +220,7 @@ def render_admin_panel():
         st.rerun()
 
   # =========================================================
-  # Tab 3: 白名單帳號管理 (新增自動比對與快篩功能)
+  # Tab 3: 白名單帳號管理 (取消預設值)
   # =========================================================
   with tab3:
     st.markdown("### 👥 動態白名單權限管理")
@@ -240,18 +240,18 @@ def render_admin_panel():
 
     st.markdown("---")
 
-    # 1. 升級版：新增人員表單 (支援下拉快選 & 員編自動比對姓名)
-    with st.expander("➕ 新增白名單人員 (支援大表自動比對)", expanded=True):
+    # 1. 新增人員表單 (無預設值設定)
+    with st.expander("➕ 新增白名單人員", expanded=True):
       add_mode = st.radio(
           "選擇新增方式",
-          ["全大表名單快捷選擇 (推薦)", "手動輸入員編 (姓名自動帶入)"],
+          ["全大表名單快捷選擇", "手動輸入員編 (姓名自動帶入)"],
           horizontal=True,
           key="add_user_mode",
       )
 
       users = wl_data.get("users", [])
 
-      if add_mode == "全大表名單快捷選擇 (推薦)":
+      if add_mode == "全大表名單快捷選擇":
         excel_crew = get_all_excel_crew(current_unit)
         if not excel_crew:
           st.warning("⚠️ 目前各大表尚未上傳，請先至第一頁籤上傳班表 Excel 檔。")
@@ -260,46 +260,65 @@ def render_admin_panel():
               f"[{c['emp_id']}] {c['name']} ({c['role_type']})": c
               for c in excel_crew
           }
+
           selected_label = st.selectbox(
               "選擇欲加入白名單之同仁",
               options=list(options_map.keys()),
+              index=None,
+              placeholder="請點擊選擇同仁...",
               key="quick_select_crew",
           )
+
           col_q1, col_q2 = st.columns(2)
           with col_q1:
             quick_role = st.selectbox(
-                "角色權限", ["VIP", "組員"], key="quick_role"
+                "角色權限",
+                options=["組員", "VIP"],
+                index=None,
+                placeholder="請選擇角色權限...",
+                key="quick_role",
             )
           with col_q2:
             quick_status = st.selectbox(
-                "帳號狀態", ["啟用", "停用"], key="quick_status"
+                "帳號狀態",
+                options=["啟用", "停用"],
+                index=None,
+                placeholder="請選擇帳號狀態...",
+                key="quick_status",
             )
 
           if st.button("➕ 加入所選同仁至白名單", type="primary"):
-            target_info = options_map[selected_label]
-            q_id = target_info["emp_id"]
-            q_name = target_info["name"]
-
-            existing = next(
-                (u for u in users if u.get("emp_id", "").upper() == q_id), None
-            )
-            if existing:
-              existing["name"] = q_name
-              existing["role"] = quick_role
-              existing["status"] = quick_status
-              st.success(f"已更新員編 [{q_id}] {q_name} 之權限資料！")
+            if not selected_label:
+              st.error("請先選擇欲加入之同仁！")
+            elif not quick_role:
+              st.error("請選擇角色權限！")
+            elif not quick_status:
+              st.error("請選擇帳號狀態！")
             else:
-              users.append({
-                  "emp_id": q_id,
-                  "name": q_name,
-                  "role": quick_role,
-                  "status": quick_status,
-              })
-              st.success(f"已成功新增 [{q_id}] {q_name} 至白名單！")
+              target_info = options_map[selected_label]
+              q_id = target_info["emp_id"]
+              q_name = target_info["name"]
 
-            wl_data["users"] = users
-            save_allowed_users(wl_data)
-            st.rerun()
+              existing = next(
+                  (u for u in users if u.get("emp_id", "").upper() == q_id), None
+              )
+              if existing:
+                existing["name"] = q_name
+                existing["role"] = quick_role
+                existing["status"] = quick_status
+                st.success(f"已更新員編 [{q_id}] {q_name} 之權限資料！")
+              else:
+                users.append({
+                    "emp_id": q_id,
+                    "name": q_name,
+                    "role": quick_role,
+                    "status": quick_status,
+                })
+                st.success(f"已成功新增 [{q_id}] {q_name} 至白名單！")
+
+              wl_data["users"] = users
+              save_allowed_users(wl_data)
+              st.rerun()
 
       else:
         with st.form("add_user_form_manual"):
@@ -315,8 +334,18 @@ def render_admin_panel():
                 placeholder="若留空將自動帶入大表姓名",
             ).strip()
           with col_u2:
-            new_role = st.selectbox("角色權限", ["VIP", "組員"])
-            new_status = st.selectbox("帳號狀態", ["啟用", "停用"])
+            new_role = st.selectbox(
+                "角色權限",
+                options=["組員", "VIP"],
+                index=None,
+                placeholder="請選擇角色權限...",
+            )
+            new_status = st.selectbox(
+                "帳號狀態",
+                options=["啟用", "停用"],
+                index=None,
+                placeholder="請選擇帳號狀態...",
+            )
 
           btn_add_user = st.form_submit_button(
               "新增至白名單", type="primary"
@@ -325,8 +354,11 @@ def render_admin_panel():
           if btn_add_user:
             if not new_emp_id:
               st.error("請輸入有效員編！")
+            elif not new_role:
+              st.error("請選擇角色權限！")
+            elif not new_status:
+              st.error("請選擇帳號狀態！")
             else:
-              # 自動比對 Excel 大表帶入姓名
               auto_fetched_name = get_employee_name(current_unit, new_emp_id)
               final_name = (
                   new_name
