@@ -21,7 +21,7 @@ if "authenticated" not in st.session_state:
 if "admin_logged_in" not in st.session_state:
   st.session_state["admin_logged_in"] = False
 if "user_input_field" not in st.session_state:
-  st.session_state["user_input_field"] = ""
+  st.session_state["user_input_field"] = "A"
 if "show_admin_login" not in st.session_state:
   st.session_state["show_admin_login"] = False
 if "inspect_emp_target" not in st.session_state:
@@ -29,7 +29,7 @@ if "inspect_emp_target" not in st.session_state:
 if "nav_mode" not in st.session_state:
   st.session_state["nav_mode"] = "home"
 if "current_user_id" not in st.session_state:
-  st.session_state["current_user_id"] = ""
+  st.session_state["current_user_id"] = "A"
 if "current_unit" not in st.session_state:
   st.session_state["current_unit"] = "TTN"
 
@@ -118,7 +118,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
     with st.form("auth_form"):
       selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
       entered_emp = st.text_input(
-          "使用者員編", value="", placeholder="例如: 023300", max_chars=10
+          "使用者員編", value="A", placeholder="例如: 023300", max_chars=10
       )
       entered_key = st.text_input(
           "系統授權碼", type="password", placeholder="請輸入系統授權碼..."
@@ -130,7 +130,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
         if not clean_emp:
           st.error("請輸入有效的員編")
 
-        # 🛡️ 修正後的 0900 (VIP 通行碼)：強制呼叫後台動態白名單進行驗證
+        # VIP 通行碼 0900：強制呼叫後台動態白名單驗證
         elif entered_key == "0900":
           allowed, user_info = is_user_allowed(clean_emp)
           if not allowed:
@@ -200,7 +200,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
 # 主頁面 Header 資訊區
 # ---------------------------------------------------------
 current_unit_label = st.session_state.get("current_unit", "TTN")
-current_operator_id = st.session_state.get("current_user_id", "")
+current_operator_id = st.session_state.get("current_user_id", "A")
 
 st.markdown(
     f"""
@@ -263,7 +263,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
           st.session_state["admin_logged_in"] = True
           st.session_state["nav_mode"] = "admin_panel"
           st.session_state["show_admin_login"] = False
-          curr_op = st.session_state.get("user_input_field", "")
+          curr_op = st.session_state.get("user_input_field", "A")
           st.session_state["current_user_id"] = f"ADMIN ({curr_op})"
           log_activity("管理員登入後台")
           st.rerun()
