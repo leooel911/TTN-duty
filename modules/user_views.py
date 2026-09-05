@@ -386,7 +386,7 @@ def render_user_home():
                 if not date_cols:
                     st.warning("目前的班表檔案中無法解析出有效的日期欄位。")
                 else:
-                    # 格式化日期選單名稱 (顯示具體國定節慶名稱，移除貼圖)
+                    # 精準比對節慶對照表與 Excel 欄位標題備註 (排除個別組員單元格挪移導致的誤判)
                     def format_date_label(d_str):
                         holiday_name = HOLIDAY_MAP.get(d_str)
                         if not holiday_name:
@@ -396,10 +396,7 @@ def render_user_home():
                                 name_match = re.search(r'[\(（]([^\)）]+)[\)）]', col_raw)
                                 if name_match:
                                     holiday_name = name_match.group(1)
-                                else:
-                                    col_series_str = df_ex[matching_col].astype(str).str.upper()
-                                    if col_series_str.str.contains(r'DO[23]W|D[23]W|OGC', regex=True).any():
-                                        holiday_name = "國定假日"
+
                         if holiday_name:
                             return f"{d_str} ({holiday_name})"
                         return d_str
@@ -413,7 +410,7 @@ def render_user_home():
                             on_change=reset_ex_search
                         )
 
-                    # 計算當週 Sun~Sat 區間，並判斷當週欄位是否包含 DO2W 國定假日
+                    # 計算當週 Sun~Sat 區間，並判斷當週是否包含國定假日
                     same_week_options = []
                     target_week_str = ""
                     is_week_has_do2w = False
@@ -438,14 +435,15 @@ def render_user_home():
                                         same_week_options.append(d_str)
                             except: pass
 
-                        # 掃描當週欄位資料是否含有 DO2W / D2W / OGC
+                        # 掃描當週日期是否屬於國定假日 (字典包含或欄位標題有註記)
                         for w_col in week_date_cols:
+                            if w_col in HOLIDAY_MAP:
+                                is_week_has_do2w = True
+                                break
                             matching_col = next((c for c in df_ex.columns[2:] if w_col in str(c)), None)
-                            if matching_col:
-                                col_series_str = df_ex[matching_col].astype(str).str.upper()
-                                if col_series_str.str.contains(r'DO[23]W|D[23]W|OGC', regex=True).any():
-                                    is_week_has_do2w = True
-                                    break
+                            if matching_col and re.search(r'[\(（]([^\)）]+)[\)）]', str(matching_col)):
+                                is_week_has_do2w = True
+                                break
                     except: pass
 
                     return_date_options = same_week_options if same_week_options else [d for d in date_cols if d != target_date]
