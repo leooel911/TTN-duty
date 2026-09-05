@@ -1,7 +1,7 @@
 import streamlit as st
-from config import CUSTOM_CSS, ADMIN_PASSWORD, CREW_ACCESS_PASSWORD, PILOT_ALLOW_LIST
+from config import CUSTOM_CSS, ADMIN_PASSWORD, CREW_ACCESS_PASSWORD
 from modules.utils import format_display_name, get_employee_name, log_activity
-from modules.services import verify_crew_membership, process_file_data
+from modules.services import verify_crew_membership, process_file_data, is_user_allowed
 from modules.drawing import render_schedule_figure
 from modules.components import render_zoomable_image, show_feedback_modal
 from modules.admin_views import render_admin_panel
@@ -79,7 +79,8 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
 
             if btn_auth:
                 clean_emp = entered_emp.strip().upper()
-                if not clean_emp: st.error("請輸入有效的員編")
+                if not clean_emp: 
+                    st.error("請輸入有效的員編")
                 elif entered_key == "0900": 
                     st.session_state["authenticated"] = True
                     st.session_state["admin_logged_in"] = False 
@@ -101,8 +102,10 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                     log_activity("管理員登入後台")
                     st.rerun()
                 elif entered_key == CREW_ACCESS_PASSWORD:
-                    if clean_emp not in PILOT_ALLOW_LIST:
-                        st.error("您的員編尚未開放第一階段試用權限，請洽管理員。")
+                    # 改為呼叫後台動態白名單驗證函式
+                    allowed, user_info = is_user_allowed(clean_emp)
+                    if not allowed:
+                        st.error("您的員編尚未開放使用權限，請洽管理員於後台開通。")
                     elif verify_crew_membership(selected_unit, clean_emp):
                         st.session_state["authenticated"] = True
                         st.session_state["admin_logged_in"] = False
@@ -117,7 +120,8 @@ if not st.session_state["authenticated"] and not st.session_state.get("admin_log
                         st.rerun()
                     else:
                         st.error("非所屬單位組員，或輸入不存在的編號，請確認員編。")
-                else: st.error("授權碼或密碼錯誤，請重新輸入")
+                else: 
+                    st.error("授權碼或密碼錯誤，請重新輸入")
     st.stop()
 
 current_unit_label = st.session_state.get("current_unit", "TTN")
