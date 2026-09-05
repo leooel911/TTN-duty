@@ -117,8 +117,13 @@ if not st.session_state["authenticated"] and not st.session_state.get(
     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     with st.form("auth_form"):
       selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
+
+      # 💡 標頭加上提示 (範例：023300)
       entered_emp = st.text_input(
-          "使用者員編", value="A", placeholder="例如: 023300", max_chars=10
+          "使用者員編 (範例：023300)",
+          value="A",
+          placeholder="例如: 023300",
+          max_chars=10,
       )
       entered_key = st.text_input(
           "系統授權碼", type="password", placeholder="請輸入系統授權碼..."
@@ -162,7 +167,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
           log_activity("管理員登入後台")
           st.rerun()
 
-        # 🎫 3. 通用授權碼登入 (安全解析 user_info 避免 AttributeError)
+        # 🎫 3. 通用授權碼登入
         elif entered_key == CREW_ACCESS_PASSWORD:
           allowed, user_info = is_user_allowed(clean_emp)
 
