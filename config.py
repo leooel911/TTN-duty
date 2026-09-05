@@ -94,6 +94,18 @@ CUSTOM_CSS = """
         line-height: 1.2 !important;
     }
     
+    .do2w-badge {
+        background: rgba(245, 158, 11, 0.2) !important;
+        color: #FDE68A !important;
+        border: 1px solid #F59E0B !important;
+        border-radius: 6px !important;
+        padding: 2px 6px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        font-family: monospace !important;
+        line-height: 1.2 !important;
+    }
+    
     /* 容器邊距 */
     @media (min-width: 1024px) {
         .block-container { padding: 2.5rem 1.5rem 2.5rem 1.5rem !important; max-width: 1050px !important; }
