@@ -15,6 +15,18 @@ from modules.services import (
 from modules.drawing import render_schedule_figure
 from modules.components import render_zoomable_image, show_crew_schedule_modal
 
+# --- 台灣國定節慶名稱對照表 ---
+HOLIDAY_MAP = {
+    "1/1": "元旦",
+    "2/16": "除夕", "2/17": "初一", "2/18": "初二", "2/19": "初三", "2/20": "初四",
+    "2/28": "和平紀念日",
+    "4/4": "兒童節", "4/5": "清明節",
+    "6/19": "端午節",
+    "9/25": "中秋節",
+    "10/10": "國慶日",
+    "12/25": "行憲紀念日"
+}
+
 # --- 自動重置狀態回呼函數 ---
 def reset_win_search():
     """切換換班條件時，自動清空舊的換班快照"""
@@ -374,8 +386,32 @@ def render_user_home():
                 if not date_cols:
                     st.warning("目前的班表檔案中無法解析出有效的日期欄位。")
                 else:
+                    # 格式化日期選單名稱 (顯示具體國定節慶名稱，移除貼圖)
+                    def format_date_label(d_str):
+                        holiday_name = HOLIDAY_MAP.get(d_str)
+                        if not holiday_name:
+                            matching_col = next((c for c in df_ex.columns[2:] if d_str in str(c)), None)
+                            if matching_col:
+                                col_raw = str(matching_col)
+                                name_match = re.search(r'[\(（]([^\)）]+)[\)）]', col_raw)
+                                if name_match:
+                                    holiday_name = name_match.group(1)
+                                else:
+                                    col_series_str = df_ex[matching_col].astype(str).str.upper()
+                                    if col_series_str.str.contains(r'DO[23]W|D[23]W|OGC', regex=True).any():
+                                        holiday_name = "國定假日"
+                        if holiday_name:
+                            return f"{d_str} ({holiday_name})"
+                        return d_str
+
                     with ex_c2: 
-                        target_date = st.selectbox("選擇想休假日期", date_cols, key="ex_target_date", on_change=reset_ex_search)
+                        target_date = st.selectbox(
+                            "選擇想休假日期", 
+                            date_cols, 
+                            format_func=format_date_label,
+                            key="ex_target_date", 
+                            on_change=reset_ex_search
+                        )
 
                     # 計算當週 Sun~Sat 區間，並判斷當週欄位是否包含 DO2W 國定假日
                     same_week_options = []
@@ -424,9 +460,15 @@ def render_user_home():
                             st.session_state["ex_return_date"] = return_date_options[0]
 
                     with ex_c3: 
-                        return_date = st.selectbox("選擇可還假日期", return_date_options, key="ex_return_date", on_change=reset_ex_search)
+                        return_date = st.selectbox(
+                            "選擇可還假日期", 
+                            return_date_options, 
+                            format_func=format_date_label,
+                            key="ex_return_date", 
+                            on_change=reset_ex_search
+                        )
 
-                    # 需求 1：當週含有國定假日時在頂部彈出醒目提醒
+                    # 頂部國定假日 Alert Banner
                     if is_week_has_do2w:
                         st.markdown(f"""
                         <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin: 8px 0; font-size: 13px; color: #FDE68A; font-weight: 700;">
@@ -480,7 +522,7 @@ def render_user_home():
                                 if is_return_do or is_return_leave: continue
 
                                 is_long = is_overtime(parsed_return["hours"], parsed_return["train"], parsed_return["note"])
-                                is_non_line = is_town_shift(parsed_return["train"], parsed_note := parsed_return["note"])
+                                is_non_line = is_town_shift(parsed_return["train"], parsed_return["note"])
 
                                 return_do_tag = parsed_return.get("note", "")
                                 if not return_do_tag:
@@ -548,7 +590,7 @@ def render_user_home():
                                 do_tag = cand.get('出勤標記', '')
                                 do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in cand.get('還假車次', '')) else ""
 
-                                # 需求 2：輕量標籤 [DO2W]
+                                # 輕量標籤 [DO2W]
                                 badges_html = '<div class="badge-group">'
                                 if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
                                 if cand.get('有DO2W標記') or (do_tag and any(k in do_tag for k in ['DO2', 'DO3', 'OGC', 'D2'])):
