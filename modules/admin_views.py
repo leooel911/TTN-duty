@@ -71,7 +71,6 @@ def load_whitelist():
     except Exception:
       pass
 
-  # 雲端伺服器重啟或臨時檔案遺失時的保底白名單
   default_whitelist = {
       "ADMIN": {
           "name": "系統管理員",
@@ -121,6 +120,31 @@ def save_system_config(config_data):
     json.dump(config_data, f, ensure_ascii=False, indent=2)
 
 
+@st.cache_data(ttl=60)
+def get_all_crew_options(unit_code):
+  """動態解析當前單位的各大表，建立（員編 - 姓名）快選選單選項"""
+  unit_files = UNITS.get(unit_code, UNITS.get("TTN", {}))
+  crew_options = []
+  seen_uids = set()
+
+  for role_name in ["駕駛", "列車長", "服勤員"]:
+    file_path = unit_files.get(role_name, "")
+    if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+      try:
+        df = safe_read_excel(file_path, header=3)
+        for _, row in df.iterrows():
+          uid = str(row.iloc[0]).strip()
+          uname = str(row.iloc[1]).strip()
+          if uid and uid.upper() not in ["NAN", "NONE", "", "員編", "代碼"]:
+            if uid not in seen_uids:
+              seen_uids.add(uid)
+              label = f"{uid} - {uname} ({role_name})"
+              crew_options.append({"label": label, "uid": uid, "name": uname})
+      except Exception:
+        pass
+  return crew_options
+
+
 # =========================================================
 # 👑 2. 管理員後台主視圖 (Admin Panel)
 # =========================================================
@@ -128,13 +152,28 @@ def render_admin_panel():
   current_unit = st.session_state.get("current_unit", "TTN")
 
   # ---------------------------------------------------------
-  # 頂部標頭與返回首頁按鈕
+  # 頂部標頭：包含【標題】、【全站營運單位切換選單】與【返回首頁按鈕】
   # ---------------------------------------------------------
-  col_head_title, col_head_btn = st.columns([3, 1])
+  col_head_title, col_head_unit, col_head_btn = st.columns([2.2, 1.2, 1])
+
   with col_head_title:
     st.markdown("## ⚙️ 系統管理後台 (Administrator Console)")
+
+  with col_head_unit:
+    unit_options = list(UNITS.keys())
+    selected_u = st.selectbox(
+        "切換營運單位",
+        options=unit_options,
+        index=unit_options.index(current_unit) if current_unit in unit_options else 0,
+        key="admin_header_unit_selector",
+    )
+    if selected_u != current_unit:
+      st.session_state["current_unit"] = selected_u
+      log_activity(f"管理員切換單位至：{selected_u}")
+      st.rerun()
+
   with col_head_btn:
-    st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
     if st.button(
         "🏠 返回前台首頁",
         key="btn_top_return_home",
@@ -255,7 +294,7 @@ def render_admin_panel():
           st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 3: 白名單帳號管理 (新增白名單搜尋功能)
+  # Tab 3: 白名單帳號管理 (新增：大表組員自動下拉快選功能)
   # ---------------------------------------------------------
   with tab3:
     st.markdown("### 👤 白名單與 VIP 通行帳號管理")
@@ -266,7 +305,6 @@ def render_admin_panel():
     with col_wl_left:
       st.markdown("#### 📋 現有白名單人員名冊")
 
-      # 🔑 白名單關鍵字搜尋框
       search_keyword = st.text_input(
           "🔍 搜尋白名單人員 (可輸入員編、姓名、身份或備註)",
           placeholder="例: 波莉 或 A023300",
@@ -291,7 +329,6 @@ def render_admin_panel():
                 "備註": "-",
             })
 
-        # 關鍵字即時過濾邏輯
         if search_keyword:
           kw_lower = search_keyword.lower()
           wl_rows = [
@@ -312,9 +349,35 @@ def render_admin_panel():
 
     with col_wl_right:
       st.markdown("#### ➕ 新增/覆蓋白名單帳號")
+
+      # 🔑 自動建構【大表組員下拉快選單】
+      crew_options = get_all_crew_options(current_unit)
+      options_dict = {"-- 手動輸入 或 點此選取大表組員 --": {"uid": "", "name": ""}}
+      for item in crew_options:
+        options_dict[item["label"]] = {"uid": item["uid"], "name": item["name"]}
+
+      selected_label = st.selectbox(
+          "⚡ 快速選取大表組員 (自動填入)",
+          options=list(options_dict.keys()),
+          key="wl_quick_crew_select",
+      )
+
+      auto_uid = options_dict[selected_label]["uid"]
+      auto_name = options_dict[selected_label]["name"]
+
       with st.form("add_whitelist_form"):
-        new_uid = st.text_input("員編 / 帳號 ID", placeholder="例: A023300")
-        new_uname = st.text_input("姓名", placeholder="例: 波莉")
+        new_uid = st.text_input(
+            "員編 / 帳號 ID",
+            value=auto_uid,
+            placeholder="例: A023300",
+            key="input_wl_uid",
+        )
+        new_uname = st.text_input(
+            "姓名",
+            value=auto_name,
+            placeholder="例: 波莉",
+            key="input_wl_uname",
+        )
         new_role = st.selectbox(
             "權限身份", ["VIP_USER (全域通行)", "ADMIN", "TESTER"]
         )
@@ -359,27 +422,12 @@ def render_admin_panel():
   # Tab 4: 全域系統參數
   # ---------------------------------------------------------
   with tab4:
-    st.markdown("### ⚙️ 全域系統參數與切換")
+    st.markdown("### ⚙️ 全域系統參數")
     sys_config = load_system_config()
 
     col_p1, col_p2 = st.columns(2)
 
     with col_p1:
-      st.markdown("#### 🏢 營運單位與車廊選擇")
-      selected_u = st.selectbox(
-          "當前操作車廊/單位切換",
-          options=list(UNITS.keys()),
-          index=list(UNITS.keys()).index(current_unit)
-          if current_unit in UNITS
-          else 0,
-          key="admin_unit_selector",
-      )
-      if selected_u != current_unit:
-        st.session_state["current_unit"] = selected_u
-        log_activity(f"管理員切換單位至：{selected_u}")
-        st.rerun()
-
-      st.markdown("---")
       st.markdown("#### 🚨 換假嚴格過濾天數門檻")
       streak_threshold = st.number_input(
           "連續上班天數警戒門檻（預設 6 天）",
@@ -415,7 +463,7 @@ def render_admin_panel():
       st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 5: 系統日誌與備份
+  # Tab 5: 系統日誌與備份 (含「清空紀錄」按鈕)
   # ---------------------------------------------------------
   with tab5:
     st.markdown("### 📜 系統操作日誌與資料打包備份")
@@ -503,5 +551,5 @@ def render_admin_panel():
       st.rerun()
 
 
-# 雙重相容別名宣告
+# 相容別名宣告
 render_admin_home = render_admin_panel
