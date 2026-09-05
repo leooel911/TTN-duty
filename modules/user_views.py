@@ -574,7 +574,7 @@ def render_user_home():
                                     card_border_color = "#10B981"
                                     warning_banner_html = f"""
                                     <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #6EE7B7; font-weight: 700; font-family: monospace;">
-                                        國定休假換上班提示：DO2同互換，無須還假（對方DO2W出勤）。
+                                        國定休假換上班提示：DO2同一天互換，無須還假（對方改DO2W出勤）。
                                     </div>
                                     """
                                 elif streak_cnt >= 7:
