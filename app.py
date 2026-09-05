@@ -319,11 +319,12 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
 # ---------------------------------------------------------
 # 路由切換 (管理員後台 / 一般使用者頁面)
 # ---------------------------------------------------------
-is_admin_mode = st.session_state.get(
-    "nav_mode"
-) == "admin_panel" or st.session_state.get("page") == "admin"
+is_admin_active = (
+    st.session_state.get("nav_mode") == "admin_panel"
+    or st.session_state.get("page") == "admin"
+) and st.session_state.get("page") != "user"
 
-if is_admin_mode and st.session_state.get("admin_logged_in", False):
+if is_admin_active and st.session_state.get("admin_logged_in", False):
   render_admin_panel()
 else:
   render_user_home()
@@ -357,7 +358,7 @@ with col_f2:
       admin_btn_label, key="btn_footer_admin_right", use_container_width=True
   ):
     if st.session_state.get("admin_logged_in", False):
-      if is_admin_mode:
+      if is_admin_active:
         st.session_state["nav_mode"] = "home"
         st.session_state["page"] = "user"
       else:
