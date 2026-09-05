@@ -3,11 +3,10 @@ import json
 import os
 import pandas as pd
 
-# 檔名設定
+# 檔名與全域設定檔路徑
 CONFIG_FILE = "system_config.json"
 ALLOWED_USERS_FILE = "allowed_users.json"
 
-# 系統預設參數
 DEFAULT_CONFIG = {
     "vip_pass_code": "0900",
     "crew_pass_code": "0096",
@@ -18,10 +17,10 @@ DEFAULT_CONFIG = {
 
 
 # =========================================================
-# ⚙️ 1. 動態全域系統設定讀寫
+# ⚙️ 1. 全域系統動態參數 (System Config)
 # =========================================================
 def load_system_config():
-  """載入系統動態參數設定，若檔案不存在則建立預設值"""
+  """載入系統動態參數設定，若檔案不存在則自動建立"""
   if not os.path.exists(CONFIG_FILE):
     save_system_config(DEFAULT_CONFIG)
     return DEFAULT_CONFIG
@@ -47,7 +46,7 @@ def save_system_config(config_dict):
 
 
 # =========================================================
-# 👥 2. 白名單帳號管理與審核
+# 👥 2. 白名單與帳號權限管理 (Whitelist Management)
 # =========================================================
 def load_allowed_users():
   """載入白名單 JSON 資料"""
@@ -83,7 +82,7 @@ def is_user_allowed(emp_id):
   """檢查員編是否在白名單內且為啟用狀態"""
   emp_id = str(emp_id).strip().upper()
 
-  # 測試員特例通道
+  # 測試員 A 通道
   if emp_id == "A":
     return True, {
         "emp_id": "A",
@@ -93,8 +92,6 @@ def is_user_allowed(emp_id):
     }
 
   data = load_allowed_users()
-
-  # 若白名單總開關關閉，直接放行
   if not data.get("enabled", True):
     return True, {"emp_id": emp_id, "name": "預設組員", "role": "組員"}
 
@@ -109,27 +106,39 @@ def is_user_allowed(emp_id):
 
 
 # =========================================================
-# 📊 3. 班表大表比對與查詢相容介面
+# 📊 3. 組員與班表數據查詢相容函式 (User Views Dependencies)
 # =========================================================
 def verify_crew_membership(selected_unit, emp_id):
-  """驗證員編是否屬於該單位或大表組員"""
+  """驗證員編是否為該單位成員"""
   emp_id = str(emp_id).strip().upper()
   if emp_id == "A" or emp_id.startswith("VIP"):
     return True
-  # 若有具體大表邏輯可在此擴充，預設通關
   return True
 
 
+def get_employee_name(selected_unit, emp_id):
+  """取得員工姓名 (相容介面)"""
+  emp_id = str(emp_id).strip().upper()
+  if emp_id == "A":
+    return "全域通行"
+  return f"組員_{emp_id}"
+
+
 def get_crew_list(selected_unit="TTN"):
-  """取得指定單位的組員清單 (提供 user_views 下拉選單使用)"""
+  """取得單位組員清單 (提供 user_views 下拉選單)"""
   return [
       {"emp_id": "A", "name": "測試員 A"},
       {"emp_id": "023300", "name": "範例同仁"},
   ]
 
 
+def get_all_duty_codes(selected_unit="TTN"):
+  """取得當期所有班表號碼"""
+  return ["DO", "DO1", "DO3X", "NH001", "NH005", "NH007"]
+
+
 def query_schedule(selected_unit, emp_id):
-  """快速查詢該員編之月班表摘要數據"""
+  """查詢個人班表摘要資訊"""
   emp_id = str(emp_id).strip().upper()
   return {
       "emp_id": emp_id,
@@ -139,21 +148,28 @@ def query_schedule(selected_unit, emp_id):
   }
 
 
+def get_duty_info(duty_code):
+  """取得特定班號時間資訊"""
+  return {"code": duty_code, "start": "08:00", "end": "16:00", "hours": "8h00m"}
+
+
+# =========================================================
+# 🎨 4. 畫圖與資料處理核心 (Drawing & Parser)
+# =========================================================
 def process_file_data(target_emp):
-  """解析畫圖所需的月班表基礎數據陣列"""
+  """解析繪製班表圖形所需的數據陣列"""
   target_emp = str(target_emp).strip().upper()
   start_dt = datetime.now().replace(day=1)
 
-  # 生成當月日期與預設班表格子資料
   dates = [(start_dt + timedelta(days=i)).strftime("%m/%d") for i in range(30)]
   cells = []
   for i in range(30):
     if i % 7 in [0, 6]:
-      cells.append("DO")  # 輪休
+      cells.append("DO")
     elif i % 5 == 0:
       cells.append("DO3X")
     else:
       cells.append("08:00-16:00 NH001")
 
-  emp_name = "全域通行" if target_emp == "A" else f"組員_{target_emp}"
+  emp_name = get_employee_name("TTN", target_emp)
   return start_dt, dates, target_emp, emp_name, cells
