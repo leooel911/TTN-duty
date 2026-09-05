@@ -15,6 +15,21 @@ from modules.services import (
 from modules.drawing import render_schedule_figure
 from modules.components import render_zoomable_image, show_crew_schedule_modal
 
+# --- 通用日期選單格式化函式 (對齊 NATIONAL_HOLIDAYS 與 Excel 欄位備註) ---
+def get_date_label(d_str, columns=None):
+    holiday_name = NATIONAL_HOLIDAYS.get(d_str)
+    if not holiday_name and columns is not None:
+        matching_col = next((c for c in columns[2:] if d_str in str(c)), None)
+        if matching_col:
+            col_raw = str(matching_col)
+            name_match = re.search(r'[\(（]([^\)）]+)[\)）]', col_raw)
+            if name_match:
+                holiday_name = name_match.group(1)
+
+    if holiday_name:
+        return f"{d_str} ({holiday_name})"
+    return d_str
+
 # --- 自動重置狀態回呼函數 ---
 def reset_win_search():
     """切換換班條件時，自動清空舊的換班快照"""
@@ -182,7 +197,46 @@ def render_user_home():
             date_cols = [re.search(r'(\d+/\d+)', str(col)).group(1) for col in df_search.columns[2:] if re.search(r'(\d+/\d+)', str(col))]
 
             if date_cols:
-                target_date = st.selectbox("選擇換班日期", date_cols, key="win_target_date", on_change=reset_win_search)
+                target_date = st.selectbox(
+                    "選擇換班日期", 
+                    date_cols, 
+                    format_func=lambda d: get_date_label(d, df_search.columns),
+                    key="win_target_date", 
+                    on_change=reset_win_search
+                )
+
+                # 當週國定假日 Alert 檢查
+                is_win_week_has_do2w = False
+                win_week_str = ""
+                try:
+                    current_year = date.today().year
+                    t_m, t_d = map(int, target_date.split('/'))
+                    t_dt = date(current_year, t_m, t_d)
+                    t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
+                    t_sat = t_sun + timedelta(days=6)
+                    win_week_str = f"{t_sun.month}/{t_sun.day:02d} (日) ~ {t_sat.month}/{t_sat.day:02d} (六)"
+
+                    for d_str in date_cols:
+                        try:
+                            d_m, d_d = map(int, d_str.split('/'))
+                            d_dt = date(current_year, d_m, d_d)
+                            if t_sun <= d_dt <= t_sat:
+                                if d_str in NATIONAL_HOLIDAYS:
+                                    is_win_week_has_do2w = True
+                                    break
+                                matching_col = next((c for c in df_search.columns[2:] if d_str in str(c)), None)
+                                if matching_col and re.search(r'[\(（]([^\)）]+)[\)）]', str(matching_col)):
+                                    is_win_week_has_do2w = True
+                                    break
+                        except: pass
+                except: pass
+
+                if is_win_week_has_do2w:
+                    st.markdown(f"""
+                    <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin: 8px 0; font-size: 13px; color: #FDE68A; font-weight: 700;">
+                        ⚠️ 提醒：您選擇的當週區間（{win_week_str}）包含 DO2W 國定假日！請留意換假/換班之DO2W出勤規範。
+                    </div>
+                    """, unsafe_allow_html=True)
 
                 st.write("**快捷選擇時段：**")
                 q_col1, q_col2, q_col3, q_col4 = st.columns(4)
@@ -374,26 +428,11 @@ def render_user_home():
                 if not date_cols:
                     st.warning("目前的班表檔案中無法解析出有效的日期欄位。")
                 else:
-                    # 直接與 config.py 的 NATIONAL_HOLIDAYS 以及 Excel 欄位標題備註對齊
-                    def format_date_label(d_str):
-                        holiday_name = NATIONAL_HOLIDAYS.get(d_str)
-                        if not holiday_name:
-                            matching_col = next((c for c in df_ex.columns[2:] if d_str in str(c)), None)
-                            if matching_col:
-                                col_raw = str(matching_col)
-                                name_match = re.search(r'[\(（]([^\)）]+)[\)）]', col_raw)
-                                if name_match:
-                                    holiday_name = name_match.group(1)
-
-                        if holiday_name:
-                            return f"{d_str} ({holiday_name})"
-                        return d_str
-
                     with ex_c2: 
                         target_date = st.selectbox(
                             "選擇想休假日期", 
                             date_cols, 
-                            format_func=format_date_label,
+                            format_func=lambda d: get_date_label(d, df_ex.columns),
                             key="ex_target_date", 
                             on_change=reset_ex_search
                         )
@@ -449,7 +488,7 @@ def render_user_home():
                         return_date = st.selectbox(
                             "選擇可還假日期", 
                             return_date_options, 
-                            format_func=format_date_label,
+                            format_func=lambda d: get_date_label(d, df_ex.columns),
                             key="ex_return_date", 
                             on_change=reset_ex_search
                         )
