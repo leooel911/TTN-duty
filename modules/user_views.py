@@ -289,9 +289,8 @@ def render_user_home():
                                 do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in r['車次']) else ""
 
                                 badges_html = '<div class="badge-group">'
-                                if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
-                                if do_tag and not is_same_day: 
-                                    badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
+                                if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
+                                if do_tag: badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
                                 badges_html += '</div>'
 
                                 st.markdown(f"""
@@ -554,11 +553,12 @@ def render_user_home():
 
                                 is_same_day = cand.get('是否同日假換班', False)
 
-                               badges_html = '<div class="badge-group">'
+                                badges_html = '<div class="badge-group">'
                                 if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
                                 if do_tag and not is_same_day: 
                                     badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
                                 badges_html += '</div>'
+
                                 streak_cnt = cand.get('連續上班天數', 0)
                                 streak_color = "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
 
