@@ -83,21 +83,41 @@ def save_maintenance_status(data):
 def render_admin_panel():
   current_unit = st.session_state.get("current_unit", "TTN")
 
-  # 🔝 頂部列：後台標題與「返回系統首頁」按鈕
-  col_title, col_btn = st.columns([3, 1])
+  # =========================================================
+  # 🔝 頂部控制列：標題、單位切換 (TTN/TTC/TTS) 與 返回首頁
+  # =========================================================
+  col_title, col_unit, col_btn = st.columns([2, 1, 1])
+
   with col_title:
-    st.markdown(f"## 🛡️ 後台管理控制台 [{current_unit}]")
+    st.markdown("## 🛡️ 後台管理控制台")
+
+  with col_unit:
+    unit_options = ["TTN", "TTC", "TTS"]
+    unit_idx = (
+        unit_options.index(current_unit) if current_unit in unit_options else 0
+    )
+    selected_unit = st.selectbox(
+        "切換管理單位",
+        options=unit_options,
+        index=unit_idx,
+        key="admin_unit_selector",
+    )
+    if selected_unit != current_unit:
+      st.session_state["current_unit"] = selected_unit
+      log_activity(f"後台切換管理單位至: [{selected_unit}]")
+      st.toast(f"已切換至 [{selected_unit}] 單位管理模式")
+      st.rerun()
+
   with col_btn:
-    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
     if st.button(
         "🏠 返回系統首頁",
         key="btn_back_home",
         type="secondary",
         use_container_width=True,
     ):
-      st.session_state["admin_logged_in"] = False
       st.session_state["page"] = "user"
-      st.toast("已安全切換回前端查詢首頁")
+      st.toast("已返回前端查詢首頁")
       st.rerun()
 
   st.markdown("---")
@@ -149,17 +169,19 @@ def render_admin_panel():
         if uploaded_file is not None:
           if st.button(
               f"確認覆蓋上傳【{role_name}】",
-              key=f"btn_upload_{role_name}",
+              key=f"btn_upload_{current_unit}_{role_name}",
               type="primary",
           ):
             with open(file_path, "wb") as f:
               f.write(uploaded_file.getbuffer())
             log_activity(f"後台覆蓋上傳 [{current_unit}] {role_name} 班表大表")
-            st.success(f"✅ {role_name}班表大表已成功覆蓋更新！")
+            st.success(f"✅ [{current_unit}] {role_name}班表大表已成功覆蓋更新！")
             st.rerun()
 
     st.markdown("---")
-    st.markdown("### 🔎 全大表組員班表即時快查 (Admin Inspector)")
+    st.markdown(
+        f"### 🔎 [{current_unit}] 全大表組員班表即時快查 (Admin Inspector)"
+    )
     col_s1, col_s2 = st.columns([3, 1])
     with col_s1:
       inspect_target = st.text_input(
@@ -187,7 +209,9 @@ def render_admin_panel():
               current_unit,
               badge_title="Admin Inspector | C.L.F",
           )
-        log_activity(f"後台即時快查組員班表: [{emp_id}] {emp_name}")
+        log_activity(
+            f"後台即時快查 [{current_unit}] 組員班表: [{emp_id}] {emp_name}"
+        )
         st.success(f"已成功載入【{emp_name}】({emp_id}) 之月班表圖檔")
         render_zoomable_image(buf)
       except Exception as e:
@@ -232,7 +256,7 @@ def render_admin_panel():
         st.rerun()
 
   # =========================================================
-  # Tab 3: 白名單帳號管理 (修正人員刪除失效問題)
+  # Tab 3: 白名單帳號管理
   # =========================================================
   with tab3:
     st.markdown("### 👥 動態白名單權限管理")
@@ -269,7 +293,9 @@ def render_admin_panel():
       if add_mode == "全大表名單快捷選擇":
         excel_crew = get_all_excel_crew(current_unit)
         if not excel_crew:
-          st.warning("⚠️ 目前各大表尚未上傳，請先至第一頁籤上傳班表 Excel 檔。")
+          st.warning(
+              f"⚠️ [{current_unit}] 目前各大表尚未上傳，請先至第一頁籤上傳班表 Excel 檔。"
+          )
         else:
           options_map = {
               f"[{c['emp_id']}] {c['name']} ({c['role_type']})": c
@@ -496,12 +522,10 @@ def render_admin_panel():
       if st.button("💾 儲存白名單變更", type="primary"):
         updated_records = edited_df.to_dict(orient="records")
 
-        # 1. 取得這批畫面上顯示的人員員編集合
         displayed_emp_ids = {
             str(u.get("emp_id", "")).strip().upper() for u in filtered_users
         }
 
-        # 2. 取得編輯/刪除後留下的員編 map 與集合
         updated_map = {}
         remaining_emp_ids = set()
         for r in updated_records:
@@ -510,19 +534,15 @@ def render_admin_panel():
             updated_map[emp] = r
             remaining_emp_ids.add(emp)
 
-        # 3. 算出現場被按垃圾桶刪除的員編集合
         deleted_emp_ids = displayed_emp_ids - remaining_emp_ids
 
-        # 4. 重構白名單
         final_users = []
         for orig in users_list:
           orig_emp = str(orig.get("emp_id", "")).strip().upper()
 
-          # 若這筆資料屬於本次被刪除的人，跳過不保留
           if orig_emp in deleted_emp_ids:
             continue
 
-          # 若這筆資料屬於修改後的人，寫入修改後的內容
           if orig_emp in updated_map:
             u_rec = updated_map.pop(orig_emp)
             final_users.append({
@@ -534,7 +554,6 @@ def render_admin_panel():
           else:
             final_users.append(orig)
 
-        # 5. 補上直接在表格最下方手動新增的新行
         for new_emp, u_rec in updated_map.items():
           final_users.append({
               "emp_id": new_emp,
