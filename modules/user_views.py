@@ -56,6 +56,26 @@ def reset_ex_search():
 
 
 def render_user_home():
+  # 🔑 CSS 樣式修正：消除卡片與檢視按鈕之間的空隙，實現無縫組合框
+  st.markdown(
+      """
+        <style>
+        .integrated-crew-box {
+            border-bottom: none !important;
+            border-bottom-left-radius: 0px !important;
+            border-bottom-right-radius: 0px !important;
+            margin-bottom: 0px !important;
+        }
+        div[data-testid="stVerticalBlock"] > div:has(.integrated-crew-box) + div button {
+            border-top-left-radius: 0px !important;
+            border-top-right-radius: 0px !important;
+            margin-top: -12px !important;
+        }
+        </style>
+        """,
+      unsafe_allow_html=True,
+  )
+
   active_files = get_current_role_files()
   current_unit_label = st.session_state.get("current_unit", "TTN")
   missing_files = [
@@ -512,7 +532,7 @@ def render_user_home():
 
                 st.markdown(
                     f"""
-                                <div class="integrated-crew-box">
+                                <div class="integrated-crew-box" style="border: 1px solid rgba(56, 189, 248, 0.3) !important;">
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                         <div>
                                             <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
@@ -806,14 +826,11 @@ def render_user_home():
                     )
                 )
 
-                # 🔑 關鍵修復：建立模擬換假後的真實 row 資料
+                # 建立模擬換假後的真實列
                 sim_row = row.copy()
-                # 1. 將「想休假日期」寫入代上班勤務（如 D1）
                 sim_row = set_simulated_cell(sim_row, target_date, "D1")
-                # 2. 將「可還假日期」寫入休假（休）
                 sim_row = set_simulated_cell(sim_row, return_date, "休")
 
-                # 3. 傳入 sim_row 精準計算包含「想休假日期」(代上班當天) 的模擬連班天數
                 max_consecutive_streak = calculate_consecutive_work_days(
                     sim_row, target_date_str=target_date
                 )
@@ -865,7 +882,6 @@ def render_user_home():
                 ):
                   continue
 
-              # 嚴格過濾判斷：勾選時，若模擬連班 >= 6 天則剔除
               if strict_limit and cand["連續上班天數"] >= 6:
                 continue
 
@@ -895,7 +911,7 @@ def render_user_home():
               )
 
             st.markdown(
-                f"### 換假可選人員名單（共符合 {len(filtered_candidates)} 位）"
+                f"### 換假可選人員名單（共 {len(filtered_candidates)} 位）"
             )
 
             if filtered_candidates:
@@ -962,11 +978,12 @@ def render_user_home():
                     "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
                 )
 
-                card_border_color = "rgba(56, 189, 248, 0.25)"
+                card_border_color = (
+                    "#F43F5E" if streak_cnt >= 6 else "rgba(56, 189, 248, 0.3)"
+                )
                 warning_banner_html = ""
 
                 if streak_cnt >= 6:
-                  card_border_color = "#F43F5E"
                   warning_banner_html = f"""
                                     <div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
                                         ⚠️ 注意：換假後連續上班達 {streak_cnt} 天，請留意出勤規範！
@@ -976,7 +993,7 @@ def render_user_home():
                 with target_col:
                   st.markdown(
                       f"""
-                                    <div class="integrated-crew-box" style="border-color: {card_border_color} !important;">
+                                    <div class="integrated-crew-box" style="border: 1px solid {card_border_color} !important;">
                                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                             <div>
                                                 <div class="compact-name">{cand_name} <span style="color:#94A3B8; font-size:12px;">({cand_id})</span></div>
