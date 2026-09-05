@@ -56,20 +56,56 @@ def reset_ex_search():
 
 
 def render_user_home():
-  # 🔑 CSS 樣式修正：消除卡片與檢視按鈕之間的空隙，實現無縫組合框
+  # 🔑 精準 DOM CSS：實現卡片與 Streamlit 原生按鈕 100% 無縫縫合
   st.markdown(
       """
         <style>
-        .integrated-crew-box {
+        .crew-card-top {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
             border-bottom: none !important;
-            border-bottom-left-radius: 0px !important;
-            border-bottom-right-radius: 0px !important;
-            margin-bottom: 0px !important;
+            border-top-left-radius: 10px !important;
+            border-top-right-radius: 10px !important;
+            padding: 12px;
         }
-        div[data-testid="stVerticalBlock"] > div:has(.integrated-crew-box) + div button {
+        .crew-card-top-warn {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid #F43F5E !important;
+            border-bottom: none !important;
+            border-top-left-radius: 10px !important;
+            border-top-right-radius: 10px !important;
+            padding: 12px;
+        }
+
+        /* 縫合卡片下方的 Streamlit 按鈕 */
+        div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button,
+        div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button {
             border-top-left-radius: 0px !important;
             border-top-right-radius: 0px !important;
-            margin-top: -12px !important;
+            border-bottom-left-radius: 10px !important;
+            border-bottom-right-radius: 10px !important;
+            margin-top: -16px !important;
+            box-shadow: none !important;
+            font-weight: 700 !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button {
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border-top: none !important;
+            background-color: rgba(15, 23, 42, 0.85) !important;
+            color: #38BDF8 !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button {
+            border: 1px solid #F43F5E !important;
+            border-top: none !important;
+            background-color: rgba(15, 23, 42, 0.85) !important;
+            color: #FDA4AF !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button:hover,
+        div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button:hover {
+            background-color: rgba(30, 41, 59, 0.95) !important;
         }
         </style>
         """,
@@ -532,7 +568,7 @@ def render_user_home():
 
                 st.markdown(
                     f"""
-                                <div class="integrated-crew-box" style="border: 1px solid rgba(56, 189, 248, 0.3) !important;">
+                                <div class="crew-card-top">
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                         <div>
                                             <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
@@ -826,13 +862,14 @@ def render_user_home():
                     )
                 )
 
-                # 建立模擬換假後的真實列
+                # 🔑 建立模擬換假後的班表
                 sim_row = row.copy()
                 sim_row = set_simulated_cell(sim_row, target_date, "D1")
                 sim_row = set_simulated_cell(sim_row, return_date, "休")
 
+                # 🔑 全月連班檢測：計算換假後當月「最大連續上班天數」
                 max_consecutive_streak = calculate_consecutive_work_days(
-                    sim_row, target_date_str=target_date
+                    sim_row
                 )
 
                 raw_candidates.append({
@@ -882,6 +919,7 @@ def render_user_home():
                 ):
                   continue
 
+              # 🔑 嚴格過濾精準執行：全月連班天數 >= 6 天直接剔除
               if strict_limit and cand["連續上班天數"] >= 6:
                 continue
 
@@ -978,22 +1016,22 @@ def render_user_home():
                     "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
                 )
 
-                card_border_color = (
-                    "#F43F5E" if streak_cnt >= 6 else "rgba(56, 189, 248, 0.3)"
+                card_class = (
+                    "crew-card-top-warn" if streak_cnt >= 6 else "crew-card-top"
                 )
                 warning_banner_html = ""
 
                 if streak_cnt >= 6:
                   warning_banner_html = f"""
                                     <div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
-                                        ⚠️ 注意：換假後連續上班達 {streak_cnt} 天，請留意出勤規範！
+                                        ⚠️ 注意：換假後當月連續上班達 {streak_cnt} 天，請留意出勤規範！
                                     </div>
                                     """
 
                 with target_col:
                   st.markdown(
                       f"""
-                                    <div class="integrated-crew-box" style="border: 1px solid {card_border_color} !important;">
+                                    <div class="{card_class}">
                                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                             <div>
                                                 <div class="compact-name">{cand_name} <span style="color:#94A3B8; font-size:12px;">({cand_id})</span></div>
