@@ -255,7 +255,7 @@ def render_admin_panel():
           st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 3: 白名單帳號管理
+  # Tab 3: 白名單帳號管理 (新增白名單搜尋功能)
   # ---------------------------------------------------------
   with tab3:
     st.markdown("### 👤 白名單與 VIP 通行帳號管理")
@@ -265,6 +265,14 @@ def render_admin_panel():
 
     with col_wl_left:
       st.markdown("#### 📋 現有白名單人員名冊")
+
+      # 🔑 白名單關鍵字搜尋框
+      search_keyword = st.text_input(
+          "🔍 搜尋白名單人員 (可輸入員編、姓名、身份或備註)",
+          placeholder="例: 波莉 或 A023300",
+          key="whitelist_search_kw",
+      ).strip()
+
       if whitelist_data:
         wl_rows = []
         for uid, info in whitelist_data.items():
@@ -282,7 +290,23 @@ def render_admin_panel():
                 "身份標記": "VIP",
                 "備註": "-",
             })
-        st.dataframe(pd.DataFrame(wl_rows), use_container_width=True)
+
+        # 關鍵字即時過濾邏輯
+        if search_keyword:
+          kw_lower = search_keyword.lower()
+          wl_rows = [
+              r
+              for r in wl_rows
+              if kw_lower in str(r["員編/帳號"]).lower()
+              or kw_lower in str(r["姓名"]).lower()
+              or kw_lower in str(r["身份標記"]).lower()
+              or kw_lower in str(r["備註"]).lower()
+          ]
+
+        if wl_rows:
+          st.dataframe(pd.DataFrame(wl_rows), use_container_width=True)
+        else:
+          st.warning(f"未找到包含「{search_keyword}」的白名單人員。")
       else:
         st.info("目前尚無特定白名單設定紀錄。")
 
@@ -460,7 +484,7 @@ def render_admin_panel():
     )
 
   # ---------------------------------------------------------
-  # 底部導航頁尾橫幅列 (維持原截圖樣式)
+  # 底部導航頁尾橫幅列
   # ---------------------------------------------------------
   st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
   col_foot1, col_foot2 = st.columns(2)
