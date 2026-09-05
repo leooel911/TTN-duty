@@ -343,21 +343,17 @@ def render_user_home():
                             target_col = c_col1 if idx % 2 == 0 else c_col2
                             with target_col:
                                 do_tag = r.get('出勤標記', '')
-                                do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in r['車次']) else ""
 
-                                # 工時標籤：使用獨立的 hours-badge (藍青色)
+                                # 工時標籤 (藍青色)
                                 shift_hours = r.get("工時", "")
                                 hours_badge_html = f'<span class="hours-badge">工時 {shift_hours}</span>' if shift_hours else ""
 
-                                # 組合所有標籤 (保留長班、非正線獨立貼紙)
+                                # 組合標籤組 (取消班別旁邊重複的 DO2W，統一於此處顯示琥珀橘貼紙)
                                 badges_html = '<div class="badge-group">'
                                 if r.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
                                 if r.get('長班'): badges_html += '<span class="long-badge">長班</span>'
                                 if hours_badge_html: badges_html += hours_badge_html
-                                if do_tag and any(k in do_tag for k in ['DO2', 'DO3', 'OGC', 'D2']):
-                                    badges_html += '<span class="long-badge" style="background: rgba(245, 158, 11, 0.25) !important; color: #FDE68A !important; border: 1px solid #F59E0B !important;">[DO2W]</span>'
-                                elif do_tag:
-                                    badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
+                                if do_tag: badges_html += f'<span class="do2w-badge">[{do_tag}]</span>'
                                 badges_html += '</div>'
 
                                 st.markdown(f"""
@@ -365,7 +361,7 @@ def render_user_home():
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                         <div>
                                             <div class="compact-name">{r['姓名']} <span style="color:#94A3B8; font-size:12px;">({r['員編']})</span></div>
-                                            <div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{r['車次']}{do_tag_display}</div>
+                                            <div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{r['車次']}</div>
                                         </div>
                                         <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
                                             <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-In {r['Sign-In']}</div>
@@ -620,15 +616,13 @@ def render_user_home():
                                 target_col = c_col1 if idx % 2 == 0 else c_col2
 
                                 do_tag = cand.get('出勤標記', '')
-                                do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in cand.get('還假車次', '')) else ""
 
                                 badges_html = '<div class="badge-group">'
                                 if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
                                 if cand.get('長班'): badges_html += '<span class="long-badge">長班</span>'
-                                if cand.get('有DO2W標記') or (do_tag and any(k in do_tag for k in ['DO2', 'DO3', 'OGC', 'D2'])):
-                                    badges_html += '<span class="long-badge" style="background: rgba(245, 158, 11, 0.25) !important; color: #FDE68A !important; border: 1px solid #F59E0B !important;">[DO2W]</span>'
-                                elif do_tag:
-                                    badges_html += f'<span class="long-badge" style="background: rgba(136, 19, 55, 0.5) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">{do_tag}</span>'
+                                if cand.get('有DO2W標記') or do_tag:
+                                    tag_text = do_tag if do_tag else "DO2W"
+                                    badges_html += f'<span class="do2w-badge">[{tag_text}]</span>'
                                 badges_html += '</div>'
 
                                 streak_cnt = cand.get('連續上班天數', 0)
@@ -652,7 +646,7 @@ def render_user_home():
                                             <div>
                                                 <div class="compact-name">{cand_name} <span style="color:#94A3B8; font-size:12px;">({cand_id})</span></div>
                                                 <div style="font-size: 12px; color: #94A3B8; margin-top: 4px; font-family: monospace;">
-                                                    還休日：<strong style="color: #94A3B8;">{cand.get('還休日')}</strong>{do_tag_display} ｜ 班別：<strong style="color:#38BDF8;">{cand.get('還假車次', '無')}</strong>
+                                                    還休日：<strong style="color: #94A3B8;">{cand.get('還休日')}</strong> ｜ 班別：<strong style="color:#38BDF8;">{cand.get('還假車次', '無')}</strong>
                                                 </div>
                                             </div>
                                             <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
