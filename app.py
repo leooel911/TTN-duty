@@ -162,10 +162,17 @@ if not st.session_state["authenticated"] and not st.session_state.get(
           log_activity("管理員登入後台")
           st.rerun()
 
-        # 🎫 3. 通用授權碼登入 (若白名單角色為 VIP，自動以 VIP_USER 格式顯示)
+        # 🎫 3. 通用授權碼登入 (安全解析 user_info 避免 AttributeError)
         elif entered_key == CREW_ACCESS_PASSWORD:
           allowed, user_info = is_user_allowed(clean_emp)
-          u_role = user_info.get("role", "") if user_info else ""
+
+          # 防護過濾：確保 user_info 為 dict 形態
+          u_role = (
+              user_info.get("role", "") if isinstance(user_info, dict) else ""
+          )
+          u_name_from_info = (
+              user_info.get("name", "") if isinstance(user_info, dict) else ""
+          )
 
           if not allowed:
             st.error(
@@ -179,13 +186,9 @@ if not st.session_state["authenticated"] and not st.session_state.get(
 
             emp_real_name = get_employee_name(selected_unit, clean_emp)
             disp_name = format_display_name(emp_real_name)
-            u_name = (
-                user_info.get("name")
-                if (user_info and user_info.get("name"))
-                else disp_name
-            )
+            u_name = u_name_from_info if u_name_from_info else disp_name
 
-            # 若白名單設定為 VIP，上方顯示 VIP_USER
+            # 若白名單角色為 VIP，上方顯示 VIP_USER
             if u_role == "VIP" or clean_emp == "A":
               name_str = f" {u_name}" if u_name else ""
               st.session_state["current_user_id"] = (
