@@ -116,7 +116,9 @@ def render_admin_panel():
         type="secondary",
         use_container_width=True,
     ):
+      st.session_state["nav_mode"] = "home"
       st.session_state["page"] = "user"
+      st.session_state["show_admin_login"] = False
       st.rerun()
 
   st.markdown("---")
@@ -255,7 +257,7 @@ def render_admin_panel():
         st.rerun()
 
   # =========================================================
-  # Tab 3: 白名單帳號管理 (無預設值，支援刪除與自動對照)
+  # Tab 3: 白名單帳號管理
   # =========================================================
   with tab3:
     st.markdown("### 👥 動態白名單權限管理")
@@ -278,7 +280,7 @@ def render_admin_panel():
 
     st.markdown("---")
 
-    # 1. 新增人員表單 (取消預設選擇，強制手動選取)
+    # 1. 新增人員表單
     with st.expander("➕ 新增白名單人員", expanded=True):
       add_mode = st.radio(
           "選擇新增方式",
@@ -521,7 +523,6 @@ def render_admin_panel():
       if st.button("💾 儲存白名單變更", type="primary"):
         updated_records = edited_df.to_dict(orient="records")
 
-        # 精準計算被勾選/按下垃圾桶刪除的人員
         displayed_emp_ids = {
             str(u.get("emp_id", "")).strip().upper() for u in filtered_users
         }
@@ -540,7 +541,6 @@ def render_admin_panel():
         for orig in users_list:
           orig_emp = str(orig.get("emp_id", "")).strip().upper()
 
-          # 剔除被刪除的人員
           if orig_emp in deleted_emp_ids:
             continue
 
@@ -642,12 +642,23 @@ def render_admin_panel():
           st.error("❌ 儲存設定時發生錯誤，請檢查檔案權限。")
 
   # =========================================================
-  # Tab 5: 系統日誌與備份打包
+  # Tab 5: 全域日誌即時讀取與打包備份 (多重路徑掃描)
   # =========================================================
   with tab5:
     st.markdown("### 📜 系統操作日誌與資料打包備份")
 
+    # 1. 解析結構化日誌
     logs = load_activity_logs()
+
+    # 2. 多重路徑原始日誌掃描備援
+    possible_log_paths = [
+        LOG_FILE,
+        "activity.log",
+        os.path.join("data", "activity.log"),
+    ]
+    found_log_path = next(
+        (p for p in possible_log_paths if os.path.exists(p)), None
+    )
 
     if logs:
       st.markdown(f"#### 🔍 最近系統操作日誌 (共 {len(logs)} 筆)")
@@ -673,24 +684,27 @@ def render_admin_panel():
           }
       )
       st.dataframe(df_logs_disp, use_container_width=True, height=280)
-    elif os.path.exists(LOG_FILE):
+
+    elif found_log_path:
+      st.markdown(f"#### 🔍 系統原始日誌內容 (`{found_log_path}`)")
       try:
-        with open(LOG_FILE, "r", encoding="utf-8") as f:
+        with open(found_log_path, "r", encoding="utf-8") as f:
           raw_lines = f.readlines()
         if raw_lines:
           st.text_area(
-              "系統原始日誌 (最新 100 筆)",
-              "".join(raw_lines[-100:]),
-              height=220,
+              "原始紀錄 (最新 100 筆)", "".join(raw_lines[-100:]), height=240
           )
         else:
-          st.info("日誌紀錄檔目前為空，尚無操作紀錄。")
+          st.info("日誌檔案已建立但目前紀錄為空。")
       except Exception as e:
         st.error(f"讀取日誌發生錯誤: {e}")
+
     else:
-      st.info(
-          "尚無日誌紀錄檔（系統將於使用者進行班表查詢、換班/換假檢索或變更後台設定時自動建立）。"
-      )
+      st.warning("⚠️ 目前尚未寫入日誌檔。")
+      if st.button("📝 點此即時測試寫入首筆日誌紀錄", type="primary"):
+        log_activity("管理員手動觸發測試日誌紀錄")
+        st.toast("已成功寫入測試日誌！")
+        st.rerun()
 
     st.markdown("---")
     st.markdown("#### 📦 一鍵備份全站數據與設定")
@@ -704,6 +718,7 @@ def render_admin_panel():
             "maintenance.json",
             "config.py",
             LOG_FILE,
+            "activity.log",
         ]:
           if os.path.exists(fname):
             zf.write(fname, os.path.basename(fname))
