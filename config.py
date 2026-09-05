@@ -47,7 +47,8 @@ NATIONAL_HOLIDAYS = {
     "10/25": "台灣光復節", "12/25": "行憲紀念日"
 }
 
-TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運"}
+TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運","10/4-10/10": "雙十節疏運","10/25-10/31": "光復節疏運"
+}
 TITLE = "TRAIN CREW DUTY CALENDAR"
 
 ADMIN_PASSWORD = "Lf090000"
