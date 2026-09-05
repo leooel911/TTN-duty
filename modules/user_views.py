@@ -343,16 +343,15 @@ def render_user_home():
                             target_col = c_col1 if idx % 2 == 0 else c_col2
                             with target_col:
                                 do_tag = r.get('出勤標記', '')
-
-                                # 工時標籤 (藍青色)
                                 shift_hours = r.get("工時", "")
-                                hours_badge_html = f'<span class="hours-badge">工時 {shift_hours}</span>' if shift_hours else ""
 
-                                # 組合標籤組 (取消班別旁邊重複的 DO2W，統一於此處顯示琥珀橘貼紙)
+                                # 工時顯示：右上角微小灰色文字
+                                hours_display_html = f'<div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px;">({shift_hours})</div>' if shift_hours else ""
+
+                                # 組合標籤組 (獨立排版：非正線、長班、DO2W)
                                 badges_html = '<div class="badge-group">'
                                 if r.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
                                 if r.get('長班'): badges_html += '<span class="long-badge">長班</span>'
-                                if hours_badge_html: badges_html += hours_badge_html
                                 if do_tag: badges_html += f'<span class="do2w-badge">[{do_tag}]</span>'
                                 badges_html += '</div>'
 
@@ -366,6 +365,7 @@ def render_user_home():
                                         <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
                                             <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-In {r['Sign-In']}</div>
                                             <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-Out {r['Sign-Out']}</div>
+                                            {hours_display_html}
                                         </div>
                                     </div>
                                     <div style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
@@ -616,7 +616,12 @@ def render_user_home():
                                 target_col = c_col1 if idx % 2 == 0 else c_col2
 
                                 do_tag = cand.get('出勤標記', '')
+                                cand_hours = cand.get('工時', '')
 
+                                # 工時顯示：右上角微小灰色文字 (與換班系統統一)
+                                hours_display_html = f'<div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px;">({cand_hours})</div>' if cand_hours else ""
+
+                                # 組合標籤組 (獨立排版：非正線、長班、DO2W)
                                 badges_html = '<div class="badge-group">'
                                 if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
                                 if cand.get('長班'): badges_html += '<span class="long-badge">長班</span>'
@@ -656,9 +661,7 @@ def render_user_home():
                                                 <div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">
                                                     Sign-Out {cand.get('Sign-Out', '--:--')}
                                                 </div>
-                                                <div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px;">
-                                                    ({cand.get('工時', '')})
-                                                </div>
+                                                {hours_display_html}
                                             </div>
                                         </div>
                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
