@@ -1,4 +1,3 @@
-import streamlit as st
 from config import ADMIN_PASSWORD, CUSTOM_CSS
 from modules.admin_views import render_admin_panel
 from modules.components import render_zoomable_image, show_feedback_modal
@@ -11,6 +10,7 @@ from modules.services import (
 )
 from modules.user_views import render_user_home
 from modules.utils import format_display_name, get_employee_name, log_activity
+import streamlit as st
 
 # 載入全域動態設定
 sys_cfg = load_system_config()
@@ -23,6 +23,9 @@ st.set_page_config(
 )
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
+# ---------------------------------------------------------
+# Session State 初始化
+# ---------------------------------------------------------
 if "authenticated" not in st.session_state:
   st.session_state["authenticated"] = False
 if "admin_logged_in" not in st.session_state:
@@ -35,6 +38,8 @@ if "inspect_emp_target" not in st.session_state:
   st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state:
   st.session_state["nav_mode"] = "home"
+if "page" not in st.session_state:
+  st.session_state["page"] = "user"
 if "current_user_id" not in st.session_state:
   st.session_state["current_user_id"] = DEFAULT_EMP_ID
 if "current_unit" not in st.session_state:
@@ -144,6 +149,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
           st.session_state["authenticated"] = True
           st.session_state["admin_logged_in"] = False
           st.session_state["nav_mode"] = "home"
+          st.session_state["page"] = "user"
           st.session_state["current_unit"] = selected_unit
 
           emp_real_name = get_employee_name(selected_unit, target_emp_id)
@@ -169,6 +175,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
           st.session_state["current_unit"] = selected_unit
           st.session_state["current_user_id"] = f"ADMIN_{clean_emp}"
           st.session_state["nav_mode"] = "admin_panel"
+          st.session_state["page"] = "admin"
           log_activity("管理員登入後台")
           st.rerun()
 
@@ -178,6 +185,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
             st.session_state["authenticated"] = True
             st.session_state["admin_logged_in"] = False
             st.session_state["nav_mode"] = "home"
+            st.session_state["page"] = "user"
             st.session_state["current_unit"] = selected_unit
             st.session_state["current_user_id"] = "VIP_USER (A 全域通行)"
             log_activity("測試員 A 登入系統")
@@ -195,10 +203,14 @@ if not st.session_state["authenticated"] and not st.session_state.get(
             st.error(
                 "您的員編尚未開放使用權限，請洽管理員於後台開通。"
             )
-          elif verify_crew_membership(selected_unit, clean_emp) or u_role == "VIP":
+          elif (
+              verify_crew_membership(selected_unit, clean_emp)
+              or u_role == "VIP"
+          ):
             st.session_state["authenticated"] = True
             st.session_state["admin_logged_in"] = False
             st.session_state["nav_mode"] = "home"
+            st.session_state["page"] = "user"
             st.session_state["current_unit"] = selected_unit
 
             emp_real_name = get_employee_name(selected_unit, clean_emp)
@@ -291,6 +303,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
         if adm_pwd_input == ADMIN_PASSWORD:
           st.session_state["admin_logged_in"] = True
           st.session_state["nav_mode"] = "admin_panel"
+          st.session_state["page"] = "admin"
           st.session_state["show_admin_login"] = False
           curr_op = st.session_state.get("user_input_field", DEFAULT_EMP_ID)
           st.session_state["current_user_id"] = f"ADMIN ({curr_op})"
@@ -306,9 +319,11 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
 # ---------------------------------------------------------
 # 路由切換 (管理員後台 / 一般使用者頁面)
 # ---------------------------------------------------------
-if st.session_state.get("nav_mode") == "admin_panel" and st.session_state.get(
-    "admin_logged_in", False
-):
+is_admin_mode = st.session_state.get(
+    "nav_mode"
+) == "admin_panel" or st.session_state.get("page") == "admin"
+
+if is_admin_mode and st.session_state.get("admin_logged_in", False):
   render_admin_panel()
 else:
   render_user_home()
@@ -342,11 +357,12 @@ with col_f2:
       admin_btn_label, key="btn_footer_admin_right", use_container_width=True
   ):
     if st.session_state.get("admin_logged_in", False):
-      st.session_state["nav_mode"] = (
-          "admin_panel"
-          if st.session_state["nav_mode"] == "home"
-          else "home"
-      )
+      if is_admin_mode:
+        st.session_state["nav_mode"] = "home"
+        st.session_state["page"] = "user"
+      else:
+        st.session_state["nav_mode"] = "admin_panel"
+        st.session_state["page"] = "admin"
     else:
       st.session_state["show_admin_login"] = True
     st.rerun()
