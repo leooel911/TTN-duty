@@ -1,8 +1,8 @@
+from datetime import datetime
 import io
 import json
 import os
 import zipfile
-from datetime import datetime
 
 from config import DATA_DIR, LOG_FILE, UNITS
 from modules.utils import (
@@ -60,17 +60,37 @@ def create_backup_zip():
 
 
 def load_whitelist():
+  """讀取白名單；若檔案不存在或為空，回傳保底預設名單"""
   whitelist_path = os.path.join(DATA_DIR, "whitelist.json")
   if os.path.exists(whitelist_path):
     try:
       with open(whitelist_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+        if data:
+          return data
     except Exception:
       pass
-  return {}
+
+  # 雲端伺服器重啟或臨時檔案遺失時的保底白名單
+  default_whitelist = {
+      "ADMIN": {
+          "name": "系統管理員",
+          "role": "ADMIN",
+          "note": "預設管理員帳號",
+          "created_at": "2026-09-06",
+      },
+      "A023300": {
+          "name": "波莉",
+          "role": "VIP_USER (全域通行)",
+          "note": "全域通行測試",
+          "created_at": "2026-09-06",
+      },
+  }
+  return default_whitelist
 
 
 def save_whitelist(data):
+  """儲存白名單至 JSON 檔案"""
   whitelist_path = os.path.join(DATA_DIR, "whitelist.json")
   os.makedirs(DATA_DIR, exist_ok=True)
   with open(whitelist_path, "w", encoding="utf-8") as f:
@@ -78,6 +98,7 @@ def save_whitelist(data):
 
 
 def load_system_config():
+  """讀取全域系統設定」"""
   config_path = os.path.join(DATA_DIR, "system_config.json")
   if os.path.exists(config_path):
     try:
@@ -93,6 +114,7 @@ def load_system_config():
 
 
 def save_system_config(config_data):
+  """儲存全域系統設定"""
   config_path = os.path.join(DATA_DIR, "system_config.json")
   os.makedirs(DATA_DIR, exist_ok=True)
   with open(config_path, "w", encoding="utf-8") as f:
@@ -218,7 +240,7 @@ def render_admin_panel():
           st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 3: 白名單帳號管理 (完整 CRUD 功能)
+  # Tab 3: 白名單帳號管理
   # ---------------------------------------------------------
   with tab3:
     st.markdown("### 👤 白名單與 VIP 通行帳號管理")
@@ -295,7 +317,7 @@ def render_admin_panel():
           st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 4: 全域系統參數 (完整設定功能)
+  # Tab 4: 全域系統參數
   # ---------------------------------------------------------
   with tab4:
     st.markdown("### ⚙️ 全域系統參數與切換")
@@ -354,7 +376,7 @@ def render_admin_panel():
       st.rerun()
 
   # ---------------------------------------------------------
-  # Tab 5: 系統日誌與備份 (包含「清空紀錄」按鈕)
+  # Tab 5: 系統日誌與備份
   # ---------------------------------------------------------
   with tab5:
     st.markdown("### 📜 系統操作日誌與資料打包備份")
@@ -423,5 +445,5 @@ def render_admin_panel():
     )
 
 
-# 雙重相容別名宣告，確保 app.py 無論用 render_admin_panel 或 render_admin_home 都能正常執行
+# 相容別名宣告
 render_admin_home = render_admin_panel
