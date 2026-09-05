@@ -127,38 +127,31 @@ if not st.session_state["authenticated"] and not st.session_state.get(
 
       if btn_auth:
         clean_emp = entered_emp.strip().upper()
-        if not clean_emp:
-          st.error("請輸入有效的員編")
 
-        # VIP 通行碼 0900：強制呼叫後台動態白名單驗證
-        elif entered_key == "0900":
-          allowed, user_info = is_user_allowed(clean_emp)
-          if not allowed:
-            st.error(
-                f"⛔ 員編 [{clean_emp}] 未在白名單中或權限已被停用，無法使用 VIP"
-                " 授權碼登入！"
-            )
+        # ⚡ 測試員快速通道：輸入 0900 即可直接登入並顯示 VIP
+        if entered_key == "0900":
+          target_emp_id = clean_emp if clean_emp else "A"
+          st.session_state["authenticated"] = True
+          st.session_state["admin_logged_in"] = False
+          st.session_state["nav_mode"] = "home"
+          st.session_state["current_unit"] = selected_unit
+
+          emp_real_name = get_employee_name(selected_unit, target_emp_id)
+          disp_name = format_display_name(emp_real_name)
+          name_suffix = f" {disp_name}" if disp_name else ""
+
+          if target_emp_id == "A":
+            st.session_state["current_user_id"] = "VIP_USER (A 全域通行)"
           else:
-            st.session_state["authenticated"] = True
-            st.session_state["admin_logged_in"] = False
-            st.session_state["nav_mode"] = "home"
-            st.session_state["current_unit"] = selected_unit
-
-            emp_real_name = get_employee_name(selected_unit, clean_emp)
-            disp_name = format_display_name(emp_real_name)
-            u_name = (
-                user_info.get("name")
-                if (user_info and user_info.get("name"))
-                else disp_name
-            )
-            name_suffix = f" {u_name}" if u_name else ""
-
             st.session_state["current_user_id"] = (
-                f"VIP_USER ({clean_emp}{name_suffix})"
+                f"VIP_USER ({target_emp_id}{name_suffix})"
             )
 
-            log_activity(f"VIP 身分登入系統: {clean_emp}")
-            st.rerun()
+          log_activity(f"VIP 身分登入系統: {target_emp_id}")
+          st.rerun()
+
+        elif not clean_emp:
+          st.error("請輸入有效的員編")
 
         elif entered_key == ADMIN_PASSWORD:
           st.session_state["admin_logged_in"] = True
