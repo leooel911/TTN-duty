@@ -38,12 +38,10 @@ def set_module_maintenance(unit, module_key, is_maint):
 
 def is_module_maintenance(unit, module_key):
   """檢測特定單位的模組是否處於維護狀態 (支援 .flag 與 .json 雙軌檢測)"""
-  # 方式 A：檢查 .flag 檔案是否存在
   flag_path = get_maintenance_flag_path(unit, module_key)
   if os.path.exists(flag_path):
     return True
 
-  # 方式 B：檢查 maintenance.json 檔案設定
   maint_json_paths = [
       os.path.join(DATA_DIR, "maintenance.json"),
       "maintenance.json",
@@ -355,7 +353,7 @@ def is_town_shift(tr, note):
 
 
 # =========================================================
-# 🧩 5. 班表儲存格核心解析 (Cell Parser)
+# 🧩 5. 班表儲存格核心解析 (Cell Parser) 與連上天數運算
 # =========================================================
 def parse_cell(raw):
   if pd.isna(raw) or not str(raw).strip():
@@ -430,7 +428,7 @@ def is_cell_off_day(raw_val):
   if pd.isna(raw_val) or not str(raw_val).strip():
     return True
   raw_str = str(raw_val).strip().upper()
-  if raw_str in ["NAN", "NONE", "", "."]:
+  if raw_str in ["NAN", "NONE", "", ".", "休", "OFF", "無"]:
     return True
 
   parsed = parse_cell(raw_val)
@@ -483,6 +481,88 @@ def resets_work_streak(raw_val):
     return False
 
   return True
+
+
+# 🔑 模糊比對填入模擬班表 (解決 '9/20' 與 '9/20 (日)' 標頭不符問題)
+def set_simulated_cell(series, date_keyword, new_val):
+  key_clean = str(date_keyword).strip()
+  matched_col = None
+  for col in series.index:
+    col_str = str(col).strip()
+    if key_clean == col_str or key_clean in col_str:
+      matched_col = col
+      break
+  if matched_col:
+    series[matched_col] = new_val
+  return series
+
+
+# 🔑 精準計算換班/換假後包含指定日期的連續上班天數
+def calculate_consecutive_work_days(series, target_date_str=None):
+  date_cols = []
+  for col in series.index:
+    col_str = str(col).strip()
+    if col_str in [
+        "員編",
+        "EMP_ID",
+        "姓名",
+        "NAME",
+        "單位",
+        "UNIT",
+        "ROLE",
+        "角色權限",
+        "帳號狀態",
+    ]:
+      continue
+    if re.search(r"\d{1,2}/\d{1,2}", col_str):
+      date_cols.append(col)
+
+  if not date_cols:
+    return 0
+
+  work_status = []
+  target_idx = None
+
+  for idx, col in enumerate(date_cols):
+    val = series[col]
+    is_off = is_cell_off_day(val)
+    work_status.append(not is_off)
+
+    if target_date_str and str(target_date_str).strip() in str(col):
+      target_idx = idx
+
+  # 若有指定特定日期，計算包含該日期的連續上班天數
+  if target_idx is not None:
+    if not work_status[target_idx]:
+      return 0
+
+    left = 0
+    for i in range(target_idx - 1, -1, -1):
+      if work_status[i]:
+        left += 1
+      else:
+        break
+
+    right = 0
+    for i in range(target_idx + 1, len(work_status)):
+      if work_status[i]:
+        right += 1
+      else:
+        break
+
+    return left + 1 + right
+
+  # 若未指定特定日期，計算全月最大連續上班天數
+  max_s = 0
+  curr_s = 0
+  for is_w in work_status:
+    if is_w:
+      curr_s += 1
+      if curr_s > max_s:
+        max_s = curr_s
+    else:
+      curr_s = 0
+  return max_s
 
 
 # =========================================================
