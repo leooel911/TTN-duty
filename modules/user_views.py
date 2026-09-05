@@ -2,11 +2,11 @@ import os
 import re
 import streamlit as st
 from datetime import date, timedelta
-from config import UNITS, NATIONAL_HOLIDAYS
+from config import UNITS, NATIONAL_HOLIDAYS, LEAVE_CODES
 from modules.utils import (
     get_file_mtime_str, is_module_maintenance, log_activity, 
     safe_read_excel, parse_cell, translate_train_code, is_town_shift, is_overtime,
-    is_cell_off_day, calculate_rest_hours, check_shift_legality
+    is_cell_off_day, calculate_rest_hours, check_shift_legality, check_week_has_holiday
 )
 from modules.services import (
     get_current_role_files, get_schedule_range, process_file_data, 
@@ -206,30 +206,7 @@ def render_user_home():
                 )
 
                 # 當週國定假日 Alert 檢查
-                is_win_week_has_do2w = False
-                win_week_str = ""
-                try:
-                    current_year = date.today().year
-                    t_m, t_d = map(int, target_date.split('/'))
-                    t_dt = date(current_year, t_m, t_d)
-                    t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
-                    t_sat = t_sun + timedelta(days=6)
-                    win_week_str = f"{t_sun.month}/{t_sun.day:02d} (日) ~ {t_sat.month}/{t_sat.day:02d} (六)"
-
-                    for d_str in date_cols:
-                        try:
-                            d_m, d_d = map(int, d_str.split('/'))
-                            d_dt = date(current_year, d_m, d_d)
-                            if t_sun <= d_dt <= t_sat:
-                                if d_str in NATIONAL_HOLIDAYS:
-                                    is_win_week_has_do2w = True
-                                    break
-                                matching_col = next((c for c in df_search.columns[2:] if d_str in str(c)), None)
-                                if matching_col and re.search(r'[\(（]([^\)）]+)[\)）]', str(matching_col)):
-                                    is_win_week_has_do2w = True
-                                    break
-                        except: pass
-                except: pass
+                is_win_week_has_do2w, win_week_str = check_week_has_holiday(target_date, date_cols, df_search.columns)
 
                 if is_win_week_has_do2w:
                     st.markdown(f"""
@@ -279,8 +256,6 @@ def render_user_home():
                     log_activity(f"換班快篩 [{current_unit_label} - {selected_role}] 日期:{target_date}")
                     all_cols_list = list(df_search.columns[2:])
                     raw_candidates = []
-                    
-                    leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
 
                     for _, row in df_search.iterrows():
                         emp_id = str(row.iloc[0]).strip()
@@ -298,7 +273,7 @@ def render_user_home():
                             if not is_off or start_t:
                                 tr_upper = str(parsed["train"]).strip().upper()
                                 raw_cell_upper = str(cell_raw).upper()
-                                is_leave = any(k in raw_cell_upper for k in leave_codes) or tr_upper in leave_codes
+                                is_leave = any(k in raw_cell_upper for k in LEAVE_CODES) or tr_upper in LEAVE_CODES
                                 is_non_line = is_town_shift(parsed["train"], parsed["note"])
                                 is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
 
@@ -341,6 +316,27 @@ def render_user_home():
                     st.markdown(f"### 換班可選人員名單（共符合 {len(filtered_results)} 筆）")
 
                     if filtered_results:
+                        # 戰情室 KPI 統計指標 Bar
+                        cnt_do2w = sum(1 for r in filtered_results if 'DO2' in r.get('出勤標記', '') or 'OGC' in r.get('出勤標記', ''))
+                        cnt_long = sum(1 for r in filtered_results if r.get('長班'))
+
+                        st.markdown(f"""
+                        <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
+                            <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">符合資格人數</div>
+                                <div style="font-size: 17px; font-weight: 900; color: #38BDF8; font-family: monospace;">{len(filtered_results)} <span style="font-size: 10px;">位</span></div>
+                            </div>
+                            <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">含 DO2W 標記</div>
+                                <div style="font-size: 17px; font-weight: 900; color: #FBBF24; font-family: monospace;">{cnt_do2w} <span style="font-size: 10px;">人</span></div>
+                            </div>
+                            <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(244, 63, 94, 0.3); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">長班 (>8.5h)</div>
+                                <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_long} <span style="font-size: 10px;">人</span></div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
                         c_col1, c_col2 = st.columns(2)
                         for idx, r in enumerate(filtered_results):
                             target_col = c_col1 if idx % 2 == 0 else c_col2
@@ -348,8 +344,20 @@ def render_user_home():
                                 do_tag = r.get('出勤標記', '')
                                 do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in r['車次']) else ""
 
+                                # 班間休息小時數評估標籤
+                                rest_h = calculate_rest_hours(r.get("Sign-Out"), r.get("隔日Sign-In"))
+                                rest_badge_html = ""
+                                if rest_h is not None:
+                                    if rest_h < 11.0:
+                                        rest_badge_html = f'<span class="long-badge" style="background: rgba(225, 29, 72, 0.25) !important; color: #FDA4AF !important; border: 1px solid #F43F5E !important;">⚠️ 休息 {rest_h}h</span>'
+                                    elif rest_h < 12.0:
+                                        rest_badge_html = f'<span class="long-badge" style="background: rgba(245, 158, 11, 0.25) !important; color: #FDE68A !important; border: 1px solid #F59E0B !important;">⚡ 休息 {rest_h}h</span>'
+                                    else:
+                                        rest_badge_html = f'<span class="long-badge" style="background: rgba(16, 185, 129, 0.15) !important; color: #34D399 !important; border: 1px solid #10B981 !important;">✓ 休息 {rest_h}h</span>'
+
                                 badges_html = '<div class="badge-group">'
                                 if r['非正線']: badges_html += '<span class="non-line-badge">非正線</span>'
+                                if rest_badge_html: badges_html += rest_badge_html
                                 if do_tag and any(k in do_tag for k in ['DO2', 'DO3', 'OGC', 'D2']):
                                     badges_html += '<span class="long-badge" style="background: rgba(245, 158, 11, 0.25) !important; color: #FDE68A !important; border: 1px solid #F59E0B !important;">[DO2W]</span>'
                                 elif do_tag:
@@ -437,40 +445,24 @@ def render_user_home():
                             on_change=reset_ex_search
                         )
 
-                    # 計算當週 Sun~Sat 區間，並判斷當週是否包含國定假日
+                    # 計算當週區間與國定假日 Alert
                     same_week_options = []
-                    target_week_str = ""
-                    is_week_has_do2w = False
+                    is_week_has_do2w, target_week_str = check_week_has_holiday(target_date, date_cols, df_ex.columns)
 
                     try:
                         current_year = date.today().year
                         t_m, t_d = map(int, target_date.split('/'))
                         t_dt = date(current_year, t_m, t_d)
-                        
                         t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
                         t_sat = t_sun + timedelta(days=6)
-                        target_week_str = f"{t_sun.month}/{t_sun.day:02d} (日) ~ {t_sat.month}/{t_sat.day:02d} (六)"
 
-                        week_date_cols = []
                         for d_str in date_cols:
                             try:
                                 d_m, d_d = map(int, d_str.split('/'))
                                 d_dt = date(current_year, d_m, d_d)
-                                if t_sun <= d_dt <= t_sat:
-                                    week_date_cols.append(d_str)
-                                    if d_str != target_date:
-                                        same_week_options.append(d_str)
+                                if t_sun <= d_dt <= t_sat and d_str != target_date:
+                                    same_week_options.append(d_str)
                             except: pass
-
-                        # 掃描當週日期是否屬於 NATIONAL_HOLIDAYS 字典或欄位標題有備註
-                        for w_col in week_date_cols:
-                            if w_col in NATIONAL_HOLIDAYS:
-                                is_week_has_do2w = True
-                                break
-                            matching_col = next((c for c in df_ex.columns[2:] if w_col in str(c)), None)
-                            if matching_col and re.search(r'[\(（]([^\)）]+)[\)）]', str(matching_col)):
-                                is_week_has_do2w = True
-                                break
                     except: pass
 
                     return_date_options = same_week_options if same_week_options else [d for d in date_cols if d != target_date]
@@ -520,8 +512,6 @@ def render_user_home():
                         target_col_idx = next((idx for idx, col in enumerate(all_cols) if idx >= 2 and target_date in str(col)), -1)
                         return_col_idx = next((idx for idx, col in enumerate(all_cols) if idx >= 2 and return_date in str(col)), -1)
 
-                        leave_codes = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
-
                         if target_col_idx != -1 and return_col_idx != -1:
                             for _, row in df_ex.iterrows():
                                 emp_id = str(row.iloc[0]).strip()
@@ -532,7 +522,7 @@ def render_user_home():
                                 parsed_target = parse_cell(row.iloc[target_col_idx])
                                 raw_target_str = str(row.iloc[target_col_idx]).strip().upper()
                                 
-                                is_target_leave = any(k in raw_target_str for k in leave_codes) or parsed_target["train"] in leave_codes
+                                is_target_leave = any(k in raw_target_str for k in LEAVE_CODES) or parsed_target["train"] in LEAVE_CODES
                                 if is_target_leave: continue
 
                                 is_target_do = is_cell_off_day(row.iloc[target_col_idx])
@@ -542,7 +532,7 @@ def render_user_home():
                                 raw_return_str = str(row.iloc[return_col_idx]).strip()
                                 raw_return_upper = raw_return_str.upper()
 
-                                is_return_leave = any(k in raw_return_upper for k in leave_codes) or parsed_return["train"] in leave_codes
+                                is_return_leave = any(k in raw_return_upper for k in LEAVE_CODES) or parsed_return["train"] in LEAVE_CODES
                                 is_return_do = is_cell_off_day(row.iloc[return_col_idx])
                                 if is_return_do or is_return_leave: continue
 
@@ -606,6 +596,27 @@ def render_user_home():
                         st.markdown(f"### 換假可選人員名單（共 {len(filtered_candidates)} 位）")
 
                         if filtered_candidates:
+                            # 戰情室 KPI 統計指標 Bar
+                            cnt_do2w = sum(1 for c in filtered_candidates if c.get('有DO2W標記') or 'DO2' in c.get('出勤標記', ''))
+                            cnt_streak6 = sum(1 for c in filtered_candidates if c.get('連續上班天數', 0) >= 6)
+
+                            st.markdown(f"""
+                            <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
+                                <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                    <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">可換假總人數</div>
+                                    <div style="font-size: 17px; font-weight: 900; color: #38BDF8; font-family: monospace;">{len(filtered_candidates)} <span style="font-size: 10px;">位</span></div>
+                                </div>
+                                <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                    <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">含 DO2W 標記</div>
+                                    <div style="font-size: 17px; font-weight: 900; color: #FBBF24; font-family: monospace;">{cnt_do2w} <span style="font-size: 10px;">人</span></div>
+                                </div>
+                                <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(244, 63, 94, 0.3); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                    <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">連班 6 天以上</div>
+                                    <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_streak6} <span style="font-size: 10px;">人</span></div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
                             c_col1, c_col2 = st.columns(2)
                             for idx, cand in enumerate(filtered_candidates):
                                 cand_name = cand.get('姓名', '')
@@ -615,7 +626,6 @@ def render_user_home():
                                 do_tag = cand.get('出勤標記', '')
                                 do_tag_display = f" <span style='color:#FB7185; font-weight:800;'>({do_tag})</span>" if (do_tag and do_tag not in cand.get('還假車次', '')) else ""
 
-                                # 輕量標籤 [DO2W]
                                 badges_html = '<div class="badge-group">'
                                 if cand.get('非正線'): badges_html += '<span class="non-line-badge">非正線</span>'
                                 if cand.get('有DO2W標記') or (do_tag and any(k in do_tag for k in ['DO2', 'DO3', 'OGC', 'D2'])):
