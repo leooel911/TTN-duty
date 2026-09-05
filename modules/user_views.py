@@ -406,6 +406,14 @@ def render_user_home():
                     else:
                         return_date_options = same_week_options if same_week_options else [d for d in date_cols if d != target_date]
 
+                    # 【核心修正】：偵測使用者是否切換了「想休假日期」，若是國定假日則強制將還假選項設為免還假標籤！
+                    if "ex_prev_target_date" not in st.session_state or st.session_state["ex_prev_target_date"] != target_date:
+                        st.session_state["ex_prev_target_date"] = target_date
+                        if is_target_national_holiday:
+                            st.session_state["ex_return_date"] = SAME_DAY_SWAP_LABEL
+                        elif return_date_options:
+                            st.session_state["ex_return_date"] = return_date_options[0]
+
                     if "ex_return_date" in st.session_state and st.session_state["ex_return_date"] not in return_date_options:
                         if return_date_options:
                             st.session_state["ex_return_date"] = return_date_options[0]
