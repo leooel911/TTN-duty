@@ -47,13 +47,20 @@ NATIONAL_HOLIDAYS = {
     "10/25": "台灣光復節", "12/25": "行憲紀念日"
 }
 
-TRANSPORT_PERIODS = {"9/24-9/29": "中秋疏運","10/4-10/10": "雙十節疏運","10/25-10/31": "光復節疏運"
+TRANSPORT_PERIODS = {
+    "9/24-9/29": "中秋疏運",
+    "10/4-10/10": "雙十節疏運",
+    "10/25-10/31": "光復節疏運"
 }
+
 TITLE = "TRAIN CREW DUTY CALENDAR"
 
 ADMIN_PASSWORD = "Lf090000"
 CREW_ACCESS_PASSWORD = "0096"
 PILOT_ALLOW_LIST = {"A021987", "A019702", "A023293", "A023442", "A023423", "A026495", "A026662", "A026663", "A026679", "A021578", "A024373"}
+
+# 通用請假代碼集
+LEAVE_CODES = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
 
 C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#475569", "#F1F5F9"
 C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
@@ -115,46 +122,34 @@ CUSTOM_CSS = """
     }
 
     /* 下拉選單 (stSelectbox) 滿版美化 */
-    div[data-baseweb="select"] {
-        width: 100% !important;
-    }
+    div[data-baseweb="select"] { width: 100% !important; }
     div[data-baseweb="select"] > div {
         background-color: rgba(15, 23, 42, 0.8) !important;
         border: 1px solid rgba(56, 189, 248, 0.3) !important;
         border-radius: 10px !important;
     }
-    div[data-baseweb="select"]:hover > div {
-        border-color: #38BDF8 !important;
-    }
+    div[data-baseweb="select"]:hover > div { border-color: #38BDF8 !important; }
 
-    /* ========================================================= */
-    /* === 模式選擇按鈕 (st.radio) 強效 100% 單欄直立修復 === */
-    /* ========================================================= */
-    
-    /* 強制 Radio 群組父層容器獨佔一欄、禁止橫排折行 */
+    /* 模式選擇按鈕 (st.radio) 強效 100% 單欄直立修復 */
     div[data-testid="stRadio"],
     div[data-testid="stRadio"] > div,
     div[data-testid="stRadio"] div[role="radiogroup"] {
         width: 100% !important;
         max-width: 100% !important;
         display: flex !important;
-        flex-direction: column !important; /* 強制垂直排列 */
-        flex-wrap: nowrap !important;      /* 禁止橫向折行併排 */
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
         align-items: stretch !important;
         gap: 8px !important;
     }
 
-    /* 隱藏預設單選圓點 */
     div[role="radiogroup"] label div[data-testid="stRadioButtonCustomIcon"],
     div[role="radiogroup"] label input,
-    div[role="radiogroup"] label > div:first-child {
-        display: none !important;
-    }
+    div[role="radiogroup"] label > div:first-child { display: none !important; }
 
-    /* 強制每一個選項卡片獨立佔據 100% 寬度，絕對無法併排 */
     div[role="radiogroup"] > label {
         width: 100% !important;
-        flex: 1 1 100% !important;         /* 關鍵：強制獨佔整行 */
+        flex: 1 1 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
         background: rgba(30, 41, 59, 0.7) !important;
@@ -168,25 +163,22 @@ CUSTOM_CSS = """
         display: block !important;
     }
 
-    /* 解決文字截斷問題 */
     div[role="radiogroup"] label p {
         font-size: 14.5px !important;
         font-weight: 700 !important;
         color: #E2E8F0 !important;
         margin: 0 !important;
-        white-space: normal !important;      /* 允許文字完整顯示不截斷 */
+        white-space: normal !important;
         text-overflow: clip !important;
         word-break: break-word !important;
         line-height: 1.4 !important;
     }
 
-    /* Hover 懸停效果 */
     div[role="radiogroup"] > label:hover {
         background: rgba(51, 65, 85, 0.8) !important;
         border-color: rgba(56, 189, 248, 0.4) !important;
     }
 
-    /* 選取狀態 (Active) 藍光高亮卡片 */
     div[role="radiogroup"] > label[data-checked="true"], 
     div[role="radiogroup"] > label:has(input:checked) {
         background: rgba(30, 64, 175, 0.5) !important;
@@ -200,8 +192,6 @@ CUSTOM_CSS = """
         color: #FFFFFF !important;
         font-weight: 800 !important;
     }
-
-    /* ========================================================= */
 
     @keyframes online-green-pulse {
         0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6); }
@@ -310,6 +300,7 @@ CUSTOM_CSS = """
     .section-title { color: #F8FAFC; font-size: 14px !important; font-weight: 700; margin: 0; }
     .section-subtitle { color: #94A3B8; font-size: 9.5px !important; font-weight: 500; text-transform: uppercase; font-family: monospace; }
 
+    /* 組員卡片與 Hover 微互動光影提升 */
     .integrated-crew-box {
         width: 100% !important;
         box-sizing: border-box !important;
@@ -325,6 +316,12 @@ CUSTOM_CSS = """
         padding: 12px 12px 8px 12px;
         margin-bottom: 0px !important;
         box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+    }
+    .integrated-crew-box:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(56, 189, 248, 0.2) !important;
+        border-color: rgba(56, 189, 248, 0.5) !important;
     }
 
     .compact-name {
@@ -336,6 +333,7 @@ CUSTOM_CSS = """
         display: flex;
         gap: 4px;
         align-items: center;
+        flex-wrap: wrap;
     }
     .long-badge {
         background: rgba(225, 29, 72, 0.2) !important;
@@ -360,12 +358,24 @@ CUSTOM_CSS = """
         line-height: 1.2 !important;
     }
 
+    /* 按鈕通用與卡片底部按鈕無縫接軌修飾 */
     div.stButton > button, div.stFormSubmitButton > button { 
         font-weight: 700 !important; padding: 0.4rem 0.8rem !important; border-radius: 0.5rem !important; 
         background: rgba(30, 41, 59, 0.6) !important; 
         border: 1px solid rgba(255, 255, 255, 0.12) !important;
         color: #38BDF8 !important; width: 100% !important; 
         transition: all 0.2s ease !important; letter-spacing: 0.5px; font-family: monospace;
+    }
+
+    div.stButton > button[key*="win_btn_"],
+    div.stButton > button[key*="ex_btn_"] {
+        border-top-left-radius: 0px !important;
+        border-top-right-radius: 0px !important;
+        border-bottom-left-radius: 12px !important;
+        border-bottom-right-radius: 12px !important;
+        border-top: 1px dashed rgba(255, 255, 255, 0.1) !important;
+        background: rgba(15, 23, 42, 0.85) !important;
+        margin-top: 0px !important;
     }
 
     div[data-baseweb="tab-list"] {
