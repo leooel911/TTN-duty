@@ -84,7 +84,7 @@ def render_admin_panel():
   current_unit = st.session_state.get("current_unit", "TTN")
 
   # =========================================================
-  # 🔝 頂部控制列：標題、單位切換 (TTN/TTC/TTS) 與 返回首頁
+  # 🔝 頂部控制列：標題、單位切換 (TTN/TTC/TTS) 與 返回首頁按鈕
   # =========================================================
   col_title, col_unit, col_btn = st.columns([2, 1, 1])
 
@@ -117,7 +117,6 @@ def render_admin_panel():
         use_container_width=True,
     ):
       st.session_state["page"] = "user"
-      st.toast("已返回前端查詢首頁")
       st.rerun()
 
   st.markdown("---")
@@ -256,7 +255,7 @@ def render_admin_panel():
         st.rerun()
 
   # =========================================================
-  # Tab 3: 白名單帳號管理
+  # Tab 3: 白名單帳號管理 (無預設值，支援刪除與自動對照)
   # =========================================================
   with tab3:
     st.markdown("### 👥 動態白名單權限管理")
@@ -279,7 +278,7 @@ def render_admin_panel():
 
     st.markdown("---")
 
-    # 1. 新增人員表單
+    # 1. 新增人員表單 (取消預設選擇，強制手動選取)
     with st.expander("➕ 新增白名單人員", expanded=True):
       add_mode = st.radio(
           "選擇新增方式",
@@ -522,6 +521,7 @@ def render_admin_panel():
       if st.button("💾 儲存白名單變更", type="primary"):
         updated_records = edited_df.to_dict(orient="records")
 
+        # 精準計算被勾選/按下垃圾桶刪除的人員
         displayed_emp_ids = {
             str(u.get("emp_id", "")).strip().upper() for u in filtered_users
         }
@@ -540,6 +540,7 @@ def render_admin_panel():
         for orig in users_list:
           orig_emp = str(orig.get("emp_id", "")).strip().upper()
 
+          # 剔除被刪除的人員
           if orig_emp in deleted_emp_ids:
             continue
 
