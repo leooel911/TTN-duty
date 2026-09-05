@@ -6,12 +6,12 @@ from config import LEAVE_CODES, NATIONAL_HOLIDAYS, UNITS
 from modules.components import render_zoomable_image, show_crew_schedule_modal
 from modules.drawing import render_schedule_figure
 from modules.services import (
-    calculate_consecutive_work_days,
     get_current_role_files,
     get_schedule_range,
     process_file_data,
 )
 from modules.utils import (
+    calculate_consecutive_work_days,
     calculate_rest_hours,
     check_shift_legality,
     check_week_has_holiday,
@@ -23,6 +23,7 @@ from modules.utils import (
     log_activity,
     parse_cell,
     safe_read_excel,
+    set_simulated_cell,
     translate_train_code,
 )
 import streamlit as st
@@ -805,8 +806,16 @@ def render_user_home():
                     )
                 )
 
+                # 🔑 關鍵修復：建立模擬換假後的真實 row 資料
+                sim_row = row.copy()
+                # 1. 將「想休假日期」寫入代上班勤務（如 D1）
+                sim_row = set_simulated_cell(sim_row, target_date, "D1")
+                # 2. 將「可還假日期」寫入休假（休）
+                sim_row = set_simulated_cell(sim_row, return_date, "休")
+
+                # 3. 傳入 sim_row 精準計算包含「想休假日期」(代上班當天) 的模擬連班天數
                 max_consecutive_streak = calculate_consecutive_work_days(
-                    row, target_col_idx, return_col_idx
+                    sim_row, target_date_str=target_date
                 )
 
                 raw_candidates.append({
@@ -856,6 +865,7 @@ def render_user_home():
                 ):
                   continue
 
+              # 嚴格過濾判斷：勾選時，若模擬連班 >= 6 天則剔除
               if strict_limit and cand["連續上班天數"] >= 6:
                 continue
 
@@ -885,7 +895,7 @@ def render_user_home():
               )
 
             st.markdown(
-                f"### 換假可選人員名單（共 {len(filtered_candidates)} 位）"
+                f"### 換假可選人員名單（共符合 {len(filtered_candidates)} 位）"
             )
 
             if filtered_candidates:
@@ -955,11 +965,11 @@ def render_user_home():
                 card_border_color = "rgba(56, 189, 248, 0.25)"
                 warning_banner_html = ""
 
-                if streak_cnt >= 7:
+                if streak_cnt >= 6:
                   card_border_color = "#F43F5E"
                   warning_banner_html = f"""
                                     <div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
-                                        注意：換假後連續上班達 {streak_cnt} 天，請注意七休一規範！
+                                        ⚠️ 注意：換假後連續上班達 {streak_cnt} 天，請留意出勤規範！
                                     </div>
                                     """
 
