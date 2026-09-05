@@ -232,7 +232,7 @@ def render_admin_panel():
         st.rerun()
 
   # =========================================================
-  # Tab 3: 白名單帳號管理
+  # Tab 3: 白名單帳號管理 (修正人員刪除失效問題)
   # =========================================================
   with tab3:
     st.markdown("### 👥 動態白名單權限管理")
@@ -255,7 +255,7 @@ def render_admin_panel():
 
     st.markdown("---")
 
-    # 1. 新增人員表單 (無預設值)
+    # 1. 新增人員表單
     with st.expander("➕ 新增白名單人員", expanded=True):
       add_mode = st.radio(
           "選擇新增方式",
@@ -496,15 +496,33 @@ def render_admin_panel():
       if st.button("💾 儲存白名單變更", type="primary"):
         updated_records = edited_df.to_dict(orient="records")
 
-        updated_map = {
-            str(r.get("emp_id", "")).strip().upper(): r
-            for r in updated_records
-            if str(r.get("emp_id", "")).strip()
+        # 1. 取得這批畫面上顯示的人員員編集合
+        displayed_emp_ids = {
+            str(u.get("emp_id", "")).strip().upper() for u in filtered_users
         }
 
+        # 2. 取得編輯/刪除後留下的員編 map 與集合
+        updated_map = {}
+        remaining_emp_ids = set()
+        for r in updated_records:
+          emp = str(r.get("emp_id", "")).strip().upper()
+          if emp and emp != "NAN":
+            updated_map[emp] = r
+            remaining_emp_ids.add(emp)
+
+        # 3. 算出現場被按垃圾桶刪除的員編集合
+        deleted_emp_ids = displayed_emp_ids - remaining_emp_ids
+
+        # 4. 重構白名單
         final_users = []
         for orig in users_list:
           orig_emp = str(orig.get("emp_id", "")).strip().upper()
+
+          # 若這筆資料屬於本次被刪除的人，跳過不保留
+          if orig_emp in deleted_emp_ids:
+            continue
+
+          # 若這筆資料屬於修改後的人，寫入修改後的內容
           if orig_emp in updated_map:
             u_rec = updated_map.pop(orig_emp)
             final_users.append({
@@ -516,6 +534,7 @@ def render_admin_panel():
           else:
             final_users.append(orig)
 
+        # 5. 補上直接在表格最下方手動新增的新行
         for new_emp, u_rec in updated_map.items():
           final_users.append({
               "emp_id": new_emp,
@@ -526,8 +545,10 @@ def render_admin_panel():
 
         wl_data["users"] = final_users
         save_allowed_users(wl_data)
-        log_activity("儲存白名單列表數據變更")
-        st.success("✅ 白名單資料已成功更新並儲存！")
+        log_activity(
+            f"儲存白名單列表變更 (刪除 {len(deleted_emp_ids)} 筆人員)"
+        )
+        st.success("✅ 白名單變更（包含人員刪除與修改）已成功儲存！")
         st.rerun()
 
   # =========================================================
@@ -601,7 +622,7 @@ def render_admin_panel():
           st.error("❌ 儲存設定時發生錯誤，請檢查檔案權限。")
 
   # =========================================================
-  # Tab 5: 系統日誌與備份打包 (解析 LOG_FILE 即時渲染)
+  # Tab 5: 系統日誌與備份打包
   # =========================================================
   with tab5:
     st.markdown("### 📜 系統操作日誌與資料打包備份")
@@ -665,10 +686,7 @@ def render_admin_panel():
             LOG_FILE,
         ]:
           if os.path.exists(fname):
-            zf.write(
-                fname,
-                os.path.basename(fname),
-            )
+            zf.write(fname, os.path.basename(fname))
         if os.path.exists("data"):
           for root, _, files in os.walk("data"):
             for file in files:
