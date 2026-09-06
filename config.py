@@ -1,6 +1,6 @@
 import os
 from datetime import timedelta, timezone
-from typing import Any, Dict, List, Tuple  # 修正：補上 Any
+from typing import Any, Dict, List, Tuple
 
 # 時區設定
 TAIWAN_TZ: timezone = timezone(timedelta(hours=8))
@@ -81,8 +81,38 @@ TITLE: str = "TRAIN CREW DUTY CALENDAR"
 ADMIN_PASSWORD: str = "Lf090000"
 CREW_ACCESS_PASSWORD: str = "0096"
 
-# 通用請假代碼集
-LEAVE_CODES: List[str] = ["PAY", "FAC", "AL", "WRSL", "CL", "ML", "LEV", "MLP", "MTR"]
+# 🔑 完整通用請假代碼集（已更新去重）
+LEAVE_CODES: List[str] = [
+    "PAY",     # 特休
+    "CMP",    # 喪假
+    "FAC",    # 家庭照顧假
+    "FAC1",   # 家庭照顧假1
+    "FPL",    # 彈性育嬰留停
+    "HPS",    # 住院病假
+    "HPS1",   # 確診後居家照護
+    "LEV",    # 公假
+    "LU",     # 會務假
+    "LUP",    # 長期事假
+    "LUTS",   # 會務假
+    "MAT",    # 產假
+    "ML",     # 教召假
+    "MLP",    # 生理假
+    "MTR",    # 婚假
+    "NHS",    # 未住院病假
+    "NHS1",   # 未住院病假1
+    "NHS2",   # 確診輕症
+    "NTD",    # 天然災害假
+    "OPI",    # 公傷假
+    "PAT",    # 陪產假
+    "PAY",    # 特休
+    "PAY1",   # 特休1
+    "RCL",    # 遷調假
+    "TRN",    # 訓練
+    "UNP",    # 事假
+    "UNP1",   # 事假1
+    "UNP2",   # 隔離假
+    "WRSL",   # 淨灘假
+]
 
 # 班表圖像渲染色調定義 (Matplotlib / PIL)
 C_HDR: str = "#0F172A"
