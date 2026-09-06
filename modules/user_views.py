@@ -49,6 +49,49 @@ def get_date_label(d_str, columns=None):
     return d_str
 
 
+# --- 關鍵新增：計算指定日期所在當週內包含的所有國定假日列表 ---
+def get_week_holidays(target_date, date_cols, columns=None):
+    """計算指定日期所在當週（週日至週六）內所有的國定假日名稱與日期標籤"""
+    holidays_found = []
+    if not target_date or not date_cols:
+        return holidays_found
+
+    try:
+        current_year = date.today().year
+        t_m, t_d = map(int, target_date.split("/"))
+        t_dt = date(current_year, t_m, t_d)
+        # 以週日為一週的第一天
+        t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
+        t_sat = t_sun + timedelta(days=6)
+
+        for d_str in date_cols:
+            try:
+                d_m, d_d = map(int, d_str.split("/"))
+                d_dt = date(current_year, d_m, d_d)
+                if t_sun <= d_dt <= t_sat:
+                    holiday_name = NATIONAL_HOLIDAYS.get(d_str)
+                    if not holiday_name and columns is not None:
+                        matching_col = next(
+                            (c for c in columns[2:] if d_str in str(c)), None
+                        )
+                        if matching_col:
+                            col_raw = str(matching_col)
+                            name_match = re.search(r"[\(（]([^\)）]+)[\)）]", col_raw)
+                            if name_match:
+                                holiday_name = name_match.group(1)
+
+                    if holiday_name:
+                        label = f"{d_str} ({holiday_name})"
+                        if label not in holidays_found:
+                            holidays_found.append(label)
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    return holidays_found
+
+
 # --- 自動重置狀態回呼函數 ---
 def reset_win_search():
     st.session_state.pop("win_raw_candidates", None)
@@ -349,22 +392,15 @@ def render_user_home():
                     on_change=reset_win_search,
                 )
 
-                # 觸發國定假日動態提示條
-                show_holiday_notice(get_date_label(target_date, df_search.columns))
-
-                is_win_week_has_do2w, win_week_str = check_week_has_holiday(
+                # 🔑 全域當週假日掃描：只要選到有國定假日的當週即跳出警示條
+                win_week_holidays = get_week_holidays(
+                    target_date, date_cols, df_search.columns
+                )
+                _, win_week_str = check_week_has_holiday(
                     target_date, date_cols, df_search.columns
                 )
 
-                if is_win_week_has_do2w:
-                    st.markdown(
-                        f"""
-                        <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin: 8px 0; font-size: 13px; color: #FDE68A; font-weight: 700;">
-                            提醒：您選擇的當週區間（{win_week_str}）包含 DO2W 國定假日！請留意換假/換班之DO2W出勤規範。
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
+                show_holiday_notice(win_week_holidays, win_week_str)
 
                 st.write("**快捷選擇時段：**")
                 q_col1, q_col2, q_col3, q_col4 = st.columns(4)
@@ -689,9 +725,6 @@ def render_user_home():
                             on_change=reset_ex_search,
                         )
 
-                        # 觸發國定假日動態提示條
-                        show_holiday_notice(get_date_label(target_date, df_ex.columns))
-
                     same_week_options = []
                     is_week_has_do2w, target_week_str = check_week_has_holiday(
                         target_date, date_cols, df_ex.columns
@@ -745,19 +778,20 @@ def render_user_home():
                             on_change=reset_ex_search,
                         )
 
-                    if is_week_has_do2w:
-                        st.markdown(
-                            f"""
-                            <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin: 8px 0; font-size: 13px; color: #FDE68A; font-weight: 700;">
-                                提醒：您選擇的當週區間（{target_week_str}）包含 DO2W 國定假日！請留意換假/換班之DO2W出勤規範。
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
+                    # 🔑 關鍵邏輯修改：換假全域當週國定假日掃描 (想休假與還假當週皆涵蓋)
+                    ex_week_holidays = list(
+                        set(
+                            get_week_holidays(target_date, date_cols, df_ex.columns)
+                            + get_week_holidays(return_date, date_cols, df_ex.columns)
                         )
-                    else:
-                        st.caption(
-                            f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）"
-                        )
+                    )
+
+                    # 只要選到包含假日的當週（無論選的日期是不是假日當天），立即跳出提醒條
+                    show_holiday_notice(ex_week_holidays, target_week_str)
+
+                    st.caption(
+                        f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）"
+                    )
 
                     col_f1, col_f2 = st.columns(2)
                     with col_f1:
