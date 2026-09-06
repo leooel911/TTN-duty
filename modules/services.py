@@ -145,7 +145,6 @@ def get_schedule_range() -> str:
     """取得當前班表涵蓋的時間區間範圍"""
     role_files = get_current_role_files()
     for path in role_files.values():
-        # 修正：加上 isinstance(path, str) 排除 "mapping" 字典，避免 TypeError
         if isinstance(path, str) and os.path.exists(path):
             try:
                 df = safe_read_excel(path, header=3)
@@ -176,7 +175,6 @@ def verify_crew_membership(selected_unit: str, emp_id: str) -> bool:
     # 2. 檢查 Excel 大表中是否有該員編
     unit_files = UNITS.get(selected_unit, {})
     for role_name, file_path in unit_files.items():
-        # 修正：加上 isinstance(file_path, str) 排除 "mapping" 字典
         if isinstance(file_path, str) and os.path.exists(file_path):
             try:
                 df = safe_read_excel(file_path, header=3)
@@ -232,7 +230,6 @@ def process_file_data(
 
     # 1. 在三大表（駕駛、列車長、服勤員）中比對員編或姓名
     for role, path in role_files.items():
-        # 修正：加上 isinstance(path, str) 排除 "mapping" 字典
         if isinstance(path, str) and os.path.exists(path):
             try:
                 df = safe_read_excel(path, header=3)
