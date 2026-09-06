@@ -80,7 +80,7 @@ def show_holiday_notice(selected_date_str):
                             國定假日提醒：{holiday_name}
                         </div>
                         <div style="color: #CBD5E1; font-size: 12px; margin-top: 3px; font-family: monospace;">
-                            您選擇的日期為國定假日，進行換班或換假申請時，請注意相關出勤加給與工時計算規範。
+                            您選擇的日期為國定假日，進行換班或換假申請時，請注意DO2W相關出勤規範喔。
                         </div>
                     </div>
                     """,
