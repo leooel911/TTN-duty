@@ -309,8 +309,11 @@ def render_user_home():
             unsafe_allow_html=True,
         )
 
-        # 🔑 1. 初始化預設值：自動尋找登入者的員編
-        if "user_input_field" not in st.session_state or not st.session_state["user_input_field"]:
+        # 🔑 1. 前置狀態處理（必須在 st.text_input 建立前執行）
+        if st.session_state.get("should_reset_input_to_A"):
+            st.session_state["user_input_field"] = "A"
+            st.session_state["should_reset_input_to_A"] = False
+        elif "user_input_field" not in st.session_state or not st.session_state["user_input_field"]:
             st.session_state["user_input_field"] = get_login_user_id()
 
         # 🔑 2. 使用 st.form 實現「輸入完 Enter 直接繪製」
@@ -327,8 +330,8 @@ def render_user_home():
             if not current_input:
                 st.warning("請輸入員編或姓名")
             else:
-                # 🔑 3. 查詢後將預設值變更為 "A"
-                st.session_state["user_input_field"] = "A"
+                # 🔑 3. 設定延遲重置標記（安全不觸發 Streamlit 原生報錯）
+                st.session_state["should_reset_input_to_A"] = True
 
                 log_activity(f"生成個人班表圖檔查詢: {current_input}")
                 try:
