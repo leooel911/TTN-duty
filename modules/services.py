@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
-from config import ALLOWED_USERS_FILE, DATA_DIR, SYSTEM_CONFIG_FILE
+from config import DATA_DIR, SYSTEM_CONFIG_FILE, UNITS, WHITELIST_FILE
 from modules.utils import get_employee_name, safe_read_excel
 
 DEFAULT_CONFIG: Dict[str, Any] = {
@@ -28,7 +28,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 # 1. 全域系統動態參數 (System Config)
 # =========================================================
 def load_system_config() -> Dict[str, Any]:
-    """載入系統動態參數設定，若檔案不存在則自動建立（統一路徑為 DATA_DIR/system_config.json）"""
+    """載入系統動態參數設定，若檔案不存在則自動建立"""
     os.makedirs(DATA_DIR, exist_ok=True)
     if not os.path.exists(SYSTEM_CONFIG_FILE):
         save_system_config(DEFAULT_CONFIG)
@@ -56,63 +56,79 @@ def save_system_config(config_dict: Dict[str, Any]) -> bool:
 
 
 # =========================================================
-# 2. 白名單與帳號權限管理 (Whitelist Management)
+# 2. 白名單與帳號權限管理 (與後台完全對齊)
 # =========================================================
-def load_allowed_users() -> Dict[str, Any]:
-    """載入白名單 JSON 資料"""
-    os.makedirs(DATA_DIR, exist_ok=True)
-    if not os.path.exists(ALLOWED_USERS_FILE):
-        default_data: Dict[str, Any] = {
-            "enabled": True,
-            "users": [
-                {"emp_id": "A", "name": "全域通行", "role": "VIP", "status": "啟用"}
-            ],
+def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
+    """讀取指定營運單位的白名單 (讀取 WHITELIST_FILE)"""
+    whitelist_path = WHITELIST_FILE
+    full_data: Dict[str, Any] = {}
+
+    if os.path.exists(whitelist_path):
+        try:
+            with open(whitelist_path, "r", encoding="utf-8") as f:
+                full_data = json.load(f)
+                if full_data and not any(k in UNITS for k in full_data.keys()):
+                    full_data = {u: full_data.copy() for u in UNITS.keys()}
+        except Exception:
+            full_data = {}
+
+    if unit_code not in full_data:
+        unit_default: Dict[str, Any] = {
+            "ADMIN": {
+                "name": f"[{unit_code}] 系統管理員",
+                "role": "ADMIN",
+                "note": f"[{unit_code}] 預設管理員帳號",
+                "created_at": datetime.now().strftime("%Y-%m-%d"),
+            }
         }
-        with open(ALLOWED_USERS_FILE, "w", encoding="utf-8") as f:
-            json.dump(default_data, f, ensure_ascii=False, indent=4)
-        return default_data
-    try:
-        with open(ALLOWED_USERS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {"enabled": True, "users": []}
+        full_data[unit_code] = unit_default
+
+    raw_unit_data = full_data.get(unit_code, {})
+    normalized_data = {}
+    for uid, info in raw_unit_data.items():
+        normalized_data[str(uid).strip().upper()] = info
+
+    return normalized_data
 
 
-def save_allowed_users(data: Dict[str, Any]) -> bool:
-    """儲存白名單 JSON 資料"""
-    try:
-        os.makedirs(DATA_DIR, exist_ok=True)
-        with open(ALLOWED_USERS_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-        return True
-    except Exception as e:
-        print(f"Error saving allowed users: {e}")
-        return False
-
-
-def is_user_allowed(emp_id: Any) -> Tuple[bool, Optional[Dict[str, Any]]]:
-    """檢查員編是否在白名單內且為啟用狀態"""
+def is_user_allowed(selected_unit: str, emp_id: Any) -> Tuple[bool, Optional[Dict[str, Any]]]:
+    """檢查員編是否在指定單位的白名單內或具有全域通行權限"""
     emp_id_str = str(emp_id).strip().upper()
 
     if emp_id_str == "A":
         return True, {
             "emp_id": "A",
             "name": "全域通行",
-            "role": "VIP",
+            "role": "VIP_USER",
             "status": "啟用",
         }
 
-    data = load_allowed_users()
-    if not data.get("enabled", True):
-        return True, {"emp_id": emp_id_str, "name": "預設組員", "role": "組員"}
+    # 1. 優先比對該營運單位的白名單名冊
+    unit_whitelist = load_whitelist(selected_unit)
+    if emp_id_str in unit_whitelist:
+        u_info = unit_whitelist[emp_id_str]
+        return True, {
+            "emp_id": emp_id_str,
+            "name": u_info.get("name", u_info.get("姓名", "組員")),
+            "role": u_info.get("role", u_info.get("身份", "TESTER")),
+            "status": "啟用",
+        }
 
-    users = data.get("users", [])
-    for u in users:
-        if str(u.get("emp_id", "")).strip().upper() == emp_id_str:
-            if u.get("status") == "啟用":
-                return True, u
-            else:
-                return False, None
+    # 2. 檢查是否有其他單位的全域 VIP/ADMIN 權限
+    for u_code in UNITS.keys():
+        if u_code != selected_unit:
+            other_wl = load_whitelist(u_code)
+            if emp_id_str in other_wl:
+                other_info = other_wl[emp_id_str]
+                role_str = str(other_info.get("role", "")).upper()
+                if "VIP" in role_str or role_str == "ADMIN":
+                    return True, {
+                        "emp_id": emp_id_str,
+                        "name": other_info.get("name", "全域通行"),
+                        "role": other_info.get("role", "VIP_USER"),
+                        "status": "啟用",
+                    }
+
     return False, None
 
 
@@ -120,14 +136,9 @@ def is_user_allowed(emp_id: Any) -> Tuple[bool, Optional[Dict[str, Any]]]:
 # 3. 相容介面與輔助函式
 # =========================================================
 def get_current_role_files() -> Dict[str, str]:
-    """取得目前所屬單位的各大表檔案路徑字典"""
+    """取得目前所屬單位的各大表檔案路徑字典 (連動 config.UNITS)"""
     current_unit = st.session_state.get("current_unit", "TTN")
-    os.makedirs(DATA_DIR, exist_ok=True)
-    return {
-        "駕駛": os.path.join(DATA_DIR, f"{current_unit}_TD.xlsx"),
-        "列車長": os.path.join(DATA_DIR, f"{current_unit}_TM.xlsx"),
-        "服勤員": os.path.join(DATA_DIR, f"{current_unit}_TA.xlsx"),
-    }
+    return UNITS.get(current_unit, UNITS.get("TTN", {}))
 
 
 def get_schedule_range() -> str:
@@ -153,8 +164,27 @@ def get_schedule_range() -> str:
 
 
 def verify_crew_membership(selected_unit: str, emp_id: str) -> bool:
-    """驗證組員是否屬於指定單位"""
-    return True
+    """驗證組員是否屬於指定單位（檢查白名單或 Excel 大表）"""
+    emp_id_str = str(emp_id).strip().upper()
+
+    # 1. 白名單中有紀錄者直接認定為該單位組員
+    wl = load_whitelist(selected_unit)
+    if emp_id_str in wl:
+        return True
+
+    # 2. 檢查 Excel 大表中是否有該員編
+    unit_files = UNITS.get(selected_unit, {})
+    for role_name, file_path in unit_files.items():
+        if os.path.exists(file_path):
+            try:
+                df = safe_read_excel(file_path, header=3)
+                for _, row in df.iterrows():
+                    r_id = str(row.iloc[0]).strip().upper()
+                    if r_id == emp_id_str:
+                        return True
+            except Exception:
+                pass
+    return False
 
 
 def get_crew_list(selected_unit: str = "TTN") -> List[Dict[str, str]]:
