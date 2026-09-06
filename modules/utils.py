@@ -2,7 +2,7 @@ import io
 import json
 import os
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pandas as pd
 import streamlit as st
@@ -149,7 +149,7 @@ def get_employee_name(unit_key, emp_input):
 
 
 # =========================================================
-# 📱 3. 裝置解析與操作日誌紀錄 (Audit Trail)
+# 📱 3. 裝置解析與結構化操作日誌紀錄 (Audit Trail)
 # =========================================================
 def parse_device_info(ua_string):
     ua = ua_string.lower()
@@ -180,23 +180,44 @@ def parse_device_info(ua_string):
     return f"{device} [{browser}]"
 
 
-def log_activity(input_str):
+def log_activity(action_or_type, details="", unit=None, user_id=None):
+    """
+    結構化紀錄系統日誌
+    支援舊版單字串傳入: log_activity("做某事")
+    支援新版結構化傳入: log_activity("換班快篩", "詳細參數細節...")
+    """
     try:
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR, exist_ok=True)
+
         now_tw = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M:%S")
-        ua_raw = (
-            st.context.headers.get("user-agent", "")
-            if hasattr(st, "context")
-            else ""
-        )
+
+        # 嘗試擷取 Client User-Agent 與 IP
+        ua_raw = ""
+        client_ip = "127.0.0.1"
+        if hasattr(st, "context") and hasattr(st.context, "headers"):
+            headers = st.context.headers
+            ua_raw = headers.get("user-agent", "")
+            client_ip = (
+                headers.get("x-forwarded-for", headers.get("host", "127.0.0.1"))
+                .split(",")[0]
+                .strip()
+            )
+
         device_info = parse_device_info(ua_raw) if ua_raw else "未知裝置"
-        current_operator = st.session_state.get("current_user_id", "未知")
-        current_unit = st.session_state.get("current_unit", "TTN")
+        current_operator = user_id or st.session_state.get("current_user_id", "未知")
+        current_unit = unit or st.session_state.get("current_unit", "TTN")
+
+        if details:
+            full_action = f"[{action_or_type}] {details}"
+        else:
+            full_action = str(action_or_type)
+
         log_entry = (
-            f"{now_tw} | 單位: {current_unit} | 操作者員編: {current_operator} | 裝置:"
-            f" {device_info} | 動作: {input_str}\n"
+            f"{now_tw} | 單位: {current_unit} | 操作者員編: {current_operator} | "
+            f"裝置: {device_info} | IP: {client_ip} | 動作: {full_action}\n"
         )
+
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(log_entry)
     except Exception:
@@ -204,6 +225,7 @@ def log_activity(input_str):
 
 
 def load_activity_logs():
+    """解析 LOG 檔案，支援舊版格式相容與新版欄位提取"""
     logs = []
     possible_log_paths = [
         LOG_FILE,
@@ -225,16 +247,36 @@ def load_activity_logs():
                     timestamp = parts[0]
                     unit = parts[1].replace("單位: ", "").strip()
                     user_id = parts[2].replace("操作者員編: ", "").strip()
-                    device = parts[3].replace("裝置: ", "").strip()
-                    action = parts[4].replace("動作: ", "").strip()
+
+                    # 相容包含或不包含 IP 欄位之舊格式
+                    if len(parts) >= 6 and parts[3].startswith("裝置:"):
+                        device = parts[3].replace("裝置: ", "").strip()
+                        ip_addr = parts[4].replace("IP: ", "").strip()
+                        action = parts[5].replace("動作: ", "").strip()
+                    else:
+                        device = parts[3].replace("裝置: ", "").strip()
+                        ip_addr = "N/A"
+                        action = parts[4].replace("動作: ", "").strip()
+
+                    # 拆分動作類別與詳細參數
+                    action_type = "一般操作"
+                    details_str = action
+                    if action.startswith("[") and "]" in action:
+                        m = re.match(r"^\[(.*?)\]\s*(.*)$", action)
+                        if m:
+                            action_type = m.group(1)
+                            details_str = m.group(2)
+
                     logs.append({
                         "timestamp": timestamp,
                         "unit": unit,
                         "user_id": user_id,
                         "user_name": get_employee_name(unit, user_id) or user_id,
                         "device": device,
+                        "ip": ip_addr,
+                        "action_type": action_type,
                         "action": action,
-                        "details": action,
+                        "details": details_str if details_str else action,
                     })
                 else:
                     logs.append({
@@ -243,6 +285,8 @@ def load_activity_logs():
                         "user_id": "未知",
                         "user_name": "未知",
                         "device": "未知",
+                        "ip": "N/A",
+                        "action_type": "系統日誌",
                         "action": line,
                         "details": line,
                     })
