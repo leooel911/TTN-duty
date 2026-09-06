@@ -17,7 +17,6 @@ from modules.services import (
 )
 from modules.utils import (
     calculate_consecutive_work_days,
-    calculate_rest_hours,
     check_shift_legality,
     check_week_has_holiday,
     get_file_mtime_str,
@@ -31,6 +30,18 @@ from modules.utils import (
     set_simulated_cell,
     translate_train_code,
 )
+
+
+# --- 輔助函式：精準比對 Excel 日期欄位索引（解決 9/1 比對到 9/10 的 Bug） ---
+def find_date_column_index(columns, target_date):
+    """精準匹配日期欄位索引，避免 substring 誤判"""
+    for idx, col in enumerate(columns):
+        if idx < 2:
+            continue
+        match = re.search(r"(\d+/\d+)", str(col))
+        if match and match.group(1) == target_date:
+            return idx
+    return -1
 
 
 # --- 全方位自動抓取登入頁面與 Session 中的使用者員編 ---
@@ -516,12 +527,11 @@ def render_user_home():
                     st.rerun()
 
                 TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
+                
+                # 修正：移除 value 參數，避免與 session_state[key] 發生衝突引發例外
                 min_time, max_time_sel = st.select_slider(
                     "Sign-In 時段區間",
                     options=TIME_OPTIONS,
-                    value=st.session_state.get(
-                        "win_time_slider", (morn_start_time, "10:00")
-                    ),
                     key="win_time_slider",
                 )
 
@@ -536,76 +546,71 @@ def render_user_home():
                     )
 
                 if st.button("搜尋可換班組員名單", key="btn_window_search"):
-                    all_cols_list = list(df_search.columns[2:])
                     raw_candidates = []
+                    
+                    # 修正：使用精準日期索引匹配，解決 9/1 比對到 9/10 的 Bug
+                    target_col_idx = find_date_column_index(df_search.columns, target_date)
 
-                    for _, row in df_search.iterrows():
-                        emp_id = str(row.iloc[0]).strip()
-                        emp_name = str(row.iloc[1]).strip()
-                        if not emp_id or emp_id.upper() in ["NAN", "NONE", ""]:
-                            continue
+                    if target_col_idx != -1:
+                        for _, row in df_search.iterrows():
+                            emp_id = str(row.iloc[0]).strip()
+                            emp_name = str(row.iloc[1]).strip()
+                            if not emp_id or emp_id.upper() in ["NAN", "NONE", ""]:
+                                continue
 
-                        target_col_idx = next(
-                            (
-                                idx + 2
-                                for idx, col in enumerate(all_cols_list)
-                                if target_date in str(col)
-                            ),
-                            -1,
-                        )
-                        if target_col_idx != -1 and target_col_idx < len(row):
-                            cell_raw = row.iloc[target_col_idx]
-                            parsed = parse_cell(cell_raw)
-                            start_t = parsed["start"]
+                            if target_col_idx < len(row):
+                                cell_raw = row.iloc[target_col_idx]
+                                parsed = parse_cell(cell_raw)
+                                start_t = parsed["start"]
 
-                            is_off = is_cell_off_day(cell_raw)
+                                is_off = is_cell_off_day(cell_raw)
 
-                            if not is_off or start_t:
-                                tr_upper = str(parsed["train"]).strip().upper()
-                                raw_cell_upper = str(cell_raw).upper()
-                                is_leave = (
-                                    any(k in raw_cell_upper for k in LEAVE_CODES)
-                                    or tr_upper in LEAVE_CODES
-                                )
-                                is_non_line = is_town_shift(parsed["train"], parsed["note"])
-                                is_long = is_overtime(
-                                    parsed["hours"], parsed["train"], parsed["note"]
-                                )
-
-                                do_tag = parsed.get("note", "")
-                                if not do_tag:
-                                    do_match = re.search(
-                                        r"(DO\d*W?|D\d+W|OGC)", str(cell_raw), re.IGNORECASE
+                                if not is_off or start_t:
+                                    tr_upper = str(parsed["train"]).strip().upper()
+                                    raw_cell_upper = str(cell_raw).upper()
+                                    is_leave = (
+                                        any(k in raw_cell_upper for k in LEAVE_CODES)
+                                        or tr_upper in LEAVE_CODES
                                     )
-                                    do_tag = do_match.group(1).upper() if do_match else ""
+                                    is_non_line = is_town_shift(parsed["train"], parsed["note"])
+                                    is_long = is_overtime(
+                                        parsed["hours"], parsed["train"], parsed["note"]
+                                    )
 
-                                next_day_sign_in = "無記錄"
-                                if target_col_idx + 1 < len(row):
-                                    next_parsed = parse_cell(row.iloc[target_col_idx + 1])
-                                    next_day_sign_in = (
-                                        next_parsed["start"]
-                                        if next_parsed["start"]
-                                        else (
-                                            next_parsed["train"]
-                                            if next_parsed["train"]
-                                            else "無記錄"
+                                    do_tag = parsed.get("note", "")
+                                    if not do_tag:
+                                        do_match = re.search(
+                                            r"(DO\d*W?|D\d+W|OGC)", str(cell_raw), re.IGNORECASE
                                         )
-                                    )
+                                        do_tag = do_match.group(1).upper() if do_match else ""
 
-                                raw_candidates.append({
-                                    "日期": target_date,
-                                    "員編": emp_id,
-                                    "姓名": emp_name,
-                                    "Sign-In": start_t if start_t else "--:--",
-                                    "Sign-Out": parsed["end"] if parsed["end"] else "--:--",
-                                    "工時": parsed.get("hours", ""),
-                                    "車次": translate_train_code(parsed["train"]),
-                                    "隔日Sign-In": next_day_sign_in,
-                                    "長班": is_long,
-                                    "非正線": is_non_line,
-                                    "請假": is_leave,
-                                    "出勤標記": do_tag,
-                                })
+                                    next_day_sign_in = "無記錄"
+                                    if target_col_idx + 1 < len(row):
+                                        next_parsed = parse_cell(row.iloc[target_col_idx + 1])
+                                        next_day_sign_in = (
+                                            next_parsed["start"]
+                                            if next_parsed["start"]
+                                            else (
+                                                next_parsed["train"]
+                                                if next_parsed["train"]
+                                                else "無記錄"
+                                            )
+                                        )
+
+                                    raw_candidates.append({
+                                        "日期": target_date,
+                                        "員編": emp_id,
+                                        "姓名": emp_name,
+                                        "Sign-In": start_t if start_t else "--:--",
+                                        "Sign-Out": parsed["end"] if parsed["end"] else "--:--",
+                                        "工時": parsed.get("hours", ""),
+                                        "車次": translate_train_code(parsed["train"]),
+                                        "隔日Sign-In": next_day_sign_in,
+                                        "長班": is_long,
+                                        "非正線": is_non_line,
+                                        "請假": is_leave,
+                                        "出勤標記": do_tag,
+                                    })
 
                     st.session_state["win_raw_candidates"] = raw_candidates
                     st.rerun()
@@ -908,24 +913,10 @@ def render_user_home():
 
                     if st.button("搜尋可換假組員名單", key="btn_ex_search"):
                         raw_candidates = []
-                        all_cols = list(df_ex.columns)
-
-                        target_col_idx = next(
-                            (
-                                idx
-                                for idx, col in enumerate(all_cols)
-                                if idx >= 2 and target_date in str(col)
-                            ),
-                            -1,
-                        )
-                        return_col_idx = next(
-                            (
-                                idx
-                                for idx, col in enumerate(all_cols)
-                                if idx >= 2 and return_date in str(col)
-                            ),
-                            -1,
-                        )
+                        
+                        # 修正：精準匹配想休與還假日期欄位索引，解決 substring 比對錯誤
+                        target_col_idx = find_date_column_index(df_ex.columns, target_date)
+                        return_col_idx = find_date_column_index(df_ex.columns, return_date)
 
                         if target_col_idx != -1 and return_col_idx != -1:
                             for _, row in df_ex.iterrows():
@@ -992,8 +983,9 @@ def render_user_home():
                                 sim_row = set_simulated_cell(sim_row, target_date, "D1")
                                 sim_row = set_simulated_cell(sim_row, return_date, "休")
 
+                                # 修正：補齊 target_date 參數，避免傳參缺少丟出 Exception
                                 max_consecutive_streak = calculate_consecutive_work_days(
-                                    sim_row
+                                    sim_row, target_date
                                 )
 
                                 raw_candidates.append({
