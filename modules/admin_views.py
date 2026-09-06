@@ -480,10 +480,20 @@ def render_admin_panel():
                     )
 
     # ---------------------------------------------------------
-    # Tab 4: 全域系統參數 (使用 st.form 徹底解決提交沒反應問題)
+    # Tab 4: 全域系統參數 (狀態持久化提示機制)
     # ---------------------------------------------------------
     with tab4:
         st.markdown("### ⚙️ 全域系統參數與授權碼設定")
+
+        # 💡 檢查並印出前一次存檔結果（避免被 st.rerun 清除）
+        if "cfg_toast" in st.session_state:
+            t_type, t_msg = st.session_state["cfg_toast"]
+            if t_type == "success":
+                st.success(t_msg)
+            elif t_type == "error":
+                st.error(t_msg)
+            del st.session_state["cfg_toast"]
+
         sys_config = load_system_config()
 
         with st.form(key="global_sys_config_form"):
@@ -491,6 +501,7 @@ def render_admin_panel():
 
             with col_p1:
                 st.markdown("#### 🔑 通行授權碼設定")
+                st.caption("💡 若無須修改密碼，保持留空即可。")
 
                 st.markdown("**【一般組員】通行授權碼**")
                 new_user_pwd = st.text_input(
@@ -562,7 +573,6 @@ def render_admin_panel():
                     value=sys_config.get("enable_beta_notice", True),
                 )
 
-            # 🔑 使用表單專用提交按鈕，確保資料一次性寫入
             submit_sys_cfg = st.form_submit_button(
                 "💾 儲存全域系統設定", type="primary", use_container_width=True
             )
@@ -570,38 +580,44 @@ def render_admin_panel():
             if submit_sys_cfg:
                 pwd_updates = []
                 has_error = False
+                error_msgs = []
 
                 # 1. 驗證一般組員密碼
-                if new_user_pwd:
+                if new_user_pwd or confirm_user_pwd:
                     if new_user_pwd != confirm_user_pwd:
-                        st.error("❌ 兩次輸入的新【一般組員授權碼】不一致，請重新檢查！")
+                        error_msgs.append("【一般組員授權碼】兩次輸入不一致！")
                         has_error = True
-                    else:
+                    elif new_user_pwd.strip():
                         sys_config["user_password"] = new_user_pwd.strip()
                         sys_config["crew_pass_code"] = new_user_pwd.strip()
                         pwd_updates.append("一般組員授權碼")
 
                 # 2. 驗證 VIP 密碼
-                if new_vip_pwd:
+                if new_vip_pwd or confirm_vip_pwd:
                     if new_vip_pwd != confirm_vip_pwd:
-                        st.error("❌ 兩次輸入的新【VIP 授權碼】不一致，請重新檢查！")
+                        error_msgs.append("【VIP 授權碼】兩次輸入不一致！")
                         has_error = True
-                    else:
+                    elif new_vip_pwd.strip():
                         sys_config["vip_password"] = new_vip_pwd.strip()
                         sys_config["vip_pass_code"] = new_vip_pwd.strip()
                         pwd_updates.append("VIP 授權碼")
 
                 # 3. 驗證管理員密碼
-                if new_admin_pwd:
+                if new_admin_pwd or confirm_admin_pwd:
                     if new_admin_pwd != confirm_admin_pwd:
-                        st.error("❌ 兩次輸入的新【管理員密碼】不一致，請重新檢查！")
+                        error_msgs.append("【管理員解鎖密碼】兩次輸入不一致！")
                         has_error = True
-                    else:
+                    elif new_admin_pwd.strip():
                         sys_config["admin_password"] = new_admin_pwd.strip()
                         pwd_updates.append("管理員解鎖密碼")
 
-                # 無密碼比對錯誤才寫入設定
-                if not has_error:
+                if has_error:
+                    st.session_state["cfg_toast"] = (
+                        "error",
+                        "❌ " + "；".join(error_msgs),
+                    )
+                    st.rerun()
+                else:
                     sys_config["announcement"] = announce_text.strip()
                     sys_config["strict_streak_limit"] = streak_threshold
                     sys_config["enable_beta_notice"] = enable_notice
@@ -609,7 +625,10 @@ def render_admin_panel():
                     log_activity("管理員更新全域系統設定與通行授權碼")
 
                     msg_prefix = "與".join(pwd_updates) + "及" if pwd_updates else ""
-                    st.success(f"🎉 {msg_prefix}全域系統設定已成功儲存並立即生效！")
+                    st.session_state["cfg_toast"] = (
+                        "success",
+                        f"🎉 {msg_prefix}全域系統設定已成功更新並即刻生效！",
+                    )
                     st.rerun()
 
     # ---------------------------------------------------------
