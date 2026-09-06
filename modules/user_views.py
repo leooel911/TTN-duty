@@ -160,6 +160,62 @@ def reset_ex_search():
 
 
 def render_user_home():
+    # 精準 DOM CSS：補回組員卡片邊框與按鈕縫合樣式
+    st.markdown(
+        """
+        <style>
+        .crew-card-top {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border-bottom: none !important;
+            border-top-left-radius: 10px !important;
+            border-top-right-radius: 10px !important;
+            padding: 12px;
+        }
+        .crew-card-top-warn {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid #F43F5E !important;
+            border-bottom: none !important;
+            border-top-left-radius: 10px !important;
+            border-top-right-radius: 10px !important;
+            padding: 12px;
+        }
+
+        /* 縫合卡片下方的 Streamlit 按鈕 */
+        div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button,
+        div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button {
+            border-top-left-radius: 0px !important;
+            border-top-right-radius: 0px !important;
+            border-bottom-left-radius: 10px !important;
+            border-bottom-right-radius: 10px !important;
+            margin-top: -16px !important;
+            box-shadow: none !important;
+            font-weight: 700 !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button {
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border-top: none !important;
+            background-color: rgba(15, 23, 42, 0.85) !important;
+            color: #38BDF8 !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button {
+            border: 1px solid #F43F5E !important;
+            border-top: none !important;
+            background-color: rgba(15, 23, 42, 0.85) !important;
+            color: #FDA4AF !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button:hover,
+        div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button:hover {
+            background-color: rgba(30, 41, 59, 0.95) !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     active_files = get_current_role_files()
     current_unit_label = st.session_state.get("current_unit", "TTN")
     missing_files = [
@@ -573,7 +629,6 @@ def render_user_home():
                         key=lambda x: (str(x["Sign-In"]), str(x["Sign-Out"])),
                     )
 
-                    # 🔑 記錄包含詳細參數的換班快篩 LOG
                     log_activity(
                         "換班日期快篩",
                         f"單位:{current_unit_label} | 職位:{selected_role} | 日期:{target_date} | "
@@ -1016,7 +1071,6 @@ def render_user_home():
                                 reverse=True,
                             )
 
-                        # 🔑 記錄包含詳細條件的換假快篩 LOG
                         log_activity(
                             "換假日期快篩",
                             f"單位:{current_unit_label} | 職位:{selected_role} | 想休:{target_date} | "
