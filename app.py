@@ -14,10 +14,10 @@ from modules.utils import (
     format_display_name,
     get_employee_name,
     log_activity,
-    send_admin_email,  # 🔑 匯入寄信函式
+    send_admin_email,
 )
 
-# 🔑 載入全域動態設定 (每次 Rerun 時重新載入最新設定)
+# 載入全域動態設定 (每次 Rerun 時重新載入最新設定)
 sys_cfg = load_system_config()
 VIP_PASS_CODE = sys_cfg.get("vip_password") or sys_cfg.get("vip_pass_code") or "0900"
 CREW_PASS_CODE = sys_cfg.get("user_password") or sys_cfg.get("crew_pass_code") or CREW_ACCESS_PASSWORD
@@ -31,7 +31,7 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
-# 🔑 權限申請彈出視窗對話框 (Dialog)
+# 權限申請彈出視窗對話框 (Dialog)
 # ---------------------------------------------------------
 @st.dialog("申請系統使用權限")
 def show_apply_permission_dialog():
@@ -62,7 +62,7 @@ def show_apply_permission_dialog():
         clean_name = req_name.strip()
 
         if not clean_emp or not clean_name:
-            st.warning("⚠️ 請完整填寫「員編」與「姓名」！")
+            st.warning("請完整填寫「員編」與「姓名」！")
         else:
             with st.spinner("正在記錄申請並發送通知信..."):
                 # 1. 寫入系統活動紀錄 (備份留底)
@@ -75,9 +75,9 @@ def show_apply_permission_dialog():
                 success, msg = send_admin_email(req_unit, clean_emp, clean_name, req_reason)
 
             if success:
-                st.success("✅ 申請已成功送出！管理員已收到信件通知，請靜候開通。")
+                st.success("申請已成功送出！管理員已收到信件通知，請靜候開通。")
             else:
-                st.success("✅ 申請已成功記錄！(已登記於系統，可聯繫管理員)")
+                st.success("申請已成功記錄！(已登記於系統，可聯繫管理員)")
 
 
 # ---------------------------------------------------------
@@ -155,7 +155,7 @@ if st.session_state.get("inspect_emp_target") is not None:
                 st.markdown(
                     """
                     <div style="display: flex; align-items: center; height: 100%; font-size: 12px; color: #94A3B8; font-weight: 500; font-family: monospace; padding-left: 6px;">
-                        💡 提示：手機使用者可長按圖片儲存至相簿
+                        提示：手機使用者可長按圖片儲存至相簿
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -163,7 +163,7 @@ if st.session_state.get("inspect_emp_target") is not None:
     except Exception as e:
         st.error(f"載入組員【{target_emp}】班表時發生錯誤：{e}")
 
-    st.stop()  # 修正：檢視模式獨立呈現，避免與下方主頁 UI 重疊
+    st.stop()
 
 # ---------------------------------------------------------
 # 前置授權碼門戶檢查 (登入驗證頁面)
@@ -185,14 +185,13 @@ if not st.session_state["authenticated"] and not st.session_state.get(
 
     col1, col2, col3 = st.columns([1, 2.4, 1])
     with col2:
-        # 💡 1. 說明欄位優化：視覺強化與導引說明
-        with st.expander("ℹ️ 登入前說明與試用須知（點擊展開）", expanded=False):
+        with st.expander("登入前系統說明與試用須知（點擊展開）", expanded=False):
             st.markdown(
                 """
             <div style="font-size: 12.5px; color: #CBD5E1; line-height: 1.7; font-family: monospace;">
-                <div style="color: #38BDF8; font-weight: 800; margin-bottom: 6px;">📢 系統開放試用公告</div>
+                <div style="color: #38BDF8; font-weight: 800; margin-bottom: 6px;">系統開放試用公告</div>
                 本系統目前為正式環境第一階段特定人員內部測試。<br><br>
-                <div style="color: #FBBF24; font-weight: 800; margin-bottom: 4px;">⚠️ 重要提醒與注意事項：</div>
+                <div style="color: #FBBF24; font-weight: 800; margin-bottom: 4px;">重要提醒與注意事項：</div>
                 1. <b>排班依據</b>：本系統班表僅供個人調假與換班快篩參考，<b>即時班表務必以公司官方公告為準</b>。<br>
                 2. <b>資訊安全</b>：班表相關資料屬內部營運資訊，<b>請勿外流授權碼與班表截圖</b>。<br>
                 3. <b>權限與回報</b>：尚無權限者請點選下方<b>「申請使用權限」</b>；登入後若發現資料有誤，請善用頁尾<b>「問題回報」</b>。
@@ -205,10 +204,10 @@ if not st.session_state["authenticated"] and not st.session_state.get(
         with st.form("auth_form"):
             selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
             
-            # 💡 2. 輸入欄位優化：預設值清空，僅依靠 Placeholder 提示
+            # 還原預設值為 DEFAULT_EMP_ID ("A")
             entered_emp = st.text_input(
                 "使用者員編 (範例：023300)",
-                value="",
+                value=DEFAULT_EMP_ID,
                 placeholder="例如: 023300",
                 max_chars=10,
             )
@@ -216,7 +215,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                 "系統授權碼", type="password", placeholder="請輸入系統授權碼..."
             )
 
-            # 💡 3. 按鈕視覺層級區隔 (Primary 醒目色彩 vs Secondary 次要按鈕)
+            # 按鈕視覺層級區隔（保留 Primary 醒目色彩，移除貼圖）
             col_b1, col_b2 = st.columns([1, 1])
             with col_b1:
                 btn_auth = st.form_submit_button("進入系統", type="primary", use_container_width=True)
@@ -325,7 +324,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                 else:
                     st.error("授權碼或密碼錯誤，請重新輸入")
 
-        # 🔑 持續監聽 Session State 控制彈窗渲染
+        # 持續監聽 Session State 控制彈窗渲染
         if st.session_state.get("show_apply_dialog", False):
             show_apply_permission_dialog()
 
@@ -353,7 +352,7 @@ st.markdown(
 )
 
 # ---------------------------------------------------------
-# 💡 動態公告與橫幅標語渲染 (連動 sys_config)
+# 動態公告與橫幅標語渲染 (連動 sys_config)
 # ---------------------------------------------------------
 enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
 announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫後台管理者")
@@ -470,6 +469,6 @@ with col_f2:
             st.session_state["show_admin_login"] = True
         st.rerun()
 
-# 🔑 只要 show_feedback_dialog 狀態為 True，便維持渲染意見反饋彈窗
+# 只要 show_feedback_dialog 狀態為 True，便維持渲染意見反饋彈窗
 if st.session_state.get("show_feedback_dialog", False):
     show_feedback_modal()
