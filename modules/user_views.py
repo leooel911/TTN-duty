@@ -36,7 +36,6 @@ from modules.utils import (
 # --- 全方位自動抓取登入頁面與 Session 中的使用者員編 ---
 def get_login_user_id():
     """自動掃描登入頁面輸入框 Key 與 Session State 抓取員編"""
-    # 1. 優先掃描登入頁面常見的元件 Key
     login_widget_keys = [
         "login_emp_id", "login_user", "login_id", "login_account", "login_username",
         "emp_id", "user_id", "username", "account", "user_code", "emp_no",
@@ -50,7 +49,6 @@ def get_login_user_id():
                 return f"A{clean_val}"
             return clean_val
 
-    # 2. 檢查字典結構 (例如 st.session_state["user"]、st.session_state["login_info"])
     for key in ["user", "user_info", "auth_user", "login_info", "auth", "login_data"]:
         val = st.session_state.get(key)
         if isinstance(val, dict):
@@ -64,7 +62,6 @@ def get_login_user_id():
         elif isinstance(val, str) and val.strip() and val.strip().upper() != "A":
             return val.strip().upper()
 
-    # 3. 深度全域掃描：搜尋符合高鐵員編格式 (A+6位數字 或 純6位數字) 的內容
     try:
         for k, v in st.session_state.items():
             if k in ["user_input_field", "last_app_mode", "should_reset_input_to_A"]:
@@ -91,7 +88,6 @@ def get_login_user_id():
     return "A"
 
 
-# --- 通用日期選單格式化函式 ---
 def get_date_label(d_str, columns=None):
     holiday_name = NATIONAL_HOLIDAYS.get(d_str)
     if not holiday_name and columns is not None:
@@ -107,9 +103,7 @@ def get_date_label(d_str, columns=None):
     return d_str
 
 
-# --- 計算指定日期所在當週內包含的所有國定假日列表 ---
 def get_week_holidays(target_date, date_cols, columns=None):
-    """計算指定日期所在當週（週日至週六）內所有的國定假日名稱與日期標籤"""
     holidays_found = []
     if not target_date or not date_cols:
         return holidays_found
@@ -149,7 +143,6 @@ def get_week_holidays(target_date, date_cols, columns=None):
     return holidays_found
 
 
-# --- 自動重置狀態回呼函數 ---
 def reset_win_search():
     st.session_state.pop("win_raw_candidates", None)
 
@@ -160,7 +153,6 @@ def reset_ex_search():
 
 
 def render_user_home():
-    # 精準 DOM CSS：補回組員卡片邊框與按鈕縫合樣式
     st.markdown(
         """
         <style>
@@ -181,7 +173,6 @@ def render_user_home():
             padding: 12px;
         }
 
-        /* 縫合卡片下方的 Streamlit 按鈕 */
         div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button,
         div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button {
             border-top-left-radius: 0px !important;
@@ -330,21 +321,18 @@ def render_user_home():
             unsafe_allow_html=True,
         )
 
-        # 🔑 1. 首次進入此頁面時，強制抓取登入頁面輸入的員編寫入預設值
         if "login_auto_filled" not in st.session_state:
             login_id = get_login_user_id()
             if login_id and login_id != "A":
                 st.session_state["user_input_field"] = login_id
             st.session_state["login_auto_filled"] = True
 
-        # 🔑 2. 處理執行查詢後的延遲重置邏輯
         if st.session_state.get("should_reset_input_to_A"):
             st.session_state["user_input_field"] = "A"
             st.session_state["should_reset_input_to_A"] = False
         elif "user_input_field" not in st.session_state:
             st.session_state["user_input_field"] = get_login_user_id()
 
-        # 🔑 3. 使用 st.form 實現「輸入完 Enter 直接繪製」
         with st.form(key="draw_schedule_form", border=False):
             target_input = st.text_input(
                 "輸入 員編 或 姓名 (例如: A023300 or 波莉)",
@@ -649,18 +637,19 @@ def render_user_home():
                         )
                         cnt_long = sum(1 for r in filtered_results if r.get("長班"))
 
+                        # 🔑 總數統計框： border 改為 1.5px solid 並提高透明度 (0.5)
                         st.markdown(
                             f"""
                             <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
-                                <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
                                     <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">符合資格人數</div>
                                     <div style="font-size: 17px; font-weight: 900; color: #38BDF8; font-family: monospace;">{len(filtered_results)} <span style="font-size: 10px;">位</span></div>
                                 </div>
-                                <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(245, 158, 11, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
                                     <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">含 DO2W 標記</div>
                                     <div style="font-size: 17px; font-weight: 900; color: #FBBF24; font-family: monospace;">{cnt_do2w} <span style="font-size: 10px;">人</span></div>
                                 </div>
-                                <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(244, 63, 94, 0.3); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
                                     <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">長班 (>8.5h)</div>
                                     <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_long} <span style="font-size: 10px;">人</span></div>
                                 </div>
@@ -1095,18 +1084,19 @@ def render_user_home():
                                 if c.get("連續上班天數", 0) >= 6
                             )
 
+                            # 🔑 總數統計框： border 改為 1.5px solid 並提高透明度 (0.5)
                             st.markdown(
                                 f"""
                                 <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
-                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
                                         <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">可換假總人數</div>
                                         <div style="font-size: 17px; font-weight: 900; color: #38BDF8; font-family: monospace;">{len(filtered_candidates)} <span style="font-size: 10px;">位</span></div>
                                     </div>
-                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(245, 158, 11, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
                                         <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">含 DO2W 標記</div>
                                         <div style="font-size: 17px; font-weight: 900; color: #FBBF24; font-family: monospace;">{cnt_do2w} <span style="font-size: 10px;">人</span></div>
                                     </div>
-                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(244, 63, 94, 0.3); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
                                         <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">連班 6 天以上</div>
                                         <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_streak6} <span style="font-size: 10px;">人</span></div>
                                     </div>
