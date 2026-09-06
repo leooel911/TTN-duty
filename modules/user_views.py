@@ -273,17 +273,33 @@ def render_user_home():
             unsafe_allow_html=True,
         )
 
-        target_input = st.text_input(
-            "輸入 員編 或 姓名 (例如: A023300 or 波莉)",
-            value="A",
-            key="user_input_field",
-        )
+        # 🔑 1. 初次載入自動設定預設值為登入者員編（若無則帶入 "A"）
+        if "user_input_field" not in st.session_state:
+            st.session_state["user_input_field"] = (
+                st.session_state.get("user_id")
+                or st.session_state.get("emp_id")
+                or st.session_state.get("username")
+                or "A"
+            )
 
-        if st.button("生成月班表"):
-            current_input = st.session_state.get("user_input_field", "").strip()
+        # 🔑 2. 使用 st.form 包裹輸入框與按鈕，實現「Enter 鍵直接觸發」
+        with st.form(key="draw_schedule_form", border=False):
+            target_input = st.text_input(
+                "輸入 員編 或 姓名 (例如: A023300 or 波莉)",
+                key="user_input_field",
+            )
+            submit_btn = st.form_submit_button("開始繪製月班表", use_container_width=True)
+
+        if submit_btn:
+            # 取得當前輸入的查詢目標
+            current_input = target_input.strip()
+
             if not current_input:
                 st.warning("請輸入員編或姓名")
             else:
+                # 🔑 3. 執行查詢後，將下一階段的預設值自動更新為 "A"
+                st.session_state["user_input_field"] = "A"
+
                 log_activity(f"生成個人班表圖檔查詢: {current_input}")
                 try:
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(
@@ -786,7 +802,7 @@ def render_user_home():
                         )
                     )
 
-                    # 只要選到包含假日的當週（無論選的日期是不是假日當天），立即跳出提醒條
+                    # 只要選到包含假日的當週（無論選的日期是不是假日當天），讀取即跳出提醒條
                     show_holiday_notice(ex_week_holidays, target_week_str)
 
                     st.caption(
