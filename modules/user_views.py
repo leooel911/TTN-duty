@@ -369,15 +369,25 @@ def render_user_home():
                         )
                     st.success(f"【{emp_name}】個人班表圖片生成成功！")
                     render_zoomable_image(buf)
-                    st.download_button(
-                        "點此下載班表影像檔",
-                        data=buf,
-                        file_name=f"{current_unit_label}_班表_{emp_name}.png",
-                        mime="image/png",
-                    )
-                except Exception as e:
-                    log_activity("個人班表繪製失敗", f"單位:{current_unit_label} | 查詢關鍵字:{current_input} | 錯誤:{e}")
-                    st.error(f"錯誤：{e}")
+                    
+                    col_dl1, col_dl2 = st.columns([1, 1])
+                    with col_dl1:
+                        st.download_button(
+                            "點此下載班表影像檔",
+                            data=buf,
+                            file_name=f"{current_unit_label}_班表_{emp_name}.png",
+                            mime="image/png",
+                            use_container_width=True,
+                        )
+                    with col_dl2:
+                        st.markdown(
+                            """
+                            <div style="display: flex; align-items: center; height: 100%; font-size: 12px; color: #94A3B8; font-weight: 500; font-family: monospace; padding-left: 6px;">
+                                 提示：長按可將圖片儲存至相簿
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
 
     # ==================== 模式二：換班｜選擇換班日期 ====================
     elif app_mode == "換班｜選擇換班日期":
