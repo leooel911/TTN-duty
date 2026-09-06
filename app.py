@@ -10,7 +10,12 @@ from modules.services import (
     verify_crew_membership,
 )
 from modules.user_views import render_user_home
-from modules.utils import format_display_name, get_employee_name, log_activity
+from modules.utils import (
+    format_display_name,
+    get_employee_name,
+    log_activity,
+    send_admin_email,  # 🔑 匯入寄信函式
+)
 
 # 🔑 載入全域動態設定 (每次 Rerun 時重新載入最新設定)
 sys_cfg = load_system_config()
@@ -23,6 +28,49 @@ st.set_page_config(
     page_title="TTN Shift Producer", page_icon="700st.png", layout="centered"
 )
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------
+# 🔑 權限申請彈出視窗對話框 (Dialog)
+# ---------------------------------------------------------
+@st.dialog("🔑 申請系統使用權限")
+def show_apply_permission_dialog():
+    st.markdown(
+        """
+        <div style="font-size: 13px; color: #94A3B8; margin-bottom: 12px;">
+            請填寫基本資料，送出後系統將自動發送通知信給管理員進行審核與開通。
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    req_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS", "其他單位"], key="dlg_req_unit")
+    req_emp_id = st.text_input("使用者員編 (例如: 023300)", key="dlg_req_emp_id")
+    req_name = st.text_input("真實姓名 (例如: 江立夫)", key="dlg_req_name")
+    req_reason = st.text_area("申請原因 / 備註 (選填)", key="dlg_req_reason", help="說明用途可加速審核")
+
+    if st.button("確認送出申請", type="primary", use_container_width=True):
+        clean_emp = req_emp_id.strip()
+        clean_name = req_name.strip()
+
+        if not clean_emp or not clean_name:
+            st.warning("⚠️ 請完整填寫「員編」與「姓名」！")
+        else:
+            with st.spinner("正在記錄申請並發送通知信..."):
+                # 1. 寫入系統活動紀錄 (備份留底)
+                log_activity(
+                    "權限申請",
+                    f"單位:{req_unit} | 員編:{clean_emp} | 姓名:{clean_name} | 原因:{req_reason}",
+                )
+
+                # 2. 自動發送通知信給管理員
+                success, msg = send_admin_email(req_unit, clean_emp, clean_name, req_reason)
+
+            if success:
+                st.success("✅ 申請已成功送出！管理員已收到信件通知，請靜候開通。")
+            else:
+                st.success("✅ 申請已成功記錄！(已登記於系統 Log，請主動聯繫管理員)")
+
 
 # ---------------------------------------------------------
 # Session State 初始化
@@ -154,8 +202,19 @@ if not st.session_state["authenticated"] and not st.session_state.get(
             entered_key = st.text_input(
                 "系統授權碼", type="password", placeholder="請輸入系統授權碼..."
             )
-            btn_auth = st.form_submit_button("進入系統")
 
+            # ---------------- 雙按鈕對稱佈局 ----------------
+            col_b1, col_b2 = st.columns([1, 1])
+            with col_b1:
+                btn_auth = st.form_submit_button("進入系統", use_container_width=True)
+            with col_b2:
+                btn_apply = st.form_submit_button("申請使用權限", use_container_width=True)
+
+            # 點擊「申請使用權限」時觸發彈窗
+            if btn_apply:
+                show_apply_permission_dialog()
+
+            # 點擊「進入系統」時觸發原本的驗證邏輯
             if btn_auth:
                 clean_emp = entered_emp.strip().upper()
                 st.session_state["user_input_field"] = clean_emp if clean_emp else "A"
