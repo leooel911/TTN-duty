@@ -35,6 +35,8 @@ if "user_input_field" not in st.session_state:
     st.session_state["user_input_field"] = DEFAULT_EMP_ID
 if "show_admin_login" not in st.session_state:
     st.session_state["show_admin_login"] = False
+if "show_feedback_dialog" not in st.session_state:
+    st.session_state["show_feedback_dialog"] = False
 if "inspect_emp_target" not in st.session_state:
     st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state:
@@ -343,7 +345,7 @@ st.markdown(
 )
 
 # ---------------------------------------------------------
-# 頁尾功能按鈕
+# 頁尾功能按鈕與彈窗觸發
 # ---------------------------------------------------------
 col_f1, col_f2 = st.columns(2)
 
@@ -353,7 +355,8 @@ with col_f1:
         key="btn_footer_feedback_left",
         use_container_width=True,
     ):
-        show_feedback_modal()
+        st.session_state["show_feedback_dialog"] = True
+        st.rerun()
 
 with col_f2:
     admin_btn_label = (
@@ -374,3 +377,7 @@ with col_f2:
         else:
             st.session_state["show_admin_login"] = True
         st.rerun()
+
+# 🔑 只要 show_feedback_dialog 狀態為 True，便維持渲染意見反饋彈窗
+if st.session_state.get("show_feedback_dialog", False):
+    show_feedback_modal()
