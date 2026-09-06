@@ -7,6 +7,11 @@ DATA_DIR = os.path.join(os.getcwd(), "data")
 FEEDBACK_IMG_DIR = os.path.join(DATA_DIR, "feedback_uploads")
 LOG_FILE = os.path.join(DATA_DIR, "activity_log.txt")
 
+# 🔑 全站統一設定檔與白名單路徑
+SYSTEM_CONFIG_FILE = os.path.join(DATA_DIR, "system_config.json")
+ALLOWED_USERS_FILE = os.path.join(DATA_DIR, "allowed_users.json")
+WHITELIST_FILE = os.path.join(DATA_DIR, "whitelist.json")
+
 UNITS = {
     "TTN": {
         "駕駛": os.path.join(DATA_DIR, "TTN_TD.xlsx"),
@@ -55,10 +60,9 @@ TRANSPORT_PERIODS = {
 
 TITLE = "TRAIN CREW DUTY CALENDAR"
 
+# 預設系統通行密碼預設值（當 json 尚未設定時備援）
 ADMIN_PASSWORD = "Lf090000"
 CREW_ACCESS_PASSWORD = "0096"
-
-# 💡 註：使用者白名單已全面改由管理員後台動態控制 (data/allowed_users.json)
 
 # 通用請假代碼集
 LEAVE_CODES = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
