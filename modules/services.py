@@ -135,7 +135,7 @@ def is_user_allowed(selected_unit: str, emp_id: Any) -> Tuple[bool, Optional[Dic
 # =========================================================
 # 3. 相容介面與輔助函式
 # =========================================================
-def get_current_role_files() -> Dict[str, str]:
+def get_current_role_files() -> Dict[str, Any]:
     """取得目前所屬單位的各大表檔案路徑字典 (連動 config.UNITS)"""
     current_unit = st.session_state.get("current_unit", "TTN")
     return UNITS.get(current_unit, UNITS.get("TTN", {}))
@@ -145,7 +145,8 @@ def get_schedule_range() -> str:
     """取得當前班表涵蓋的時間區間範圍"""
     role_files = get_current_role_files()
     for path in role_files.values():
-        if os.path.exists(path):
+        # 修正：加上 isinstance(path, str) 排除 "mapping" 字典，避免 TypeError
+        if isinstance(path, str) and os.path.exists(path):
             try:
                 df = safe_read_excel(path, header=3)
                 df.columns = [str(c).strip() for c in df.columns]
@@ -175,7 +176,8 @@ def verify_crew_membership(selected_unit: str, emp_id: str) -> bool:
     # 2. 檢查 Excel 大表中是否有該員編
     unit_files = UNITS.get(selected_unit, {})
     for role_name, file_path in unit_files.items():
-        if os.path.exists(file_path):
+        # 修正：加上 isinstance(file_path, str) 排除 "mapping" 字典
+        if isinstance(file_path, str) and os.path.exists(file_path):
             try:
                 df = safe_read_excel(file_path, header=3)
                 for _, row in df.iterrows():
@@ -230,7 +232,8 @@ def process_file_data(
 
     # 1. 在三大表（駕駛、列車長、服勤員）中比對員編或姓名
     for role, path in role_files.items():
-        if os.path.exists(path):
+        # 修正：加上 isinstance(path, str) 排除 "mapping" 字典
+        if isinstance(path, str) and os.path.exists(path):
             try:
                 df = safe_read_excel(path, header=3)
                 df.columns = [str(c).strip() for c in df.columns]
