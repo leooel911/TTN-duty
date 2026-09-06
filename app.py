@@ -12,7 +12,7 @@ from modules.services import (
 from modules.user_views import render_user_home
 from modules.utils import format_display_name, get_employee_name, log_activity
 
-# 🔑 載入全域動態設定
+# 🔑 載入全域動態設定 (每次 Rerun 時重新載入最新設定)
 sys_cfg = load_system_config()
 VIP_PASS_CODE = sys_cfg.get("vip_password") or sys_cfg.get("vip_pass_code") or "0900"
 CREW_PASS_CODE = sys_cfg.get("user_password") or sys_cfg.get("crew_pass_code") or CREW_ACCESS_PASSWORD
@@ -144,7 +144,6 @@ if not st.session_state["authenticated"] and not st.session_state.get(
             if btn_auth:
                 clean_emp = entered_emp.strip().upper()
 
-                # ⚡ 1. 測試員 / VIP 通行碼比對
                 if entered_key == VIP_PASS_CODE:
                     target_emp_id = clean_emp if clean_emp else DEFAULT_EMP_ID
                     st.session_state["authenticated"] = True
@@ -170,7 +169,6 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                 elif not clean_emp:
                     st.error("請輸入有效的員編")
 
-                # 🔐 2. 管理員登入比對 (使用即時動態密碼 ADMIN_PASS_CODE)
                 elif entered_key == ADMIN_PASS_CODE:
                     st.session_state["admin_logged_in"] = True
                     st.session_state["current_unit"] = selected_unit
@@ -180,7 +178,6 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                     log_activity("管理員登入後台")
                     st.rerun()
 
-                # 🎫 3. 通用授權碼登入比對 (使用即時動態密碼 CREW_PASS_CODE)
                 elif entered_key == CREW_PASS_CODE:
                     if clean_emp == "A":
                         st.session_state["authenticated"] = True
@@ -259,15 +256,22 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown(
-    """
-<div class="test-env-banner">
-    <div class="test-env-title">Beta測試環境運行中（BETA TEST ENVIRONMENT）</div>
-    <div class="test-env-sub">目前為內部測試階段｜本頁末端可聯繫後台管理者</div>
-</div>
-""",
-    unsafe_allow_html=True,
-)
+# ---------------------------------------------------------
+# 💡 核心修正：動態公告與橫幅標語渲染 (連動 sys_config)
+# ---------------------------------------------------------
+enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
+announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫後台管理者")
+
+if enable_beta_banner:
+    st.markdown(
+        f"""
+    <div class="test-env-banner">
+        <div class="test-env-title">Beta測試環境運行中（BETA TEST ENVIRONMENT）</div>
+        <div class="test-env-sub">{announcement_msg}</div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
 
 # ---------------------------------------------------------
 # 管理員二次密碼驗證彈窗
@@ -337,7 +341,7 @@ st.markdown(
 )
 
 # ---------------------------------------------------------
-# 頁尾功能按鈕 (全站統一單一頁尾，徹底解決重複渲染問題)
+# 頁尾功能按鈕
 # ---------------------------------------------------------
 col_f1, col_f2 = st.columns(2)
 
