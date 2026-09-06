@@ -33,46 +33,58 @@ from modules.utils import (
 )
 
 
-# --- 廣義全域智慧自動偵測登入者員編函式 ---
+# --- 全方位自動抓取登入頁面與 Session 中的使用者員編 ---
 def get_login_user_id():
-    """自動掃描 Session State 抓取登入者員編 (例如 A019702) 或姓名"""
-    # 1. 優先檢查常見的 Key 名稱
-    candidate_keys = [
-        "user_id", "emp_id", "username", "account", "user_code", 
-        "login_user", "current_user", "logged_in_user", "user_name",
-        "employee_id", "emp_no", "staff_id", "id"
+    """自動掃描登入頁面輸入框 Key 與 Session State 抓取員編"""
+    # 1. 優先掃描登入頁面常見的元件 Key
+    login_widget_keys = [
+        "login_emp_id", "login_user", "login_id", "login_account", "login_username",
+        "emp_id", "user_id", "username", "account", "user_code", "emp_no",
+        "input_emp_id", "user_input", "login_user_id", "logged_in_user", "current_user"
     ]
-    for key in candidate_keys:
+    for key in login_widget_keys:
         val = st.session_state.get(key)
-        if val and isinstance(val, str) and val.strip():
-            return val.strip()
+        if val and isinstance(val, str) and val.strip() and val.strip().upper() != "A":
+            clean_val = val.strip().upper()
+            if clean_val.isdigit() and len(clean_val) == 6:
+                return f"A{clean_val}"
+            return clean_val
 
-    # 2. 檢查字典結構 (例如 st.session_state["user"]、st.session_state["auth"] 等)
-    for key in ["user", "user_info", "auth_user", "login_info", "logged_in_user", "auth"]:
+    # 2. 檢查字典結構 (例如 st.session_state["user"]、st.session_state["login_info"])
+    for key in ["user", "user_info", "auth_user", "login_info", "auth", "login_data"]:
         val = st.session_state.get(key)
         if isinstance(val, dict):
-            for k in ["emp_id", "user_id", "id", "username", "account", "emp_no", "name", "user_name"]:
-                res = val.get(k)
-                if res and isinstance(res, str) and res.strip():
-                    return res.strip()
-        elif isinstance(val, str) and val.strip():
-            return val.strip()
+            for sub_k in ["emp_id", "user_id", "id", "username", "account", "emp_no", "name", "user_name"]:
+                res = val.get(sub_k)
+                if res and isinstance(res, str) and res.strip() and res.strip().upper() != "A":
+                    clean_res = res.strip().upper()
+                    if clean_res.isdigit() and len(clean_res) == 6:
+                        return f"A{clean_res}"
+                    return clean_res
+        elif isinstance(val, str) and val.strip() and val.strip().upper() != "A":
+            return val.strip().upper()
 
-    # 3. 終極全域掃描：掃描 Session State 中符合台灣高鐵員編格式 (如 A019702) 的字串
+    # 3. 深度全域掃描：搜尋符合高鐵員編格式 (A+6位數字 或 純6位數字) 的內容
     try:
         for k, v in st.session_state.items():
-            if k in ["user_input_field", "last_app_mode"]:
+            if k in ["user_input_field", "last_app_mode", "should_reset_input_to_A"]:
                 continue
-            if isinstance(v, str):
-                match = re.search(r"\b[A-Za-z]\d{6}\b", v)
-                if match:
-                    return match.group(0).upper()
+            if isinstance(v, str) and v.strip() and v.strip().upper() != "A":
+                m1 = re.search(r"[A-Za-z]\d{6}", v)
+                if m1:
+                    return m1.group(0).upper()
+                m2 = re.search(r"\b\d{6}\b", v)
+                if m2:
+                    return f"A{m2.group(0)}"
             elif isinstance(v, dict):
                 for sub_v in v.values():
-                    if isinstance(sub_v, str):
-                        match = re.search(r"\b[A-Za-z]\d{6}\b", sub_v)
-                        if match:
-                            return match.group(0).upper()
+                    if isinstance(sub_v, str) and sub_v.strip() and sub_v.strip().upper() != "A":
+                        m1 = re.search(r"[A-Za-z]\d{6}", sub_v)
+                        if m1:
+                            return m1.group(0).upper()
+                        m2 = re.search(r"\b\d{6}\b", sub_v)
+                        if m2:
+                            return f"A{m2.group(0)}"
     except Exception:
         pass
 
@@ -318,16 +330,21 @@ def render_user_home():
             unsafe_allow_html=True,
         )
 
-        # 🔑 1. 前置狀態處理：確保初始化或重置時能正確抓取登入員編
+        # 🔑 1. 首次進入此頁面時，強制抓取登入頁面輸入的員編寫入預設值
+        if "login_auto_filled" not in st.session_state:
+            login_id = get_login_user_id()
+            if login_id and login_id != "A":
+                st.session_state["user_input_field"] = login_id
+            st.session_state["login_auto_filled"] = True
+
+        # 🔑 2. 處理執行查詢後的延遲重置邏輯
         if st.session_state.get("should_reset_input_to_A"):
             st.session_state["user_input_field"] = "A"
             st.session_state["should_reset_input_to_A"] = False
-        else:
-            current_val = st.session_state.get("user_input_field", "")
-            if not current_val or not str(current_val).strip():
-                st.session_state["user_input_field"] = get_login_user_id()
+        elif "user_input_field" not in st.session_state:
+            st.session_state["user_input_field"] = get_login_user_id()
 
-        # 🔑 2. 使用 st.form 實現「輸入完 Enter 直接繪製」
+        # 🔑 3. 使用 st.form 實現「輸入完 Enter 直接繪製」
         with st.form(key="draw_schedule_form", border=False):
             target_input = st.text_input(
                 "輸入 員編 或 姓名 (例如: A023300 or 波莉)",
