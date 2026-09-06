@@ -19,7 +19,7 @@ from modules.utils import (
 
 
 # =========================================================
-# 🛠️ 1. 資料處理與輔助工具函式
+#  1. 資料處理與輔助工具函式
 # =========================================================
 def clear_logs():
     """徹底清空全站系統操作日誌檔"""
@@ -141,7 +141,7 @@ def get_all_crew_options(unit_code):
 
 
 # =========================================================
-# 👑 2. 管理員後台主視圖 (Admin Panel)
+#  2. 管理員後台主視圖 (Admin Panel)
 # =========================================================
 def render_admin_panel():
     current_unit = st.session_state.get("current_unit", "TTN")
@@ -240,9 +240,9 @@ def render_admin_panel():
         st.info("開啟維護後，一般組員將無法存取該功能，管理員仍可登入後台預覽。")
 
         modules_def = [
-            ("producer", "📊 個人月班表圖檔生成系統"),
-            ("window_filter", "🔄 換班｜選擇換班日期快篩"),
-            ("exchange_filter", "🌴 換假｜選擇換假日期快篩"),
+            ("producer", " 個人月班表圖檔生成系統"),
+            ("window_filter", " 換班｜選擇換班日期快篩"),
+            ("exchange_filter", " 換假｜選擇換假日期快篩"),
         ]
 
         for m_key, m_title in modules_def:
