@@ -268,7 +268,7 @@ def show_feedback_modal() -> None:
                 if fname.endswith(".txt"):
                     fpath = os.path.join(FEEDBACK_IMG_DIR, fname)
                     try:
-                        with open(fpath, "r", encoding="utf-8") as f:
+                        with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
                             content = f.read()
                             lines = content.split("\n")
                             info: Dict[str, str] = {}
@@ -361,6 +361,11 @@ def show_crew_schedule_modal(
             )
             st.success(f"已成功載入【{emp_name}】({emp_id}) 之完整月班表")
             render_zoomable_image(buf)
+
+            # 修正：確認 BytesIO 指針復位以提供穩定下載
+            if hasattr(buf, "seek"):
+                buf.seek(0)
+
             st.download_button(
                 "下載此組員月班表圖檔",
                 data=buf,
