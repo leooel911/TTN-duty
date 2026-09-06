@@ -160,102 +160,6 @@ def reset_ex_search():
 
 
 def render_user_home():
-    # 精準 DOM CSS：實現卡片與 Streamlit 原生按鈕 100% 無縫縫合 + 強制 Radio 選單滿格置中
-    st.markdown(
-        """
-        <style>
-        .crew-card-top {
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(56, 189, 248, 0.3) !important;
-            border-bottom: none !important;
-            border-top-left-radius: 10px !important;
-            border-top-right-radius: 10px !important;
-            padding: 12px;
-        }
-        .crew-card-top-warn {
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid #F43F5E !important;
-            border-bottom: none !important;
-            border-top-left-radius: 10px !important;
-            border-top-right-radius: 10px !important;
-            padding: 12px;
-        }
-
-        /* 縫合卡片下方的 Streamlit 按鈕 */
-        div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button,
-        div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button {
-            border-top-left-radius: 0px !important;
-            border-top-right-radius: 0px !important;
-            border-bottom-left-radius: 10px !important;
-            border-bottom-right-radius: 10px !important;
-            margin-top: -16px !important;
-            box-shadow: none !important;
-            font-weight: 700 !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button {
-            border: 1px solid rgba(56, 189, 248, 0.3) !important;
-            border-top: none !important;
-            background-color: rgba(15, 23, 42, 0.85) !important;
-            color: #38BDF8 !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button {
-            border: 1px solid #F43F5E !important;
-            border-top: none !important;
-            background-color: rgba(15, 23, 42, 0.85) !important;
-            color: #FDA4AF !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button:hover,
-        div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button:hover {
-            background-color: rgba(30, 41, 59, 0.95) !important;
-        }
-
-        /* 📱 強制 Radio 最外層與內層容器寬度 100% 滿格 */
-        div[data-testid="stRadio"],
-        div[data-testid="stRadio"] > div,
-        div[data-testid="stRadio"] > div[role="radiogroup"] {
-            width: 100% !important;
-            max-width: 100% !important;
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 10px !important;
-        }
-
-        /* 📱 強制 Radio 選項按鈕 100% 滿格且內容居中 */
-        div[data-testid="stRadio"] div[role="radiogroup"] label,
-        div[data-testid="stRadio"] label[data-baseweb="radio"] {
-            width: 100% !important;
-            max-width: 100% !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            background: rgba(15, 23, 42, 0.6) !important;
-            border: 1px solid rgba(56, 189, 248, 0.25) !important;
-            border-radius: 10px !important;
-            padding: 12px 16px !important;
-            margin: 0 !important;
-            box-sizing: border-box !important;
-            cursor: pointer !important;
-            transition: all 0.2s ease-in-out !important;
-        }
-
-        div[data-testid="stRadio"] div[role="radiogroup"] label:hover,
-        div[data-testid="stRadio"] label[data-baseweb="radio"]:hover {
-            border-color: #38BDF8 !important;
-            background: rgba(30, 41, 59, 0.85) !important;
-        }
-
-        /* 圓點與文字的置中細節處理 */
-        div[data-testid="stRadio"] label div[data-testid="stMarkdownContainer"] {
-            text-align: center !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
     active_files = get_current_role_files()
     current_unit_label = st.session_state.get("current_unit", "TTN")
     missing_files = [
@@ -400,11 +304,15 @@ def render_user_home():
             else:
                 st.session_state["should_reset_input_to_A"] = True
 
-                log_activity(f"生成個人班表圖檔查詢: {current_input}")
                 try:
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(
                         current_input
                     )
+                    log_activity(
+                        "個人班表繪製",
+                        f"單位:{current_unit_label} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
+                    )
+
                     with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
                         buf = render_schedule_figure(
                             start_dt,
@@ -424,6 +332,7 @@ def render_user_home():
                         mime="image/png",
                     )
                 except Exception as e:
+                    log_activity("個人班表繪製失敗", f"單位:{current_unit_label} | 查詢關鍵字:{current_input} | 錯誤:{e}")
                     st.error(f"錯誤：{e}")
 
     # ==================== 模式二：換班｜選擇換班日期 ====================
@@ -571,10 +480,6 @@ def render_user_home():
                     )
 
                 if st.button("搜尋可換班組員名單", key="btn_window_search"):
-                    log_activity(
-                        f"換班快篩 [{current_unit_label} - {selected_role}]"
-                        f" 日期:{target_date}"
-                    )
                     all_cols_list = list(df_search.columns[2:])
                     raw_candidates = []
 
@@ -668,6 +573,14 @@ def render_user_home():
                         key=lambda x: (str(x["Sign-In"]), str(x["Sign-Out"])),
                     )
 
+                    # 🔑 記錄包含詳細參數的換班快篩 LOG
+                    log_activity(
+                        "換班日期快篩",
+                        f"單位:{current_unit_label} | 職位:{selected_role} | 日期:{target_date} | "
+                        f"時段:{min_time}~{max_time_sel} | 僅正線:{only_main_line} | "
+                        f"僅長班:{only_long_shift} | 命中數:{len(filtered_results)}筆"
+                    )
+
                     st.markdown(
                         f"### 換班可選人員名單（共符合 {len(filtered_results)} 筆）"
                     )
@@ -756,6 +669,7 @@ def render_user_home():
                                     key=f"win_btn_{clean_id}_{idx}",
                                     use_container_width=True,
                                 ):
+                                    log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_name}({clean_id})")
                                     show_crew_schedule_modal(
                                         clean_id,
                                         current_unit_label,
@@ -938,10 +852,6 @@ def render_user_home():
                     )
 
                     if st.button("搜尋可換假組員名單", key="btn_ex_search"):
-                        log_activity(
-                            f"換假快篩 [{current_unit_label} - {selected_role}]"
-                            f" 想休:{target_date} 還假:{return_date}"
-                        )
                         raw_candidates = []
                         all_cols = list(df_ex.columns)
 
@@ -1106,6 +1016,14 @@ def render_user_home():
                                 reverse=True,
                             )
 
+                        # 🔑 記錄包含詳細條件的換假快篩 LOG
+                        log_activity(
+                            "換假日期快篩",
+                            f"單位:{current_unit_label} | 職位:{selected_role} | 想休:{target_date} | "
+                            f"還假:{return_date} | 時間限制:{return_time_filter} | "
+                            f"排序:{sort_order} | 嚴格連六:{strict_limit} | 命中數:{len(filtered_candidates)}筆"
+                        )
+
                         st.markdown(
                             f"### 換假可選人員名單（共 {len(filtered_candidates)} 位）"
                         )
@@ -1218,6 +1136,7 @@ def render_user_home():
                                         key=f"ex_btn_{clean_cand_id}_{idx}",
                                         use_container_width=True,
                                     ):
+                                        log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
                                         show_crew_schedule_modal(
                                             clean_cand_id,
                                             current_unit_label,
