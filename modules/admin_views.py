@@ -70,7 +70,7 @@ def create_backup_zip() -> io.BytesIO:
 
 
 def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
-    """讀取指定營運單位的白名單（嚴格獨立隔離）"""
+    """讀取指定營運單位的白名單（嚴格獨立隔離並統一 Key 大寫）"""
     whitelist_path = WHITELIST_FILE
     full_data: Dict[str, Any] = {}
 
@@ -78,8 +78,9 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
         try:
             with open(whitelist_path, "r", encoding="utf-8") as f:
                 full_data = json.load(f)
+                # 舊版扁平結構相容：若無單位層級 Key，自動轉存至所有單位
                 if full_data and not any(k in UNITS for k in full_data.keys()):
-                    full_data = {"TTN": full_data}
+                    full_data = {u: full_data.copy() for u in UNITS.keys()}
         except Exception:
             full_data = {}
 
@@ -95,17 +96,23 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
         if unit_code == "TTN":
             unit_default["A023300"] = {
                 "name": "波莉",
-                "role": "VIP_USER (全域通行)",
+                "role": "VIP_USER",
                 "note": "TTN 預設測試員",
                 "created_at": datetime.now().strftime("%Y-%m-%d"),
             }
         full_data[unit_code] = unit_default
 
-    return full_data.get(unit_code, {})
+    # 確保回傳的字典 Key 一律為修飾後的 uppercase 字串
+    raw_unit_data = full_data.get(unit_code, {})
+    normalized_data = {}
+    for uid, info in raw_unit_data.items():
+        normalized_data[str(uid).strip().upper()] = info
+
+    return normalized_data
 
 
 def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
-    """儲存特定營運單位的白名單"""
+    """儲存特定營運單位的白名單並即時刷新全站 Streamlit 快取"""
     whitelist_path = WHITELIST_FILE
     os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -115,14 +122,22 @@ def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
             with open(whitelist_path, "r", encoding="utf-8") as f:
                 full_data = json.load(f)
                 if full_data and not any(k in UNITS for k in full_data.keys()):
-                    full_data = {"TTN": full_data}
+                    full_data = {u: full_data.copy() for u in UNITS.keys()}
         except Exception:
             full_data = {}
 
-    full_data[unit_code] = unit_data
+    # 格式化所有員編 Key 為大寫
+    normalized_data = {}
+    for uid, info in unit_data.items():
+        normalized_data[str(uid).strip().upper()] = info
+
+    full_data[unit_code] = normalized_data
 
     with open(whitelist_path, "w", encoding="utf-8") as f:
         json.dump(full_data, f, ensure_ascii=False, indent=2)
+
+    # 🔥 關鍵修復：每次寫入檔案後，強制清除 Streamlit 快取讓前台立刻讀到新白名單
+    st.cache_data.clear()
 
 
 @st.cache_data(ttl=60)
@@ -138,9 +153,9 @@ def get_all_crew_options(unit_code: str) -> List[Dict[str, str]]:
             try:
                 df = safe_read_excel(file_path, header=3)
                 for _, row in df.iterrows():
-                    uid = str(row.iloc[0]).strip()
+                    uid = str(row.iloc[0]).strip().upper()
                     uname = str(row.iloc[1]).strip()
-                    if uid and uid.upper() not in ["NAN", "NONE", "", "員編", "代碼"]:
+                    if uid and uid not in ["NAN", "NONE", "", "員編", "代碼"]:
                         if uid not in seen_uids:
                             seen_uids.add(uid)
                             label = f"{uid} - {uname} ({role_name})"
@@ -480,15 +495,15 @@ def render_admin_panel() -> None:
                 on_change=sync_crew_to_inputs,
             )
 
-            default_uid = str(selected_row_data["員編/帳號"]) if selected_row_data else ""
+            default_uid = str(selected_row_data["員編/帳號"]).upper() if selected_row_data else ""
             default_uname = str(selected_row_data["姓名"]) if selected_row_data else ""
-            default_role = str(selected_row_data["身份權限"]) if selected_row_data else "VIP_USER (全域通行)"
+            default_role = str(selected_row_data["身份權限"]) if selected_row_data else "TESTER"
             default_note = str(selected_row_data["備註"]) if selected_row_data else ""
 
             edit_uid = st.text_input(
                 "員編 / 帳號 ID",
                 value=default_uid,
-                placeholder="例: A023300",
+                placeholder="例: A026048",
                 key=f"input_wl_uid_{current_unit}",
                 disabled=True if selected_row_data else False,
             )
@@ -500,7 +515,7 @@ def render_admin_panel() -> None:
                 key=f"input_wl_uname_{current_unit}",
             )
 
-            role_options = ["VIP_USER (全域通行)", "ADMIN", "TESTER"]
+            role_options = ["TESTER", "VIP_USER (全域通行)", "ADMIN"]
             role_idx = role_options.index(default_role) if default_role in role_options else 0
             edit_role = st.selectbox(
                 "設定使用者權限身份",
@@ -528,7 +543,7 @@ def render_admin_panel() -> None:
                     use_container_width=True,
                     key=f"btn_save_wl_{current_unit}",
                 ):
-                    target_uid = edit_uid.strip()
+                    target_uid = edit_uid.strip().upper()  # 強制轉成大寫 Key
                     if target_uid:
                         whitelist_data[target_uid] = {
                             "name": edit_uname.strip() or "未命名",
@@ -554,7 +569,7 @@ def render_admin_panel() -> None:
                         use_container_width=True,
                         key=f"btn_del_wl_{current_unit}",
                     ):
-                        target_uid = str(selected_row_data["員編/帳號"])
+                        target_uid = str(selected_row_data["員編/帳號"]).strip().upper()
                         if target_uid in whitelist_data:
                             del whitelist_data[target_uid]
                             save_whitelist(current_unit, whitelist_data)
