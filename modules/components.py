@@ -61,34 +61,55 @@ def render_zoomable_image(image_source, height=650):
 
 
 # =========================================================
-# 📢 國定假日提醒元件 (支援半形/全形括號解析)
+# 📢 國定假日提醒元件 (支援當週全域假日掃描)
 # =========================================================
-def show_holiday_notice(selected_date_str):
-    """偵測選擇之日期是否包含國定假日標籤並渲染提示條 (完全無貼圖/圖示)"""
-    if not selected_date_str:
+def show_holiday_notice(holiday_info, week_str=None):
+    """
+    偵測選擇之當週區間是否包含國定假日並渲染提示條 (無貼圖/圖示純文字版)
+    holiday_info 可傳入：
+    1. 串列 (List): 例如 ["9/25 (中秋節)"]
+    2. 字串 (String): 例如 "9/25 (中秋節)"
+    """
+    if not holiday_info:
         return
 
-    # 將全形括號轉為半形括號，提高解析相容性
-    date_str = str(selected_date_str).replace("（", "(").replace("）", ")")
-    if "(" in date_str and ")" in date_str:
-        try:
-            holiday_name = date_str.split("(")[1].split(")")[0].strip()
-            if holiday_name:
-                st.markdown(
-                    f"""
-                    <div style="background-color: rgba(234, 179, 8, 0.12); border-left: 4px solid #EAB308; padding: 10px 14px; margin-top: 8px; margin-bottom: 12px; border-radius: 4px;">
-                        <div style="color: #FACC15; font-weight: 700; font-size: 13px; font-family: monospace;">
-                            國定假日提醒：{holiday_name}
-                        </div>
-                        <div style="color: #CBD5E1; font-size: 12px; margin-top: 3px; font-family: monospace;">
-                            您選擇的日期為國定假日，進行換班或換假申請時，請注意DO2W相關出勤規範喔。
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-        except Exception:
-            pass
+    holidays = []
+    if isinstance(holiday_info, list):
+        holidays = holiday_info
+    elif isinstance(holiday_info, str):
+        if "(" in holiday_info or "（" in holiday_info:
+            holidays = [holiday_info]
+
+    if not holidays:
+        return
+
+    # 格式化假日字串 (例如 "9/25 (中秋節)" -> "中秋節 (9/25)")
+    formatted_names = []
+    for h in holidays:
+        clean_h = str(h).replace("（", "(").replace("）", ")")
+        if "(" in clean_h and ")" in clean_h:
+            d_part = clean_h.split("(")[0].strip()
+            h_name = clean_h.split("(")[1].split(")")[0].strip()
+            formatted_names.append(f"{h_name} ({d_part})")
+        else:
+            formatted_names.append(clean_h)
+
+    holiday_display_str = "、".join(formatted_names)
+    week_context_str = f"（當週區間：{week_str}）" if week_str else ""
+
+    st.markdown(
+        f"""
+        <div style="background-color: rgba(234, 179, 8, 0.12); border-left: 4px solid #EAB308; padding: 10px 14px; margin-top: 8px; margin-bottom: 12px; border-radius: 6px;">
+            <div style="color: #FACC15; font-weight: 700; font-size: 13px; font-family: monospace;">
+                國定假日提醒：當週包含 {holiday_display_str} {week_context_str}
+            </div>
+            <div style="color: #CBD5E1; font-size: 12px; margin-top: 4px; font-family: monospace;">
+                您選擇的日期當週包含國定假日，進行換班或換假申請時，請特別注意 DO2W 出勤與連續上班天數（連七警示）等相關規範。
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 # =========================================================
