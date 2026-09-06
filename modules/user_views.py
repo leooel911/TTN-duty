@@ -388,6 +388,8 @@ def render_user_home():
                             """,
                             unsafe_allow_html=True,
                         )
+                except Exception as e:
+                    st.error(f"繪製班表時發生錯誤：{e}")
 
     # ==================== 模式二：換班｜選擇換班日期 ====================
     elif app_mode == "換班｜選擇換班日期":
