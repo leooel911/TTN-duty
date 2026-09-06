@@ -1,18 +1,22 @@
 import os
 from datetime import timedelta, timezone
+from typing import Dict, List, Tuple
 
-TAIWAN_TZ = timezone(timedelta(hours=8))
+# 時區設定
+TAIWAN_TZ: timezone = timezone(timedelta(hours=8))
 
-DATA_DIR = os.path.join(os.getcwd(), "data")
-FEEDBACK_IMG_DIR = os.path.join(DATA_DIR, "feedback_uploads")
-LOG_FILE = os.path.join(DATA_DIR, "activity_log.txt")
+# 基礎路徑定義
+DATA_DIR: str = os.path.join(os.getcwd(), "data")
+FEEDBACK_IMG_DIR: str = os.path.join(DATA_DIR, "feedback_uploads")
+LOG_FILE: str = os.path.join(DATA_DIR, "activity_log.txt")
 
 # 🔑 全站統一設定檔與白名單路徑
-SYSTEM_CONFIG_FILE = os.path.join(DATA_DIR, "system_config.json")
-ALLOWED_USERS_FILE = os.path.join(DATA_DIR, "allowed_users.json")
-WHITELIST_FILE = os.path.join(DATA_DIR, "whitelist.json")
+SYSTEM_CONFIG_FILE: str = os.path.join(DATA_DIR, "system_config.json")
+ALLOWED_USERS_FILE: str = os.path.join(DATA_DIR, "allowed_users.json")
+WHITELIST_FILE: str = os.path.join(DATA_DIR, "whitelist.json")
 
-UNITS = {
+# 各基地所屬單位班表與 Mapping 映射路徑設定
+UNITS: Dict[str, Dict[str, Any]] = {
     "TTN": {
         "駕駛": os.path.join(DATA_DIR, "TTN_TD.xlsx"),
         "列車長": os.path.join(DATA_DIR, "TTN_TM.xlsx"),
@@ -45,7 +49,8 @@ UNITS = {
     },
 }
 
-NATIONAL_HOLIDAYS = {
+# 國定假日標記對照字典
+NATIONAL_HOLIDAYS: Dict[str, str] = {
     "1/1": "元旦",
     "2/16": "除夕",
     "2/17": "初一",
@@ -63,34 +68,41 @@ NATIONAL_HOLIDAYS = {
     "12/25": "行憲紀念日",
 }
 
-TRANSPORT_PERIODS = {
+# 疏運期間標記字典
+TRANSPORT_PERIODS: Dict[str, str] = {
     "9/24-9/29": "中秋疏運",
     "10/4-10/10": "雙十節疏運",
     "10/25-10/31": "光復節疏運",
 }
 
-TITLE = "TRAIN CREW DUTY CALENDAR"
+TITLE: str = "TRAIN CREW DUTY CALENDAR"
 
 # 預設系統通行密碼預設值（當 json 尚未設定時備援）
-ADMIN_PASSWORD = "Lf090000"
-CREW_ACCESS_PASSWORD = "0096"
+ADMIN_PASSWORD: str = "Lf090000"
+CREW_ACCESS_PASSWORD: str = "0096"
 
 # 通用請假代碼集
-LEAVE_CODES = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
+LEAVE_CODES: List[str] = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
 
-C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#475569", "#F1F5F9"
-C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
-C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
-C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = (
-    "#881337",
-    "#9A3412",
-    "#7C2D12",
-    "#991B1B",
-    "#4C1D95",
-)
-C_TOWN_TXT = "#000000"
+# 班表圖像渲染色調定義 (Matplotlib / PIL)
+C_HDR: str = "#0F172A"
+C_BORDER: str = "#475569"
+C_EMPTY: str = "#F1F5F9"
+C_WORK_BG: str = "#FFFFFF"
+C_WEEKEND_BG: str = "#F8FAFC"
+C_DO_BG: str = "#FFE4E6"
+C_PAY_BG: str = "#FFEDD5"
+C_TOWN_BG: str = "#CBD5E1"
 
-CUSTOM_CSS = """
+C_DO_TXT: str = "#881337"
+C_PAY_TXT: str = "#9A3412"
+C_HOLI_TXT: str = "#7C2D12"
+C_OT_TXT: str = "#991B1B"
+C_NOTE_TXT: str = "#4C1D95"
+C_TOWN_TXT: str = "#000000"
+
+# 全站 CSS 美化樣式
+CUSTOM_CSS: str = """
 <style>
     /* 全域隱藏預設頁眉頁尾 */
     header[data-testid="stHeader"] { background: transparent !important; }
