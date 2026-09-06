@@ -9,7 +9,6 @@ import streamlit as st
 from config import DATA_DIR, LOG_FILE, UNITS, WHITELIST_FILE
 from modules.services import load_system_config, save_system_config
 from modules.utils import (
-    get_employee_name,
     get_file_mtime_str,
     is_module_maintenance,
     load_activity_logs,
@@ -277,11 +276,18 @@ def render_admin_panel():
                     st.rerun()
 
     # ---------------------------------------------------------
-    # Tab 3: 白名單與組員權限管理 (修正 Index 防呆安全邏輯)
+    # Tab 3: 白名單與組員權限管理 (採用 Key Versioning 徹底解決重置衝突)
     # ---------------------------------------------------------
     with tab3:
         st.markdown(f"### 👤 白名單與組員權限管理 [{current_unit}]")
         whitelist_data = load_whitelist(current_unit)
+
+        # 💡 表格 Key 版本控制
+        ver_key = f"wl_reset_ver_{current_unit}"
+        if ver_key not in st.session_state:
+            st.session_state[ver_key] = 0
+        current_ver = st.session_state[ver_key]
+        table_key = f"wl_table_select_{current_unit}_{current_ver}"
 
         col_wl_left, col_wl_right = st.columns([1.3, 1])
 
@@ -333,18 +339,14 @@ def render_admin_panel():
                     height=400,
                     selection_mode="single-row",
                     on_select="rerun",
-                    key=f"wl_table_select_{current_unit}",
+                    key=table_key,
                 )
 
                 selected_rows = event.selection.get("rows", [])
                 if selected_rows:
                     selected_idx = selected_rows[0]
-                    # 🛡️ 核心防呆：只有在 selected_idx 屬於當前 filtered_df 範圍內時才取值
                     if 0 <= selected_idx < len(filtered_df):
                         selected_row_data = filtered_df.iloc[selected_idx].to_dict()
-                    else:
-                        # 否則清空舊的選取 Session 紀錄
-                        st.session_state[f"wl_table_select_{current_unit}"] = {"selection": {"rows": []}}
             else:
                 st.info(f"目前【{current_unit}】尚無匹配的白名單人員紀錄。")
 
@@ -361,7 +363,7 @@ def render_admin_panel():
             with col_mode_btn:
                 if selected_row_data:
                     if st.button("➕ 切換新增", key=f"btn_reset_add_{current_unit}", use_container_width=True):
-                        st.session_state[f"wl_table_select_{current_unit}"] = {"selection": {"rows": []}}
+                        st.session_state[ver_key] += 1
                         st.rerun()
 
             crew_options = get_all_crew_options(current_unit)
@@ -442,6 +444,7 @@ def render_admin_panel():
                         log_activity(
                             f"管理員更新 [{current_unit}] 組員權限：{target_uid} -> {edit_role}"
                         )
+                        st.session_state[ver_key] += 1
                         st.success(f"已成功儲存/更新【{current_unit}】權限：{target_uid}")
                         st.rerun()
                     else:
@@ -461,8 +464,8 @@ def render_admin_panel():
                             save_whitelist(current_unit, whitelist_data)
                             log_activity(f"管理員移除 [{current_unit}] 組員權限：{target_uid}")
                             
-                            # 🛡️ 關鍵性修正：刪除後徹底清空表格選取 state，避免下一輪存取溢出 index
-                            st.session_state[f"wl_table_select_{current_unit}"] = {"selection": {"rows": []}}
+                            # 🛡️ 遞增版本號，下一輪強制產生新 Table，乾淨完成清空
+                            st.session_state[ver_key] += 1
                             
                             st.success(f"已成功移除【{current_unit}】權限：{target_uid}")
                             st.rerun()
