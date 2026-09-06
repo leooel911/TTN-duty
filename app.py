@@ -354,10 +354,11 @@ with col_f1:
         show_feedback_modal()
 
 with col_f2:
+    # 🔑 登入狀態顯示 ADMIN PANEL [Leo]，未登入狀態顯示 ADMIN PANEL [C.L.F]
     admin_btn_label = (
-        f"ADMIN PANEL [{current_unit_label}]"
+        "ADMIN PANEL [Leo]"
         if st.session_state.get("admin_logged_in", False)
-        else f"C.L.F EDITION [{current_unit_label}]"
+        else "ADMIN PANEL [C.L.F]"
     )
     if st.button(
         admin_btn_label, key="btn_footer_admin_right", use_container_width=True
