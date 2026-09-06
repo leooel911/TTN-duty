@@ -12,7 +12,7 @@ from modules.services import (
 from modules.user_views import render_user_home
 from modules.utils import format_display_name, get_employee_name, log_activity
 
-# 🔑 載入全域動態設定（修正原本無法動態比對後台新密碼的 Bug）
+# 🔑 載入全域動態設定
 sys_cfg = load_system_config()
 VIP_PASS_CODE = sys_cfg.get("vip_password") or sys_cfg.get("vip_pass_code") or "0900"
 CREW_PASS_CODE = sys_cfg.get("user_password") or sys_cfg.get("crew_pass_code") or CREW_ACCESS_PASSWORD
@@ -337,7 +337,7 @@ st.markdown(
 )
 
 # ---------------------------------------------------------
-# 頁尾功能按鈕 (問題回報 / 管理員通道)
+# 頁尾功能按鈕 (全站統一單一頁尾，徹底解決重複渲染問題)
 # ---------------------------------------------------------
 col_f1, col_f2 = st.columns(2)
 
