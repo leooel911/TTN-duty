@@ -32,7 +32,7 @@ if "authenticated" not in st.session_state:
 if "admin_logged_in" not in st.session_state:
     st.session_state["admin_logged_in"] = False
 if "user_input_field" not in st.session_state:
-    st.session_state["user_input_field"] = DEFAULT_EMP_ID
+    st.session_state["user_input_field"] = "A"
 if "show_admin_login" not in st.session_state:
     st.session_state["show_admin_login"] = False
 if "inspect_emp_target" not in st.session_state:
@@ -42,7 +42,7 @@ if "nav_mode" not in st.session_state:
 if "page" not in st.session_state:
     st.session_state["page"] = "user"
 if "current_user_id" not in st.session_state:
-    st.session_state["current_user_id"] = DEFAULT_EMP_ID
+    st.session_state["current_user_id"] = "A"
 if "current_unit" not in st.session_state:
     st.session_state["current_unit"] = "TTN"
 
@@ -132,8 +132,8 @@ if not st.session_state["authenticated"] and not st.session_state.get(
             selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
             entered_emp = st.text_input(
                 "使用者員編 (範例：023300)",
-                value=DEFAULT_EMP_ID,
-                placeholder="例如: 023300",
+                value="",
+                placeholder="例如: 023300 (留空預設為 A)",
                 max_chars=10,
             )
             entered_key = st.text_input(
@@ -143,9 +143,13 @@ if not st.session_state["authenticated"] and not st.session_state.get(
 
             if btn_auth:
                 clean_emp = entered_emp.strip().upper()
+                
+                # 🔑 關鍵邏輯：若登入頁有輸入員編就抓該員編，若未輸入（資料為空）則預設為 "A"
+                effective_emp = clean_emp if clean_emp else "A"
+                st.session_state["user_input_field"] = effective_emp
 
                 if entered_key == VIP_PASS_CODE:
-                    target_emp_id = clean_emp if clean_emp else DEFAULT_EMP_ID
+                    target_emp_id = effective_emp
                     st.session_state["authenticated"] = True
                     st.session_state["admin_logged_in"] = False
                     st.session_state["nav_mode"] = "home"
@@ -166,20 +170,17 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                     log_activity(f"VIP 身分登入系統: {target_emp_id}")
                     st.rerun()
 
-                elif not clean_emp:
-                    st.error("請輸入有效的員編")
-
                 elif entered_key == ADMIN_PASS_CODE:
                     st.session_state["admin_logged_in"] = True
                     st.session_state["current_unit"] = selected_unit
-                    st.session_state["current_user_id"] = f"ADMIN_{clean_emp}"
+                    st.session_state["current_user_id"] = f"ADMIN_{effective_emp}"
                     st.session_state["nav_mode"] = "admin_panel"
                     st.session_state["page"] = "admin"
                     log_activity("管理員登入後台")
                     st.rerun()
 
                 elif entered_key == CREW_PASS_CODE:
-                    if clean_emp == "A":
+                    if effective_emp == "A":
                         st.session_state["authenticated"] = True
                         st.session_state["admin_logged_in"] = False
                         st.session_state["nav_mode"] = "home"
@@ -189,7 +190,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                         log_activity("測試員 A 登入系統")
                         st.rerun()
 
-                    allowed, user_info = is_user_allowed(clean_emp)
+                    allowed, user_info = is_user_allowed(effective_emp)
                     u_role = (
                         user_info.get("role", "") if isinstance(user_info, dict) else ""
                     )
@@ -202,7 +203,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                             "您的員編尚未開放使用權限，請洽管理員於後台開通。"
                         )
                     elif (
-                        verify_crew_membership(selected_unit, clean_emp)
+                        verify_crew_membership(selected_unit, effective_emp)
                         or u_role == "VIP"
                     ):
                         st.session_state["authenticated"] = True
@@ -211,21 +212,21 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                         st.session_state["page"] = "user"
                         st.session_state["current_unit"] = selected_unit
 
-                        emp_real_name = get_employee_name(selected_unit, clean_emp)
+                        emp_real_name = get_employee_name(selected_unit, effective_emp)
                         disp_name = format_display_name(emp_real_name)
                         u_name = u_name_from_info if u_name_from_info else disp_name
 
                         if u_role == "VIP":
                             name_str = f" {u_name}" if u_name else ""
                             st.session_state["current_user_id"] = (
-                                f"VIP_USER ({clean_emp}{name_str})".strip()
+                                f"VIP_USER ({effective_emp}{name_str})".strip()
                             )
                         else:
                             st.session_state["current_user_id"] = (
-                                f"{clean_emp} {u_name}".strip()
+                                f"{effective_emp} {u_name}".strip()
                             )
 
-                        log_activity(f"使用者登入系統: {clean_emp} (角色: {u_role})")
+                        log_activity(f"使用者登入系統: {effective_emp} (角色: {u_role})")
                         st.rerun()
                     else:
                         st.error(
@@ -239,7 +240,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
 # 主頁面 Header 資訊區
 # ---------------------------------------------------------
 current_unit_label = st.session_state.get("current_unit", "TTN")
-current_operator_id = st.session_state.get("current_user_id", DEFAULT_EMP_ID)
+current_operator_id = st.session_state.get("current_user_id", "A")
 
 st.markdown(
     f"""
@@ -257,7 +258,7 @@ st.markdown(
 )
 
 # ---------------------------------------------------------
-# 💡 核心修正：動態公告與橫幅標語渲染 (連動 sys_config)
+# 動態公告與橫幅標語渲染 (連動 sys_config)
 # ---------------------------------------------------------
 enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
 announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫後台管理者")
@@ -310,7 +311,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                     st.session_state["nav_mode"] = "admin_panel"
                     st.session_state["page"] = "admin"
                     st.session_state["show_admin_login"] = False
-                    curr_op = st.session_state.get("user_input_field", DEFAULT_EMP_ID)
+                    curr_op = st.session_state.get("user_input_field", "A")
                     st.session_state["current_user_id"] = f"ADMIN ({curr_op})"
                     log_activity("管理員登入後台")
                     st.rerun()
@@ -354,7 +355,6 @@ with col_f1:
         show_feedback_modal()
 
 with col_f2:
-    # 🔑 登入狀態顯示 ADMIN PANEL [Leo]，未登入狀態顯示 ADMIN PANEL [C.L.F]
     admin_btn_label = (
         "ADMIN PANEL [Leo]"
         if st.session_state.get("admin_logged_in", False)
