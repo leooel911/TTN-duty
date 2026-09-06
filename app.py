@@ -49,7 +49,15 @@ def show_apply_permission_dialog():
     req_name = st.text_input("真實姓名 (例如: 波莉)", key="dlg_req_name")
     req_reason = st.text_area("申請原因 / 備註 (選填)", key="dlg_req_reason", help="說明用途可加速審核")
 
-    if st.button("確認送出申請", type="primary", use_container_width=True):
+    col_sub1, col_sub2 = st.columns([1, 1])
+    with col_sub1:
+        submit_clicked = st.button("確認送出申請", type="primary", use_container_width=True)
+    with col_sub2:
+        if st.button("關閉視窗", use_container_width=True):
+            st.session_state["show_apply_dialog"] = False
+            st.rerun()
+
+    if submit_clicked:
         clean_emp = req_emp_id.strip()
         clean_name = req_name.strip()
 
@@ -85,6 +93,8 @@ if "show_admin_login" not in st.session_state:
     st.session_state["show_admin_login"] = False
 if "show_feedback_dialog" not in st.session_state:
     st.session_state["show_feedback_dialog"] = False
+if "show_apply_dialog" not in st.session_state:
+    st.session_state["show_apply_dialog"] = False
 if "inspect_emp_target" not in st.session_state:
     st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state:
@@ -210,9 +220,10 @@ if not st.session_state["authenticated"] and not st.session_state.get(
             with col_b2:
                 btn_apply = st.form_submit_button("申請使用權限", use_container_width=True)
 
-            # 點擊「申請使用權限」時觸發彈窗
+            # 點擊「申請使用權限」時切換 State 標記並重刷
             if btn_apply:
-                show_apply_permission_dialog()
+                st.session_state["show_apply_dialog"] = True
+                st.rerun()
 
             # 點擊「進入系統」時觸發原本的驗證邏輯
             if btn_auth:
@@ -310,6 +321,11 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                         )
                 else:
                     st.error("授權碼或密碼錯誤，請重新輸入")
+
+        # 🔑 持續監聽 Session State 控制彈窗渲染
+        if st.session_state.get("show_apply_dialog", False):
+            show_apply_permission_dialog()
+
     st.stop()
 
 # ---------------------------------------------------------
