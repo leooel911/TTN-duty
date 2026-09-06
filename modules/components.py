@@ -61,6 +61,36 @@ def render_zoomable_image(image_source, height=650):
 
 
 # =========================================================
+# 📢 國定假日提醒元件 (無貼圖純文字版)
+# =========================================================
+def show_holiday_notice(selected_date_str):
+    """偵測選擇之日期是否包含國定假日標籤並渲染提示條 (完全無貼圖/圖示)"""
+    if not selected_date_str:
+        return
+
+    date_str = str(selected_date_str)
+    if "(" in date_str and ")" in date_str:
+        try:
+            holiday_name = date_str.split("(")[1].split(")")[0].strip()
+            if holiday_name:
+                st.markdown(
+                    f"""
+                    <div style="background-color: rgba(234, 179, 8, 0.12); border-left: 4px solid #EAB308; padding: 10px 14px; margin-top: 8px; margin-bottom: 12px; border-radius: 4px;">
+                        <div style="color: #FACC15; font-weight: 700; font-size: 13px; font-family: monospace;">
+                            國定假日提醒：{holiday_name}
+                        </div>
+                        <div style="color: #CBD5E1; font-size: 12px; margin-top: 3px; font-family: monospace;">
+                            您選擇的日期為國定假日，進行換班或換假申請時，請注意相關出勤加給與工時計算規範。
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        except Exception:
+            pass
+
+
+# =========================================================
 # 🔍 檢視回報附件截圖彈窗
 # =========================================================
 @st.dialog("檢視回報附件截圖", width="medium")
