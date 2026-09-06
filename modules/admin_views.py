@@ -39,26 +39,23 @@ def clear_logs():
 
 
 def create_backup_zip():
-    """打包 data 資料夾、回報圖檔目錄與系統設定檔為 ZIP 下載檔"""
+    """打包 data 資料夾、回報工單截圖與系統設定檔為 ZIP 下載檔"""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        # 打包 DATA_DIR
         if os.path.exists(DATA_DIR):
             for root, _, files in os.walk(DATA_DIR):
                 for file in files:
                     file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, start=os.path.dirname(DATA_DIR) or ".")
-                    zf.write(file_path, arcname=arcname)
+                    arcname = os.path.relpath(file_path, start=DATA_DIR)
+                    zf.write(file_path, arcname=os.path.join("data", arcname))
 
-        # 打包 FEEDBACK_IMG_DIR (若獨立於 DATA_DIR 外)
         if os.path.exists(FEEDBACK_IMG_DIR) and not FEEDBACK_IMG_DIR.startswith(DATA_DIR):
             for root, _, files in os.walk(FEEDBACK_IMG_DIR):
                 for file in files:
                     file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, start=os.path.dirname(FEEDBACK_IMG_DIR) or ".")
-                    zf.write(file_path, arcname=arcname)
+                    arcname = os.path.relpath(file_path, start=FEEDBACK_IMG_DIR)
+                    zf.write(file_path, arcname=os.path.join("feedback", arcname))
 
-        # 根目錄關鍵設定檔
         for root_file in [
             "activity.log",
             "maintenance.json",
@@ -69,77 +66,6 @@ def create_backup_zip():
                 zf.write(root_file, arcname=root_file)
     buf.seek(0)
     return buf
-
-
-def load_all_feedbacks():
-    """讀取 FEEDBACK_IMG_DIR 中所有的 txt 工單與對應截圖檔"""
-    feedbacks = []
-    if not os.path.exists(FEEDBACK_IMG_DIR):
-        return feedbacks
-
-    for fname in os.listdir(FEEDBACK_IMG_DIR):
-        if fname.endswith(".txt"):
-            fpath = os.path.join(FEEDBACK_IMG_DIR, fname)
-            try:
-                with open(fpath, "r", encoding="utf-8") as f:
-                    content = f.read()
-
-                lines = content.split("\n")
-                info = {"_filepath": fpath, "_filename": fname}
-                desc_lines = []
-                is_desc = False
-
-                for line in lines:
-                    if line.startswith("詳細說明:"):
-                        is_desc = True
-                        continue
-                    if is_desc:
-                        desc_lines.append(line)
-                    elif ":" in line:
-                        k, v = line.split(":", 1)
-                        info[k.strip()] = v.strip()
-
-                info["詳細說明"] = "\n".join(desc_lines).strip()
-
-                # 檢查是否有附圖截圖
-                base_name = os.path.splitext(fname)[0]
-                img_path = None
-                for ext in [".png", ".jpg", ".jpeg"]:
-                    candidate = os.path.join(FEEDBACK_IMG_DIR, f"{base_name}{ext}")
-                    if os.path.exists(candidate):
-                        img_path = candidate
-                        break
-                info["_img_path"] = img_path
-
-                feedbacks.append(info)
-            except Exception:
-                pass
-
-    return sorted(feedbacks, key=lambda x: x.get("時間", ""), reverse=True)
-
-
-def update_feedback_txt(fpath, info, new_status, new_reply):
-    """更新回報純文字檔中的狀態與管理員回覆"""
-    ticket_id = info.get("處理編號", "未知")
-    category = info.get("類別", "無")
-    unit = info.get("單位", "TTN")
-    reporter = info.get("回報者", "未知")
-    time_str = info.get("時間", "")
-    desc = info.get("詳細說明", "")
-
-    new_content = (
-        f"處理編號: {ticket_id}\n"
-        f"狀態: {new_status}\n"
-        f"類別: {category}\n"
-        f"單位: {unit}\n"
-        f"回報者: {reporter}\n"
-        f"時間: {time_str}\n"
-        f"管理員回覆: {new_reply.strip() or '尚無回覆'}\n"
-        f"詳細說明:\n{desc}"
-    )
-
-    with open(fpath, "w", encoding="utf-8") as f:
-        f.write(new_content)
 
 
 def load_whitelist(unit_code="TTN"):
@@ -221,6 +147,86 @@ def get_all_crew_options(unit_code):
             except Exception:
                 pass
     return crew_options
+
+
+def load_all_feedback_tickets():
+    """讀取 FEEDBACK_IMG_DIR 中所有的 txt 工單與對應截圖"""
+    tickets = []
+    if not os.path.exists(FEEDBACK_IMG_DIR):
+        return tickets
+
+    for fname in os.listdir(FEEDBACK_IMG_DIR):
+        if fname.endswith(".txt"):
+            txt_path = os.path.join(FEEDBACK_IMG_DIR, fname)
+            base_name = fname[:-4]
+            try:
+                with open(txt_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+
+                lines = content.split("\n")
+                info = {}
+                desc_lines = []
+                is_desc = False
+
+                for line in lines:
+                    if line.startswith("詳細說明:"):
+                        is_desc = True
+                        continue
+                    if is_desc:
+                        desc_lines.append(line)
+                    elif ":" in line:
+                        k, v = line.split(":", 1)
+                        info[k.strip()] = v.strip()
+
+                info["詳細說明"] = "\n".join(desc_lines).strip()
+                info["_txt_path"] = txt_path
+                info["_base_name"] = base_name
+
+                # 尋找對應的截圖附件
+                img_file = None
+                for ext in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
+                    candidate = os.path.join(FEEDBACK_IMG_DIR, f"{base_name}{ext}")
+                    if os.path.exists(candidate):
+                        img_file = candidate
+                        break
+                info["_img_path"] = img_file
+
+                tickets.append(info)
+            except Exception:
+                pass
+
+    tickets = sorted(tickets, key=lambda x: x.get("時間", ""), reverse=True)
+    return tickets
+
+
+def save_feedback_ticket(ticket_info):
+    """更新儲存工單 txt 檔案內容"""
+    txt_path = ticket_info.get("_txt_path")
+    if not txt_path:
+        return
+
+    ticket_id = ticket_info.get("處理編號", "")
+    status = ticket_info.get("狀態", "待處理")
+    category = ticket_info.get("類別", "")
+    unit = ticket_info.get("單位", "")
+    reporter = ticket_info.get("回報者", "")
+    time_str = ticket_info.get("時間", "")
+    reply = ticket_info.get("管理員回覆", "尚無回覆")
+    desc = ticket_info.get("詳細說明", "")
+
+    content = (
+        f"處理編號: {ticket_id}\n"
+        f"狀態: {status}\n"
+        f"類別: {category}\n"
+        f"單位: {unit}\n"
+        f"回報者: {reporter}\n"
+        f"時間: {time_str}\n"
+        f"管理員回覆: {reply}\n"
+        f"詳細說明:\n{desc}"
+    )
+
+    with open(txt_path, "w", encoding="utf-8") as f:
+        f.write(content)
 
 
 # =========================================================
@@ -504,6 +510,7 @@ def render_admin_panel():
             )
 
             st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+
             col_b1, col_b2 = st.columns(2)
 
             with col_b1:
@@ -711,6 +718,7 @@ def render_admin_panel():
         st.markdown("### 📜 系統操作日誌與資料打包備份")
 
         logs = load_activity_logs()
+
         col_log_title, col_log_btn = st.columns([3, 1])
 
         with col_log_title:
@@ -759,7 +767,7 @@ def render_admin_panel():
 
         st.markdown("---")
         st.markdown("#### 📦 一鍵備份全站數據與設定")
-        st.caption("點擊下方按鈕可將系統班表大表、設定檔、工單資料庫與日誌打包為 ZIP 下載備份。")
+        st.caption("點擊下方按鈕可將系統班表大表、設定檔、回報工單與日誌打包為 ZIP 下載備份。")
 
         zip_buf = create_backup_zip()
         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -773,150 +781,121 @@ def render_admin_panel():
         )
 
     # ---------------------------------------------------------
-    # Tab 6: 工單與問題回報管理 (與 FEEDBACK_IMG_DIR 純文字庫完美同步)
+    # Tab 6: 工單與問題回報管理
     # ---------------------------------------------------------
     with tab6:
-        st.markdown("### 📋 工單與問題回報系統管理")
+        st.markdown("### 📋 工單與問題回報管理")
 
-        feedbacks = load_all_feedbacks()
+        all_tickets = load_all_feedback_tickets()
 
-        if not feedbacks:
+        if not all_tickets:
             st.info("目前尚無任何問題回報工單紀錄。")
         else:
-            # 統計資料計算
-            cnt_pending = sum(1 for f in feedbacks if f.get("狀態") == "待處理")
-            cnt_processing = sum(1 for f in feedbacks if f.get("狀態") == "處理中")
-            cnt_completed = sum(1 for f in feedbacks if f.get("狀態") in ["已完成", "已解決"])
-            cnt_ignored = sum(1 for f in feedbacks if f.get("狀態") == "已不處理")
+            cnt_pending = sum(1 for t in all_tickets if t.get("狀態") == "待處理")
+            cnt_processing = sum(1 for t in all_tickets if t.get("狀態") == "處理中")
+            cnt_done = sum(1 for t in all_tickets if t.get("狀態") in ["已完成", "已解決"])
 
             st.markdown(
                 f"""
-                <div style="display: flex; gap: 8px; margin-bottom: 14px;">
-                    <div style="flex: 1; background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 8px 12px; text-align: center;">
-                        <div style="font-size: 11px; color: #FDE68A;">待處理工單</div>
-                        <div style="font-size: 18px; font-weight: 900; color: #FBBF24;">{cnt_pending} <span style="font-size: 10px;">筆</span></div>
+                <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                    <div style="flex: 1; background: rgba(244, 63, 94, 0.15); border: 1px solid #F43F5E; border-radius: 8px; padding: 10px; text-align: center;">
+                        <div style="font-size: 11px; color: #FDA4AF;">待處理工單</div>
+                        <div style="font-size: 20px; font-weight: 900; color: #F43F5E;">{cnt_pending} <span style="font-size: 12px;">筆</span></div>
                     </div>
-                    <div style="flex: 1; background: rgba(56, 189, 248, 0.15); border: 1px solid #38BDF8; border-radius: 8px; padding: 8px 12px; text-align: center;">
-                        <div style="font-size: 11px; color: #BAE6FD;">處理中工單</div>
-                        <div style="font-size: 18px; font-weight: 900; color: #38BDF8;">{cnt_processing} <span style="font-size: 10px;">筆</span></div>
+                    <div style="flex: 1; background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 10px; text-align: center;">
+                        <div style="font-size: 11px; color: #FDE68A;">處理中工單</div>
+                        <div style="font-size: 20px; font-weight: 900; color: #FBBF24;">{cnt_processing} <span style="font-size: 12px;">筆</span></div>
                     </div>
-                    <div style="flex: 1; background: rgba(52, 211, 153, 0.15); border: 1px solid #34D399; border-radius: 8px; padding: 8px 12px; text-align: center;">
-                        <div style="font-size: 11px; color: #A7F3D0;">已完成 / 已解決</div>
-                        <div style="font-size: 18px; font-weight: 900; color: #34D399;">{cnt_completed} <span style="font-size: 10px;">筆</span></div>
-                    </div>
-                    <div style="flex: 1; background: rgba(148, 163, 184, 0.15); border: 1px solid #94A3B8; border-radius: 8px; padding: 8px 12px; text-align: center;">
-                        <div style="font-size: 11px; color: #CBD5E1;">已不處理</div>
-                        <div style="font-size: 18px; font-weight: 900; color: #94A3B8;">{cnt_ignored} <span style="font-size: 10px;">筆</span></div>
+                    <div style="flex: 1; background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; border-radius: 8px; padding: 10px; text-align: center;">
+                        <div style="font-size: 11px; color: #A7F3D0;">已完成工單</div>
+                        <div style="font-size: 20px; font-weight: 900; color: #34D399;">{cnt_done} <span style="font-size: 12px;">筆</span></div>
                     </div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-            filter_c1, filter_c2 = st.columns([1, 2])
-            with filter_c1:
-                filter_unit_scope = st.radio(
-                    "單位範圍",
-                    ["當前單位", "跨單位 (全站)"],
-                    horizontal=True,
-                    key="fb_unit_scope_filter",
-                )
-            with filter_c2:
-                status_filter = st.radio(
-                    "狀態篩選",
-                    ["全部", "待處理", "處理中", "已完成", "已不處理"],
-                    horizontal=True,
-                    key="fb_status_filter",
-                )
+            filter_status = st.radio(
+                "工單狀態篩選",
+                ["全部", "待處理", "處理中", "已完成", "已不處理"],
+                horizontal=True,
+                key="admin_ticket_status_filter",
+            )
 
-            # 套用篩選條件
-            display_feedbacks = []
-            for f in feedbacks:
-                if filter_unit_scope == "當前單位" and f.get("單位") != current_unit:
-                    continue
-                if status_filter != "全部":
-                    st_val = f.get("狀態", "待處理")
-                    if status_filter == "已完成" and st_val not in ["已完成", "已解決"]:
-                        continue
-                    elif status_filter != "已完成" and st_val != status_filter:
-                        continue
-                display_feedbacks.append(f)
+            filtered_tickets = [
+                t for t in all_tickets
+                if filter_status == "全部" or t.get("狀態") == filter_status
+            ]
 
-            st.caption(f"符合篩選條件的工單共 {len(display_feedbacks)} 筆：")
+            st.caption(f"列表顯示共 {len(filtered_tickets)} 筆工單：")
 
-            status_colors = {
-                "待處理": ("#F59E0B", "🔴"),
-                "處理中": ("#38BDF8", "🟡"),
-                "已完成": ("#34D399", "🟢"),
-                "已解決": ("#34D399", "🟢"),
-                "已不處理": ("#94A3B8", "⚪"),
-            }
+            for idx, t in enumerate(filtered_tickets):
+                ticket_id = t.get("處理編號", "未知單號")
+                curr_status = t.get("狀態", "待處理")
+                category = t.get("類別", "一般")
+                reporter = t.get("回報者", "未知")
+                time_str = t.get("時間", "")
+                unit = t.get("單位", "")
 
-            for idx, fb in enumerate(display_feedbacks):
-                t_id = fb.get("處理編號", f"FB-{idx}")
-                status = fb.get("狀態", "待處理")
-                s_color, s_icon = status_colors.get(status, ("#F59E0B", "🔴"))
-
-                expander_label = (
-                    f"{s_icon} [{status}] 單號：{t_id} ｜ {fb.get('類別', '無')} "
-                    f"({fb.get('回報者', '組員')} - {fb.get('時間', '')})"
+                status_badge = (
+                    "🔴 [待處理]" if curr_status == "待處理"
+                    else ("🟡 [處理中]" if curr_status == "處理中"
+                          else ("🟢 [已完成]" if curr_status in ["已完成", "已解決"] else "⚪ [已不處理]"))
                 )
 
-                with st.expander(expander_label):
-                    st.markdown(
-                        f"**提報單位：** `{fb.get('單位', '未知')}` ｜ "
-                        f"**提報人員：** {fb.get('回報者', '未知')} ｜ "
-                        f"**時間：** {fb.get('時間', '未知')}"
-                    )
-                    st.markdown(f"**反饋類別：** {fb.get('類別', '無')}")
+                expander_title = f"{status_badge} 單號：{ticket_id} ｜ [{unit}] {category} ({reporter} - {time_str})"
 
-                    st.markdown("**詳細說明內容：**")
-                    st.info(fb.get("詳細說明", "無內容"))
+                with st.expander(expander_title):
+                    st.markdown(f"**提報單位：** `{unit}` ｜ **提報組員：** `{reporter}` ｜ **提報時間：** `{time_str}`")
+                    st.markdown(f"**回報類別：** {category}")
+                    st.markdown("**詳細內容說明：**")
+                    st.info(t.get("詳細說明", "無描述"))
 
-                    # 如果有截圖附件，顯示檢視按鈕
-                    if fb.get("_img_path"):
-                        st.markdown("**附件截圖：**")
-                        if st.button(
-                            f"📷 檢視附件截圖檔 ({os.path.basename(fb['_img_path'])})",
-                            key=f"btn_view_img_{t_id}_{idx}",
-                        ):
-                            view_feedback_img_modal(
-                                fb["_img_path"], t_id, fb.get("回報者", "組員")
-                            )
+                    img_path = t.get("_img_path")
+                    if img_path and os.path.exists(img_path):
+                        st.markdown("📷 **附加螢幕截圖：**")
+                        if st.button(f"🔍 點此查看/下載截圖附件", key=f"btn_view_img_{ticket_id}_{idx}"):
+                            view_feedback_img_modal(img_path, ticket_id, reporter)
 
-                    st.markdown("---")
-                    st.markdown("**⚙️ 管理員處置面板**")
-
-                    c_sel, c_txt = st.columns([1, 2])
-                    with c_sel:
+                    c1, c2 = st.columns([1, 2])
+                    with c1:
                         status_options = ["待處理", "處理中", "已完成", "已不處理"]
-                        curr_idx = (
-                            status_options.index(status)
-                            if status in status_options
-                            else (2 if status == "已解決" else 0)
-                        )
-                        new_st = st.selectbox(
-                            "更新工單狀態",
+                        default_idx = status_options.index(curr_status) if curr_status in status_options else 0
+                        new_status = st.selectbox(
+                            "變更工單狀態",
                             status_options,
-                            index=curr_idx,
-                            key=f"sel_st_{t_id}_{idx}",
+                            index=default_idx,
+                            key=f"status_select_{ticket_id}_{idx}",
                         )
-                    with c_txt:
-                        new_rep = st.text_input(
-                            "給組員的回覆內容",
-                            value=fb.get("管理員回覆", "尚無回覆"),
-                            key=f"txt_rep_{t_id}_{idx}",
+                    with c2:
+                        new_reply = st.text_input(
+                            "處理備註 / 給組員的回覆",
+                            value=t.get("管理員回覆", ""),
+                            key=f"reply_input_{ticket_id}_{idx}",
+                            placeholder="例如：已於 9/6 修正程式...",
                         )
 
-                    if st.button(
-                        f"💾 儲存修訂 [{t_id}]",
-                        type="primary",
-                        key=f"btn_save_fb_{t_id}_{idx}",
-                    ):
-                        update_feedback_txt(fb["_filepath"], fb, new_st, new_rep)
-                        log_activity(f"管理員更新工單 {t_id} 狀態為【{new_st}】")
-                        st.success(f"工單 `{t_id}` 處置紀錄已成功更新！")
-                        st.rerun()
+                    cb1, cb2 = st.columns(2)
+                    with cb1:
+                        if st.button("💾 更新工單狀態與備註", key=f"btn_update_t_{ticket_id}_{idx}", type="primary", use_container_width=True):
+                            t["狀態"] = new_status
+                            t["管理員回覆"] = new_reply
+                            save_feedback_ticket(t)
+                            log_activity(f"管理員更新工單 [{ticket_id}] 狀態為：{new_status}")
+                            st.success(f"工單 `{ticket_id}` 狀態已成功更新！")
+                            st.rerun()
+
+                    with cb2:
+                        if st.button("🗑️ 刪除此工單", key=f"btn_del_t_{ticket_id}_{idx}", use_container_width=True):
+                            txt_p = t.get("_txt_path")
+                            if txt_p and os.path.exists(txt_p):
+                                os.remove(txt_p)
+                            img_p = t.get("_img_path")
+                            if img_p and os.path.exists(img_p):
+                                os.remove(img_p)
+                            log_activity(f"管理員刪除工單 [{ticket_id}]")
+                            st.success(f"已成功刪除工單 `{ticket_id}`！")
+                            st.rerun()
 
 
 # 相容別名宣告
