@@ -369,7 +369,7 @@ def render_user_home():
                         )
                     st.success(f"【{emp_name}】個人班表圖片生成成功！")
                     render_zoomable_image(buf)
-                    
+
                     col_dl1, col_dl2 = st.columns([1, 1])
                     with col_dl1:
                         st.download_button(
@@ -383,7 +383,7 @@ def render_user_home():
                         st.markdown(
                             """
                             <div style="display: flex; align-items: center; height: 100%; font-size: 12px; color: #94A3B8; font-weight: 500; font-family: monospace; padding-left: 6px;">
-                                 提示：長按可將圖片儲存至相簿
+                                💡 提示：手機使用者可長按圖片儲存至相簿
                             </div>
                             """,
                             unsafe_allow_html=True,
