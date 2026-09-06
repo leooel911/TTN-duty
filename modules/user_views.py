@@ -160,7 +160,7 @@ def reset_ex_search():
 
 
 def render_user_home():
-    # 精準 DOM CSS：實現卡片與 Streamlit 原生按鈕 100% 無縫縫合 + Radio 選單滿格置中
+    # 精準 DOM CSS：實現卡片與 Streamlit 原生按鈕 100% 無縫縫合 + 強制 Radio 選單滿格置中
     st.markdown(
         """
         <style>
@@ -212,17 +212,22 @@ def render_user_home():
             background-color: rgba(30, 41, 59, 0.95) !important;
         }
 
-        /* 📱 手機優化：讓 Radio 單選卡片容器寬度 100% 滿格 */
+        /* 📱 強制 Radio 最外層與內層容器寬度 100% 滿格 */
+        div[data-testid="stRadio"],
+        div[data-testid="stRadio"] > div,
         div[data-testid="stRadio"] > div[role="radiogroup"] {
             width: 100% !important;
+            max-width: 100% !important;
             display: flex !important;
             flex-direction: column !important;
             gap: 10px !important;
         }
 
-        /* 📱 手機優化：單選卡片按鈕拉滿寬度 + 內容強制作中 */
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label {
+        /* 📱 強制 Radio 選項按鈕 100% 滿格且內容居中 */
+        div[data-testid="stRadio"] div[role="radiogroup"] label,
+        div[data-testid="stRadio"] label[data-baseweb="radio"] {
             width: 100% !important;
+            max-width: 100% !important;
             display: flex !important;
             justify-content: center !important;
             align-items: center !important;
@@ -231,17 +236,20 @@ def render_user_home():
             border-radius: 10px !important;
             padding: 12px 16px !important;
             margin: 0 !important;
+            box-sizing: border-box !important;
             cursor: pointer !important;
             transition: all 0.2s ease-in-out !important;
         }
 
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover {
+        div[data-testid="stRadio"] div[role="radiogroup"] label:hover,
+        div[data-testid="stRadio"] label[data-baseweb="radio"]:hover {
             border-color: #38BDF8 !important;
             background: rgba(30, 41, 59, 0.85) !important;
         }
 
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child {
-            margin-right: 8px !important;
+        /* 圓點與文字的置中細節處理 */
+        div[data-testid="stRadio"] label div[data-testid="stMarkdownContainer"] {
+            text-align: center !important;
         }
         </style>
         """,
