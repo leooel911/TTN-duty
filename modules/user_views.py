@@ -1,9 +1,10 @@
 import os
 import re
 from datetime import date, timedelta
+from typing import Any, Dict, List, Optional, Tuple
 
 import streamlit as st
-from config import LEAVE_CODES, NATIONAL_HOLIDAYS, UNITS
+from config import LEAVE_CODES, NATIONAL_HOLIDAYS
 from modules.components import (
     render_zoomable_image,
     show_crew_schedule_modal,
@@ -17,7 +18,6 @@ from modules.services import (
 )
 from modules.utils import (
     calculate_consecutive_work_days,
-    check_shift_legality,
     check_week_has_holiday,
     get_file_mtime_str,
     is_cell_off_day,
@@ -33,19 +33,19 @@ from modules.utils import (
 
 
 # --- 輔助函式：精準比對 Excel 日期欄位索引（解決 9/1 比對到 9/10 的 Bug） ---
-def find_date_column_index(columns, target_date):
+def find_date_column_index(columns: Any, target_date: str) -> int:
     """精準匹配日期欄位索引，避免 substring 誤判"""
     for idx, col in enumerate(columns):
         if idx < 2:
             continue
-        match = re.search(r"(\d+/\d+)", str(col))
+        match = re.search(r"(\d+/\d+)", str(col).strip())
         if match and match.group(1) == target_date:
             return idx
     return -1
 
 
 # --- 全方位自動抓取登入頁面與 Session 中的使用者員編 ---
-def get_login_user_id():
+def get_login_user_id() -> str:
     """自動掃描登入頁面輸入框 Key 與 Session State 抓取員編"""
     login_widget_keys = [
         "login_emp_id", "login_user", "login_id", "login_account", "login_username",
@@ -99,7 +99,8 @@ def get_login_user_id():
     return "A"
 
 
-def get_date_label(d_str, columns=None):
+def get_date_label(d_str: str, columns: Optional[Any] = None) -> str:
+    """取得包含國定假日名稱的日期顯示標籤"""
     holiday_name = NATIONAL_HOLIDAYS.get(d_str)
     if not holiday_name and columns is not None:
         matching_col = next((c for c in columns[2:] if d_str in str(c)), None)
@@ -114,7 +115,8 @@ def get_date_label(d_str, columns=None):
     return d_str
 
 
-def get_week_holidays(target_date, date_cols, columns=None):
+def get_week_holidays(target_date: str, date_cols: List[str], columns: Optional[Any] = None) -> List[str]:
+    """取得當週涵蓋的所有節假日標籤清單"""
     holidays_found = []
     if not target_date or not date_cols:
         return holidays_found
@@ -154,16 +156,19 @@ def get_week_holidays(target_date, date_cols, columns=None):
     return holidays_found
 
 
-def reset_win_search():
+def reset_win_search() -> None:
+    """重置換班快篩的快取資料"""
     st.session_state.pop("win_raw_candidates", None)
 
 
-def reset_ex_search():
+def reset_ex_search() -> None:
+    """重置換假快篩的快取資料與搜尋狀態"""
     st.session_state["ex_search_performed"] = False
     st.session_state.pop("ex_raw_candidates", None)
 
 
-def render_user_home():
+def render_user_home() -> None:
+    """繪製使用者首頁主要介面與功能模組"""
     st.markdown(
         """
         <style>
@@ -527,8 +532,7 @@ def render_user_home():
                     st.rerun()
 
                 TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
-                
-                # 修正：移除 value 參數，避免與 session_state[key] 發生衝突引發例外
+
                 min_time, max_time_sel = st.select_slider(
                     "Sign-In 時段區間",
                     options=TIME_OPTIONS,
@@ -547,8 +551,7 @@ def render_user_home():
 
                 if st.button("搜尋可換班組員名單", key="btn_window_search"):
                     raw_candidates = []
-                    
-                    # 修正：使用精準日期索引匹配，解決 9/1 比對到 9/10 的 Bug
+
                     target_col_idx = find_date_column_index(df_search.columns, target_date)
 
                     if target_col_idx != -1:
@@ -913,8 +916,7 @@ def render_user_home():
 
                     if st.button("搜尋可換假組員名單", key="btn_ex_search"):
                         raw_candidates = []
-                        
-                        # 修正：精準匹配想休與還假日期欄位索引，解決 substring 比對錯誤
+
                         target_col_idx = find_date_column_index(df_ex.columns, target_date)
                         return_col_idx = find_date_column_index(df_ex.columns, return_date)
 
@@ -983,7 +985,6 @@ def render_user_home():
                                 sim_row = set_simulated_cell(sim_row, target_date, "D1")
                                 sim_row = set_simulated_cell(sim_row, return_date, "休")
 
-                                # 修正：補齊 target_date 參數，避免傳參缺少丟出 Exception
                                 max_consecutive_streak = calculate_consecutive_work_days(
                                     sim_row, target_date
                                 )
