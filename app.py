@@ -33,7 +33,7 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 # ---------------------------------------------------------
 # 🔑 權限申請彈出視窗對話框 (Dialog)
 # ---------------------------------------------------------
-@st.dialog("🔑 申請系統使用權限")
+@st.dialog("申請系統使用權限")
 def show_apply_permission_dialog():
     st.markdown(
         """
@@ -46,7 +46,7 @@ def show_apply_permission_dialog():
 
     req_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS", "其他單位"], key="dlg_req_unit")
     req_emp_id = st.text_input("使用者員編 (例如: 023300)", key="dlg_req_emp_id")
-    req_name = st.text_input("真實姓名 (例如: 江立夫)", key="dlg_req_name")
+    req_name = st.text_input("真實姓名 (例如: 波莉)", key="dlg_req_name")
     req_reason = st.text_area("申請原因 / 備註 (選填)", key="dlg_req_reason", help="說明用途可加速審核")
 
     if st.button("確認送出申請", type="primary", use_container_width=True):
@@ -67,9 +67,9 @@ def show_apply_permission_dialog():
                 success, msg = send_admin_email(req_unit, clean_emp, clean_name, req_reason)
 
             if success:
-                st.success("✅ 申請已成功送出！管理員已收到信件通知，請靜候開通。")
+                st.success(" 申請已成功送出！管理員已收到信件通知，請靜候開通。")
             else:
-                st.success("✅ 申請已成功記錄！(已登記於系統 Log，請主動聯繫管理員)")
+                st.success(" 申請已成功記錄！(已登記於系統，可聯繫管理員)")
 
 
 # ---------------------------------------------------------
