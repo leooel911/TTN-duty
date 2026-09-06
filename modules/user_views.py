@@ -637,7 +637,6 @@ def render_user_home():
                         )
                         cnt_long = sum(1 for r in filtered_results if r.get("長班"))
 
-                        # 🔑 總數統計框： border 改為 1.5px solid 並提高透明度 (0.5)
                         st.markdown(
                             f"""
                             <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
@@ -1084,7 +1083,6 @@ def render_user_home():
                                 if c.get("連續上班天數", 0) >= 6
                             )
 
-                            # 🔑 總數統計框： border 改為 1.5px solid 並提高透明度 (0.5)
                             st.markdown(
                                 f"""
                                 <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
