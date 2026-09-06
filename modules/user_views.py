@@ -228,8 +228,8 @@ def render_user_home() -> None:
     missing_files = [
         role
         for role in ["駕駛", "列車長", "服勤員"]
-        if not os.path.exists(active_files[role])
-        or os.path.getsize(active_files[role]) == 0
+        if not os.path.exists(active_files.get(role, ""))
+        or os.path.getsize(active_files.get(role, "")) == 0
     ]
 
     if missing_files:
@@ -237,9 +237,9 @@ def render_user_home() -> None:
             f"【{current_unit_label}】資料庫異常或尚無檔案：請洽管理員上傳！"
         )
 
-    td_time = get_file_mtime_str(active_files["駕駛"])
-    tm_time = get_file_mtime_str(active_files["列車長"])
-    ta_time = get_file_mtime_str(active_files["服勤員"])
+    td_time = get_file_mtime_str(active_files.get("駕駛", ""))
+    tm_time = get_file_mtime_str(active_files.get("列車長", ""))
+    ta_time = get_file_mtime_str(active_files.get("服勤員", ""))
     sched_range = get_schedule_range()
 
     st.markdown(
@@ -453,7 +453,7 @@ def render_user_home() -> None:
             key="win_selected_role",
             on_change=reset_win_search,
         )
-        target_path = active_files[selected_role]
+        target_path = active_files.get(selected_role, "")
 
         morn_start_time = "03:00" if selected_role == "駕駛" else "05:00"
 
@@ -466,7 +466,7 @@ def render_user_home() -> None:
         elif "win_time_slider" not in st.session_state:
             st.session_state["win_time_slider"] = (morn_start_time, "10:00")
 
-        if not os.path.exists(target_path):
+        if not target_path or not os.path.exists(target_path):
             st.error(
                 f"找不到【{current_unit_label} -"
                 f" {selected_role}】的班表檔案，請先至管理員後台上傳"
