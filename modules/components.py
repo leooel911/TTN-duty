@@ -91,18 +91,19 @@ def show_feedback_modal():
     tab_create, tab_my_records = st.tabs(["線上回報", "我的歷史回報"])
 
     with tab_create:
+        # 🔑 修正：明確抓取並呈現成功送出的工單號碼
         if "fb_submitted_id" in st.session_state:
             ticket_id = st.session_state["fb_submitted_id"]
-            st.success("反饋已成功送出！系統已紀錄您的處理編號。")
             st.markdown(
                 f"""
-            <div style="background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10B981; border-radius: 12px; padding: 16px; text-align: center; margin: 12px 0;">
-                <div style="font-size: 12px; color: #CBD5E1; font-family: monospace;">系統處理編號 (Ticket ID)</div>
-                <div style="font-size: 22px; font-weight: 800; color: #34D399; font-family: monospace; letter-spacing: 1.5px; margin-top: 4px;">
+            <div style="background: rgba(16, 185, 129, 0.15); border: 2px solid #10B981; border-radius: 12px; padding: 20px; text-align: center; margin: 10px 0;">
+                <div style="font-size: 13px; color: #34D399; font-weight: 800; font-family: monospace; letter-spacing: 1px;">🎉 意見反饋已成功送出！</div>
+                <div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 8px;">您的系統處理工單號碼 (Ticket ID) 為：</div>
+                <div style="font-size: 20px; font-weight: 900; color: #FCD34D; font-family: monospace; letter-spacing: 1.5px; margin-top: 6px; padding: 6px; background: rgba(15, 23, 42, 0.6); border-radius: 6px;">
                     {ticket_id}
                 </div>
-                <div style="font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
-                    您可以隨時切換至「我的歷史回報」頁籤查看即時處理進度與留言。
+                <div style="font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 10px;">
+                    您可以隨時至「我的歷史回報」頁籤查看即時處理進度。
                 </div>
             </div>
             """,
@@ -112,6 +113,7 @@ def show_feedback_modal():
             if st.button(
                 "確認並完成",
                 key="confirm_fb_success_btn",
+                type="primary",
                 use_container_width=True,
             ):
                 del st.session_state["fb_submitted_id"]
@@ -139,7 +141,7 @@ def show_feedback_modal():
             col_sb1, col_sb2 = st.columns(2)
             with col_sb1:
                 if st.button(
-                    "確認送出", key="submit_fb_btn", use_container_width=True
+                    "確認送出", key="submit_fb_btn", type="primary", use_container_width=True
                 ):
                     if fb_content.strip():
                         clean_content = fb_content.strip()
@@ -150,6 +152,7 @@ def show_feedback_modal():
                             str(current_user).split(" ")[0].replace("/", "_")
                         )
 
+                        # 🔑 產生結構化唯一工單號碼
                         ticket_id = (
                             f"FB-{now_dt.strftime('%Y%m%d-%H%M%S')}-{current_unit}"
                         )
@@ -179,6 +182,7 @@ def show_feedback_modal():
                             f" 內容:{clean_content.replace('\n', ' ')}{img_log_str}"
                         )
 
+                        # 🔑 存入 session 後立刻重新整理，強制彈窗切換至工單顯示畫面
                         st.session_state["fb_submitted_id"] = ticket_id
                         st.rerun()
                     else:
