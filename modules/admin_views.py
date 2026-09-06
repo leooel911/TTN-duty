@@ -61,36 +61,41 @@ def create_backup_zip():
 
 
 def load_whitelist(unit_code="TTN"):
-    """讀取指定營運單位的白名單（按單位獨立隔離；自動相容舊平舖格式）"""
+    """讀取指定營運單位的白名單（嚴格獨立隔離，徹底解決跨單位混淆問題）"""
     whitelist_path = WHITELIST_FILE
+    full_data = {}
+
     if os.path.exists(whitelist_path):
         try:
             with open(whitelist_path, "r", encoding="utf-8") as f:
                 full_data = json.load(f)
+                # 相容舊版單一階層格式
                 if full_data and not any(k in UNITS for k in full_data.keys()):
-                    full_data = {unit_code: full_data}
-
-                unit_data = full_data.get(unit_code, {})
-                if unit_data:
-                    return unit_data
+                    full_data = {"TTN": full_data}
         except Exception:
-            pass
+            full_data = {}
 
-    default_whitelist = {
-        "ADMIN": {
-            "name": "系統管理員",
-            "role": "ADMIN",
-            "note": f"[{unit_code}] 預設管理員帳號",
-            "created_at": "2026-09-06",
-        },
-        "A023300": {
-            "name": "波莉",
-            "role": "VIP_USER (全域通行)",
-            "note": "全域通行測試",
-            "created_at": "2026-09-06",
-        },
-    }
-    return default_whitelist
+    # 若該單位尚無資料，建立該單位專屬獨立預設值
+    if unit_code not in full_data:
+        unit_default = {
+            "ADMIN": {
+                "name": f"[{unit_code}] 系統管理員",
+                "role": "ADMIN",
+                "note": f"[{unit_code}] 預設管理員帳號",
+                "created_at": datetime.now().strftime("%Y-%m-%d"),
+            }
+        }
+        # 僅有 TTN 單位才預載測試員資料
+        if unit_code == "TTN":
+            unit_default["A023300"] = {
+                "name": "波莉",
+                "role": "VIP_USER (全域通行)",
+                "note": "TTN 預設測試員",
+                "created_at": datetime.now().strftime("%Y-%m-%d"),
+            }
+        full_data[unit_code] = unit_default
+
+    return full_data.get(unit_code, {})
 
 
 def save_whitelist(unit_code, unit_data):
@@ -116,7 +121,7 @@ def save_whitelist(unit_code, unit_data):
 
 @st.cache_data(ttl=60)
 def get_all_crew_options(unit_code):
-    """動態解析當前單位的各大表，建立（員編 - 姓名）快選選單選項"""
+    """動態解析指定單位的各大表，建立（員編 - 姓名）快選選單選項"""
     unit_files = UNITS.get(unit_code, UNITS.get("TTN", {}))
     crew_options = []
     seen_uids = set()
@@ -146,7 +151,7 @@ def render_admin_panel():
     current_unit = st.session_state.get("current_unit", "TTN")
 
     # ---------------------------------------------------------
-    # 頂部標頭：包含【標題】、【全站營運單位切換選單】與【返回首頁按鈕】
+    # 頂部標頭：包含【標題】、【切換營運單位選單】與【返回首頁按鈕】
     # ---------------------------------------------------------
     col_head_title, col_head_unit, col_head_btn = st.columns([2.2, 1.2, 1])
 
@@ -163,6 +168,7 @@ def render_admin_panel():
         )
         if selected_u != current_unit:
             st.session_state["current_unit"] = selected_u
+            st.cache_data.clear()  # 關鍵：切換單位時立即清除快取，防止名單混淆
             log_activity(f"管理員切換單位至：{selected_u}")
             st.rerun()
 
@@ -223,7 +229,7 @@ def render_admin_panel():
                             os.makedirs(os.path.dirname(target_path), exist_ok=True)
                             with open(target_path, "wb") as f:
                                 f.write(uploaded_file.getbuffer())
-                            st.success(f"{role_name} 班表大表已成功更新！")
+                            st.success(f"[{current_unit}] {role_name} 班表大表已成功更新！")
                             log_activity(f"管理員上傳 {current_unit} - {role_name} 大表")
                             st.cache_data.clear()
                             st.rerun()
@@ -231,18 +237,18 @@ def render_admin_panel():
                             st.error(f"檔案寫入失敗：{e}")
 
         st.markdown("---")
-        st.markdown("#### 🔍 組員資料速查庫")
+        st.markdown(f"#### 🔍 [{current_unit}] 組員資料速查庫")
         emp_input = st.text_input(
             "輸入員編查詢姓名對照",
             placeholder="如: 023300",
-            key="admin_emp_search",
+            key=f"admin_emp_search_{current_unit}",
         ).strip()
         if emp_input:
             found_name = get_employee_name(current_unit, emp_input)
             if found_name:
-                st.success(f"員編 `[{emp_input}]` 對應姓名為：**{found_name}**")
+                st.success(f"[{current_unit}] 員編 `[{emp_input}]` 對應姓名為：**{found_name}**")
             else:
-                st.warning(f"在大表中未找到員編 `[{emp_input}]` 之對應姓名。")
+                st.warning(f"在大表中未找到 [{current_unit}] 員編 `[{emp_input}]` 之對應姓名。")
 
     # ---------------------------------------------------------
     # Tab 2: 模組維護模式
@@ -266,9 +272,9 @@ def render_admin_panel():
                 st.caption(
                     "狀態："
                     + (
-                        "<span style='color:#EF4444; font-weight:800;'>維護中 (已阻擋組員)</span>"
+                        "<span style='color:#EF4444; font-weight:800;'>🔴 維護中 (已阻擋組員)</span>"
                         if is_maint
-                        else "<span style='color:#34D399; font-weight:800;'>正常開放中</span>"
+                        else "<span style='color:#34D399; font-weight:800;'>🟢 正常開放中</span>"
                     ),
                     unsafe_allow_html=True,
                 )
@@ -301,7 +307,7 @@ def render_admin_panel():
 
             search_keyword = st.text_input(
                 "🔍 搜尋白名單人員 (可輸入員編、姓名、身份或備註)",
-                placeholder="例: 波莉 或 A023300",
+                placeholder="例: 員編 或 姓名",
                 key=f"whitelist_search_kw_{current_unit}",
             ).strip()
 
@@ -370,7 +376,7 @@ def render_admin_panel():
                 )
                 new_uname = st.text_input(
                     "姓名",
-                    placeholder="例: 波莉",
+                    placeholder="例: 員編姓名",
                     key="input_wl_uname",
                 )
                 new_role = st.selectbox(
@@ -427,7 +433,6 @@ def render_admin_panel():
         with col_p1:
             st.markdown("#### 🔑 通行授權碼設定")
 
-            # 1. 一般組員授權碼
             st.markdown("**【一般組員】通行授權碼**")
             new_user_pwd = st.text_input(
                 "設定新 一般組員授權碼",
@@ -444,7 +449,6 @@ def render_admin_panel():
 
             st.markdown("---")
 
-            # 2. VIP 組員授權碼
             st.markdown("**【VIP 組員】通行授權碼**")
             new_vip_pwd = st.text_input(
                 "設定新 VIP 授權碼",
@@ -461,7 +465,6 @@ def render_admin_panel():
 
             st.markdown("---")
 
-            # 3. 管理員解鎖密碼
             st.markdown("**【管理員】解鎖密碼**")
             new_admin_pwd = st.text_input(
                 "設定新 管理員解鎖密碼",
@@ -505,30 +508,27 @@ def render_admin_panel():
         ):
             pwd_updates = []
 
-            # 驗證一般組員授權碼
             if new_user_pwd:
                 if new_user_pwd != confirm_user_pwd:
-                    st.error("兩次輸入的新【一般組員授權碼】不一致，請重新檢查！")
+                    st.error("兩次輸入的新【一般組員授權碼】不一致！")
                     st.stop()
                 else:
                     sys_config["user_password"] = new_user_pwd.strip()
                     sys_config["crew_pass_code"] = new_user_pwd.strip()
                     pwd_updates.append("一般組員授權碼")
 
-            # 驗證 VIP 授權碼
             if new_vip_pwd:
                 if new_vip_pwd != confirm_vip_pwd:
-                    st.error("兩次輸入的新【VIP 授權碼】不一致，請重新檢查！")
+                    st.error("兩次輸入的新【VIP 授權碼】不一致！")
                     st.stop()
                 else:
                     sys_config["vip_password"] = new_vip_pwd.strip()
                     sys_config["vip_pass_code"] = new_vip_pwd.strip()
                     pwd_updates.append("VIP 授權碼")
 
-            # 驗證管理員解鎖密碼
             if new_admin_pwd:
                 if new_admin_pwd != confirm_admin_pwd:
-                    st.error("兩次輸入的新【管理員密碼】不一致，請重新檢查！")
+                    st.error("兩次輸入的新【管理員密碼】不一致！")
                     st.stop()
                 else:
                     sys_config["admin_password"] = new_admin_pwd.strip()
