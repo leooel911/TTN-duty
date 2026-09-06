@@ -148,13 +148,13 @@ def show_feedback_modal():
             st.markdown(
                 f"""
             <div style="background: rgba(16, 185, 129, 0.15); border: 2px solid #10B981; border-radius: 12px; padding: 20px; text-align: center; margin: 10px 0;">
-                <div style="font-size: 13px; color: #34D399; font-weight: 800; font-family: monospace; letter-spacing: 1px;">🎉 意見反饋已成功送出！</div>
+                <div style="font-size: 13px; color: #34D399; font-weight: 800; font-family: monospace; letter-spacing: 1px;"> 意見反饋已成功送出，謝謝！</div>
                 <div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 8px;">您的系統處理工單號碼 (Ticket ID) 為：</div>
                 <div style="font-size: 20px; font-weight: 900; color: #FCD34D; font-family: monospace; letter-spacing: 1.5px; margin-top: 6px; padding: 6px; background: rgba(15, 23, 42, 0.6); border-radius: 6px;">
                     {ticket_id}
                 </div>
                 <div style="font-size: 11px; color: #94A3B8; font-family: monospace; margin-top: 10px;">
-                    您可以隨時至「我的歷史回報」頁籤查看即時處理進度。
+                    您可以隨時至「我的歷史回報」頁面查看即時處理進度。
                 </div>
             </div>
             """,
