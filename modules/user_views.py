@@ -160,7 +160,7 @@ def reset_ex_search():
 
 
 def render_user_home():
-    # 精準 DOM CSS：實現卡片與 Streamlit 原生按鈕 100% 無縫縫合
+    # 精準 DOM CSS：實現卡片與 Streamlit 原生按鈕 100% 無縫縫合 + Radio 選單滿格置中
     st.markdown(
         """
         <style>
@@ -210,6 +210,38 @@ def render_user_home():
         div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button:hover,
         div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button:hover {
             background-color: rgba(30, 41, 59, 0.95) !important;
+        }
+
+        /* 📱 手機優化：讓 Radio 單選卡片容器寬度 100% 滿格 */
+        div[data-testid="stRadio"] > div[role="radiogroup"] {
+            width: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 10px !important;
+        }
+
+        /* 📱 手機優化：單選卡片按鈕拉滿寬度 + 內容強制作中 */
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label {
+            width: 100% !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            background: rgba(15, 23, 42, 0.6) !important;
+            border: 1px solid rgba(56, 189, 248, 0.25) !important;
+            border-radius: 10px !important;
+            padding: 12px 16px !important;
+            margin: 0 !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover {
+            border-color: #38BDF8 !important;
+            background: rgba(30, 41, 59, 0.85) !important;
+        }
+
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child {
+            margin-right: 8px !important;
         }
         </style>
         """,
