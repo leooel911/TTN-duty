@@ -9,6 +9,7 @@ import streamlit as st
 from config import DATA_DIR, LOG_FILE, UNITS, WHITELIST_FILE
 from modules.services import load_system_config, save_system_config
 from modules.utils import (
+    get_employee_name,
     get_file_mtime_str,
     is_module_maintenance,
     load_activity_logs,
@@ -189,7 +190,7 @@ def render_admin_panel():
     ])
 
     # ---------------------------------------------------------
-    # Tab 1: 大表上傳與管理（已移除冗餘速查區塊，純化功能）
+    # Tab 1: 大表上傳與管理
     # ---------------------------------------------------------
     with tab1:
         st.markdown(f"### 📂 [{current_unit}] 班表大表 Excel 上傳與管理")
@@ -276,7 +277,7 @@ def render_admin_panel():
                     st.rerun()
 
     # ---------------------------------------------------------
-    # Tab 3: 白名單與組員權限管理 (高互動整列點擊 UX)
+    # Tab 3: 白名單與組員權限管理 (修正 Index 防呆安全邏輯)
     # ---------------------------------------------------------
     with tab3:
         st.markdown(f"### 👤 白名單與組員權限管理 [{current_unit}]")
@@ -338,7 +339,12 @@ def render_admin_panel():
                 selected_rows = event.selection.get("rows", [])
                 if selected_rows:
                     selected_idx = selected_rows[0]
-                    selected_row_data = filtered_df.iloc[selected_idx].to_dict()
+                    # 🛡️ 核心防呆：只有在 selected_idx 屬於當前 filtered_df 範圍內時才取值
+                    if 0 <= selected_idx < len(filtered_df):
+                        selected_row_data = filtered_df.iloc[selected_idx].to_dict()
+                    else:
+                        # 否則清空舊的選取 Session 紀錄
+                        st.session_state[f"wl_table_select_{current_unit}"] = {"selection": {"rows": []}}
             else:
                 st.info(f"目前【{current_unit}】尚無匹配的白名單人員紀錄。")
 
@@ -454,6 +460,10 @@ def render_admin_panel():
                             del whitelist_data[target_uid]
                             save_whitelist(current_unit, whitelist_data)
                             log_activity(f"管理員移除 [{current_unit}] 組員權限：{target_uid}")
+                            
+                            # 🛡️ 關鍵性修正：刪除後徹底清空表格選取 state，避免下一輪存取溢出 index
+                            st.session_state[f"wl_table_select_{current_unit}"] = {"selection": {"rows": []}}
+                            
                             st.success(f"已成功移除【{current_unit}】權限：{target_uid}")
                             st.rerun()
                 else:
