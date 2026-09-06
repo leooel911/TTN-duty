@@ -3,6 +3,7 @@ import json
 import os
 import re
 from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 import streamlit as st
@@ -17,13 +18,14 @@ from config import (
 
 
 # =========================================================
-# 🛠️ 1. 模組維護狀態控制 (雙重相容判定：.flag 與 .json)
+# 1. 模組維護狀態控制 (雙重相容判定：.flag 與 .json)
 # =========================================================
-def get_maintenance_flag_path(unit, module_key):
+def get_maintenance_flag_path(unit: str, module_key: str) -> str:
+    """取得特定單位模組的 Flag 檔案路徑"""
     return os.path.join(DATA_DIR, f"maintenance_{unit}_{module_key}.flag")
 
 
-def set_module_maintenance(unit, module_key, is_maint):
+def set_module_maintenance(unit: str, module_key: str, is_maint: bool) -> None:
     """開啟或關閉特定模組之維護狀態"""
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR, exist_ok=True)
@@ -36,7 +38,7 @@ def set_module_maintenance(unit, module_key, is_maint):
             os.remove(flag_path)
 
 
-def is_module_maintenance(unit, module_key):
+def is_module_maintenance(unit: str, module_key: str) -> bool:
     """檢測特定單位的模組是否處於維護狀態 (支援 .flag 與 .json 雙軌檢測)"""
     flag_path = get_maintenance_flag_path(unit, module_key)
     if os.path.exists(flag_path):
@@ -61,9 +63,9 @@ def is_module_maintenance(unit, module_key):
 
 
 # =========================================================
-# 👤 2. 個資遮罩與 Excel 相容讀取引擎
+# 2. 個資遮罩與 Excel 相容讀取引擎
 # =========================================================
-def format_display_name(name):
+def format_display_name(name: Any) -> str:
     """將姓名遮罩顯示 (如: 張小明 -> 小明)"""
     if not name or str(name).strip().upper() in ["NAN", "NONE", ""]:
         return ""
@@ -74,7 +76,11 @@ def format_display_name(name):
 
 
 @st.cache_data(show_spinner=False)
-def safe_read_excel_cached(file_path_or_bytes, header=None, file_mtime=None):
+def safe_read_excel_cached(
+    file_path_or_bytes: Union[str, bytes],
+    header: Optional[int] = None,
+    file_mtime: Optional[float] = None,
+) -> pd.DataFrame:
     """高效能快取 Excel 讀取器 (支援 .xlsx 與舊版 .xls)"""
     try:
         if isinstance(file_path_or_bytes, str):
@@ -101,7 +107,8 @@ def safe_read_excel_cached(file_path_or_bytes, header=None, file_mtime=None):
         raise ValueError(f"無法解析 Excel 檔案格式 (錯誤: {e})")
 
 
-def safe_read_excel(file_source, header=None):
+def safe_read_excel(file_source: Any, header: Optional[int] = None) -> pd.DataFrame:
+    """Excel 讀取相容性安全對應入口"""
     if isinstance(file_source, str) and os.path.exists(file_source):
         mtime = os.path.getmtime(file_source)
         return safe_read_excel_cached(file_source, header=header, file_mtime=mtime)
@@ -111,12 +118,11 @@ def safe_read_excel(file_source, header=None):
         return safe_read_excel_cached(file_source, header=header)
 
 
-# ⚡ 高效記憶體快取：一次性載入單位組員姓名字典，解決重新整理卡頓
 @st.cache_data(show_spinner=False)
-def get_unit_employee_dict(unit_key):
+def get_unit_employee_dict(unit_key: str) -> Dict[str, str]:
     """讀取大表並建置 {員編/姓名: 姓名} 之記憶體字典快取"""
     unit_files = UNITS.get(unit_key, UNITS.get("TTN", {}))
-    emp_dict = {}
+    emp_dict: Dict[str, str] = {}
     for role in ["駕駛", "列車長", "服勤員"]:
         path = unit_files.get(role, "")
         if os.path.exists(path):
@@ -138,7 +144,7 @@ def get_unit_employee_dict(unit_key):
     return emp_dict
 
 
-def get_employee_name(unit_key, emp_input):
+def get_employee_name(unit_key: str, emp_input: Any) -> str:
     """全大表員編對照姓名檢索器 (使用記憶體快取)"""
     input_clean = str(emp_input).strip().upper()
     if not input_clean or input_clean in ["NAN", "NONE", ""]:
@@ -149,9 +155,10 @@ def get_employee_name(unit_key, emp_input):
 
 
 # =========================================================
-# 📱 3. 裝置解析與結構化操作日誌紀錄 (Audit Trail)
+# 3. 裝置解析與結構化操作日誌紀錄 (Audit Trail)
 # =========================================================
-def parse_device_info(ua_string):
+def parse_device_info(ua_string: str) -> str:
+    """解析 User-Agent 判定使用者裝置與瀏覽器類型"""
     ua = ua_string.lower()
     if "iphone" in ua:
         device = "iPhone"
@@ -180,7 +187,12 @@ def parse_device_info(ua_string):
     return f"{device} [{browser}]"
 
 
-def log_activity(action_or_type, details="", unit=None, user_id=None):
+def log_activity(
+    action_or_type: Any,
+    details: str = "",
+    unit: Optional[str] = None,
+    user_id: Optional[str] = None,
+) -> None:
     """
     結構化紀錄系統日誌
     支援舊版單字串傳入: log_activity("做某事")
@@ -192,7 +204,6 @@ def log_activity(action_or_type, details="", unit=None, user_id=None):
 
         now_tw = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
-        # 嘗試擷取 Client User-Agent 與 IP
         ua_raw = ""
         client_ip = "127.0.0.1"
         if hasattr(st, "context") and hasattr(st.context, "headers"):
@@ -224,9 +235,9 @@ def log_activity(action_or_type, details="", unit=None, user_id=None):
         pass
 
 
-def load_activity_logs():
+def load_activity_logs() -> List[Dict[str, Any]]:
     """解析 LOG 檔案，支援舊版格式相容與新版欄位提取"""
-    logs = []
+    logs: List[Dict[str, Any]] = []
     possible_log_paths = [
         LOG_FILE,
         "activity.log",
@@ -248,7 +259,6 @@ def load_activity_logs():
                     unit = parts[1].replace("單位: ", "").strip()
                     user_id = parts[2].replace("操作者員編: ", "").strip()
 
-                    # 相容包含或不包含 IP 欄位之舊格式
                     if len(parts) >= 6 and parts[3].startswith("裝置:"):
                         device = parts[3].replace("裝置: ", "").strip()
                         ip_addr = parts[4].replace("IP: ", "").strip()
@@ -258,7 +268,6 @@ def load_activity_logs():
                         ip_addr = "N/A"
                         action = parts[4].replace("動作: ", "").strip()
 
-                    # 拆分動作類別與詳細參數
                     action_type = "一般操作"
                     details_str = action
                     if action.startswith("[") and "]" in action:
@@ -295,7 +304,8 @@ def load_activity_logs():
     return logs
 
 
-def get_file_mtime_str(path):
+def get_file_mtime_str(path: str) -> str:
+    """取得檔案最後修改時間與檔案大小格式化字串"""
     if os.path.exists(path):
         mtime = os.path.getmtime(path)
         dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(TAIWAN_TZ)
@@ -305,16 +315,18 @@ def get_file_mtime_str(path):
 
 
 # =========================================================
-# ⏱️ 4. 時間與工時運算工具
+# 4. 時間與工時運算工具
 # =========================================================
-def pad_time(t_str):
+def pad_time(t_str: Any) -> str:
+    """對時間字串補齊雙位數格式 (例如: 8:00 -> 08:00)"""
     if not t_str or ":" not in str(t_str):
         return str(t_str) if t_str else ""
     parts = str(t_str).split(":")
     return f"{int(parts[0]):02d}:{parts[1]}" if len(parts) == 2 else str(t_str)
 
 
-def calculate_hours(start_str, end_str):
+def calculate_hours(start_str: str, end_str: str) -> str:
+    """計算起訖時間差，並回傳工時格式字串 (例如: 8h30m)"""
     if not start_str or not end_str or ":" not in start_str or ":" not in end_str:
         return ""
     try:
@@ -330,7 +342,8 @@ def calculate_hours(start_str, end_str):
         return ""
 
 
-def is_valid_train_code(tr):
+def is_valid_train_code(tr: Any) -> bool:
+    """檢查車次代碼是否為正線出勤車次"""
     if not tr:
         return False
     tr_clean = str(tr).strip().upper()
@@ -346,7 +359,8 @@ def is_valid_train_code(tr):
     return bool(re.match(r"^[A-Z]+\d+", tr_clean))
 
 
-def is_overtime(h, tr, note):
+def is_overtime(h: Any, tr: Any, note: Any) -> bool:
+    """判斷工時是否屬於長班或加班 (> 8.5 小時 / 510 分鐘)"""
     if not is_valid_train_code(tr) or not h:
         return False
     try:
@@ -356,7 +370,8 @@ def is_overtime(h, tr, note):
         return False
 
 
-def translate_train_code(tr):
+def translate_train_code(tr: Any) -> str:
+    """將假別英文代碼轉譯為可讀說明文字"""
     if not tr:
         return "無"
     tr_upper = str(tr).strip().upper()
@@ -367,10 +382,11 @@ def translate_train_code(tr):
         "MLP": "生理假 (MLP)",
         "MTR": "事假 (MTR)",
     }
-    return mapping.get(tr_upper, tr)
+    return mapping.get(tr_upper, str(tr))
 
 
-def is_town_shift(tr, note):
+def is_town_shift(tr: Any, note: Any) -> bool:
+    """判斷是否為非正線/駐地/庫內勤務"""
     tr_upper = str(tr).strip().upper()
     note_upper = str(note).strip().upper()
     combined_text = f"{tr_upper} {note_upper}"
@@ -397,9 +413,10 @@ def is_town_shift(tr, note):
 
 
 # =========================================================
-# 🧩 5. 班表儲存格核心解析 (Cell Parser) 與連上天數運算
+# 5. 班表儲存格核心解析 (Cell Parser) 與連上天數運算
 # =========================================================
-def parse_cell(raw):
+def parse_cell(raw: Any) -> Dict[str, str]:
+    """精準解析 Excel 儲存格內容，拆解報到時間、車次、報退時間與備註"""
     if pd.isna(raw) or not str(raw).strip():
         return dict(start="", train="無", end="", hours="", note="")
 
@@ -468,7 +485,8 @@ def parse_cell(raw):
     )
 
 
-def is_cell_off_day(raw_val):
+def is_cell_off_day(raw_val: Any) -> bool:
+    """判定儲存格是否屬於休假日/DO/休假"""
     if pd.isna(raw_val) or not str(raw_val).strip():
         return True
     raw_str = str(raw_val).strip().upper()
@@ -505,7 +523,8 @@ def is_cell_off_day(raw_val):
     return True
 
 
-def resets_work_streak(raw_val):
+def resets_work_streak(raw_val: Any) -> bool:
+    """判定該天是否能中斷連續出勤計數"""
     if pd.isna(raw_val) or not str(raw_val).strip():
         return True
 
@@ -527,7 +546,10 @@ def resets_work_streak(raw_val):
     return True
 
 
-def set_simulated_cell(series, date_keyword, new_val):
+def set_simulated_cell(
+    series: pd.Series, date_keyword: str, new_val: Any
+) -> pd.Series:
+    """模擬替換 Series 中特定日期欄位數值以利快篩驗算"""
     key_clean = str(date_keyword).strip()
     matched_col = None
     for col in series.index:
@@ -540,8 +562,11 @@ def set_simulated_cell(series, date_keyword, new_val):
     return series
 
 
-def calculate_consecutive_work_days(series, target_date_str=None):
-    date_cols = []
+def calculate_consecutive_work_days(
+    series: pd.Series, target_date_str: Optional[str] = None
+) -> int:
+    """計算指定組員特定日期或全月之連續上班天數數值"""
+    date_cols: List[Any] = []
     for col in series.index:
         col_str = str(col).strip()
         if col_str in [
@@ -562,8 +587,8 @@ def calculate_consecutive_work_days(series, target_date_str=None):
     if not date_cols:
         return 0
 
-    work_status = []
-    target_idx = None
+    work_status: List[bool] = []
+    target_idx: Optional[int] = None
 
     for idx, col in enumerate(date_cols):
         val = series[col]
@@ -573,7 +598,6 @@ def calculate_consecutive_work_days(series, target_date_str=None):
         if target_date_str and str(target_date_str).strip() in str(col):
             target_idx = idx
 
-    # 若有指定特定日期，計算包含該日期的連續上班天數
     if target_idx is not None:
         if not work_status[target_idx]:
             return 0
@@ -594,7 +618,6 @@ def calculate_consecutive_work_days(series, target_date_str=None):
 
         return left + 1 + right
 
-    # 若未指定特定日期，計算全月最大連續上班天數
     max_s = 0
     curr_s = 0
     for is_w in work_status:
@@ -608,9 +631,11 @@ def calculate_consecutive_work_days(series, target_date_str=None):
 
 
 # =========================================================
-# ⚖️ 6. 班間休息與法規檢查 (Labour Rules Verification)
+# 6. 班間休息與法規檢查 (Labour Rules Verification)
 # =========================================================
-def calculate_rest_hours(sign_out_str, next_sign_in_str):
+def calculate_rest_hours(
+    sign_out_str: str, next_sign_in_str: str
+) -> Optional[float]:
     """精準計算 Sign-Out 至隔日 Sign-In 的實際休息小時數（修正跨日運算）"""
     if (
         not sign_out_str
@@ -625,14 +650,16 @@ def calculate_rest_hours(sign_out_str, next_sign_in_str):
         so_mins = so_h * 60 + so_m
         si_mins = si_h * 60 + si_m
 
-        # 前一日 Sign-Out 到次日 Sign-In 的總分鐘數差值：(24小時 - 報退時間) + 次日報到時間
         rest_mins = (24 * 60 - so_mins) + si_mins
         return round(rest_mins / 60.0, 1)
     except Exception:
         return None
 
 
-def check_shift_legality(crew_row, target_col_idx, all_cols):
+def check_shift_legality(
+    crew_row: pd.Series, target_col_idx: int, all_cols: Any
+) -> Tuple[bool, str, Dict[str, Any]]:
+    """檢驗指定日期的換班前後班間休息間隔是否合乎法令規範"""
     window_start = max(2, target_col_idx - 6)
     window_end = min(len(all_cols) - 1, target_col_idx + 6)
 
@@ -663,7 +690,7 @@ def check_shift_legality(crew_row, target_col_idx, all_cols):
                 elif 11.0 <= rest_h < 12.0:
                     eleven_hour_count += 1
 
-    illegal_reasons = []
+    illegal_reasons: List[str] = []
     if has_under_11h:
         illegal_reasons.append(f"班間隔不足 11 小時 (最低 {min_interval_found}h)")
     if eleven_hour_count > 1:
@@ -682,7 +709,9 @@ def check_shift_legality(crew_row, target_col_idx, all_cols):
     }
 
 
-def check_week_has_holiday(target_date_str, date_cols, columns=None):
+def check_week_has_holiday(
+    target_date_str: str, date_cols: List[str], columns: Optional[Any] = None
+) -> Tuple[bool, str]:
     """檢查指定日期所在當週 (Sun~Sat) 是否包含國定假日或備註假日"""
     try:
         current_year = datetime.now().year
