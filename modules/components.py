@@ -143,7 +143,7 @@ def show_feedback_modal():
     tab_create, tab_my_records = st.tabs(["線上回報", "我的歷史回報"])
 
     with tab_create:
-        # 🟢 狀態一：已送出成功，僅顯示工單單號卡片
+        # 🟢 狀態一：已送出成功，顯示工單卡片（不關閉視窗）
         if "fb_submitted_id" in st.session_state:
             ticket_id = st.session_state["fb_submitted_id"]
             st.markdown(
@@ -169,6 +169,7 @@ def show_feedback_modal():
                 use_container_width=True,
             ):
                 del st.session_state["fb_submitted_id"]
+                st.session_state["show_feedback_dialog"] = False  # 關閉彈窗
                 st.rerun()
 
         # 🔵 狀態二：填寫與回報表單
@@ -235,7 +236,7 @@ def show_feedback_modal():
                             f" 內容:{clean_content.replace('\n', ' ')}{img_log_str}"
                         )
 
-                        # 🔑 紀錄單號後立即重新整理，讓頁面直接切換至「狀態一」
+                        # 紀錄單號並觸發 rerun，因 show_feedback_dialog 為 True，彈窗會保持開啟並切換至狀態一
                         st.session_state["fb_submitted_id"] = ticket_id
                         st.rerun()
                     else:
@@ -244,6 +245,7 @@ def show_feedback_modal():
                 if st.button(
                     "關閉視窗", key="close_fb_btn_1", use_container_width=True
                 ):
+                    st.session_state["show_feedback_dialog"] = False  # 關閉彈窗
                     st.rerun()
 
     with tab_my_records:
