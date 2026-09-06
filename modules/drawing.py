@@ -115,7 +115,7 @@ def render_schedule_figure(
     fig.patch.set_facecolor("white")
     ML, MR, MT, MB, TH, DH = 0.015, 0.015, 0.015, 0.08, 0.09, 0.055
     TW, CW = 1.0 - ML - MR, (1.0 - ML - MR) / 7
-    RH = (1.0 - MT - MB - TH - DH) / len(weeks)
+    RH = (1.0 - MT - MB - TH - DH) / len(weeks) if weeks else 0.1
     ty = 1.0 - MT - TH
     ax.add_patch(
         FancyBboxPatch(
@@ -138,12 +138,17 @@ def render_schedule_figure(
         color="#FFFFFF",
         fontproperties=fp(16),
     )
+
+    # 🛡️ 邊界防護：避免 dates 為空時發生 IndexError
+    d_start_str = dates[0] if dates else "--"
+    d_end_str = dates[-1] if dates else "--"
+
     draw_bold_text(
         ax,
         ML + 0.008,
         ty + TH * 0.25,
         f"UNIT // {unit_label}    CREW ID // {emp_id}    OPERATOR // {emp_name} "
-        f"    TIMELINE // {dates[0]} ~ {dates[-1]}",
+        f"    TIMELINE // {d_start_str} ~ {d_end_str}",
         ha="left",
         va="center",
         color="#CBD5E1",
