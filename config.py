@@ -82,7 +82,7 @@ ADMIN_PASSWORD: str = "Lf090000"
 CREW_ACCESS_PASSWORD: str = "0096"
 
 # 通用請假代碼集
-LEAVE_CODES: List[str] = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
+LEAVE_CODES: List[str] = ["PAY", "FAC", "AL", "WRSL", "CL", "ML", "LEV", "MLP", "MTR"]
 
 # 班表圖像渲染色調定義 (Matplotlib / PIL)
 C_HDR: str = "#0F172A"
