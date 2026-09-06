@@ -1,6 +1,6 @@
 import os
 from datetime import timedelta, timezone
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple  # 修正：補上 Any
 
 # 時區設定
 TAIWAN_TZ: timezone = timezone(timedelta(hours=8))
