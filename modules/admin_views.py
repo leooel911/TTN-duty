@@ -613,25 +613,6 @@ def render_admin_panel():
             key="btn_download_backup",
         )
 
-    # ---------------------------------------------------------
-    # 底部導航頁尾橫幅列
-    # ---------------------------------------------------------
-    st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-    col_foot1, col_foot2 = st.columns(2)
-    with col_foot1:
-        if st.button(
-            "問題回報與建議", key="btn_admin_feedback_footer", use_container_width=True
-        ):
-            st.info("請聯繫系統維護團隊或寄送 Email 至系統管理員信箱。")
-    with col_foot2:
-        if st.button(
-            f"ADMIN PANEL [{current_unit}]",
-            key="btn_admin_footer_unit_switch",
-            use_container_width=True,
-        ):
-            st.session_state["admin_logged_in"] = False
-            st.rerun()
-
 
 # 相容別名宣告
 render_admin_home = render_admin_panel
