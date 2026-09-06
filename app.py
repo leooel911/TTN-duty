@@ -156,7 +156,6 @@ if not st.session_state["authenticated"] and not st.session_state.get(
 
             if btn_auth:
                 clean_emp = entered_emp.strip().upper()
-                # 🔑 記錄使用者在登入頁輸入的員編，若為空或預設值則為 "A"
                 st.session_state["user_input_field"] = clean_emp if clean_emp else "A"
 
                 if entered_key == VIP_PASS_CODE:
@@ -204,9 +203,10 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                         log_activity("測試員 A 登入系統")
                         st.rerun()
 
-                    allowed, user_info = is_user_allowed(clean_emp)
+                    # 🔥 關鍵修正：將 selected_unit 傳入白名單驗證
+                    allowed, user_info = is_user_allowed(selected_unit, clean_emp)
                     u_role = (
-                        user_info.get("role", "") if isinstance(user_info, dict) else ""
+                        str(user_info.get("role", "")).upper() if isinstance(user_info, dict) else ""
                     )
                     u_name_from_info = (
                         user_info.get("name", "") if isinstance(user_info, dict) else ""
@@ -218,7 +218,8 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                         )
                     elif (
                         verify_crew_membership(selected_unit, clean_emp)
-                        or u_role == "VIP"
+                        or "VIP" in u_role
+                        or u_role in ["TESTER", "ADMIN"]
                     ):
                         st.session_state["authenticated"] = True
                         st.session_state["admin_logged_in"] = False
@@ -230,17 +231,18 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                         disp_name = format_display_name(emp_real_name)
                         u_name = u_name_from_info if u_name_from_info else disp_name
 
-                        if u_role == "VIP":
+                        if "VIP" in u_role or u_role == "TESTER":
                             name_str = f" {u_name}" if u_name else ""
+                            role_tag = "TESTER" if u_role == "TESTER" else "VIP_USER"
                             st.session_state["current_user_id"] = (
-                                f"VIP_USER ({clean_emp}{name_str})".strip()
+                                f"{role_tag} ({clean_emp}{name_str})".strip()
                             )
                         else:
                             st.session_state["current_user_id"] = (
                                 f"{clean_emp} {u_name}".strip()
                             )
 
-                        log_activity(f"使用者登入系統: {clean_emp} (角色: {u_role})")
+                        log_activity(f"使用者登入系統: {clean_emp} (單位: {selected_unit}, 角色: {u_role})")
                         st.rerun()
                     else:
                         st.error(
