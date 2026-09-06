@@ -97,11 +97,13 @@ if st.session_state.get("inspect_emp_target") is not None:
                 st.markdown(
                     """
                     <div style="display: flex; align-items: center; height: 100%; font-size: 12px; color: #94A3B8; font-weight: 500; font-family: monospace; padding-left: 6px;">
-                        💡 提示：長按可將圖片儲存至相簿
+                        💡 提示：手機使用者可長按圖片儲存至相簿
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
+    except Exception as e:
+        st.error(f"載入組員【{target_emp}】班表時發生錯誤：{e}")
 
 # ---------------------------------------------------------
 # 前置授權碼門戶檢查 (登入驗證頁面)
