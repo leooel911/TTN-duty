@@ -9,7 +9,6 @@ import streamlit as st
 from config import DATA_DIR, LOG_FILE, UNITS, WHITELIST_FILE
 from modules.services import load_system_config, save_system_config
 from modules.utils import (
-    get_employee_name,
     get_file_mtime_str,
     is_module_maintenance,
     load_activity_logs,
@@ -61,7 +60,7 @@ def create_backup_zip():
 
 
 def load_whitelist(unit_code="TTN"):
-    """讀取指定營運單位的白名單（嚴格獨立隔離，徹底解決跨單位混淆問題）"""
+    """讀取指定營運單位的白名單（嚴格獨立隔離）"""
     whitelist_path = WHITELIST_FILE
     full_data = {}
 
@@ -182,7 +181,7 @@ def render_admin_panel():
 
     # 管理員五大分頁
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📂 大表上傳與組員快查",
+        "📂 大表上傳與管理",
         "🛠️ 模組維護模式",
         "👤 白名單與組員權限管理",
         "⚙️ 全域系統參數",
@@ -190,7 +189,7 @@ def render_admin_panel():
     ])
 
     # ---------------------------------------------------------
-    # Tab 1: 大表上傳與組員快查
+    # Tab 1: 大表上傳與管理（已移除冗餘速查區塊，純化功能）
     # ---------------------------------------------------------
     with tab1:
         st.markdown(f"### 📂 [{current_unit}] 班表大表 Excel 上傳與管理")
@@ -232,20 +231,6 @@ def render_admin_panel():
                             st.rerun()
                         except Exception as e:
                             st.error(f"檔案寫入失敗：{e}")
-
-        st.markdown("---")
-        st.markdown(f"#### 🔍 [{current_unit}] 組員資料速查庫")
-        emp_input = st.text_input(
-            "輸入員編查詢姓名對照",
-            placeholder="如: 023300",
-            key=f"admin_emp_search_{current_unit}",
-        ).strip()
-        if emp_input:
-            found_name = get_employee_name(current_unit, emp_input)
-            if found_name:
-                st.success(f"[{current_unit}] 員編 `[{emp_input}]` 對應姓名為：**{found_name}**")
-            else:
-                st.warning(f"在大表中未找到 [{current_unit}] 員編 `[{emp_input}]` 之對應姓名。")
 
     # ---------------------------------------------------------
     # Tab 2: 模組維護模式
@@ -480,12 +465,11 @@ def render_admin_panel():
                     )
 
     # ---------------------------------------------------------
-    # Tab 4: 全域系統參數 (狀態持久化提示機制)
+    # Tab 4: 全域系統參數
     # ---------------------------------------------------------
     with tab4:
         st.markdown("### ⚙️ 全域系統參數與授權碼設定")
 
-        # 💡 檢查並印出前一次存檔結果（避免被 st.rerun 清除）
         if "cfg_toast" in st.session_state:
             t_type, t_msg = st.session_state["cfg_toast"]
             if t_type == "success":
@@ -582,7 +566,6 @@ def render_admin_panel():
                 has_error = False
                 error_msgs = []
 
-                # 1. 驗證一般組員密碼
                 if new_user_pwd or confirm_user_pwd:
                     if new_user_pwd != confirm_user_pwd:
                         error_msgs.append("【一般組員授權碼】兩次輸入不一致！")
@@ -592,7 +575,6 @@ def render_admin_panel():
                         sys_config["crew_pass_code"] = new_user_pwd.strip()
                         pwd_updates.append("一般組員授權碼")
 
-                # 2. 驗證 VIP 密碼
                 if new_vip_pwd or confirm_vip_pwd:
                     if new_vip_pwd != confirm_vip_pwd:
                         error_msgs.append("【VIP 授權碼】兩次輸入不一致！")
@@ -602,7 +584,6 @@ def render_admin_panel():
                         sys_config["vip_pass_code"] = new_vip_pwd.strip()
                         pwd_updates.append("VIP 授權碼")
 
-                # 3. 驗證管理員密碼
                 if new_admin_pwd or confirm_admin_pwd:
                     if new_admin_pwd != confirm_admin_pwd:
                         error_msgs.append("【管理員解鎖密碼】兩次輸入不一致！")
