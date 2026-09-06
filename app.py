@@ -219,9 +219,9 @@ if not st.session_state["authenticated"] and not st.session_state.get(
             # 💡 3. 按鈕視覺層級區隔 (Primary 醒目色彩 vs Secondary 次要按鈕)
             col_b1, col_b2 = st.columns([1, 1])
             with col_b1:
-                btn_auth = st.form_submit_button("🚀 進入系統", type="primary", use_container_width=True)
+                btn_auth = st.form_submit_button("進入系統", type="primary", use_container_width=True)
             with col_b2:
-                btn_apply = st.form_submit_button("🔑 申請使用權限", use_container_width=True)
+                btn_apply = st.form_submit_button("申請使用權限", use_container_width=True)
 
             # 點擊「申請使用權限」時切換 State 標記並重刷
             if btn_apply:
