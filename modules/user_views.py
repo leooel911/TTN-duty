@@ -4,7 +4,11 @@ from datetime import date, timedelta
 
 import streamlit as st
 from config import LEAVE_CODES, NATIONAL_HOLIDAYS, UNITS
-from modules.components import render_zoomable_image, show_crew_schedule_modal
+from modules.components import (
+    render_zoomable_image,
+    show_crew_schedule_modal,
+    show_holiday_notice,
+)
 from modules.drawing import render_schedule_figure
 from modules.services import (
     get_current_role_files,
@@ -56,7 +60,7 @@ def reset_ex_search():
 
 
 def render_user_home():
-    # 🔑 精準 DOM CSS：實現卡片與 Streamlit 原生按鈕 100% 無縫縫合
+    # 精準 DOM CSS：實現卡片與 Streamlit 原生按鈕 100% 無縫縫合
     st.markdown(
         """
         <style>
@@ -210,7 +214,7 @@ def render_user_home():
                 st.markdown(
                     f"""
                     <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                        <strong>⚠️【管理員維護預覽】</strong> 當前【{current_unit_label} - 個人月班表圖檔】已開啟維護模式（一般組員已被阻擋），您正以管理員身分預覽測試。
+                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 個人月班表圖檔】已開啟維護模式（一般組員已被阻擋），您正以管理員身分預覽測試。
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -232,7 +236,7 @@ def render_user_home():
             key="user_input_field",
         )
 
-        if st.button("立即生成班表圖片檔"):
+        if st.button("領域展開"):
             current_input = st.session_state.get("user_input_field", "").strip()
             if not current_input:
                 st.warning("請輸入員編或姓名")
@@ -286,7 +290,7 @@ def render_user_home():
                 st.markdown(
                     f"""
                     <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                        <strong>⚠️【管理員維護預覽】</strong> 當前【{current_unit_label} - 換班日期快篩】已開啟維護模式（一般組員已被阻擋），您正以管理員身分預覽測試。
+                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換班日期快篩】已開啟維護模式（一般組員已被阻擋），您正以管理員身分預覽測試。
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -345,6 +349,9 @@ def render_user_home():
                     on_change=reset_win_search,
                 )
 
+                # 觸發國定假日動態提示條
+                show_holiday_notice(get_date_label(target_date, df_search.columns))
+
                 is_win_week_has_do2w, win_week_str = check_week_has_holiday(
                     target_date, date_cols, df_search.columns
                 )
@@ -353,7 +360,7 @@ def render_user_home():
                     st.markdown(
                         f"""
                         <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin: 8px 0; font-size: 13px; color: #FDE68A; font-weight: 700;">
-                            ⚠️ 提醒：您選擇的當週區間（{win_week_str}）包含 DO2W 國定假日！請留意換假/換班之DO2W出勤規範。
+                            提醒：您選擇的當週區間（{win_week_str}）包含 DO2W 國定假日！請留意換假/換班之DO2W出勤規範。
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -625,7 +632,7 @@ def render_user_home():
                 st.markdown(
                     f"""
                     <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                        <strong>⚠️【管理員維護預覽】</strong> 當前【{current_unit_label} - 換假日期快篩】已開啟維護模式（一般組員已被阻擋），您正以管理員身分預覽測試。
+                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換假日期快篩】已開啟維護模式（一般組員已被阻擋），您正以管理員身分預覽測試。
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -681,6 +688,9 @@ def render_user_home():
                             key="ex_target_date",
                             on_change=reset_ex_search,
                         )
+
+                        # 觸發國定假日動態提示條
+                        show_holiday_notice(get_date_label(target_date, df_ex.columns))
 
                     same_week_options = []
                     is_week_has_do2w, target_week_str = check_week_has_holiday(
@@ -739,7 +749,7 @@ def render_user_home():
                         st.markdown(
                             f"""
                             <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin: 8px 0; font-size: 13px; color: #FDE68A; font-weight: 700;">
-                                ⚠️ 提醒：您選擇的當週區間（{target_week_str}）包含 DO2W 國定假日！請留意換假/換班之DO2W出勤規範。
+                                提醒：您選擇的當週區間（{target_week_str}）包含 DO2W 國定假日！請留意換假/換班之DO2W出勤規範。
                             </div>
                             """,
                             unsafe_allow_html=True,
@@ -862,12 +872,12 @@ def render_user_home():
                                     )
                                 )
 
-                                # 🔑 建立模擬換假後的班表
+                                # 建立模擬換假後的班表
                                 sim_row = row.copy()
                                 sim_row = set_simulated_cell(sim_row, target_date, "D1")
                                 sim_row = set_simulated_cell(sim_row, return_date, "休")
 
-                                # 🔑 全月連班檢測：計算換假後當月「最大連續上班天數」
+                                # 全月連班檢測：計算換假後當月「最大連續上班天數」
                                 max_consecutive_streak = calculate_consecutive_work_days(
                                     sim_row
                                 )
@@ -919,7 +929,7 @@ def render_user_home():
                                 ):
                                     continue
 
-                            # 🔑 嚴格過濾精準執行：全月連班天數 >= 6 天直接剔除
+                            # 嚴格過濾精準執行：全月連班天數 >= 6 天直接剔除
                             if strict_limit and cand["連續上班天數"] >= 6:
                                 continue
 
@@ -1024,7 +1034,7 @@ def render_user_home():
                                 if streak_cnt >= 6:
                                     warning_banner_html = f"""
                                     <div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
-                                        ⚠️ 注意：換假後當月連續上班達 {streak_cnt} 天，請留意出勤規範！
+                                        注意：換假後當月連續上班達 {streak_cnt} 天，請留意出勤規範！
                                     </div>
                                     """
 
