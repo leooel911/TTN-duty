@@ -2,6 +2,7 @@ import base64
 import io
 import os
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
 
 import streamlit as st
 from config import FEEDBACK_IMG_DIR, TAIWAN_TZ
@@ -11,20 +12,20 @@ from modules.utils import log_activity
 
 
 # =========================================================
-# 🖼️ 可放大/縮放圖片渲染器 (解決 BytesIO 純白畫面問題)
+# 1. 可放大/縮放圖片渲染器 (解決 BytesIO 純白畫面問題)
 # =========================================================
-def render_zoomable_image(image_source, height=650):
+def render_zoomable_image(image_source: Any, height: int = 650) -> None:
     """縮放圖片元件：自動重置 BytesIO 指針，解決純白畫面與位元組讀取問題"""
     if image_source is None:
-        st.warning("⚠️ 尚未取得有效的圖片資料。")
+        st.warning("尚未取得有效的圖片資料。")
         return
 
     try:
-        # 🔑 關鍵步驟 1：若為 BytesIO，強制將讀取指針拉回開頭 (seek to 0)
+        # 關鍵步驟 1：若為 BytesIO，強制將讀取指針拉回開頭 (seek to 0)
         if hasattr(image_source, "seek"):
             image_source.seek(0)
 
-        # 🔑 關鍵步驟 2：解析並轉為 base64 安全編碼
+        # 關鍵步驟 2：解析並轉為 base64 安全編碼
         if isinstance(image_source, io.BytesIO):
             img_bytes = image_source.getvalue()
         elif isinstance(image_source, bytes):
@@ -37,12 +38,12 @@ def render_zoomable_image(image_source, height=650):
             return
 
         if not img_bytes:
-            st.error("❌ 圖片內容為空，請重新繪製。")
+            st.error("圖片內容為空，請重新繪製。")
             return
 
         b64_str = base64.b64encode(img_bytes).decode("utf-8")
 
-        # 🔑 關鍵步驟 3：使用深色自訂 HTML 容器渲染，支援自動捲動與高解析度放大
+        # 關鍵步驟 3：使用深色自訂 HTML 容器渲染，支援自動捲動與高解析度放大
         html_code = f"""
         <div style="width:100%; text-align:center; background-color:#0f172a; padding:12px; border-radius:10px; border: 1px solid rgba(255,255,255,0.1);">
             <img src="data:image/png;base64,{b64_str}" style="max-width:100%; height:auto; border-radius:6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);" />
@@ -61,11 +62,13 @@ def render_zoomable_image(image_source, height=650):
 
 
 # =========================================================
-# 📢 國定假日提醒元件 (支援當週全域假日掃描)
+# 2. 國定假日提醒元件 (支援當週全域假日掃描)
 # =========================================================
-def show_holiday_notice(holiday_info, week_str=None):
+def show_holiday_notice(
+    holiday_info: Union[List[str], str, Any], week_str: Optional[str] = None
+) -> None:
     """
-    偵測選擇之當週區間是否包含國定假日並渲染提示條 (無貼圖/圖示純文字版)
+    偵測選擇之當週區間是否包含國定假日並渲染提示條 (純文字無圖示版)
     holiday_info 可傳入：
     1. 串列 (List): 例如 ["9/25 (中秋節)"]
     2. 字串 (String): 例如 "9/25 (中秋節)"
@@ -73,9 +76,9 @@ def show_holiday_notice(holiday_info, week_str=None):
     if not holiday_info:
         return
 
-    holidays = []
+    holidays: List[str] = []
     if isinstance(holiday_info, list):
-        holidays = holiday_info
+        holidays = [str(h) for h in holiday_info]
     elif isinstance(holiday_info, str):
         if "(" in holiday_info or "（" in holiday_info:
             holidays = [holiday_info]
@@ -84,7 +87,7 @@ def show_holiday_notice(holiday_info, week_str=None):
         return
 
     # 格式化假日字串 (例如 "9/25 (中秋節)" -> "中秋節 (9/25)")
-    formatted_names = []
+    formatted_names: List[str] = []
     for h in holidays:
         clean_h = str(h).replace("（", "(").replace("）", ")")
         if "(" in clean_h and ")" in clean_h:
@@ -113,10 +116,12 @@ def show_holiday_notice(holiday_info, week_str=None):
 
 
 # =========================================================
-# 🔍 檢視回報附件截圖彈窗
+# 3. 檢視回報附件截圖彈窗
 # =========================================================
 @st.dialog("檢視回報附件截圖", width="medium")
-def view_feedback_img_modal(img_path, ticket_id, user_info):
+def view_feedback_img_modal(
+    img_path: str, ticket_id: str, user_info: str
+) -> None:
     st.caption(f"處理單號：{ticket_id} ｜ 回報人員：{user_info}")
     if os.path.exists(img_path):
         st.image(img_path, use_container_width=True)
@@ -133,23 +138,23 @@ def view_feedback_img_modal(img_path, ticket_id, user_info):
 
 
 # =========================================================
-# 💬 系統問題與建議彈窗 (雙頁籤：線上回報 / 我的歷史回報)
+# 4. 系統問題與建議彈窗 (雙頁籤：線上回報 / 我的歷史回報)
 # =========================================================
 @st.dialog("系統問題與建議", width="medium")
-def show_feedback_modal():
+def show_feedback_modal() -> None:
     current_unit = st.session_state.get("current_unit", "TTN")
     current_user = st.session_state.get("current_user_id", "未知")
 
     tab_create, tab_my_records = st.tabs(["線上回報", "我的歷史回報"])
 
     with tab_create:
-        # 🟢 狀態一：已送出成功，顯示工單卡片（不關閉視窗）
+        # 狀態一：已送出成功，顯示工單卡片（不關閉視窗）
         if "fb_submitted_id" in st.session_state:
             ticket_id = st.session_state["fb_submitted_id"]
             st.markdown(
                 f"""
             <div style="background: rgba(16, 185, 129, 0.15); border: 2px solid #10B981; border-radius: 12px; padding: 20px; text-align: center; margin: 10px 0;">
-                <div style="font-size: 13px; color: #34D399; font-weight: 800; font-family: monospace; letter-spacing: 1px;">🎉 意見反饋已成功送出工單！</div>
+                <div style="font-size: 13px; color: #34D399; font-weight: 800; font-family: monospace; letter-spacing: 1px;">[工單建立成功] 意見反饋已成功送出！</div>
                 <div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 8px;">您的系統處理工單號碼 (Ticket ID) 為：</div>
                 <div style="font-size: 20px; font-weight: 900; color: #FCD34D; font-family: monospace; letter-spacing: 1.5px; margin-top: 6px; padding: 6px; background: rgba(15, 23, 42, 0.6); border-radius: 6px;">
                     {ticket_id}
@@ -172,7 +177,7 @@ def show_feedback_modal():
                 st.session_state["show_feedback_dialog"] = False  # 關閉彈窗
                 st.rerun()
 
-        # 🔵 狀態二：填寫與回報表單
+        # 狀態二：填寫與回報表單
         else:
             st.caption(f"回報人員：{current_unit} | {current_user}")
             fb_type = st.selectbox(
@@ -196,7 +201,10 @@ def show_feedback_modal():
             col_sb1, col_sb2 = st.columns(2)
             with col_sb1:
                 if st.button(
-                    "確認送出", key="submit_fb_btn", type="primary", use_container_width=True
+                    "確認送出",
+                    key="submit_fb_btn",
+                    type="primary",
+                    use_container_width=True,
                 ):
                     if fb_content.strip():
                         clean_content = fb_content.strip()
@@ -214,7 +222,9 @@ def show_feedback_modal():
 
                         os.makedirs(FEEDBACK_IMG_DIR, exist_ok=True)
 
-                        txt_path = os.path.join(FEEDBACK_IMG_DIR, f"{base_name}.txt")
+                        txt_path = os.path.join(
+                            FEEDBACK_IMG_DIR, f"{base_name}.txt"
+                        )
                         with open(txt_path, "w", encoding="utf-8") as f_txt:
                             f_txt.write(
                                 f"處理編號: {ticket_id}\n狀態: 待處理\n類別: {fb_type}\n單位:"
@@ -226,7 +236,9 @@ def show_feedback_modal():
                         if uploaded_img is not None:
                             ext = uploaded_img.name.split(".")[-1]
                             saved_filename = f"{base_name}.{ext}"
-                            saved_path = os.path.join(FEEDBACK_IMG_DIR, saved_filename)
+                            saved_path = os.path.join(
+                                FEEDBACK_IMG_DIR, saved_filename
+                            )
                             with open(saved_path, "wb") as f_img:
                                 f_img.write(uploaded_img.getvalue())
                             img_log_str = f" | 截圖檔名: {saved_filename}"
@@ -236,7 +248,6 @@ def show_feedback_modal():
                             f" 內容:{clean_content.replace('\n', ' ')}{img_log_str}"
                         )
 
-                        # 紀錄單號並觸發 rerun，因 show_feedback_dialog 為 True，彈窗會保持開啟並切換至狀態一
                         st.session_state["fb_submitted_id"] = ticket_id
                         st.rerun()
                     else:
@@ -251,7 +262,7 @@ def show_feedback_modal():
     with tab_my_records:
         st.caption(f"登入組員：{current_unit} ｜ {current_user}")
 
-        my_records = []
+        my_records: List[Dict[str, str]] = []
         if os.path.exists(FEEDBACK_IMG_DIR):
             for fname in os.listdir(FEEDBACK_IMG_DIR):
                 if fname.endswith(".txt"):
@@ -260,8 +271,8 @@ def show_feedback_modal():
                         with open(fpath, "r", encoding="utf-8") as f:
                             content = f.read()
                             lines = content.split("\n")
-                            info = {}
-                            desc_lines = []
+                            info: Dict[str, str] = {}
+                            desc_lines: List[str] = []
                             is_desc = False
                             for line in lines:
                                 if line.startswith("詳細說明:"):
@@ -328,12 +339,12 @@ def show_feedback_modal():
 
 
 # =========================================================
-# 📅 完整月班表檢視彈窗
+# 5. 完整月班表檢視彈窗
 # =========================================================
 @st.dialog("完整月班表檢視", width="large")
 def show_crew_schedule_modal(
-    emp_input, unit_label, badge_title="Inspector | C.L.F"
-):
+    emp_input: str, unit_label: str, badge_title: str = "Inspector | C.L.F"
+) -> None:
     try:
         start_dt, dates, emp_id, emp_name, cells = process_file_data(
             emp_input
