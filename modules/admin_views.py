@@ -69,13 +69,11 @@ def load_whitelist(unit_code="TTN"):
         try:
             with open(whitelist_path, "r", encoding="utf-8") as f:
                 full_data = json.load(f)
-                # 相容舊版單一階層格式
                 if full_data and not any(k in UNITS for k in full_data.keys()):
                     full_data = {"TTN": full_data}
         except Exception:
             full_data = {}
 
-    # 若該單位尚無資料，建立該單位專屬獨立預設值
     if unit_code not in full_data:
         unit_default = {
             "ADMIN": {
@@ -85,7 +83,6 @@ def load_whitelist(unit_code="TTN"):
                 "created_at": datetime.now().strftime("%Y-%m-%d"),
             }
         }
-        # 僅有 TTN 單位才預載測試員資料
         if unit_code == "TTN":
             unit_default["A023300"] = {
                 "name": "波莉",
@@ -168,7 +165,7 @@ def render_admin_panel():
         )
         if selected_u != current_unit:
             st.session_state["current_unit"] = selected_u
-            st.cache_data.clear()  # 關鍵：切換單位時立即清除快取，防止名單混淆
+            st.cache_data.clear()
             log_activity(f"管理員切換單位至：{selected_u}")
             st.rerun()
 
@@ -294,132 +291,205 @@ def render_admin_panel():
                     st.rerun()
 
     # ---------------------------------------------------------
-    # Tab 3: 白名單與組員權限管理
+    # Tab 3: 白名單與組員權限管理 (全新高互動 UX 設計)
     # ---------------------------------------------------------
     with tab3:
         st.markdown(f"### 👤 白名單與組員權限管理 [{current_unit}]")
         whitelist_data = load_whitelist(current_unit)
 
-        col_wl_left, col_wl_right = st.columns([2, 1])
+        col_wl_left, col_wl_right = st.columns([1.3, 1])
 
+        # 整理 DataFrame 資料結構
+        wl_rows = []
+        if whitelist_data:
+            for uid, info in whitelist_data.items():
+                if isinstance(info, dict):
+                    wl_rows.append({
+                        "員編/帳號": uid,
+                        "姓名": info.get("name", info.get("姓名", "未設定")),
+                        "身份權限": info.get("role", info.get("身份", "VIP")),
+                        "備註": info.get("note", info.get("備註", "-")),
+                    })
+                else:
+                    wl_rows.append({
+                        "員編/帳號": uid,
+                        "姓名": str(info),
+                        "身份權限": "VIP",
+                        "備註": "-",
+                    })
+
+        df_wl = pd.DataFrame(wl_rows) if wl_rows else pd.DataFrame(columns=["員編/帳號", "姓名", "身份權限", "備註"])
+
+        # -----------------------------------------------------
+        # 左側：搜尋與表格（支援點擊整列選取聯動）
+        # -----------------------------------------------------
+        selected_row_data = None
         with col_wl_left:
-            st.markdown(f"#### 📋 現有白名單人員名冊 [{current_unit}]")
+            st.markdown(f"#### 📋 現有白名單名冊 [{current_unit}]")
+            st.caption("💡 **直覺操作**：直接點擊左表任一組員，右側卡片將自動填入資料進行修改或刪除。")
 
             search_keyword = st.text_input(
-                "🔍 搜尋白名單人員 (可輸入員編、姓名、身份或備註)",
-                placeholder="例: 員編 或 姓名",
+                "🔍 搜尋過濾白名單人員",
+                placeholder="輸入員編、姓名、身份或備註...",
                 key=f"whitelist_search_kw_{current_unit}",
             ).strip()
 
-            if whitelist_data:
-                wl_rows = []
-                for uid, info in whitelist_data.items():
-                    if isinstance(info, dict):
-                        wl_rows.append({
-                            "員編/帳號": uid,
-                            "姓名": info.get("name", info.get("姓名", "未設定")),
-                            "身份權限": info.get("role", info.get("身份", "VIP")),
-                            "備註": info.get("note", info.get("備註", "-")),
-                        })
-                    else:
-                        wl_rows.append({
-                            "員編/帳號": uid,
-                            "姓名": str(info),
-                            "身份權限": "VIP",
-                            "備註": "-",
-                        })
+            filtered_df = df_wl.copy()
+            if search_keyword and not filtered_df.empty:
+                kw = search_keyword.lower()
+                filtered_df = filtered_df[
+                    filtered_df["員編/帳號"].astype(str).str.lower().str.contains(kw) |
+                    filtered_df["姓名"].astype(str).str.lower().str.contains(kw) |
+                    filtered_df["身份權限"].astype(str).str.lower().str.contains(kw) |
+                    filtered_df["備註"].astype(str).str.lower().str.contains(kw)
+                ]
 
-                if search_keyword:
-                    kw_lower = search_keyword.lower()
-                    wl_rows = [
-                        r
-                        for r in wl_rows
-                        if kw_lower in str(r["員編/帳號"]).lower()
-                        or kw_lower in str(r["姓名"]).lower()
-                        or kw_lower in str(r["身份權限"]).lower()
-                        or kw_lower in str(r["備註"]).lower()
-                    ]
+            if not filtered_df.empty:
+                event = st.dataframe(
+                    filtered_df,
+                    use_container_width=True,
+                    height=400,
+                    selection_mode="single-row",
+                    on_select="rerun",
+                    key=f"wl_table_select_{current_unit}",
+                )
 
-                if wl_rows:
-                    st.dataframe(pd.DataFrame(wl_rows), use_container_width=True)
-                else:
-                    st.warning(f"未找到包含「{search_keyword}」的白名單人員。")
+                selected_rows = event.selection.get("rows", [])
+                if selected_rows:
+                    selected_idx = selected_rows[0]
+                    selected_row_data = filtered_df.iloc[selected_idx].to_dict()
             else:
-                st.info(f"目前【{current_unit}】尚無特定白名單設定紀錄。")
+                st.info(f"目前【{current_unit}】尚無匹配的白名單人員紀錄。")
 
+        # -----------------------------------------------------
+        # 右側：一體化權限維護與快速編輯卡片
+        # -----------------------------------------------------
         with col_wl_right:
-            st.markdown(f"#### ➕ 新增 / 修改組員權限 [{current_unit}]")
+            st.markdown("#### ⚡ 權限維護與快速編輯")
 
+            # 模式提示與切換按鈕
+            col_mode_txt, col_mode_btn = st.columns([2, 1])
+            with col_mode_txt:
+                if selected_row_data:
+                    st.success(f"📌 已點選：**{selected_row_data['員編/帳號']} - {selected_row_data['姓名']}**")
+                else:
+                    st.info("✨ 當前模式：**新增全新人員**")
+
+            with col_mode_btn:
+                if selected_row_data:
+                    if st.button("➕ 切換新增", key=f"btn_reset_add_{current_unit}", use_container_width=True):
+                        st.session_state[f"wl_table_select_{current_unit}"] = {"selection": {"rows": []}}
+                        st.rerun()
+
+            # 大表組員快選帶入
             crew_options = get_all_crew_options(current_unit)
-            options_dict = {"-- 手動輸入 或 點此選取大表組員 --": {"uid": "", "name": ""}}
+            options_dict = {"-- 或點此快選大表組員帶入 --": {"uid": "", "name": ""}}
             for item in crew_options:
                 options_dict[item["label"]] = {"uid": item["uid"], "name": item["name"]}
 
             def sync_crew_to_inputs():
-                selected = st.session_state.get(f"wl_quick_crew_select_{current_unit}", "")
-                if selected in options_dict:
-                    st.session_state["input_wl_uid"] = options_dict[selected]["uid"]
-                    st.session_state["input_wl_uname"] = options_dict[selected]["name"]
+                sel = st.session_state.get(f"wl_quick_crew_select_{current_unit}", "")
+                if sel in options_dict and options_dict[sel]["uid"]:
+                    st.session_state[f"input_wl_uid_{current_unit}"] = options_dict[sel]["uid"]
+                    st.session_state[f"input_wl_uname_{current_unit}"] = options_dict[sel]["name"]
 
             st.selectbox(
-                "⚡ 快速選取大表組員 (自動填入)",
+                "⚡ 大表人員快選帶入",
                 options=list(options_dict.keys()),
                 key=f"wl_quick_crew_select_{current_unit}",
                 on_change=sync_crew_to_inputs,
             )
 
-            with st.form(f"add_whitelist_form_{current_unit}"):
-                new_uid = st.text_input(
-                    "員編 / 帳號 ID",
-                    placeholder="例: A023300",
-                    key="input_wl_uid",
-                )
-                new_uname = st.text_input(
-                    "姓名",
-                    placeholder="例: 員編姓名",
-                    key="input_wl_uname",
-                )
-                new_role = st.selectbox(
-                    "設定使用者權限身份", ["VIP_USER (全域通行)", "ADMIN", "TESTER"]
-                )
-                new_note = st.text_input("備註說明", placeholder="例: 全域通行權限設定")
-                submit_wl = st.form_submit_button(
-                    "💾 儲存 / 更新組員權限", type="primary", use_container_width=True
-                )
+            # 決定表單初始預設值
+            default_uid = selected_row_data["員編/帳號"] if selected_row_data else ""
+            default_uname = selected_row_data["姓名"] if selected_row_data else ""
+            default_role = selected_row_data["身份權限"] if selected_row_data else "VIP_USER (全域通行)"
+            default_note = selected_row_data["備註"] if selected_row_data else ""
 
-                if submit_wl:
-                    if new_uid.strip():
-                        whitelist_data[new_uid.strip()] = {
-                            "name": new_uname.strip() or "未命名",
-                            "role": new_role,
-                            "note": new_note.strip(),
+            # 表單欄位
+            edit_uid = st.text_input(
+                "員編 / 帳號 ID",
+                value=default_uid,
+                placeholder="例: A023300",
+                key=f"input_wl_uid_{current_unit}",
+                disabled=True if selected_row_data else False,  # 編輯現有人員時鎖定 ID 防止 key 錯亂
+            )
+
+            edit_uname = st.text_input(
+                "姓名",
+                value=default_uname,
+                placeholder="例: 張小明",
+                key=f"input_wl_uname_{current_unit}",
+            )
+
+            role_options = ["VIP_USER (全域通行)", "ADMIN", "TESTER"]
+            role_idx = role_options.index(default_role) if default_role in role_options else 0
+            edit_role = st.selectbox(
+                "設定使用者權限身份",
+                role_options,
+                index=role_idx,
+                key=f"input_wl_role_{current_unit}",
+            )
+
+            edit_note = st.text_input(
+                "備註說明",
+                value="" if default_note == "-" else default_note,
+                placeholder="例: 全域通行權限設定",
+                key=f"input_wl_note_{current_unit}",
+            )
+
+            st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+
+            # 操作按鈕組：儲存/更新 vs 刪除
+            col_b1, col_b2 = st.columns(2)
+
+            with col_b1:
+                btn_save_label = "💾 更新權限" if selected_row_data else "➕ 新增人員"
+                if st.button(
+                    btn_save_label,
+                    type="primary",
+                    use_container_width=True,
+                    key=f"btn_save_wl_{current_unit}",
+                ):
+                    target_uid = edit_uid.strip()
+                    if target_uid:
+                        whitelist_data[target_uid] = {
+                            "name": edit_uname.strip() or "未命名",
+                            "role": edit_role,
+                            "note": edit_note.strip(),
                             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
                         }
                         save_whitelist(current_unit, whitelist_data)
                         log_activity(
-                            f"管理員更新 [{current_unit}] 組員權限：{new_uid.strip()} -> {new_role}"
+                            f"管理員更新 [{current_unit}] 組員權限：{target_uid} -> {edit_role}"
                         )
-                        st.success(f"已成功儲存/更新【{current_unit}】組員權限：{new_uid} ({new_role})")
+                        st.success(f"已成功儲存/更新【{current_unit}】權限：{target_uid}")
                         st.rerun()
                     else:
-                        st.warning("請填寫員編/帳號 ID")
+                        st.warning("請填寫員編 / 帳號 ID")
 
-            st.markdown("---")
-            st.markdown(f"#### 🗑️ 移除白名單權限 [{current_unit}]")
-            if whitelist_data:
-                del_uid = st.selectbox(
-                    "選擇要移除權限的帳號",
-                    options=list(whitelist_data.keys()),
-                    key=f"wl_del_select_{current_unit}",
-                )
-                if st.button(
-                    "確認移除該權限", type="secondary", use_container_width=True
-                ):
-                    del whitelist_data[del_uid]
-                    save_whitelist(current_unit, whitelist_data)
-                    log_activity(f"管理員移除 [{current_unit}] 組員權限：{del_uid}")
-                    st.success(f"已成功移除【{current_unit}】權限：{del_uid}")
-                    st.rerun()
+            with col_b2:
+                if selected_row_data:
+                    if st.button(
+                        "🗑️ 刪除此人員",
+                        type="secondary",
+                        use_container_width=True,
+                        key=f"btn_del_wl_{current_unit}",
+                    ):
+                        target_uid = selected_row_data["員編/帳號"]
+                        if target_uid in whitelist_data:
+                            del whitelist_data[target_uid]
+                            save_whitelist(current_unit, whitelist_data)
+                            log_activity(f"管理員移除 [{current_unit}] 組員權限：{target_uid}")
+                            st.success(f"已成功移除【{current_unit}】權限：{target_uid}")
+                            st.rerun()
+                else:
+                    st.button(
+                        "🗑️ 刪除人員",
+                        disabled=True,
+                        use_container_width=True,
+                        help="請點選左側名冊中的人員以進行刪除",
+                    )
 
     # ---------------------------------------------------------
     # Tab 4: 全域系統參數
