@@ -116,7 +116,7 @@ def is_user_allowed(emp_id):
 
 
 # =========================================================
-# 📊 3. user_views.py 相容介面函式
+# 📊 3. 相容介面與輔助函式
 # =========================================================
 def get_current_role_files():
     """取得目前所屬單位的各大表檔案路徑字典"""
@@ -131,6 +131,21 @@ def get_current_role_files():
 
 def get_schedule_range():
     """取得當前班表涵蓋的時間區間範圍"""
+    role_files = get_current_role_files()
+    for path in role_files.values():
+        if os.path.exists(path):
+            try:
+                df = safe_read_excel(path, header=3)
+                df.columns = [str(c).strip() for c in df.columns]
+                date_cols = [
+                    re.search(r"(\d+/\d+)", str(c)).group(1)
+                    for c in df.columns[2:]
+                    if re.search(r"(\d+/\d+)", str(c))
+                ]
+                if date_cols:
+                    return f"{date_cols[0]} ~ {date_cols[-1]}"
+            except Exception:
+                pass
     start_dt = datetime.now().replace(day=1)
     end_dt = start_dt + timedelta(days=29)
     return f"{start_dt.strftime('%Y/%m/%d')} ~ {end_dt.strftime('%Y/%m/%d')}"
@@ -198,17 +213,20 @@ def process_file_data(target_emp):
     if found_row is None:
         raise ValueError(f"在 [{current_unit}] 大表中找不到員編或姓名：{target_emp}")
 
-    # 2. 從 Excel 表頭解析日期欄位與起始月份日期
-    cols = list(found_df.columns[2:])
+    # 2. 精準鎖定包含日期的欄位索引 (Column Indices) 與名稱
+    all_cols = list(found_df.columns)
     dates = []
+    date_col_indices = []
     start_dt = None
     current_year = datetime.now().year
 
-    for col in cols:
-        m = re.search(r"(\d+/\d+)", str(col))
+    for idx in range(2, len(all_cols)):
+        col_name = str(all_cols[idx]).strip()
+        m = re.search(r"(\d+/\d+)", col_name)
         if m:
             d_str = m.group(1)
             dates.append(d_str)
+            date_col_indices.append(idx)
             if start_dt is None:
                 try:
                     m_val, d_val = map(int, d_str.split("/"))
@@ -219,9 +237,9 @@ def process_file_data(target_emp):
     if start_dt is None:
         start_dt = datetime.now().replace(day=1)
 
-    # 3. 讀取真實的每日班表內容 (Raw Cell Data)
+    # 3. 根據正確的欄位索引（date_col_indices）提取組員對應的班表資料
     cells = []
-    for col_idx in range(2, 2 + len(dates)):
+    for col_idx in date_col_indices:
         if col_idx < len(found_row):
             cell_val = found_row.iloc[col_idx]
             cells.append("" if pd.isna(cell_val) else str(cell_val).strip())
