@@ -2,13 +2,14 @@ import json
 import os
 import re
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
 from config import ALLOWED_USERS_FILE, DATA_DIR, SYSTEM_CONFIG_FILE
 from modules.utils import get_employee_name, safe_read_excel
 
-DEFAULT_CONFIG = {
+DEFAULT_CONFIG: Dict[str, Any] = {
     "vip_pass_code": "0900",
     "crew_pass_code": "0096",
     "vip_password": "0900",
@@ -24,9 +25,9 @@ DEFAULT_CONFIG = {
 
 
 # =========================================================
-# ⚙️ 1. 全域系統動態參數 (System Config)
+# 1. 全域系統動態參數 (System Config)
 # =========================================================
-def load_system_config():
+def load_system_config() -> Dict[str, Any]:
     """載入系統動態參數設定，若檔案不存在則自動建立（統一路徑為 DATA_DIR/system_config.json）"""
     os.makedirs(DATA_DIR, exist_ok=True)
     if not os.path.exists(SYSTEM_CONFIG_FILE):
@@ -42,7 +43,7 @@ def load_system_config():
         return DEFAULT_CONFIG
 
 
-def save_system_config(config_dict):
+def save_system_config(config_dict: Dict[str, Any]) -> bool:
     """儲存系統動態參數設定至 DATA_DIR/system_config.json"""
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
@@ -55,13 +56,13 @@ def save_system_config(config_dict):
 
 
 # =========================================================
-# 👥 2. 白名單與帳號權限管理 (Whitelist Management)
+# 2. 白名單與帳號權限管理 (Whitelist Management)
 # =========================================================
-def load_allowed_users():
+def load_allowed_users() -> Dict[str, Any]:
     """載入白名單 JSON 資料"""
     os.makedirs(DATA_DIR, exist_ok=True)
     if not os.path.exists(ALLOWED_USERS_FILE):
-        default_data = {
+        default_data: Dict[str, Any] = {
             "enabled": True,
             "users": [
                 {"emp_id": "A", "name": "全域通行", "role": "VIP", "status": "啟用"}
@@ -77,7 +78,7 @@ def load_allowed_users():
         return {"enabled": True, "users": []}
 
 
-def save_allowed_users(data):
+def save_allowed_users(data: Dict[str, Any]) -> bool:
     """儲存白名單 JSON 資料"""
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
@@ -89,11 +90,11 @@ def save_allowed_users(data):
         return False
 
 
-def is_user_allowed(emp_id):
+def is_user_allowed(emp_id: Any) -> Tuple[bool, Optional[Dict[str, Any]]]:
     """檢查員編是否在白名單內且為啟用狀態"""
-    emp_id = str(emp_id).strip().upper()
+    emp_id_str = str(emp_id).strip().upper()
 
-    if emp_id == "A":
+    if emp_id_str == "A":
         return True, {
             "emp_id": "A",
             "name": "全域通行",
@@ -103,11 +104,11 @@ def is_user_allowed(emp_id):
 
     data = load_allowed_users()
     if not data.get("enabled", True):
-        return True, {"emp_id": emp_id, "name": "預設組員", "role": "組員"}
+        return True, {"emp_id": emp_id_str, "name": "預設組員", "role": "組員"}
 
     users = data.get("users", [])
     for u in users:
-        if u.get("emp_id", "").upper() == emp_id:
+        if str(u.get("emp_id", "")).strip().upper() == emp_id_str:
             if u.get("status") == "啟用":
                 return True, u
             else:
@@ -116,9 +117,9 @@ def is_user_allowed(emp_id):
 
 
 # =========================================================
-# 📊 3. 相容介面與輔助函式
+# 3. 相容介面與輔助函式
 # =========================================================
-def get_current_role_files():
+def get_current_role_files() -> Dict[str, str]:
     """取得目前所屬單位的各大表檔案路徑字典"""
     current_unit = st.session_state.get("current_unit", "TTN")
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -129,7 +130,7 @@ def get_current_role_files():
     }
 
 
-def get_schedule_range():
+def get_schedule_range() -> str:
     """取得當前班表涵蓋的時間區間範圍"""
     role_files = get_current_role_files()
     for path in role_files.values():
@@ -151,19 +152,23 @@ def get_schedule_range():
     return f"{start_dt.strftime('%Y/%m/%d')} ~ {end_dt.strftime('%Y/%m/%d')}"
 
 
-def verify_crew_membership(selected_unit, emp_id):
+def verify_crew_membership(selected_unit: str, emp_id: str) -> bool:
+    """驗證組員是否屬於指定單位"""
     return True
 
 
-def get_crew_list(selected_unit="TTN"):
+def get_crew_list(selected_unit: str = "TTN") -> List[Dict[str, str]]:
+    """取得指定單位的組員清單"""
     return [{"emp_id": "A", "name": "測試員 A"}]
 
 
-def get_all_duty_codes(selected_unit="TTN"):
+def get_all_duty_codes(selected_unit: str = "TTN") -> List[str]:
+    """取得所有班別代碼對照表"""
     return ["DO", "DO1", "DO3X", "NH001", "NH005", "NH007"]
 
 
-def query_schedule(selected_unit, emp_id):
+def query_schedule(selected_unit: str, emp_id: str) -> Dict[str, Any]:
+    """查詢組員基本出勤統計數據"""
     return {
         "emp_id": emp_id,
         "unit": selected_unit,
@@ -172,22 +177,25 @@ def query_schedule(selected_unit, emp_id):
     }
 
 
-def get_duty_info(duty_code):
+def get_duty_info(duty_code: str) -> Dict[str, str]:
+    """取得班別詳細起訖時間資訊"""
     return {"code": duty_code, "start": "08:00", "end": "16:00", "hours": "8h00m"}
 
 
 # =========================================================
-# 🎨 4. 真實 Excel 解析繪圖數據引擎
+# 4. 真實 Excel 解析繪圖數據引擎
 # =========================================================
-def process_file_data(target_emp):
+def process_file_data(
+    target_emp: str,
+) -> Tuple[datetime, List[str], str, str, List[str]]:
     """真實讀取 Excel 大表，解析指定組員的班表儲存格資料"""
-    target_emp = str(target_emp).strip().upper()
+    target_emp_str = str(target_emp).strip().upper()
     current_unit = st.session_state.get("current_unit", "TTN")
     role_files = get_current_role_files()
 
     found_row = None
     found_df = None
-    emp_id = target_emp
+    emp_id = target_emp_str
     emp_name = ""
 
     # 1. 在三大表（駕駛、列車長、服勤員）中比對員編或姓名
@@ -199,7 +207,7 @@ def process_file_data(target_emp):
                 for _, row in df.iterrows():
                     r_id = str(row.iloc[0]).strip().upper()
                     r_name = str(row.iloc[1]).strip().upper()
-                    if r_id == target_emp or r_name == target_emp:
+                    if r_id == target_emp_str or r_name == target_emp_str:
                         found_row = row
                         found_df = df
                         emp_id = str(row.iloc[0]).strip()
@@ -211,13 +219,15 @@ def process_file_data(target_emp):
                 pass
 
     if found_row is None:
-        raise ValueError(f"在 [{current_unit}] 大表中找不到員編或姓名：{target_emp}")
+        raise ValueError(
+            f"在 [{current_unit}] 大表中找不到員編或姓名：{target_emp}"
+        )
 
     # 2. 精準鎖定包含日期的欄位索引 (Column Indices) 與名稱
     all_cols = list(found_df.columns)
-    dates = []
-    date_col_indices = []
-    start_dt = None
+    dates: List[str] = []
+    date_col_indices: List[int] = []
+    start_dt: Optional[datetime] = None
     current_year = datetime.now().year
 
     for idx in range(2, len(all_cols)):
@@ -238,7 +248,7 @@ def process_file_data(target_emp):
         start_dt = datetime.now().replace(day=1)
 
     # 3. 根據正確的欄位索引（date_col_indices）提取組員對應的班表資料
-    cells = []
+    cells: List[str] = []
     for col_idx in date_col_indices:
         if col_idx < len(found_row):
             cell_val = found_row.iloc[col_idx]
