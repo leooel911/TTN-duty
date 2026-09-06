@@ -105,7 +105,10 @@ def render_schedule_figure(
     badge_title: str = "Producer | C.L.F",
 ) -> io.BytesIO:
     """渲染繪製高解析度個人月班表圖檔並回傳影像 BytesIO Buffer"""
-    active_transport = parse_transport_periods(TRANSPORT_PERIODS)
+    # 修正：傳入 start_dt.year 動態綁定疏運年分
+    active_transport = parse_transport_periods(
+        TRANSPORT_PERIODS, year=start_dt.year if start_dt else 2026
+    )
     font_prop = setup_font()
 
     # 載入動態設定之空值標籤
