@@ -291,7 +291,7 @@ def render_admin_panel():
                     st.rerun()
 
     # ---------------------------------------------------------
-    # Tab 3: 白名單與組員權限管理 (全新高互動 UX 設計)
+    # Tab 3: 白名單與組員權限管理 (高互動整列點擊 UX)
     # ---------------------------------------------------------
     with tab3:
         st.markdown(f"### 👤 白名單與組員權限管理 [{current_unit}]")
@@ -299,7 +299,6 @@ def render_admin_panel():
 
         col_wl_left, col_wl_right = st.columns([1.3, 1])
 
-        # 整理 DataFrame 資料結構
         wl_rows = []
         if whitelist_data:
             for uid, info in whitelist_data.items():
@@ -320,9 +319,6 @@ def render_admin_panel():
 
         df_wl = pd.DataFrame(wl_rows) if wl_rows else pd.DataFrame(columns=["員編/帳號", "姓名", "身份權限", "備註"])
 
-        # -----------------------------------------------------
-        # 左側：搜尋與表格（支援點擊整列選取聯動）
-        # -----------------------------------------------------
         selected_row_data = None
         with col_wl_left:
             st.markdown(f"#### 📋 現有白名單名冊 [{current_unit}]")
@@ -361,13 +357,9 @@ def render_admin_panel():
             else:
                 st.info(f"目前【{current_unit}】尚無匹配的白名單人員紀錄。")
 
-        # -----------------------------------------------------
-        # 右側：一體化權限維護與快速編輯卡片
-        # -----------------------------------------------------
         with col_wl_right:
             st.markdown("#### ⚡ 權限維護與快速編輯")
 
-            # 模式提示與切換按鈕
             col_mode_txt, col_mode_btn = st.columns([2, 1])
             with col_mode_txt:
                 if selected_row_data:
@@ -381,7 +373,6 @@ def render_admin_panel():
                         st.session_state[f"wl_table_select_{current_unit}"] = {"selection": {"rows": []}}
                         st.rerun()
 
-            # 大表組員快選帶入
             crew_options = get_all_crew_options(current_unit)
             options_dict = {"-- 或點此快選大表組員帶入 --": {"uid": "", "name": ""}}
             for item in crew_options:
@@ -400,19 +391,17 @@ def render_admin_panel():
                 on_change=sync_crew_to_inputs,
             )
 
-            # 決定表單初始預設值
             default_uid = selected_row_data["員編/帳號"] if selected_row_data else ""
             default_uname = selected_row_data["姓名"] if selected_row_data else ""
             default_role = selected_row_data["身份權限"] if selected_row_data else "VIP_USER (全域通行)"
             default_note = selected_row_data["備註"] if selected_row_data else ""
 
-            # 表單欄位
             edit_uid = st.text_input(
                 "員編 / 帳號 ID",
                 value=default_uid,
                 placeholder="例: A023300",
                 key=f"input_wl_uid_{current_unit}",
-                disabled=True if selected_row_data else False,  # 編輯現有人員時鎖定 ID 防止 key 錯亂
+                disabled=True if selected_row_data else False,
             )
 
             edit_uname = st.text_input(
@@ -440,7 +429,6 @@ def render_admin_panel():
 
             st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
 
-            # 操作按鈕組：儲存/更新 vs 刪除
             col_b1, col_b2 = st.columns(2)
 
             with col_b1:
@@ -492,127 +480,137 @@ def render_admin_panel():
                     )
 
     # ---------------------------------------------------------
-    # Tab 4: 全域系統參數
+    # Tab 4: 全域系統參數 (使用 st.form 徹底解決提交沒反應問題)
     # ---------------------------------------------------------
     with tab4:
         st.markdown("### ⚙️ 全域系統參數與授權碼設定")
         sys_config = load_system_config()
 
-        col_p1, col_p2 = st.columns(2)
+        with st.form(key="global_sys_config_form"):
+            col_p1, col_p2 = st.columns(2)
 
-        with col_p1:
-            st.markdown("#### 🔑 通行授權碼設定")
+            with col_p1:
+                st.markdown("#### 🔑 通行授權碼設定")
 
-            st.markdown("**【一般組員】通行授權碼**")
-            new_user_pwd = st.text_input(
-                "設定新 一般組員授權碼",
-                type="password",
-                placeholder="留空則保持原授權碼不變",
-                key="user_pwd_input",
+                st.markdown("**【一般組員】通行授權碼**")
+                new_user_pwd = st.text_input(
+                    "設定新 一般組員授權碼",
+                    type="password",
+                    placeholder="留空則保持原授權碼不變",
+                    key="user_pwd_input",
+                )
+                confirm_user_pwd = st.text_input(
+                    "確認新 一般組員授權碼",
+                    type="password",
+                    placeholder="再次輸入新一般組員授權碼",
+                    key="user_pwd_confirm",
+                )
+
+                st.markdown("---")
+
+                st.markdown("**【VIP 組員】通行授權碼**")
+                new_vip_pwd = st.text_input(
+                    "設定新 VIP 授權碼",
+                    type="password",
+                    placeholder="留空則保持原 VIP 授權碼不變",
+                    key="vip_pwd_input",
+                )
+                confirm_vip_pwd = st.text_input(
+                    "確認新 VIP 授權碼",
+                    type="password",
+                    placeholder="再次輸入新 VIP 授權碼",
+                    key="vip_pwd_confirm",
+                )
+
+                st.markdown("---")
+
+                st.markdown("**【管理員】解鎖密碼**")
+                new_admin_pwd = st.text_input(
+                    "設定新 管理員解鎖密碼",
+                    type="password",
+                    placeholder="留空則保持原密碼不變",
+                    key="admin_pwd_input",
+                )
+                confirm_admin_pwd = st.text_input(
+                    "確認新 管理員解鎖密碼",
+                    type="password",
+                    placeholder="再次輸入新管理員密碼",
+                    key="admin_pwd_confirm",
+                )
+
+            with col_p2:
+                st.markdown("#### 🚨 換假嚴格過濾天數門檻")
+                streak_threshold = st.number_input(
+                    "連續上班天數警戒門檻（預設 6 天）",
+                    min_value=3,
+                    max_value=12,
+                    value=int(sys_config.get("strict_streak_limit", 6)),
+                    step=1,
+                )
+
+                st.markdown("---")
+                st.markdown("#### 📢 前台公告與橫幅標語設定")
+                announce_text = st.text_area(
+                    "前台頂部公告文字",
+                    value=sys_config.get(
+                        "announcement", "目前為內部測試階段｜本頁面可聯繫後台管理者"
+                    ),
+                    height=100,
+                )
+                enable_notice = st.checkbox(
+                    "顯示 Beta 測試環境告示橫幅",
+                    value=sys_config.get("enable_beta_notice", True),
+                )
+
+            # 🔑 使用表單專用提交按鈕，確保資料一次性寫入
+            submit_sys_cfg = st.form_submit_button(
+                "💾 儲存全域系統設定", type="primary", use_container_width=True
             )
-            confirm_user_pwd = st.text_input(
-                "確認新 一般組員授權碼",
-                type="password",
-                placeholder="再次輸入新一般組員授權碼",
-                key="user_pwd_confirm",
-            )
 
-            st.markdown("---")
+            if submit_sys_cfg:
+                pwd_updates = []
+                has_error = False
 
-            st.markdown("**【VIP 組員】通行授權碼**")
-            new_vip_pwd = st.text_input(
-                "設定新 VIP 授權碼",
-                type="password",
-                placeholder="留空則保持原 VIP 授權碼不變",
-                key="vip_pwd_input",
-            )
-            confirm_vip_pwd = st.text_input(
-                "確認新 VIP 授權碼",
-                type="password",
-                placeholder="再次輸入新 VIP 授權碼",
-                key="vip_pwd_confirm",
-            )
+                # 1. 驗證一般組員密碼
+                if new_user_pwd:
+                    if new_user_pwd != confirm_user_pwd:
+                        st.error("❌ 兩次輸入的新【一般組員授權碼】不一致，請重新檢查！")
+                        has_error = True
+                    else:
+                        sys_config["user_password"] = new_user_pwd.strip()
+                        sys_config["crew_pass_code"] = new_user_pwd.strip()
+                        pwd_updates.append("一般組員授權碼")
 
-            st.markdown("---")
+                # 2. 驗證 VIP 密碼
+                if new_vip_pwd:
+                    if new_vip_pwd != confirm_vip_pwd:
+                        st.error("❌ 兩次輸入的新【VIP 授權碼】不一致，請重新檢查！")
+                        has_error = True
+                    else:
+                        sys_config["vip_password"] = new_vip_pwd.strip()
+                        sys_config["vip_pass_code"] = new_vip_pwd.strip()
+                        pwd_updates.append("VIP 授權碼")
 
-            st.markdown("**【管理員】解鎖密碼**")
-            new_admin_pwd = st.text_input(
-                "設定新 管理員解鎖密碼",
-                type="password",
-                placeholder="留空則保持原密碼不變",
-                key="admin_pwd_input",
-            )
-            confirm_admin_pwd = st.text_input(
-                "確認新 管理員解鎖密碼",
-                type="password",
-                placeholder="再次輸入新管理員密碼",
-                key="admin_pwd_confirm",
-            )
+                # 3. 驗證管理員密碼
+                if new_admin_pwd:
+                    if new_admin_pwd != confirm_admin_pwd:
+                        st.error("❌ 兩次輸入的新【管理員密碼】不一致，請重新檢查！")
+                        has_error = True
+                    else:
+                        sys_config["admin_password"] = new_admin_pwd.strip()
+                        pwd_updates.append("管理員解鎖密碼")
 
-        with col_p2:
-            st.markdown("#### 🚨 換假嚴格過濾天數門檻")
-            streak_threshold = st.number_input(
-                "連續上班天數警戒門檻（預設 6 天）",
-                min_value=3,
-                max_value=12,
-                value=int(sys_config.get("strict_streak_limit", 6)),
-                step=1,
-            )
+                # 無密碼比對錯誤才寫入設定
+                if not has_error:
+                    sys_config["announcement"] = announce_text.strip()
+                    sys_config["strict_streak_limit"] = streak_threshold
+                    sys_config["enable_beta_notice"] = enable_notice
+                    save_system_config(sys_config)
+                    log_activity("管理員更新全域系統設定與通行授權碼")
 
-            st.markdown("---")
-            st.markdown("#### 📢 前台公告與橫幅標語設定")
-            announce_text = st.text_area(
-                "前台頂部公告文字",
-                value=sys_config.get(
-                    "announcement", "目前為內部測試階段｜本頁面可聯繫後台管理者"
-                ),
-                height=100,
-            )
-            enable_notice = st.checkbox(
-                "顯示 Beta 測試環境告示橫幅",
-                value=sys_config.get("enable_beta_notice", True),
-            )
-
-        if st.button(
-            "💾 儲存全域系統設定", type="primary", use_container_width=True
-        ):
-            pwd_updates = []
-
-            if new_user_pwd:
-                if new_user_pwd != confirm_user_pwd:
-                    st.error("兩次輸入的新【一般組員授權碼】不一致！")
-                    st.stop()
-                else:
-                    sys_config["user_password"] = new_user_pwd.strip()
-                    sys_config["crew_pass_code"] = new_user_pwd.strip()
-                    pwd_updates.append("一般組員授權碼")
-
-            if new_vip_pwd:
-                if new_vip_pwd != confirm_vip_pwd:
-                    st.error("兩次輸入的新【VIP 授權碼】不一致！")
-                    st.stop()
-                else:
-                    sys_config["vip_password"] = new_vip_pwd.strip()
-                    sys_config["vip_pass_code"] = new_vip_pwd.strip()
-                    pwd_updates.append("VIP 授權碼")
-
-            if new_admin_pwd:
-                if new_admin_pwd != confirm_admin_pwd:
-                    st.error("兩次輸入的新【管理員密碼】不一致！")
-                    st.stop()
-                else:
-                    sys_config["admin_password"] = new_admin_pwd.strip()
-                    pwd_updates.append("管理員解鎖密碼")
-
-            sys_config["announcement"] = announce_text.strip()
-            sys_config["strict_streak_limit"] = streak_threshold
-            sys_config["enable_beta_notice"] = enable_notice
-            save_system_config(sys_config)
-            log_activity("管理員更新全域系統設定與通行授權碼")
-
-            msg_prefix = "與".join(pwd_updates) + "及" if pwd_updates else ""
-            st.success(f"{msg_prefix}全域系統設定已成功儲存！")
-            st.rerun()
+                    msg_prefix = "與".join(pwd_updates) + "及" if pwd_updates else ""
+                    st.success(f"🎉 {msg_prefix}全域系統設定已成功儲存並立即生效！")
+                    st.rerun()
 
     # ---------------------------------------------------------
     # Tab 5: 系統日誌與備份
