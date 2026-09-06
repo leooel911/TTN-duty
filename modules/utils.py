@@ -125,7 +125,7 @@ def get_unit_employee_dict(unit_key: str) -> Dict[str, str]:
     emp_dict: Dict[str, str] = {}
     for role in ["駕駛", "列車長", "服勤員"]:
         path = unit_files.get(role, "")
-        if os.path.exists(path):
+        if isinstance(path, str) and os.path.exists(path):
             try:
                 df = safe_read_excel(path, header=3)
                 df.columns = [str(c).strip() for c in df.columns]
