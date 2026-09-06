@@ -1,5 +1,5 @@
 import os
-from datetime import timezone, timedelta
+from datetime import timedelta, timezone
 
 TAIWAN_TZ = timezone(timedelta(hours=8))
 
@@ -20,8 +20,8 @@ UNITS = {
         "mapping": {
             "駕駛": os.path.join(DATA_DIR, "TTN_shift_mapping_TD.xlsx"),
             "列車長": os.path.join(DATA_DIR, "TTN_shift_mapping_TM.xlsx"),
-            "服勤員": os.path.join(DATA_DIR, "TTN_shift_mapping_TA.xlsx")
-        }
+            "服勤員": os.path.join(DATA_DIR, "TTN_shift_mapping_TA.xlsx"),
+        },
     },
     "TTC": {
         "駕駛": os.path.join(DATA_DIR, "TTC_TD.xlsx"),
@@ -30,8 +30,8 @@ UNITS = {
         "mapping": {
             "駕駛": os.path.join(DATA_DIR, "TTC_shift_mapping_TD.xlsx"),
             "列車長": os.path.join(DATA_DIR, "TTC_shift_mapping_TM.xlsx"),
-            "服勤員": os.path.join(DATA_DIR, "TTC_shift_mapping_TA.xlsx")
-        }
+            "服勤員": os.path.join(DATA_DIR, "TTC_shift_mapping_TA.xlsx"),
+        },
     },
     "TTS": {
         "駕駛": os.path.join(DATA_DIR, "TTS_TD.xlsx"),
@@ -40,22 +40,33 @@ UNITS = {
         "mapping": {
             "駕駛": os.path.join(DATA_DIR, "TTS_shift_mapping_TD.xlsx"),
             "列車長": os.path.join(DATA_DIR, "TTS_shift_mapping_TM.xlsx"),
-            "服勤員": os.path.join(DATA_DIR, "TTS_shift_mapping_TA.xlsx")
-        }
-    }
+            "服勤員": os.path.join(DATA_DIR, "TTS_shift_mapping_TA.xlsx"),
+        },
+    },
 }
 
 NATIONAL_HOLIDAYS = {
-    "1/1": "元旦", "2/16": "除夕", "2/17": "初一", "2/18": "初二", "2/19": "初三", 
-    "2/28": "和平紀念日", "4/4": "兒童節", "4/5": "清明節", "5/1": "勞動節",
-    "6/19": "端午節", "9/25": "中秋節", "9/28": "教師節", "10/10": "國慶日",
-    "10/25": "台灣光復節", "12/25": "行憲紀念日"
+    "1/1": "元旦",
+    "2/16": "除夕",
+    "2/17": "初一",
+    "2/18": "初二",
+    "2/19": "初三",
+    "2/28": "和平紀念日",
+    "4/4": "兒童節",
+    "4/5": "清明節",
+    "5/1": "勞動節",
+    "6/19": "端午節",
+    "9/25": "中秋節",
+    "9/28": "教師節",
+    "10/10": "國慶日",
+    "10/25": "台灣光復節",
+    "12/25": "行憲紀念日",
 }
 
 TRANSPORT_PERIODS = {
     "9/24-9/29": "中秋疏運",
     "10/4-10/10": "雙十節疏運",
-    "10/25-10/31": "光復節疏運"
+    "10/25-10/31": "光復節疏運",
 }
 
 TITLE = "TRAIN CREW DUTY CALENDAR"
@@ -70,7 +81,13 @@ LEAVE_CODES = ["PAY", "FAC", "AL", "SL", "CL", "ML", "LEV", "MLP", "MTR"]
 C_HDR, C_BORDER, C_EMPTY = "#0F172A", "#475569", "#F1F5F9"
 C_WORK_BG, C_WEEKEND_BG = "#FFFFFF", "#F8FAFC"
 C_DO_BG, C_PAY_BG, C_TOWN_BG = "#FFE4E6", "#FFEDD5", "#CBD5E1"
-C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = "#881337", "#9A3412", "#7C2D12", "#991B1B", "#4C1D95"
+C_DO_TXT, C_PAY_TXT, C_HOLI_TXT, C_OT_TXT, C_NOTE_TXT = (
+    "#881337",
+    "#9A3412",
+    "#7C2D12",
+    "#991B1B",
+    "#4C1D95",
+)
 C_TOWN_TXT = "#000000"
 
 CUSTOM_CSS = """
@@ -159,7 +176,8 @@ CUSTOM_CSS = """
     }
     div[data-baseweb="select"]:hover > div { border-color: #38BDF8 !important; }
 
-    /* 模式選擇按鈕 (st.radio) 強效 100% 單欄直立修復 */
+    /* 模式選擇按鈕 (st.radio) 強效 100% 單欄直立修復 + 滿格與內容水平居中 */
+    div[data-testid="stElementContainer"]:has(div[data-testid="stRadio"]),
     div[data-testid="stRadio"],
     div[data-testid="stRadio"] > div,
     div[data-testid="stRadio"] div[role="radiogroup"] {
@@ -189,7 +207,9 @@ CUSTOM_CSS = """
         margin: 0 !important;
         cursor: pointer !important;
         transition: all 0.2s ease-in-out !important;
-        display: block !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
     }
 
     div[role="radiogroup"] label p {
@@ -201,6 +221,8 @@ CUSTOM_CSS = """
         text-overflow: clip !important;
         word-break: break-word !important;
         line-height: 1.4 !important;
+        text-align: center !important;
+        width: 100% !important;
     }
 
     div[role="radiogroup"] > label:hover {
