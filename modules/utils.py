@@ -768,7 +768,7 @@ def send_admin_email(
         if not sender_email or not sender_pwd or not admin_email:
             return False, "secrets.toml 未設定完整的 SMTP 寄件資訊"
 
-        mail_body = f"""主管/管理員您好：
+        mail_body = f"""Leo哥您好：
 
 CREW DUTY ENGINE 接獲新的系統使用權限申請，詳細資訊如下：
 
