@@ -279,7 +279,7 @@ def render_user_home():
             key="user_input_field",
         )
 
-        if st.button("領域展開"):
+        if st.button("立即繪製完整月班表"):
             current_input = st.session_state.get("user_input_field", "").strip()
             if not current_input:
                 st.warning("請輸入員編或姓名")
