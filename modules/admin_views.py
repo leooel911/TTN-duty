@@ -3,6 +3,7 @@ import json
 import os
 import zipfile
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 import streamlit as st
@@ -20,9 +21,9 @@ from modules.utils import (
 
 
 # =========================================================
-#  1. 資料處理與輔助工具函式
+# 1. 資料處理與輔助工具函式
 # =========================================================
-def clear_logs():
+def clear_logs() -> None:
     """徹底清空全站系統操作日誌檔"""
     possible_paths = [
         LOG_FILE,
@@ -38,7 +39,7 @@ def clear_logs():
                 pass
 
 
-def create_backup_zip():
+def create_backup_zip() -> io.BytesIO:
     """打包 data 資料夾、回報工單截圖與系統設定檔為 ZIP 下載檔"""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -68,10 +69,10 @@ def create_backup_zip():
     return buf
 
 
-def load_whitelist(unit_code="TTN"):
+def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
     """讀取指定營運單位的白名單（嚴格獨立隔離）"""
     whitelist_path = WHITELIST_FILE
-    full_data = {}
+    full_data: Dict[str, Any] = {}
 
     if os.path.exists(whitelist_path):
         try:
@@ -83,7 +84,7 @@ def load_whitelist(unit_code="TTN"):
             full_data = {}
 
     if unit_code not in full_data:
-        unit_default = {
+        unit_default: Dict[str, Any] = {
             "ADMIN": {
                 "name": f"[{unit_code}] 系統管理員",
                 "role": "ADMIN",
@@ -103,12 +104,12 @@ def load_whitelist(unit_code="TTN"):
     return full_data.get(unit_code, {})
 
 
-def save_whitelist(unit_code, unit_data):
+def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
     """儲存特定營運單位的白名單"""
     whitelist_path = WHITELIST_FILE
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    full_data = {}
+    full_data: Dict[str, Any] = {}
     if os.path.exists(whitelist_path):
         try:
             with open(whitelist_path, "r", encoding="utf-8") as f:
@@ -125,10 +126,10 @@ def save_whitelist(unit_code, unit_data):
 
 
 @st.cache_data(ttl=60)
-def get_all_crew_options(unit_code):
+def get_all_crew_options(unit_code: str) -> List[Dict[str, str]]:
     """動態解析指定單位的各大表，建立（員編 - 姓名）快選選單選項"""
     unit_files = UNITS.get(unit_code, UNITS.get("TTN", {}))
-    crew_options = []
+    crew_options: List[Dict[str, str]] = []
     seen_uids = set()
 
     for role_name in ["駕駛", "列車長", "服勤員"]:
@@ -143,15 +144,19 @@ def get_all_crew_options(unit_code):
                         if uid not in seen_uids:
                             seen_uids.add(uid)
                             label = f"{uid} - {uname} ({role_name})"
-                            crew_options.append({"label": label, "uid": uid, "name": uname})
+                            crew_options.append({
+                                "label": label,
+                                "uid": uid,
+                                "name": uname,
+                            })
             except Exception:
                 pass
     return crew_options
 
 
-def load_all_feedback_tickets():
+def load_all_feedback_tickets() -> List[Dict[str, Any]]:
     """讀取 FEEDBACK_IMG_DIR 中所有的 txt 工單與對應截圖"""
-    tickets = []
+    tickets: List[Dict[str, Any]] = []
     if not os.path.exists(FEEDBACK_IMG_DIR):
         return tickets
 
@@ -164,8 +169,8 @@ def load_all_feedback_tickets():
                     content = f.read()
 
                 lines = content.split("\n")
-                info = {}
-                desc_lines = []
+                info: Dict[str, Any] = {}
+                desc_lines: List[str] = []
                 is_desc = False
 
                 for line in lines:
@@ -195,11 +200,11 @@ def load_all_feedback_tickets():
             except Exception:
                 pass
 
-    tickets = sorted(tickets, key=lambda x: x.get("時間", ""), reverse=True)
+    tickets = sorted(tickets, key=lambda x: str(x.get("時間", "")), reverse=True)
     return tickets
 
 
-def save_feedback_ticket(ticket_info):
+def save_feedback_ticket(ticket_info: Dict[str, Any]) -> None:
     """更新儲存工單 txt 檔案內容"""
     txt_path = ticket_info.get("_txt_path")
     if not txt_path:
@@ -230,9 +235,10 @@ def save_feedback_ticket(ticket_info):
 
 
 # =========================================================
-#  2. 管理員後台主視圖 (Admin Panel)
+# 2. 管理員後台主視圖 (Admin Panel)
 # =========================================================
-def render_admin_panel():
+def render_admin_panel() -> None:
+    """系統管理員後台控制台主繪製函式"""
     current_unit = st.session_state.get("current_unit", "TTN")
 
     # ---------------------------------------------------------
@@ -241,7 +247,7 @@ def render_admin_panel():
     col_head_title, col_head_unit, col_head_btn = st.columns([2.2, 1.2, 1])
 
     with col_head_title:
-        st.markdown("## ⚙️ 系統管理後台 (Administrator Console)")
+        st.markdown("## 系統管理後台 (Administrator Console)")
 
     with col_head_unit:
         unit_options = list(UNITS.keys())
@@ -260,7 +266,7 @@ def render_admin_panel():
     with col_head_btn:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
         if st.button(
-            "🏠 返回前台首頁",
+            "返回前台首頁",
             key="btn_top_return_home",
             type="primary",
             use_container_width=True,
@@ -270,19 +276,19 @@ def render_admin_panel():
 
     # 管理員六大分頁
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "📂 大表上傳與管理",
-        "🛠️ 模組維護模式",
-        "👤 白名單與組員權限管理",
-        "⚙️ 全域系統參數",
-        "📜 系統日誌與備份",
-        "📋 工單與問題回報管理",
+        "大表上傳與管理",
+        "模組維護模式",
+        "白名單與組員權限管理",
+        "全域系統參數",
+        "系統日誌與備份",
+        "工單與問題回報管理",
     ])
 
     # ---------------------------------------------------------
     # Tab 1: 大表上傳與管理
     # ---------------------------------------------------------
     with tab1:
-        st.markdown(f"### 📂 [{current_unit}] 班表大表 Excel 上傳與管理")
+        st.markdown(f"### [{current_unit}] 班表大表 Excel 上傳與管理")
         unit_files = UNITS.get(current_unit, UNITS.get("TTN", {}))
 
         col_u1, col_u2, col_u3 = st.columns(3)
@@ -326,13 +332,13 @@ def render_admin_panel():
     # Tab 2: 模組維護模式
     # ---------------------------------------------------------
     with tab2:
-        st.markdown(f"### 🛠️ [{current_unit}] 系統模組維護開關")
+        st.markdown(f"### [{current_unit}] 系統模組維護開關")
         st.info("開啟維護後，一般組員將無法存取該功能，管理員仍可登入後台預覽。")
 
         modules_def = [
-            ("producer", " 個人月班表圖檔生成系統"),
-            ("window_filter", " 換班｜選擇換班日期快篩"),
-            ("exchange_filter", " 換假｜選擇換假日期快篩"),
+            ("producer", "個人月班表圖檔生成系統"),
+            ("window_filter", "換班｜選擇換班日期快篩"),
+            ("exchange_filter", "換假｜選擇換假日期快篩"),
         ]
 
         for m_key, m_title in modules_def:
@@ -369,7 +375,7 @@ def render_admin_panel():
     # Tab 3: 白名單與組員權限管理
     # ---------------------------------------------------------
     with tab3:
-        st.markdown(f"### 👤 白名單與組員權限管理 [{current_unit}]")
+        st.markdown(f"### 白名單與組員權限管理 [{current_unit}]")
         whitelist_data = load_whitelist(current_unit)
 
         ver_key = f"wl_reset_ver_{current_unit}"
@@ -380,7 +386,7 @@ def render_admin_panel():
 
         col_wl_left, col_wl_right = st.columns([1.3, 1])
 
-        wl_rows = []
+        wl_rows: List[Dict[str, Any]] = []
         if whitelist_data:
             for uid, info in whitelist_data.items():
                 if isinstance(info, dict):
@@ -400,13 +406,13 @@ def render_admin_panel():
 
         df_wl = pd.DataFrame(wl_rows) if wl_rows else pd.DataFrame(columns=["員編/帳號", "姓名", "身份權限", "備註"])
 
-        selected_row_data = None
+        selected_row_data: Optional[Dict[str, Any]] = None
         with col_wl_left:
-            st.markdown(f"#### 📋 現有白名單名冊 [{current_unit}]")
-            st.caption("💡 **直覺操作**：直接點擊左表任一組員，右側卡片將自動填入資料進行修改或刪除。")
+            st.markdown(f"#### 現有白名單名冊 [{current_unit}]")
+            st.caption("直接點擊左表任一組員，右側卡片將自動填入資料進行修改或刪除。")
 
             search_keyword = st.text_input(
-                "🔍 搜尋過濾白名單人員",
+                "搜尋過濾白名單人員",
                 placeholder="輸入員編、姓名、身份或備註...",
                 key=f"whitelist_search_kw_{current_unit}",
             ).strip()
@@ -415,10 +421,10 @@ def render_admin_panel():
             if search_keyword and not filtered_df.empty:
                 kw = search_keyword.lower()
                 filtered_df = filtered_df[
-                    filtered_df["員編/帳號"].astype(str).str.lower().str.contains(kw) |
-                    filtered_df["姓名"].astype(str).str.lower().str.contains(kw) |
-                    filtered_df["身份權限"].astype(str).str.lower().str.contains(kw) |
-                    filtered_df["備註"].astype(str).str.lower().str.contains(kw)
+                    filtered_df["員編/帳號"].astype(str).str.lower().str.contains(kw)
+                    | filtered_df["姓名"].astype(str).str.lower().str.contains(kw)
+                    | filtered_df["身份權限"].astype(str).str.lower().str.contains(kw)
+                    | filtered_df["備註"].astype(str).str.lower().str.contains(kw)
                 ]
 
             if not filtered_df.empty:
@@ -431,7 +437,8 @@ def render_admin_panel():
                     key=table_key,
                 )
 
-                selected_rows = event.selection.get("rows", [])
+                selection_data = getattr(event, "selection", {})
+                selected_rows = selection_data.get("rows", []) if isinstance(selection_data, dict) else []
                 if selected_rows:
                     selected_idx = selected_rows[0]
                     if 0 <= selected_idx < len(filtered_df):
@@ -440,43 +447,43 @@ def render_admin_panel():
                 st.info(f"目前【{current_unit}】尚無匹配的白名單人員紀錄。")
 
         with col_wl_right:
-            st.markdown("#### ⚡ 權限維護與快速編輯")
+            st.markdown("#### 權限維護與快速編輯")
 
             col_mode_txt, col_mode_btn = st.columns([2, 1])
             with col_mode_txt:
                 if selected_row_data:
-                    st.success(f"📌 已點選：**{selected_row_data['員編/帳號']} - {selected_row_data['姓名']}**")
+                    st.success(f"已點選：**{selected_row_data['員編/帳號']} - {selected_row_data['姓名']}**")
                 else:
-                    st.info("✨ 當前模式：**新增全新人員**")
+                    st.info("當前模式：**新增全新人員**")
 
             with col_mode_btn:
                 if selected_row_data:
-                    if st.button("➕ 切換新增", key=f"btn_reset_add_{current_unit}", use_container_width=True):
+                    if st.button("切換新增", key=f"btn_reset_add_{current_unit}", use_container_width=True):
                         st.session_state[ver_key] += 1
                         st.rerun()
 
             crew_options = get_all_crew_options(current_unit)
-            options_dict = {"-- 或點此快選大表組員帶入 --": {"uid": "", "name": ""}}
+            options_dict: Dict[str, Dict[str, str]] = {"-- 或點此快選大表組員帶入 --": {"uid": "", "name": ""}}
             for item in crew_options:
                 options_dict[item["label"]] = {"uid": item["uid"], "name": item["name"]}
 
-            def sync_crew_to_inputs():
+            def sync_crew_to_inputs() -> None:
                 sel = st.session_state.get(f"wl_quick_crew_select_{current_unit}", "")
                 if sel in options_dict and options_dict[sel]["uid"]:
                     st.session_state[f"input_wl_uid_{current_unit}"] = options_dict[sel]["uid"]
                     st.session_state[f"input_wl_uname_{current_unit}"] = options_dict[sel]["name"]
 
             st.selectbox(
-                "⚡ 大表人員快選帶入",
+                "大表人員快選帶入",
                 options=list(options_dict.keys()),
                 key=f"wl_quick_crew_select_{current_unit}",
                 on_change=sync_crew_to_inputs,
             )
 
-            default_uid = selected_row_data["員編/帳號"] if selected_row_data else ""
-            default_uname = selected_row_data["姓名"] if selected_row_data else ""
-            default_role = selected_row_data["身份權限"] if selected_row_data else "VIP_USER (全域通行)"
-            default_note = selected_row_data["備註"] if selected_row_data else ""
+            default_uid = str(selected_row_data["員編/帳號"]) if selected_row_data else ""
+            default_uname = str(selected_row_data["姓名"]) if selected_row_data else ""
+            default_role = str(selected_row_data["身份權限"]) if selected_row_data else "VIP_USER (全域通行)"
+            default_note = str(selected_row_data["備註"]) if selected_row_data else ""
 
             edit_uid = st.text_input(
                 "員編 / 帳號 ID",
@@ -514,7 +521,7 @@ def render_admin_panel():
             col_b1, col_b2 = st.columns(2)
 
             with col_b1:
-                btn_save_label = "💾 更新權限" if selected_row_data else "➕ 新增人員"
+                btn_save_label = "更新權限" if selected_row_data else "新增人員"
                 if st.button(
                     btn_save_label,
                     type="primary",
@@ -542,12 +549,12 @@ def render_admin_panel():
             with col_b2:
                 if selected_row_data:
                     if st.button(
-                        "🗑️ 刪除此人員",
+                        "刪除此人員",
                         type="secondary",
                         use_container_width=True,
                         key=f"btn_del_wl_{current_unit}",
                     ):
-                        target_uid = selected_row_data["員編/帳號"]
+                        target_uid = str(selected_row_data["員編/帳號"])
                         if target_uid in whitelist_data:
                             del whitelist_data[target_uid]
                             save_whitelist(current_unit, whitelist_data)
@@ -557,7 +564,7 @@ def render_admin_panel():
                             st.rerun()
                 else:
                     st.button(
-                        "🗑️ 刪除人員",
+                        "刪除人員",
                         disabled=True,
                         use_container_width=True,
                         help="請點選左側名冊中的人員以進行刪除",
@@ -567,7 +574,7 @@ def render_admin_panel():
     # Tab 4: 全域系統參數
     # ---------------------------------------------------------
     with tab4:
-        st.markdown("### ⚙️ 全域系統參數與授權碼設定")
+        st.markdown("### 全域系統參數與授權碼設定")
 
         if "cfg_toast" in st.session_state:
             t_type, t_msg = st.session_state["cfg_toast"]
@@ -583,8 +590,8 @@ def render_admin_panel():
             col_p1, col_p2 = st.columns(2)
 
             with col_p1:
-                st.markdown("#### 🔑 通行授權碼設定")
-                st.caption("💡 若無須修改密碼，保持留空即可。")
+                st.markdown("#### 通行授權碼設定")
+                st.caption("若無須修改密碼，保持留空即可。")
 
                 st.markdown("**【一般組員】通行授權碼**")
                 new_user_pwd = st.text_input(
@@ -633,7 +640,7 @@ def render_admin_panel():
                 )
 
             with col_p2:
-                st.markdown("#### 🚨 換假嚴格過濾天數門檻")
+                st.markdown("#### 換假嚴格過濾天數門檻")
                 streak_threshold = st.number_input(
                     "連續上班天數警戒門檻（預設 6 天）",
                     min_value=3,
@@ -643,27 +650,30 @@ def render_admin_panel():
                 )
 
                 st.markdown("---")
-                st.markdown("#### 📢 前台公告與橫幅標語設定")
+                st.markdown("#### 前台公告與橫幅標語設定")
                 announce_text = st.text_area(
                     "前台頂部公告文字",
-                    value=sys_config.get(
-                        "announcement", "目前為內部測試階段｜本頁面可聯繫後台管理者"
+                    value=str(
+                        sys_config.get(
+                            "announcement",
+                            "目前為內部測試階段｜本頁面可聯繫後台管理者",
+                        )
                     ),
                     height=100,
                 )
                 enable_notice = st.checkbox(
                     "顯示 Beta 測試環境告示橫幅",
-                    value=sys_config.get("enable_beta_notice", True),
+                    value=bool(sys_config.get("enable_beta_notice", True)),
                 )
 
             submit_sys_cfg = st.form_submit_button(
-                "💾 儲存全域系統設定", type="primary", use_container_width=True
+                "儲存全域系統設定", type="primary", use_container_width=True
             )
 
             if submit_sys_cfg:
-                pwd_updates = []
+                pwd_updates: List[str] = []
                 has_error = False
-                error_msgs = []
+                error_msgs: List[str] = []
 
                 if new_user_pwd or confirm_user_pwd:
                     if new_user_pwd != confirm_user_pwd:
@@ -694,7 +704,7 @@ def render_admin_panel():
                 if has_error:
                     st.session_state["cfg_toast"] = (
                         "error",
-                        "❌ " + "；".join(error_msgs),
+                        " " + "；".join(error_msgs),
                     )
                     st.rerun()
                 else:
@@ -707,7 +717,7 @@ def render_admin_panel():
                     msg_prefix = "與".join(pwd_updates) + "及" if pwd_updates else ""
                     st.session_state["cfg_toast"] = (
                         "success",
-                        f"🎉 {msg_prefix}全域系統設定已成功更新並即刻生效！",
+                        f"{msg_prefix}全域系統設定已成功更新並即刻生效！",
                     )
                     st.rerun()
 
@@ -715,19 +725,19 @@ def render_admin_panel():
     # Tab 5: 系統日誌與備份
     # ---------------------------------------------------------
     with tab5:
-        st.markdown("### 📜 系統操作日誌與資料打包備份")
+        st.markdown("### 系統操作日誌與資料打包備份")
 
         logs = load_activity_logs()
 
         col_log_title, col_log_btn = st.columns([3, 1])
 
         with col_log_title:
-            st.markdown(f"#### 👁️ 最近系統操作日誌 (共 {len(logs)} 筆)")
+            st.markdown(f"#### 最近系統操作日誌 (共 {len(logs)} 筆)")
 
         with col_log_btn:
             st.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
             if st.button(
-                "🗑️ 清空紀錄",
+                "清空紀錄",
                 key="btn_clear_activity_logs",
                 type="secondary",
                 use_container_width=True,
@@ -766,13 +776,13 @@ def render_admin_panel():
             st.info("目前尚無任何系統操作日誌紀錄。")
 
         st.markdown("---")
-        st.markdown("#### 📦 一鍵備份全站數據與設定")
+        st.markdown("#### 一鍵備份全站數據與設定")
         st.caption("點擊下方按鈕可將系統班表大表、設定檔、回報工單與日誌打包為 ZIP 下載備份。")
 
         zip_buf = create_backup_zip()
         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         st.download_button(
-            "📥 打包下載全站備份檔 (.zip)",
+            "打包下載全站備份檔 (.zip)",
             data=zip_buf,
             file_name=f"system_backup_{now_str}.zip",
             mime="application/zip",
@@ -784,7 +794,7 @@ def render_admin_panel():
     # Tab 6: 工單與問題回報管理
     # ---------------------------------------------------------
     with tab6:
-        st.markdown("### 📋 工單與問題回報管理")
+        st.markdown("### 工單與問題回報管理")
 
         all_tickets = load_all_feedback_tickets()
 
@@ -830,12 +840,12 @@ def render_admin_panel():
             st.caption(f"列表顯示共 {len(filtered_tickets)} 筆工單：")
 
             for idx, t in enumerate(filtered_tickets):
-                ticket_id = t.get("處理編號", "未知單號")
-                curr_status = t.get("狀態", "待處理")
-                category = t.get("類別", "一般")
-                reporter = t.get("回報者", "未知")
-                time_str = t.get("時間", "")
-                unit = t.get("單位", "")
+                ticket_id = str(t.get("處理編號", "未知單號"))
+                curr_status = str(t.get("狀態", "待處理"))
+                category = str(t.get("類別", "一般"))
+                reporter = str(t.get("回報者", "未知"))
+                time_str = str(t.get("時間", ""))
+                unit = str(t.get("單位", ""))
 
                 status_badge = (
                     "🔴 [待處理]" if curr_status == "待處理"
@@ -853,8 +863,8 @@ def render_admin_panel():
 
                     img_path = t.get("_img_path")
                     if img_path and os.path.exists(img_path):
-                        st.markdown("📷 **附加螢幕截圖：**")
-                        if st.button(f"🔍 點此查看/下載截圖附件", key=f"btn_view_img_{ticket_id}_{idx}"):
+                        st.markdown("附加螢幕截圖：")
+                        if st.button(f"點此查看/下載截圖附件", key=f"btn_view_img_{ticket_id}_{idx}"):
                             view_feedback_img_modal(img_path, ticket_id, reporter)
 
                     c1, c2 = st.columns([1, 2])
@@ -870,14 +880,14 @@ def render_admin_panel():
                     with c2:
                         new_reply = st.text_input(
                             "處理備註 / 給組員的回覆",
-                            value=t.get("管理員回覆", ""),
+                            value=str(t.get("管理員回覆", "")),
                             key=f"reply_input_{ticket_id}_{idx}",
                             placeholder="例如：已於 9/6 修正程式...",
                         )
 
                     cb1, cb2 = st.columns(2)
                     with cb1:
-                        if st.button("💾 更新工單狀態與備註", key=f"btn_update_t_{ticket_id}_{idx}", type="primary", use_container_width=True):
+                        if st.button("更新工單狀態與備註", key=f"btn_update_t_{ticket_id}_{idx}", type="primary", use_container_width=True):
                             t["狀態"] = new_status
                             t["管理員回覆"] = new_reply
                             save_feedback_ticket(t)
@@ -886,7 +896,7 @@ def render_admin_panel():
                             st.rerun()
 
                     with cb2:
-                        if st.button("🗑️ 刪除此工單", key=f"btn_del_t_{ticket_id}_{idx}", use_container_width=True):
+                        if st.button("刪除此工單", key=f"btn_del_t_{ticket_id}_{idx}", use_container_width=True):
                             txt_p = t.get("_txt_path")
                             if txt_p and os.path.exists(txt_p):
                                 os.remove(txt_p)
