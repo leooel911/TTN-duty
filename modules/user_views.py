@@ -3,6 +3,7 @@ import re
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
+import pandas as pd
 import streamlit as st
 from config import LEAVE_CODES, NATIONAL_HOLIDAYS
 from modules.components import (
@@ -35,6 +36,8 @@ from modules.utils import (
 # --- 輔助函式：精準比對 Excel 日期欄位索引（解決 9/1 比對到 9/10 的 Bug） ---
 def find_date_column_index(columns: Any, target_date: str) -> int:
     """精準匹配日期欄位索引，避免 substring 誤判"""
+    if columns is None:
+        return -1
     for idx, col in enumerate(columns):
         if idx < 2:
             continue
@@ -533,11 +536,27 @@ def render_user_home() -> None:
 
                 TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
 
-                min_time, max_time_sel = st.select_slider(
+                # --- 修正：安全驗證與解構 select_slider，防止 ValueError 導致崩潰 ---
+                curr_slider = st.session_state.get("win_time_slider")
+                if (
+                    not isinstance(curr_slider, (tuple, list))
+                    or len(curr_slider) != 2
+                    or curr_slider[0] not in TIME_OPTIONS
+                    or curr_slider[1] not in TIME_OPTIONS
+                ):
+                    default_start = morn_start_time if morn_start_time in TIME_OPTIONS else TIME_OPTIONS[0]
+                    st.session_state["win_time_slider"] = (default_start, "10:00")
+
+                slider_val = st.select_slider(
                     "Sign-In 時段區間",
                     options=TIME_OPTIONS,
                     key="win_time_slider",
                 )
+
+                if isinstance(slider_val, (tuple, list)) and len(slider_val) == 2:
+                    min_time, max_time_sel = slider_val
+                else:
+                    min_time, max_time_sel = TIME_OPTIONS[0], TIME_OPTIONS[-1]
 
                 filter_col1, filter_col2 = st.columns(2)
                 with filter_col1:
@@ -850,311 +869,315 @@ def render_user_home() -> None:
                         else [d for d in date_cols if d != target_date]
                     )
 
-                    if (
-                        "ex_prev_target_date" not in st.session_state
-                        or st.session_state["ex_prev_target_date"] != target_date
-                    ):
-                        st.session_state["ex_prev_target_date"] = target_date
-                        if return_date_options:
+                    # --- 修正：防禦空選單，避免 selectbox 拋出 ValueError ---
+                    if not return_date_options:
+                        st.warning("找不到可還假期的其他有效日期。")
+                        return_date = None
+                    else:
+                        if (
+                            "ex_prev_target_date" not in st.session_state
+                            or st.session_state["ex_prev_target_date"] != target_date
+                        ):
+                            st.session_state["ex_prev_target_date"] = target_date
                             st.session_state["ex_return_date"] = return_date_options[0]
 
-                    if (
-                        "ex_return_date" in st.session_state
-                        and st.session_state["ex_return_date"] not in return_date_options
-                    ):
-                        if return_date_options:
+                        if (
+                            "ex_return_date" in st.session_state
+                            and st.session_state["ex_return_date"] not in return_date_options
+                        ):
                             st.session_state["ex_return_date"] = return_date_options[0]
 
-                    with ex_c3:
-                        return_date = st.selectbox(
-                            "選擇可還假日期",
-                            return_date_options,
-                            format_func=lambda d: get_date_label(d, df_ex.columns),
-                            key="ex_return_date",
-                            on_change=reset_ex_search,
+                        with ex_c3:
+                            return_date = st.selectbox(
+                                "選擇可還假日期",
+                                return_date_options,
+                                format_func=lambda d: get_date_label(d, df_ex.columns),
+                                key="ex_return_date",
+                                on_change=reset_ex_search,
+                            )
+
+                    if return_date:
+                        ex_week_holidays = list(
+                            set(
+                                get_week_holidays(target_date, date_cols, df_ex.columns)
+                                + get_week_holidays(return_date, date_cols, df_ex.columns)
+                            )
                         )
 
-                    ex_week_holidays = list(
-                        set(
-                            get_week_holidays(target_date, date_cols, df_ex.columns)
-                            + get_week_holidays(return_date, date_cols, df_ex.columns)
-                        )
-                    )
+                        show_holiday_notice(ex_week_holidays, target_week_str)
 
-                    show_holiday_notice(ex_week_holidays, target_week_str)
-
-                    st.caption(
-                        f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）"
-                    )
-
-                    col_f1, col_f2 = st.columns(2)
-                    with col_f1:
-                        time_filter_options = ["不限"] + [
-                            f"{h:02d}:00 以後" for h in range(5, 17)
-                        ]
-                        return_time_filter = st.selectbox(
-                            "還假日 Sign-In 時間限制",
-                            options=time_filter_options,
-                            key="ex_time_filter",
-                        )
-                    with col_f2:
-                        sort_order = st.selectbox(
-                            "結果排序方式",
-                            [
-                                "依 Sign-In 時間 (由早至晚)",
-                                "依最早 Sign-Out",
-                                "依工時長短",
-                            ],
-                            key="ex_sort_order",
+                        st.caption(
+                            f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）"
                         )
 
-                    strict_limit = st.checkbox(
-                        "嚴格過濾：排除換假後連續上班已達 6 天以上的人員",
-                        value=True,
-                        key="ex_strict_limit",
-                    )
+                        col_f1, col_f2 = st.columns(2)
+                        with col_f1:
+                            time_filter_options = ["不限"] + [
+                                f"{h:02d}:00 以後" for h in range(5, 17)
+                            ]
+                            return_time_filter = st.selectbox(
+                                "還假日 Sign-In 時間限制",
+                                options=time_filter_options,
+                                key="ex_time_filter",
+                            )
+                        with col_f2:
+                            sort_order = st.selectbox(
+                                "結果排序方式",
+                                [
+                                    "依 Sign-In 時間 (由早至晚)",
+                                    "依最早 Sign-Out",
+                                    "依工時長短",
+                                ],
+                                key="ex_sort_order",
+                            )
 
-                    if st.button("搜尋可換假組員名單", key="btn_ex_search"):
-                        raw_candidates = []
+                        strict_limit = st.checkbox(
+                            "嚴格過濾：排除換假後連續上班已達 6 天以上的人員",
+                            value=True,
+                            key="ex_strict_limit",
+                        )
 
-                        target_col_idx = find_date_column_index(df_ex.columns, target_date)
-                        return_col_idx = find_date_column_index(df_ex.columns, return_date)
+                        if st.button("搜尋可換假組員名單", key="btn_ex_search"):
+                            raw_candidates = []
 
-                        if target_col_idx != -1 and return_col_idx != -1:
-                            for _, row in df_ex.iterrows():
-                                emp_id = str(row.iloc[0]).strip()
-                                emp_name = str(row.iloc[1]).strip()
-                                if not emp_id or emp_id.upper() in ["NAN", "NONE", ""]:
-                                    continue
-                                if target_col_idx >= len(row) or return_col_idx >= len(row):
-                                    continue
+                            target_col_idx = find_date_column_index(df_ex.columns, target_date)
+                            return_col_idx = find_date_column_index(df_ex.columns, return_date)
 
-                                parsed_target = parse_cell(row.iloc[target_col_idx])
-                                raw_target_str = str(row.iloc[target_col_idx]).strip().upper()
+                            if target_col_idx != -1 and return_col_idx != -1:
+                                for _, row in df_ex.iterrows():
+                                    emp_id = str(row.iloc[0]).strip()
+                                    emp_name = str(row.iloc[1]).strip()
+                                    if not emp_id or emp_id.upper() in ["NAN", "NONE", ""]:
+                                        continue
+                                    if target_col_idx >= len(row) or return_col_idx >= len(row):
+                                        continue
 
-                                is_target_leave = (
-                                    any(k in raw_target_str for k in LEAVE_CODES)
-                                    or parsed_target["train"] in LEAVE_CODES
-                                )
-                                if is_target_leave:
-                                    continue
+                                    parsed_target = parse_cell(row.iloc[target_col_idx])
+                                    raw_target_str = str(row.iloc[target_col_idx]).strip().upper()
 
-                                is_target_do = is_cell_off_day(row.iloc[target_col_idx])
-                                if not is_target_do:
-                                    continue
-
-                                parsed_return = parse_cell(row.iloc[return_col_idx])
-                                raw_return_str = str(row.iloc[return_col_idx]).strip()
-                                raw_return_upper = raw_return_str.upper()
-
-                                is_return_leave = (
-                                    any(k in raw_return_upper for k in LEAVE_CODES)
-                                    or parsed_return["train"] in LEAVE_CODES
-                                )
-                                is_return_do = is_cell_off_day(row.iloc[return_col_idx])
-                                if is_return_do or is_return_leave:
-                                    continue
-
-                                is_long = is_overtime(
-                                    parsed_return["hours"],
-                                    parsed_return["train"],
-                                    parsed_return["note"],
-                                )
-                                is_non_line = is_town_shift(
-                                    parsed_return["train"], parsed_return["note"]
-                                )
-
-                                return_do_tag = parsed_return.get("note", "")
-                                if not return_do_tag:
-                                    do_match = re.search(
-                                        r"(DO\d*W?|D\d+W|OGC)", raw_return_str, re.IGNORECASE
+                                    is_target_leave = (
+                                        any(k in raw_target_str for k in LEAVE_CODES)
+                                        or parsed_target["train"] in LEAVE_CODES
                                     )
-                                    return_do_tag = do_match.group(1).upper() if do_match else ""
+                                    if is_target_leave:
+                                        continue
 
-                                raw_target_cell = str(row.iloc[target_col_idx]).upper()
-                                raw_return_cell = str(row.iloc[return_col_idx]).upper()
-                                has_do2w_tag = bool(
-                                    re.search(
-                                        r"(DO[23]W|D[23]W|OGC)",
-                                        raw_target_cell + raw_return_cell,
-                                        re.IGNORECASE,
+                                    is_target_do = is_cell_off_day(row.iloc[target_col_idx])
+                                    if not is_target_do:
+                                        continue
+
+                                    parsed_return = parse_cell(row.iloc[return_col_idx])
+                                    raw_return_str = str(row.iloc[return_col_idx]).strip()
+                                    raw_return_upper = raw_return_str.upper()
+
+                                    is_return_leave = (
+                                        any(k in raw_return_upper for k in LEAVE_CODES)
+                                        or parsed_return["train"] in LEAVE_CODES
                                     )
-                                )
+                                    is_return_do = is_cell_off_day(row.iloc[return_col_idx])
+                                    if is_return_do or is_return_leave:
+                                        continue
 
-                                sim_row = row.copy()
-                                sim_row = set_simulated_cell(sim_row, target_date, "D1")
-                                sim_row = set_simulated_cell(sim_row, return_date, "休")
+                                    is_long = is_overtime(
+                                        parsed_return["hours"],
+                                        parsed_return["train"],
+                                        parsed_return["note"],
+                                    )
+                                    is_non_line = is_town_shift(
+                                        parsed_return["train"], parsed_return["note"]
+                                    )
 
-                                max_consecutive_streak = calculate_consecutive_work_days(
-                                    sim_row, target_date
-                                )
+                                    return_do_tag = parsed_return.get("note", "")
+                                    if not return_do_tag:
+                                        do_match = re.search(
+                                            r"(DO\d*W?|D\d+W|OGC)", raw_return_str, re.IGNORECASE
+                                        )
+                                        return_do_tag = do_match.group(1).upper() if do_match else ""
 
-                                raw_candidates.append({
-                                    "員編": emp_id,
-                                    "姓名": emp_name,
-                                    "想休日": target_date,
-                                    "想休狀態": (
-                                        raw_target_str.split("\n")[0]
-                                        if raw_target_str
-                                        else "DO"
-                                    ),
-                                    "還休日": return_date,
-                                    "還假車次": translate_train_code(parsed_return["train"]),
-                                    "Sign-In": (
-                                        parsed_return["start"]
-                                        if parsed_return["start"]
-                                        else "--:--"
-                                    ),
-                                    "Sign-Out": (
-                                        parsed_return["end"]
-                                        if parsed_return["end"]
-                                        else "--:--"
-                                    ),
-                                    "工時": parsed_return["hours"],
-                                    "長班": is_long,
-                                    "非正線": is_non_line,
-                                    "出勤標記": return_do_tag,
-                                    "有DO2W標記": has_do2w_tag,
-                                    "連續上班天數": max_consecutive_streak,
-                                })
+                                    raw_target_cell = str(row.iloc[target_col_idx]).upper()
+                                    raw_return_cell = str(row.iloc[return_col_idx]).upper()
+                                    has_do2w_tag = bool(
+                                        re.search(
+                                            r"(DO[23]W|D[23]W|OGC)",
+                                            raw_target_cell + raw_return_cell,
+                                            re.IGNORECASE,
+                                        )
+                                    )
 
-                            st.session_state["ex_raw_candidates"] = raw_candidates
-                            st.session_state["ex_search_performed"] = True
-                            st.rerun()
+                                    sim_row = row.copy()
+                                    sim_row = set_simulated_cell(sim_row, target_date, "D1")
+                                    sim_row = set_simulated_cell(sim_row, return_date, "休")
 
-                    if st.session_state.get("ex_search_performed"):
-                        raw_list = st.session_state.get("ex_raw_candidates", [])
-                        filtered_candidates = []
+                                    max_consecutive_streak = calculate_consecutive_work_days(
+                                        sim_row, target_date
+                                    )
 
-                        for cand in raw_list:
-                            if return_time_filter != "不限":
-                                min_allowed = return_time_filter.split(" ")[0]
-                                if (
-                                    not cand["Sign-In"]
-                                    or cand["Sign-In"] == "--:--"
-                                    or cand["Sign-In"] < min_allowed
-                                ):
+                                    raw_candidates.append({
+                                        "員編": emp_id,
+                                        "姓名": emp_name,
+                                        "想休日": target_date,
+                                        "想休狀態": (
+                                            raw_target_str.split("\n")[0]
+                                            if raw_target_str
+                                            else "DO"
+                                        ),
+                                        "還休日": return_date,
+                                        "還假車次": translate_train_code(parsed_return["train"]),
+                                        "Sign-In": (
+                                            parsed_return["start"]
+                                            if parsed_return["start"]
+                                            else "--:--"
+                                        ),
+                                        "Sign-Out": (
+                                            parsed_return["end"]
+                                            if parsed_return["end"]
+                                            else "--:--"
+                                        ),
+                                        "工時": parsed_return["hours"],
+                                        "長班": is_long,
+                                        "非正線": is_non_line,
+                                        "出勤標記": return_do_tag,
+                                        "有DO2W標記": has_do2w_tag,
+                                        "連續上班天數": max_consecutive_streak,
+                                    })
+
+                                st.session_state["ex_raw_candidates"] = raw_candidates
+                                st.session_state["ex_search_performed"] = True
+                                st.rerun()
+
+                        if st.session_state.get("ex_search_performed"):
+                            raw_list = st.session_state.get("ex_raw_candidates", [])
+                            filtered_candidates = []
+
+                            for cand in raw_list:
+                                if return_time_filter != "不限":
+                                    min_allowed = return_time_filter.split(" ")[0]
+                                    if (
+                                        not cand["Sign-In"]
+                                        or cand["Sign-In"] == "--:--"
+                                        or cand["Sign-In"] < min_allowed
+                                    ):
+                                        continue
+
+                                if strict_limit and cand["連續上班天數"] >= 6:
                                     continue
 
-                            if strict_limit and cand["連續上班天數"] >= 6:
-                                continue
+                                filtered_candidates.append(cand)
 
-                            filtered_candidates.append(cand)
+                            if sort_order == "依 Sign-In 時間 (由早至晚)":
+                                filtered_candidates = sorted(
+                                    filtered_candidates,
+                                    key=lambda x: (
+                                        x["Sign-In"] or "99:99",
+                                        x["Sign-Out"] or "99:99",
+                                    ),
+                                )
+                            elif sort_order == "依最早 Sign-Out":
+                                filtered_candidates = sorted(
+                                    filtered_candidates,
+                                    key=lambda x: (
+                                        x["Sign-Out"] or "99:99",
+                                        x["Sign-In"] or "99:99",
+                                    ),
+                                )
+                            elif sort_order == "依工時長短":
+                                filtered_candidates = sorted(
+                                    filtered_candidates,
+                                    key=lambda x: x["工時"] or "0h00m",
+                                    reverse=True,
+                                )
 
-                        if sort_order == "依 Sign-In 時間 (由早至晚)":
-                            filtered_candidates = sorted(
-                                filtered_candidates,
-                                key=lambda x: (
-                                    x["Sign-In"] or "99:99",
-                                    x["Sign-Out"] or "99:99",
-                                ),
-                            )
-                        elif sort_order == "依最早 Sign-Out":
-                            filtered_candidates = sorted(
-                                filtered_candidates,
-                                key=lambda x: (
-                                    x["Sign-Out"] or "99:99",
-                                    x["Sign-In"] or "99:99",
-                                ),
-                            )
-                        elif sort_order == "依工時長短":
-                            filtered_candidates = sorted(
-                                filtered_candidates,
-                                key=lambda x: x["工時"] or "0h00m",
-                                reverse=True,
-                            )
-
-                        log_activity(
-                            "換假日期快篩",
-                            f"單位:{current_unit_label} | 職位:{selected_role} | 想休:{target_date} | "
-                            f"還假:{return_date} | 時間限制:{return_time_filter} | "
-                            f"排序:{sort_order} | 嚴格連六:{strict_limit} | 命中數:{len(filtered_candidates)}筆"
-                        )
-
-                        st.markdown(
-                            f"### 換假可選人員名單（共 {len(filtered_candidates)} 位）"
-                        )
-
-                        if filtered_candidates:
-                            cnt_do2w = sum(
-                                1
-                                for c in filtered_candidates
-                                if c.get("有DO2W標記")
-                                or "DO2" in c.get("出勤標記", "")
-                            )
-                            cnt_streak6 = sum(
-                                1
-                                for c in filtered_candidates
-                                if c.get("連續上班天數", 0) >= 6
+                            log_activity(
+                                "換假日期快篩",
+                                f"單位:{current_unit_label} | 職位:{selected_role} | 想休:{target_date} | "
+                                f"還假:{return_date} | 時間限制:{return_time_filter} | "
+                                f"排序:{sort_order} | 嚴格連六:{strict_limit} | 命中數:{len(filtered_candidates)}筆"
                             )
 
                             st.markdown(
-                                f"""
-                                <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
-                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                                        <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">可換假總人數</div>
-                                        <div style="font-size: 17px; font-weight: 900; color: #38BDF8; font-family: monospace;">{len(filtered_candidates)} <span style="font-size: 10px;">位</span></div>
-                                    </div>
-                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(245, 158, 11, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                                        <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">含 DO2W 標記</div>
-                                        <div style="font-size: 17px; font-weight: 900; color: #FBBF24; font-family: monospace;">{cnt_do2w} <span style="font-size: 10px;">人</span></div>
-                                    </div>
-                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                                        <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">連班 6 天以上</div>
-                                        <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_streak6} <span style="font-size: 10px;">人</span></div>
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
+                                f"### 換假可選人員名單（共 {len(filtered_candidates)} 位）"
                             )
 
-                            c_col1, c_col2 = st.columns(2)
-                            for idx, cand in enumerate(filtered_candidates):
-                                target_col = c_col1 if idx % 2 == 0 else c_col2
-
-                                do_tag = cand.get("出勤標記", "")
-                                cand_hours = cand.get("工時", "")
-
-                                hours_display_html = (
-                                    f'<div style="font-size: 11px; color: #CBD5E1; font-family:'
-                                    f' monospace; margin-top: 1px;">({cand_hours})</div>'
-                                    if cand_hours
-                                    else ""
+                            if filtered_candidates:
+                                cnt_do2w = sum(
+                                    1
+                                    for c in filtered_candidates
+                                    if c.get("有DO2W標記")
+                                    or "DO2" in c.get("出勤標記", "")
+                                )
+                                cnt_streak6 = sum(
+                                    1
+                                    for c in filtered_candidates
+                                    if c.get("連續上班天數", 0) >= 6
                                 )
 
-                                badges_html = '<div class="badge-group">'
-                                if cand.get("非正線"):
-                                    badges_html += '<span class="non-line-badge">非正線</span>'
-                                if cand.get("長班"):
-                                    badges_html += '<span class="long-badge">長班</span>'
-                                if cand.get("有DO2W標記") or do_tag:
-                                    tag_text = do_tag if do_tag else "DO2W"
-                                    badges_html += f'<span class="do2w-badge">[{tag_text}]</span>'
-                                badges_html += "</div>"
-
-                                streak_cnt = cand.get("連續上班天數", 0)
-                                streak_color = (
-                                    "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
+                                st.markdown(
+                                    f"""
+                                    <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
+                                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">可換假總人數</div>
+                                            <div style="font-size: 17px; font-weight: 900; color: #38BDF8; font-family: monospace;">{len(filtered_candidates)} <span style="font-size: 10px;">位</span></div>
+                                        </div>
+                                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(245, 158, 11, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">含 DO2W 標記</div>
+                                            <div style="font-size: 17px; font-weight: 900; color: #FBBF24; font-family: monospace;">{cnt_do2w} <span style="font-size: 10px;">人</span></div>
+                                        </div>
+                                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">連班 6 天以上</div>
+                                            <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_streak6} <span style="font-size: 10px;">人</span></div>
+                                        </div>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True,
                                 )
 
-                                card_class = (
-                                    "crew-card-top-warn" if streak_cnt >= 6 else "crew-card-top"
-                                )
-                                warning_banner_html = ""
+                                c_col1, c_col2 = st.columns(2)
+                                for idx, cand in enumerate(filtered_candidates):
+                                    target_col = c_col1 if idx % 2 == 0 else c_col2
 
-                                if streak_cnt >= 6:
-                                    warning_banner_html = f"""<div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
+                                    do_tag = cand.get("出勤標記", "")
+                                    cand_hours = cand.get("工時", "")
+
+                                    hours_display_html = (
+                                        f'<div style="font-size: 11px; color: #CBD5E1; font-family:'
+                                        f' monospace; margin-top: 1px;">({cand_hours})</div>'
+                                        if cand_hours
+                                        else ""
+                                    )
+
+                                    badges_html = '<div class="badge-group">'
+                                    if cand.get("非正線"):
+                                        badges_html += '<span class="non-line-badge">非正線</span>'
+                                    if cand.get("長班"):
+                                        badges_html += '<span class="long-badge">長班</span>'
+                                    if cand.get("有DO2W標記") or do_tag:
+                                        tag_text = do_tag if do_tag else "DO2W"
+                                        badges_html += f'<span class="do2w-badge">[{tag_text}]</span>'
+                                    badges_html += "</div>"
+
+                                    streak_cnt = cand.get("連續上班天數", 0)
+                                    streak_color = (
+                                        "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
+                                    )
+
+                                    card_class = (
+                                        "crew-card-top-warn" if streak_cnt >= 6 else "crew-card-top"
+                                    )
+                                    warning_banner_html = ""
+
+                                    if streak_cnt >= 6:
+                                        warning_banner_html = f"""<div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
 注意：換假後當月連續上班達 {streak_cnt} 天，請留意出勤規範！
 </div>"""
 
-                                clean_cand_name = str(cand.get("姓名", "")).replace("\n", " ").strip()
-                                clean_cand_id = str(cand.get("員編", "")).replace("\n", " ").strip()
-                                clean_cand_return_date = str(cand.get("還休日", "")).replace("\n", " ").strip()
-                                clean_cand_return_train = str(cand.get("還假車次", "無")).replace("\n", " ").strip()
-                                clean_cand_signin = str(cand.get("Sign-In", "--:--")).replace("\n", " ").strip()
-                                clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
+                                    clean_cand_name = str(cand.get("姓名", "")).replace("\n", " ").strip()
+                                    clean_cand_id = str(cand.get("員編", "")).replace("\n", " ").strip()
+                                    clean_cand_return_date = str(cand.get("還休日", "")).replace("\n", " ").strip()
+                                    clean_cand_return_train = str(cand.get("還假車次", "無")).replace("\n", " ").strip()
+                                    clean_cand_signin = str(cand.get("Sign-In", "--:--")).replace("\n", " ").strip()
+                                    clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
 
-                                card_html = f"""<div class="{card_class}">
+                                    card_html = f"""<div class="{card_class}">
 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
 <div>
 <div class="compact-name">{clean_cand_name} <span style="color:#94A3B8; font-size:12px;">({clean_cand_id})</span></div>
@@ -1175,24 +1198,24 @@ def render_user_home() -> None:
 {warning_banner_html}
 </div>"""
 
-                                with target_col:
-                                    st.markdown(card_html, unsafe_allow_html=True)
+                                    with target_col:
+                                        st.markdown(card_html, unsafe_allow_html=True)
 
-                                    if st.button(
-                                        f"檢視 {clean_cand_name} 完整班表",
-                                        key=f"ex_btn_{clean_cand_id}_{idx}",
-                                        use_container_width=True,
-                                    ):
-                                        log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
-                                        show_crew_schedule_modal(
-                                            clean_cand_id,
-                                            current_unit_label,
-                                            badge_title="Exchange | C.L.F",
-                                        )
-                        else:
-                            st.info(
-                                "在指定條件內，找不到符合的可換假人員"
-                                " (可嘗試放寬還假日 Sign-In 時間限制或取消嚴格過濾)"
-                            )
+                                        if st.button(
+                                            f"檢視 {clean_cand_name} 完整班表",
+                                            key=f"ex_btn_{clean_cand_id}_{idx}",
+                                            use_container_width=True,
+                                        ):
+                                            log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
+                                            show_crew_schedule_modal(
+                                                clean_cand_id,
+                                                current_unit_label,
+                                                badge_title="Exchange | C.L.F",
+                                            )
+                            else:
+                                st.info(
+                                    "在指定條件內，找不到符合的可換假人員"
+                                    " (可嘗試放寬還假日 Sign-In 時間限制或取消嚴格過濾)"
+                                )
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
