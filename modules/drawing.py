@@ -1,6 +1,7 @@
 import io
 import os
 from datetime import date, datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import matplotlib
 import matplotlib.font_manager as fm
@@ -26,12 +27,13 @@ from config import (
 )
 from matplotlib.patches import FancyBboxPatch
 from modules.services import load_system_config
-from modules.utils import is_overtime, is_town_shift
+from modules.utils import is_overtime, is_town_shift, parse_cell
 
 matplotlib.use("Agg")
 
 
-def setup_font():
+def setup_font() -> Optional[fm.FontProperties]:
+    """設定並載入中文字型"""
     font_path = "NotoSansTC.ttf"
     if os.path.exists(font_path):
         fm.fontManager.addfont(font_path)
@@ -39,7 +41,10 @@ def setup_font():
     return None
 
 
-def draw_bold_text(ax, x, y, text, **kwargs):
+def draw_bold_text(
+    ax: plt.Axes, x: float, y: float, text: str, **kwargs: Any
+) -> None:
+    """繪製模擬加粗效果之文字標籤"""
     ax.text(x, y, text, **kwargs)
     offset = 0.00035
     ax.text(x + offset, y, text, **kwargs)
@@ -48,8 +53,11 @@ def draw_bold_text(ax, x, y, text, **kwargs):
     ax.text(x, y - offset, text, **kwargs)
 
 
-def parse_transport_periods(raw_periods, year=2026):
-    expanded = {}
+def parse_transport_periods(
+    raw_periods: Dict[str, str], year: int = 2026
+) -> Dict[str, str]:
+    """解析疏運期間範圍文字並展平為單日對照字典"""
+    expanded: Dict[str, str] = {}
     for k, v in raw_periods.items():
         if "-" in k:
             parts = k.split("-")
@@ -65,15 +73,18 @@ def parse_transport_periods(raw_periods, year=2026):
     return expanded
 
 
-def build_weeks(start_dt, dates, cells):
-    from modules.utils import parse_cell
-
+def build_weeks(
+    start_dt: datetime, dates: List[str], cells: List[str]
+) -> List[List[Optional[Tuple[str, Dict[str, str], str]]]]:
+    """根據起訖日期與儲存格建立 7 天制之月曆週陣列"""
     first_wd = (start_dt.weekday() + 1) % 7
-    weeks, week = [], [None] * first_wd
+    weeks: List[List[Optional[Tuple[str, Dict[str, str], str]]]] = []
+    week: List[Optional[Tuple[str, Dict[str, str], str]]] = [None] * first_wd
+
     for dt, raw in zip(dates, cells):
-        week.append(
-            (dt, parse_cell(raw), str(raw) if not str(raw) == "nan" else "")
-        )
+        raw_str = str(raw) if str(raw) != "nan" else ""
+        parsed = parse_cell(raw)
+        week.append((dt, parsed, raw_str))
         if len(week) == 7:
             weeks.append(week)
             week = []
@@ -85,14 +96,15 @@ def build_weeks(start_dt, dates, cells):
 
 
 def render_schedule_figure(
-    start_dt,
-    dates,
-    emp_id,
-    emp_name,
-    cells,
-    unit_label,
-    badge_title="Producer | C.L.F",
-):
+    start_dt: datetime,
+    dates: List[str],
+    emp_id: str,
+    emp_name: str,
+    cells: List[str],
+    unit_label: str,
+    badge_title: str = "Producer | C.L.F",
+) -> io.BytesIO:
+    """渲染繪製高解析度個人月班表圖檔並回傳影像 BytesIO Buffer"""
     active_transport = parse_transport_periods(TRANSPORT_PERIODS)
     font_prop = setup_font()
 
@@ -100,7 +112,7 @@ def render_schedule_figure(
     sys_cfg = load_system_config()
     target_empty_label = sys_cfg.get("empty_shift_label", "--")
 
-    def fp(size=9):
+    def fp(size: float = 9) -> fm.FontProperties:
         return (
             fm.FontProperties(fname=font_prop.get_file(), size=size)
             if font_prop
@@ -139,7 +151,7 @@ def render_schedule_figure(
         fontproperties=fp(16),
     )
 
-    # 🛡️ 邊界防護：避免 dates 為空時發生 IndexError
+    # 邊界防護：避免 dates 為空時發生 IndexError
     d_start_str = dates[0] if dates else "--"
     d_end_str = dates[-1] if dates else "--"
 
