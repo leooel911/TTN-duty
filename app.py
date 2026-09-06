@@ -105,6 +105,8 @@ if st.session_state.get("inspect_emp_target") is not None:
     except Exception as e:
         st.error(f"載入組員【{target_emp}】班表時發生錯誤：{e}")
 
+    st.stop()  # 修正：檢視模式獨立呈現，避免與下方主頁 UI 重疊
+
 # ---------------------------------------------------------
 # 前置授權碼門戶檢查 (登入驗證頁面)
 # ---------------------------------------------------------
@@ -203,7 +205,6 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                         log_activity("測試員 A 登入系統")
                         st.rerun()
 
-                    # 🔥 關鍵修正：將 selected_unit 傳入白名單驗證
                     allowed, user_info = is_user_allowed(selected_unit, clean_emp)
                     u_role = (
                         str(user_info.get("role", "")).upper() if isinstance(user_info, dict) else ""
