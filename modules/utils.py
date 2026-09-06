@@ -2,7 +2,10 @@ import io
 import json
 import os
 import re
+import smtplib
 from datetime import date, datetime, timedelta, timezone
+from email.header import Header
+from email.mime.text import MIMEText
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
@@ -743,3 +746,52 @@ def check_week_has_holiday(
         return False, week_str
     except Exception:
         return False, ""
+
+
+# =========================================================
+# 7. 管理員通知信發送函式
+# =========================================================
+def send_admin_email(
+    req_unit: str, req_emp_id: str, req_name: str, req_reason: str
+) -> Tuple[bool, str]:
+    """
+    發送權限申請通知信給系統管理員
+    具有 timeout 與 try-except 保護，確保網路失敗時不影響主程式運作
+    """
+    try:
+        smtp_server = st.secrets.get("SMTP_SERVER", "smtp.gmail.com")
+        smtp_port = int(st.secrets.get("SMTP_PORT", 587))
+        sender_email = st.secrets.get("SMTP_EMAIL", "")
+        sender_pwd = st.secrets.get("SMTP_PASSWORD", "")
+        admin_email = st.secrets.get("ADMIN_EMAIL", "")
+
+        if not sender_email or not sender_pwd or not admin_email:
+            return False, "secrets.toml 未設定完整的 SMTP 寄件資訊"
+
+        mail_body = f"""主管/管理員您好：
+
+CREW DUTY ENGINE 接獲新的系統使用權限申請，詳細資訊如下：
+
+* 所屬單位：{req_unit}
+* 申請員編：{req_emp_id}
+* 申請姓名：{req_name}
+* 申請原因/備註：{req_reason if req_reason.strip() else '無'}
+
+請登入系統管理員後台進行核發或處理。
+
+---
+本信件由 CREW DUTY ENGINE 自動化通知系統發送
+"""
+        msg = MIMEText(mail_body, "plain", "utf-8")
+        msg["Subject"] = Header(f"【CREW DUTY】權限申請通知 - {req_name} ({req_emp_id})", "utf-8")
+        msg["From"] = sender_email
+        msg["To"] = admin_email
+
+        with smtplib.SMTP(smtp_server, smtp_port, timeout=8) as server:
+            server.starttls()
+            server.login(sender_email, sender_pwd)
+            server.sendmail(sender_email, [admin_email], msg.as_string())
+
+        return True, "通知信件發送成功"
+    except Exception as e:
+        return False, f"信件發送失敗: {str(e)}"
