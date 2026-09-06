@@ -6,7 +6,8 @@ from datetime import datetime
 
 import pandas as pd
 import streamlit as st
-from config import DATA_DIR, LOG_FILE, UNITS, WHITELIST_FILE
+from config import DATA_DIR, FEEDBACK_IMG_DIR, LOG_FILE, UNITS, WHITELIST_FILE
+from modules.components import view_feedback_img_modal
 from modules.services import load_system_config, save_system_config
 from modules.utils import (
     get_file_mtime_str,
@@ -38,15 +39,26 @@ def clear_logs():
 
 
 def create_backup_zip():
-    """打包 data 資料夾與系統設定檔為 ZIP 下載檔"""
+    """打包 data 資料夾、回報圖檔目錄與系統設定檔為 ZIP 下載檔"""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        # 打包 DATA_DIR
         if os.path.exists(DATA_DIR):
             for root, _, files in os.walk(DATA_DIR):
                 for file in files:
                     file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, start=DATA_DIR)
-                    zf.write(file_path, arcname=os.path.join("data", arcname))
+                    arcname = os.path.relpath(file_path, start=os.path.dirname(DATA_DIR) or ".")
+                    zf.write(file_path, arcname=arcname)
+
+        # 打包 FEEDBACK_IMG_DIR (若獨立於 DATA_DIR 外)
+        if os.path.exists(FEEDBACK_IMG_DIR) and not FEEDBACK_IMG_DIR.startswith(DATA_DIR):
+            for root, _, files in os.walk(FEEDBACK_IMG_DIR):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, start=os.path.dirname(FEEDBACK_IMG_DIR) or ".")
+                    zf.write(file_path, arcname=arcname)
+
+        # 根目錄關鍵設定檔
         for root_file in [
             "activity.log",
             "maintenance.json",
@@ -57,6 +69,77 @@ def create_backup_zip():
                 zf.write(root_file, arcname=root_file)
     buf.seek(0)
     return buf
+
+
+def load_all_feedbacks():
+    """讀取 FEEDBACK_IMG_DIR 中所有的 txt 工單與對應截圖檔"""
+    feedbacks = []
+    if not os.path.exists(FEEDBACK_IMG_DIR):
+        return feedbacks
+
+    for fname in os.listdir(FEEDBACK_IMG_DIR):
+        if fname.endswith(".txt"):
+            fpath = os.path.join(FEEDBACK_IMG_DIR, fname)
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    content = f.read()
+
+                lines = content.split("\n")
+                info = {"_filepath": fpath, "_filename": fname}
+                desc_lines = []
+                is_desc = False
+
+                for line in lines:
+                    if line.startswith("詳細說明:"):
+                        is_desc = True
+                        continue
+                    if is_desc:
+                        desc_lines.append(line)
+                    elif ":" in line:
+                        k, v = line.split(":", 1)
+                        info[k.strip()] = v.strip()
+
+                info["詳細說明"] = "\n".join(desc_lines).strip()
+
+                # 檢查是否有附圖截圖
+                base_name = os.path.splitext(fname)[0]
+                img_path = None
+                for ext in [".png", ".jpg", ".jpeg"]:
+                    candidate = os.path.join(FEEDBACK_IMG_DIR, f"{base_name}{ext}")
+                    if os.path.exists(candidate):
+                        img_path = candidate
+                        break
+                info["_img_path"] = img_path
+
+                feedbacks.append(info)
+            except Exception:
+                pass
+
+    return sorted(feedbacks, key=lambda x: x.get("時間", ""), reverse=True)
+
+
+def update_feedback_txt(fpath, info, new_status, new_reply):
+    """更新回報純文字檔中的狀態與管理員回覆"""
+    ticket_id = info.get("處理編號", "未知")
+    category = info.get("類別", "無")
+    unit = info.get("單位", "TTN")
+    reporter = info.get("回報者", "未知")
+    time_str = info.get("時間", "")
+    desc = info.get("詳細說明", "")
+
+    new_content = (
+        f"處理編號: {ticket_id}\n"
+        f"狀態: {new_status}\n"
+        f"類別: {category}\n"
+        f"單位: {unit}\n"
+        f"回報者: {reporter}\n"
+        f"時間: {time_str}\n"
+        f"管理員回覆: {new_reply.strip() or '尚無回覆'}\n"
+        f"詳細說明:\n{desc}"
+    )
+
+    with open(fpath, "w", encoding="utf-8") as f:
+        f.write(new_content)
 
 
 def load_whitelist(unit_code="TTN"):
@@ -179,13 +262,14 @@ def render_admin_panel():
             st.session_state["admin_logged_in"] = False
             st.rerun()
 
-    # 管理員五大分頁
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    # 管理員六大分頁
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📂 大表上傳與管理",
         "🛠️ 模組維護模式",
         "👤 白名單與組員權限管理",
         "⚙️ 全域系統參數",
         "📜 系統日誌與備份",
+        "📋 工單與問題回報管理",
     ])
 
     # ---------------------------------------------------------
@@ -276,13 +360,12 @@ def render_admin_panel():
                     st.rerun()
 
     # ---------------------------------------------------------
-    # Tab 3: 白名單與組員權限管理 (採用 Key Versioning 徹底解決重置衝突)
+    # Tab 3: 白名單與組員權限管理
     # ---------------------------------------------------------
     with tab3:
         st.markdown(f"### 👤 白名單與組員權限管理 [{current_unit}]")
         whitelist_data = load_whitelist(current_unit)
 
-        # 💡 表格 Key 版本控制
         ver_key = f"wl_reset_ver_{current_unit}"
         if ver_key not in st.session_state:
             st.session_state[ver_key] = 0
@@ -421,7 +504,6 @@ def render_admin_panel():
             )
 
             st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
-
             col_b1, col_b2 = st.columns(2)
 
             with col_b1:
@@ -463,10 +545,7 @@ def render_admin_panel():
                             del whitelist_data[target_uid]
                             save_whitelist(current_unit, whitelist_data)
                             log_activity(f"管理員移除 [{current_unit}] 組員權限：{target_uid}")
-                            
-                            # 🛡️ 遞增版本號，下一輪強制產生新 Table，乾淨完成清空
                             st.session_state[ver_key] += 1
-                            
                             st.success(f"已成功移除【{current_unit}】權限：{target_uid}")
                             st.rerun()
                 else:
@@ -632,7 +711,6 @@ def render_admin_panel():
         st.markdown("### 📜 系統操作日誌與資料打包備份")
 
         logs = load_activity_logs()
-
         col_log_title, col_log_btn = st.columns([3, 1])
 
         with col_log_title:
@@ -681,7 +759,7 @@ def render_admin_panel():
 
         st.markdown("---")
         st.markdown("#### 📦 一鍵備份全站數據與設定")
-        st.caption("點擊下方按鈕可將系統班表大表、設定檔與日誌打包為 ZIP 下載備份。")
+        st.caption("點擊下方按鈕可將系統班表大表、設定檔、工單資料庫與日誌打包為 ZIP 下載備份。")
 
         zip_buf = create_backup_zip()
         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -693,6 +771,152 @@ def render_admin_panel():
             type="primary",
             key="btn_download_backup",
         )
+
+    # ---------------------------------------------------------
+    # Tab 6: 工單與問題回報管理 (與 FEEDBACK_IMG_DIR 純文字庫完美同步)
+    # ---------------------------------------------------------
+    with tab6:
+        st.markdown("### 📋 工單與問題回報系統管理")
+
+        feedbacks = load_all_feedbacks()
+
+        if not feedbacks:
+            st.info("目前尚無任何問題回報工單紀錄。")
+        else:
+            # 統計資料計算
+            cnt_pending = sum(1 for f in feedbacks if f.get("狀態") == "待處理")
+            cnt_processing = sum(1 for f in feedbacks if f.get("狀態") == "處理中")
+            cnt_completed = sum(1 for f in feedbacks if f.get("狀態") in ["已完成", "已解決"])
+            cnt_ignored = sum(1 for f in feedbacks if f.get("狀態") == "已不處理")
+
+            st.markdown(
+                f"""
+                <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                    <div style="flex: 1; background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 8px 12px; text-align: center;">
+                        <div style="font-size: 11px; color: #FDE68A;">待處理工單</div>
+                        <div style="font-size: 18px; font-weight: 900; color: #FBBF24;">{cnt_pending} <span style="font-size: 10px;">筆</span></div>
+                    </div>
+                    <div style="flex: 1; background: rgba(56, 189, 248, 0.15); border: 1px solid #38BDF8; border-radius: 8px; padding: 8px 12px; text-align: center;">
+                        <div style="font-size: 11px; color: #BAE6FD;">處理中工單</div>
+                        <div style="font-size: 18px; font-weight: 900; color: #38BDF8;">{cnt_processing} <span style="font-size: 10px;">筆</span></div>
+                    </div>
+                    <div style="flex: 1; background: rgba(52, 211, 153, 0.15); border: 1px solid #34D399; border-radius: 8px; padding: 8px 12px; text-align: center;">
+                        <div style="font-size: 11px; color: #A7F3D0;">已完成 / 已解決</div>
+                        <div style="font-size: 18px; font-weight: 900; color: #34D399;">{cnt_completed} <span style="font-size: 10px;">筆</span></div>
+                    </div>
+                    <div style="flex: 1; background: rgba(148, 163, 184, 0.15); border: 1px solid #94A3B8; border-radius: 8px; padding: 8px 12px; text-align: center;">
+                        <div style="font-size: 11px; color: #CBD5E1;">已不處理</div>
+                        <div style="font-size: 18px; font-weight: 900; color: #94A3B8;">{cnt_ignored} <span style="font-size: 10px;">筆</span></div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            filter_c1, filter_c2 = st.columns([1, 2])
+            with filter_c1:
+                filter_unit_scope = st.radio(
+                    "單位範圍",
+                    ["當前單位", "跨單位 (全站)"],
+                    horizontal=True,
+                    key="fb_unit_scope_filter",
+                )
+            with filter_c2:
+                status_filter = st.radio(
+                    "狀態篩選",
+                    ["全部", "待處理", "處理中", "已完成", "已不處理"],
+                    horizontal=True,
+                    key="fb_status_filter",
+                )
+
+            # 套用篩選條件
+            display_feedbacks = []
+            for f in feedbacks:
+                if filter_unit_scope == "當前單位" and f.get("單位") != current_unit:
+                    continue
+                if status_filter != "全部":
+                    st_val = f.get("狀態", "待處理")
+                    if status_filter == "已完成" and st_val not in ["已完成", "已解決"]:
+                        continue
+                    elif status_filter != "已完成" and st_val != status_filter:
+                        continue
+                display_feedbacks.append(f)
+
+            st.caption(f"符合篩選條件的工單共 {len(display_feedbacks)} 筆：")
+
+            status_colors = {
+                "待處理": ("#F59E0B", "🔴"),
+                "處理中": ("#38BDF8", "🟡"),
+                "已完成": ("#34D399", "🟢"),
+                "已解決": ("#34D399", "🟢"),
+                "已不處理": ("#94A3B8", "⚪"),
+            }
+
+            for idx, fb in enumerate(display_feedbacks):
+                t_id = fb.get("處理編號", f"FB-{idx}")
+                status = fb.get("狀態", "待處理")
+                s_color, s_icon = status_colors.get(status, ("#F59E0B", "🔴"))
+
+                expander_label = (
+                    f"{s_icon} [{status}] 單號：{t_id} ｜ {fb.get('類別', '無')} "
+                    f"({fb.get('回報者', '組員')} - {fb.get('時間', '')})"
+                )
+
+                with st.expander(expander_label):
+                    st.markdown(
+                        f"**提報單位：** `{fb.get('單位', '未知')}` ｜ "
+                        f"**提報人員：** {fb.get('回報者', '未知')} ｜ "
+                        f"**時間：** {fb.get('時間', '未知')}"
+                    )
+                    st.markdown(f"**反饋類別：** {fb.get('類別', '無')}")
+
+                    st.markdown("**詳細說明內容：**")
+                    st.info(fb.get("詳細說明", "無內容"))
+
+                    # 如果有截圖附件，顯示檢視按鈕
+                    if fb.get("_img_path"):
+                        st.markdown("**附件截圖：**")
+                        if st.button(
+                            f"📷 檢視附件截圖檔 ({os.path.basename(fb['_img_path'])})",
+                            key=f"btn_view_img_{t_id}_{idx}",
+                        ):
+                            view_feedback_img_modal(
+                                fb["_img_path"], t_id, fb.get("回報者", "組員")
+                            )
+
+                    st.markdown("---")
+                    st.markdown("**⚙️ 管理員處置面板**")
+
+                    c_sel, c_txt = st.columns([1, 2])
+                    with c_sel:
+                        status_options = ["待處理", "處理中", "已完成", "已不處理"]
+                        curr_idx = (
+                            status_options.index(status)
+                            if status in status_options
+                            else (2 if status == "已解決" else 0)
+                        )
+                        new_st = st.selectbox(
+                            "更新工單狀態",
+                            status_options,
+                            index=curr_idx,
+                            key=f"sel_st_{t_id}_{idx}",
+                        )
+                    with c_txt:
+                        new_rep = st.text_input(
+                            "給組員的回覆內容",
+                            value=fb.get("管理員回覆", "尚無回覆"),
+                            key=f"txt_rep_{t_id}_{idx}",
+                        )
+
+                    if st.button(
+                        f"💾 儲存修訂 [{t_id}]",
+                        type="primary",
+                        key=f"btn_save_fb_{t_id}_{idx}",
+                    ):
+                        update_feedback_txt(fb["_filepath"], fb, new_st, new_rep)
+                        log_activity(f"管理員更新工單 {t_id} 狀態為【{new_st}】")
+                        st.success(f"工單 `{t_id}` 處置紀錄已成功更新！")
+                        st.rerun()
 
 
 # 相容別名宣告
