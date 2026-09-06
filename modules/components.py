@@ -11,7 +11,7 @@ from modules.utils import log_activity
 
 
 # =========================================================
-# 🖼️ 核心修復：可放大/縮放圖片渲染器 (解決 BytesIO 純白畫面問題)
+# 🖼️ 可放大/縮放圖片渲染器 (解決 BytesIO 純白畫面問題)
 # =========================================================
 def render_zoomable_image(image_source, height=650):
     """縮放圖片元件：自動重置 BytesIO 指針，解決純白畫面與位元組讀取問題"""
@@ -61,14 +61,15 @@ def render_zoomable_image(image_source, height=650):
 
 
 # =========================================================
-# 📢 國定假日提醒元件 (無貼圖純文字版)
+# 📢 國定假日提醒元件 (支援半形/全形括號解析)
 # =========================================================
 def show_holiday_notice(selected_date_str):
     """偵測選擇之日期是否包含國定假日標籤並渲染提示條 (完全無貼圖/圖示)"""
     if not selected_date_str:
         return
 
-    date_str = str(selected_date_str)
+    # 將全形括號轉為半形括號，提高解析相容性
+    date_str = str(selected_date_str).replace("（", "(").replace("）", ")")
     if "(" in date_str and ")" in date_str:
         try:
             holiday_name = date_str.split("(")[1].split(")")[0].strip()
@@ -121,7 +122,6 @@ def show_feedback_modal():
     tab_create, tab_my_records = st.tabs(["線上回報", "我的歷史回報"])
 
     with tab_create:
-        # 🔑 修正：明確抓取並呈現成功送出的工單號碼
         if "fb_submitted_id" in st.session_state:
             ticket_id = st.session_state["fb_submitted_id"]
             st.markdown(
@@ -182,7 +182,6 @@ def show_feedback_modal():
                             str(current_user).split(" ")[0].replace("/", "_")
                         )
 
-                        # 🔑 產生結構化唯一工單號碼
                         ticket_id = (
                             f"FB-{now_dt.strftime('%Y%m%d-%H%M%S')}-{current_unit}"
                         )
@@ -212,7 +211,6 @@ def show_feedback_modal():
                             f" 內容:{clean_content.replace('\n', ' ')}{img_log_str}"
                         )
 
-                        # 🔑 存入 session 後立刻重新整理，強制彈窗切換至工單顯示畫面
                         st.session_state["fb_submitted_id"] = ticket_id
                         st.rerun()
                     else:
