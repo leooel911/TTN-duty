@@ -33,6 +33,42 @@ from modules.utils import (
 )
 
 
+# --- 廣義自動偵測登入者員編函式 ---
+def get_login_user_id():
+    """自動掃描 Session State 抓取登入者員編"""
+    # 1. 嘗試直接讀取字串型態的 Key
+    for key in [
+        "user_id",
+        "emp_id",
+        "username",
+        "account",
+        "user_code",
+        "login_user",
+        "current_user",
+    ]:
+        val = st.session_state.get(key)
+        if val and isinstance(val, str) and val.strip():
+            return val.strip()
+
+    # 2. 嘗試讀取字典結構 (例如 st.session_state["user"] = {"emp_id": "A019702", ...})
+    for key in ["user", "user_info", "auth_user", "login_info", "logged_in_user"]:
+        val = st.session_state.get(key)
+        if isinstance(val, dict):
+            res = (
+                val.get("emp_id")
+                or val.get("user_id")
+                or val.get("id")
+                or val.get("username")
+                or val.get("account")
+            )
+            if res:
+                return str(res).strip()
+        elif isinstance(val, str) and val.strip():
+            return val.strip()
+
+    return "A"
+
+
 # --- 通用日期選單格式化函式 ---
 def get_date_label(d_str, columns=None):
     holiday_name = NATIONAL_HOLIDAYS.get(d_str)
@@ -273,16 +309,11 @@ def render_user_home():
             unsafe_allow_html=True,
         )
 
-        # 🔑 1. 初次載入自動設定預設值為登入者員編（若無則帶入 "A"）
-        if "user_input_field" not in st.session_state:
-            st.session_state["user_input_field"] = (
-                st.session_state.get("user_id")
-                or st.session_state.get("emp_id")
-                or st.session_state.get("username")
-                or "A"
-            )
+        # 🔑 1. 初始化預設值：自動尋找登入者的員編
+        if "user_input_field" not in st.session_state or not st.session_state["user_input_field"]:
+            st.session_state["user_input_field"] = get_login_user_id()
 
-        # 🔑 2. 使用 st.form 包裹輸入框與按鈕，實現「Enter 鍵直接觸發」
+        # 🔑 2. 使用 st.form 實現「輸入完 Enter 直接繪製」
         with st.form(key="draw_schedule_form", border=False):
             target_input = st.text_input(
                 "輸入 員編 或 姓名 (例如: A023300 or 波莉)",
@@ -291,13 +322,12 @@ def render_user_home():
             submit_btn = st.form_submit_button("開始繪製月班表", use_container_width=True)
 
         if submit_btn:
-            # 取得當前輸入的查詢目標
             current_input = target_input.strip()
 
             if not current_input:
                 st.warning("請輸入員編或姓名")
             else:
-                # 🔑 3. 執行查詢後，將下一階段的預設值自動更新為 "A"
+                # 🔑 3. 查詢後將預設值變更為 "A"
                 st.session_state["user_input_field"] = "A"
 
                 log_activity(f"生成個人班表圖檔查詢: {current_input}")
@@ -408,7 +438,6 @@ def render_user_home():
                     on_change=reset_win_search,
                 )
 
-                # 🔑 全域當週假日掃描：只要選到有國定假日的當週即跳出警示條
                 win_week_holidays = get_week_holidays(
                     target_date, date_cols, df_search.columns
                 )
@@ -794,7 +823,6 @@ def render_user_home():
                             on_change=reset_ex_search,
                         )
 
-                    # 🔑 關鍵邏輯修改：換假全域當週國定假日掃描 (想休假與還假當週皆涵蓋)
                     ex_week_holidays = list(
                         set(
                             get_week_holidays(target_date, date_cols, df_ex.columns)
@@ -802,7 +830,6 @@ def render_user_home():
                         )
                     )
 
-                    # 只要選到包含假日的當週（無論選的日期是不是假日當天），讀取即跳出提醒條
                     show_holiday_notice(ex_week_holidays, target_week_str)
 
                     st.caption(
@@ -922,12 +949,10 @@ def render_user_home():
                                     )
                                 )
 
-                                # 建立模擬換假後的班表
                                 sim_row = row.copy()
                                 sim_row = set_simulated_cell(sim_row, target_date, "D1")
                                 sim_row = set_simulated_cell(sim_row, return_date, "休")
 
-                                # 全月連班檢測：計算換假後當月「最大連續上班天數」
                                 max_consecutive_streak = calculate_consecutive_work_days(
                                     sim_row
                                 )
@@ -979,7 +1004,6 @@ def render_user_home():
                                 ):
                                     continue
 
-                            # 嚴格過濾精準執行：全月連班天數 >= 6 天直接剔除
                             if strict_limit and cand["連續上班天數"] >= 6:
                                 continue
 
