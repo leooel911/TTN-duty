@@ -76,7 +76,7 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
 
     if os.path.exists(whitelist_path):
         try:
-            with open(whitelist_path, "r", encoding="utf-8") as f:
+            with open(whitelist_path, "r", encoding="utf-8", errors="ignore") as f:
                 full_data = json.load(f)
                 # 舊版扁平結構相容：若無單位層級 Key，自動轉存至所有單位
                 if full_data and not any(k in UNITS for k in full_data.keys()):
@@ -119,7 +119,7 @@ def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
     full_data: Dict[str, Any] = {}
     if os.path.exists(whitelist_path):
         try:
-            with open(whitelist_path, "r", encoding="utf-8") as f:
+            with open(whitelist_path, "r", encoding="utf-8", errors="ignore") as f:
                 full_data = json.load(f)
                 if full_data and not any(k in UNITS for k in full_data.keys()):
                     full_data = {u: full_data.copy() for u in UNITS.keys()}
@@ -136,7 +136,7 @@ def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
     with open(whitelist_path, "w", encoding="utf-8") as f:
         json.dump(full_data, f, ensure_ascii=False, indent=2)
 
-    # 🔥 關鍵修復：每次寫入檔案後，強制清除 Streamlit 快取讓前台立刻讀到新白名單
+    # 每次寫入檔案後，強制清除 Streamlit 快取讓前台立刻讀到新白名單
     st.cache_data.clear()
 
 
@@ -149,7 +149,7 @@ def get_all_crew_options(unit_code: str) -> List[Dict[str, str]]:
 
     for role_name in ["駕駛", "列車長", "服勤員"]:
         file_path = unit_files.get(role_name, "")
-        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+        if isinstance(file_path, str) and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             try:
                 df = safe_read_excel(file_path, header=3)
                 for _, row in df.iterrows():
@@ -180,7 +180,7 @@ def load_all_feedback_tickets() -> List[Dict[str, Any]]:
             txt_path = os.path.join(FEEDBACK_IMG_DIR, fname)
             base_name = fname[:-4]
             try:
-                with open(txt_path, "r", encoding="utf-8") as f:
+                with open(txt_path, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
 
                 lines = content.split("\n")
@@ -543,7 +543,7 @@ def render_admin_panel() -> None:
                     use_container_width=True,
                     key=f"btn_save_wl_{current_unit}",
                 ):
-                    target_uid = edit_uid.strip().upper()  # 強制轉成大寫 Key
+                    target_uid = edit_uid.strip().upper()
                     if target_uid:
                         whitelist_data[target_uid] = {
                             "name": edit_uname.strip() or "未命名",
