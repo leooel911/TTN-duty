@@ -75,9 +75,9 @@ def show_apply_permission_dialog():
                 success, msg = send_admin_email(req_unit, clean_emp, clean_name, req_reason)
 
             if success:
-                st.success(" 申請已成功送出！管理員已收到信件通知，請靜候開通。")
+                st.success("✅ 申請已成功送出！管理員已收到信件通知，請靜候開通。")
             else:
-                st.success(" 申請已成功記錄！(已登記於系統，可聯繫管理員)")
+                st.success("✅ 申請已成功記錄！(已登記於系統，可聯繫管理員)")
 
 
 # ---------------------------------------------------------
@@ -185,16 +185,17 @@ if not st.session_state["authenticated"] and not st.session_state.get(
 
     col1, col2, col3 = st.columns([1, 2.4, 1])
     with col2:
-        with st.expander("登入前系統說明與試用須知（點擊展開）", expanded=False):
+        # 💡 1. 說明欄位優化：視覺強化與導引說明
+        with st.expander("ℹ️ 登入前說明與試用須知（點擊展開）", expanded=False):
             st.markdown(
                 """
-            <div style="font-size: 12px; color: #CBD5E1; line-height: 1.6; font-family: monospace;">
-                <b>系統開放試用公告</b><br>
-                本系統目前為正式環境第一階段特定人員試用。<br><br>
-                <b>重要提醒：</b><br>
-                1. 本系統產出之班表僅供協助個人調假與換班快篩參考，<b>即時班表以公司官方公告為準</b>。<br>
-                2. 班表相關資料屬內部營運資訊，請勿外流授權碼與班表截圖。<br>
-                3. 若發現資料有誤，請善用登入後頁尾端的<b>「問題回報」</b>功能。
+            <div style="font-size: 12.5px; color: #CBD5E1; line-height: 1.7; font-family: monospace;">
+                <div style="color: #38BDF8; font-weight: 800; margin-bottom: 6px;">📢 系統開放試用公告</div>
+                本系統目前為正式環境第一階段特定人員內部測試。<br><br>
+                <div style="color: #FBBF24; font-weight: 800; margin-bottom: 4px;">⚠️ 重要提醒與注意事項：</div>
+                1. <b>排班依據</b>：本系統班表僅供個人調假與換班快篩參考，<b>即時班表務必以公司官方公告為準</b>。<br>
+                2. <b>資訊安全</b>：班表相關資料屬內部營運資訊，<b>請勿外流授權碼與班表截圖</b>。<br>
+                3. <b>權限與回報</b>：尚無權限者請點選下方<b>「申請使用權限」</b>；登入後若發現資料有誤，請善用頁尾<b>「問題回報」</b>。
             </div>
             """,
                 unsafe_allow_html=True,
@@ -203,9 +204,11 @@ if not st.session_state["authenticated"] and not st.session_state.get(
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         with st.form("auth_form"):
             selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
+            
+            # 💡 2. 輸入欄位優化：預設值清空，僅依靠 Placeholder 提示
             entered_emp = st.text_input(
                 "使用者員編 (範例：023300)",
-                value=DEFAULT_EMP_ID,
+                value="",
                 placeholder="例如: 023300",
                 max_chars=10,
             )
@@ -213,12 +216,12 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                 "系統授權碼", type="password", placeholder="請輸入系統授權碼..."
             )
 
-            # ---------------- 雙按鈕對稱佈局 ----------------
+            # 💡 3. 按鈕視覺層級區隔 (Primary 醒目色彩 vs Secondary 次要按鈕)
             col_b1, col_b2 = st.columns([1, 1])
             with col_b1:
-                btn_auth = st.form_submit_button("進入系統", use_container_width=True)
+                btn_auth = st.form_submit_button("🚀 進入系統", type="primary", use_container_width=True)
             with col_b2:
-                btn_apply = st.form_submit_button("申請使用權限", use_container_width=True)
+                btn_apply = st.form_submit_button("🔑 申請使用權限", use_container_width=True)
 
             # 點擊「申請使用權限」時切換 State 標記並重刷
             if btn_apply:
