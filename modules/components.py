@@ -142,6 +142,21 @@ def view_feedback_img_modal(
 # =========================================================
 @st.dialog("系統問題與建議", width="medium")
 def show_feedback_modal() -> None:
+    # 🔑 強制注入 CSS 隱藏右上角叉叉 (✕)，消除前端點擊未觸發 Rerun 的 Bug
+    st.markdown(
+        """
+        <style>
+        /* 隱藏 st.dialog 右上角的 Close (✕) 按鈕 */
+        button[aria-label="Close"], 
+        div[data-testid="stDialog"] button[aria-label="Close"],
+        div[role="dialog"] button[aria-label="Close"] {
+            display: none !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     current_unit = st.session_state.get("current_unit", "TTN")
     current_user = st.session_state.get("current_user_id", "未知")
 
@@ -341,27 +356,22 @@ def show_feedback_modal() -> None:
 
 
 # =========================================================
-# 🔑 關鍵新增：安全的彈窗觸發器 (開啟當下即自動將 State 歸零)
+# 5. 彈窗觸發主控函式
 # =========================================================
 def trigger_feedback_modal() -> None:
-    """
-    呼叫意見反饋彈窗的主控函式。
-    開啟彈窗的同時立即將 session_state 歸零，
-    確保使用者不論按「關閉視窗」、右上角「✕」或點擊外圍黑區，都不會導致彈窗反覆跳出。
-    """
+    """呼叫意見反饋彈窗的主控函式"""
     should_show = (
         st.session_state.get("show_feedback_dialog", False)
         or st.session_state.get("show_feedback_modal", False)
     )
     if should_show:
-        # 核心防禦：彈窗一跳出來的瞬間就把 State 重置為 False
         st.session_state["show_feedback_dialog"] = False
         st.session_state["show_feedback_modal"] = False
         show_feedback_modal()
 
 
 # =========================================================
-# 5. 完整月班表檢視彈窗
+# 6. 完整月班表檢視彈窗
 # =========================================================
 @st.dialog("完整月班表檢視", width="large")
 def show_crew_schedule_modal(
