@@ -78,7 +78,7 @@ def get_login_user_id() -> str:
 
     try:
         for k, v in st.session_state.items():
-            if k in ["user_input_field", "last_app_mode", "should_reset_input_to_A"]:
+            if k in ["user_input_field", "stored_user_input", "last_app_mode", "should_reset_input_to_A"]:
                 continue
             if isinstance(v, str) and v.strip() and v.strip().upper() != "A":
                 m1 = re.search(r"[A-Za-z]\d{6}", v)
@@ -99,7 +99,7 @@ def get_login_user_id() -> str:
     except Exception:
         pass
 
-    return "A"
+    return ""
 
 
 def get_date_label(d_str: str, columns: Optional[Any] = None) -> str:
@@ -340,15 +340,15 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        # 🔑 修正點 1：初次進入預設自動填入登入者員編，但不設置會強制重置成 "A" 的狀態 Flag
-        if "user_input_field" not in st.session_state:
+        # 🔑 初始化預設記憶字串（初次進入帶入登入者員編，非 "A" 則套用）
+        if "stored_user_input" not in st.session_state:
             login_id = get_login_user_id()
-            st.session_state["user_input_field"] = login_id if (login_id and login_id != "A") else ""
+            st.session_state["stored_user_input"] = login_id if (login_id and login_id.upper() != "A") else ""
 
         with st.form(key="draw_schedule_form", border=False):
             target_input = st.text_input(
                 "輸入 員編 或 姓名 (例如: A023300 or 波莉)",
-                key="user_input_field",
+                value=st.session_state["stored_user_input"],
             )
             submit_btn = st.form_submit_button("開始繪製月班表", use_container_width=True)
 
@@ -358,7 +358,9 @@ def render_user_home() -> None:
             if not current_input or current_input.upper() == "A":
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
             else:
-                # 🔑 修正點 2：移除 st.session_state["should_reset_input_to_A"] = True，避免第二次查詢被改回 "A"
+                # 🔑 將目前輸入內容覆寫回記憶 State，確保下次 Rerun 或連續查詢時不會重置
+                st.session_state["stored_user_input"] = current_input
+
                 try:
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(
                         current_input
