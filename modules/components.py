@@ -6,11 +6,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 import streamlit as st
 from config import LEAVE_CODES, NATIONAL_HOLIDAYS
-from modules.components import (
-    render_zoomable_image,
-    show_crew_schedule_modal,
-    show_holiday_notice,
-)
 from modules.drawing import render_schedule_figure
 from modules.services import (
     get_current_role_files,
