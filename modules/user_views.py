@@ -6,11 +6,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 import streamlit as st
 from config import LEAVE_CODES, NATIONAL_HOLIDAYS
-from modules.components import (
-    render_zoomable_image,
-    show_crew_schedule_modal,
-    show_holiday_notice,
-)
 from modules.drawing import render_schedule_figure
 from modules.services import (
     get_current_role_files,
@@ -291,11 +286,20 @@ def render_user_home() -> None:
     if "last_app_mode" not in st.session_state:
         st.session_state["last_app_mode"] = app_mode
 
+    # 切換模式時重置快取並清理 Modal 彈窗狀態
     if st.session_state["last_app_mode"] != app_mode:
         st.session_state["last_app_mode"] = app_mode
         st.session_state.pop("win_raw_candidates", None)
         st.session_state.pop("ex_raw_candidates", None)
         st.session_state["ex_search_performed"] = False
+        
+        modal_keys_to_clear = [
+            "show_feedback_modal", "show_feedback_dialog", 
+            "feedback_open", "show_issue_modal", "show_feedback"
+        ]
+        for mk in modal_keys_to_clear:
+            if mk in st.session_state:
+                st.session_state[mk] = False
 
     st.markdown("---")
 
@@ -340,7 +344,6 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        # 🔑 初始化預設記憶字串（初次進入帶入登入者員編，非 "A" 則套用）
         if "stored_user_input" not in st.session_state:
             login_id = get_login_user_id()
             st.session_state["stored_user_input"] = login_id if (login_id and login_id.upper() != "A") else ""
@@ -358,7 +361,6 @@ def render_user_home() -> None:
             if not current_input or current_input.upper() == "A":
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
             else:
-                # 🔑 將目前輸入內容覆寫回記憶 State，確保下次 Rerun 或連續查詢時不會重置
                 st.session_state["stored_user_input"] = current_input
 
                 try:
@@ -381,6 +383,9 @@ def render_user_home() -> None:
                             badge_title="Producer | C.L.F",
                         )
                     st.success(f"【{emp_name}】個人班表圖片生成成功！")
+                    
+                    # 💡 Lazy Import: 避免頂層循環引用
+                    from modules.components import render_zoomable_image
                     render_zoomable_image(buf)
 
                     col_dl1, col_dl2 = st.columns([1, 1])
@@ -493,6 +498,8 @@ def render_user_home() -> None:
                     target_date, date_cols, df_search.columns
                 )
 
+                # 💡 Lazy Import
+                from modules.components import show_holiday_notice
                 show_holiday_notice(win_week_holidays, win_week_str)
 
                 st.write("**快捷選擇時段：**")
@@ -565,7 +572,6 @@ def render_user_home() -> None:
 
                 if st.button("搜尋可換班組員名單", key="btn_window_search"):
                     raw_candidates = []
-
                     target_col_idx = find_date_column_index(df_search.columns, target_date)
 
                     if target_col_idx != -1:
@@ -747,6 +753,8 @@ def render_user_home() -> None:
                                     use_container_width=True,
                                 ):
                                     log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_name}({clean_id})")
+                                    # 💡 Lazy Import: 避免頂層循環引用
+                                    from modules.components import show_crew_schedule_modal
                                     show_crew_schedule_modal(
                                         clean_id,
                                         current_unit_label,
@@ -898,6 +906,8 @@ def render_user_home() -> None:
                             )
                         )
 
+                        # 💡 Lazy Import
+                        from modules.components import show_holiday_notice
                         show_holiday_notice(ex_week_holidays, target_week_str)
 
                         st.caption(
@@ -1201,6 +1211,8 @@ def render_user_home() -> None:
                                             use_container_width=True,
                                         ):
                                             log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
+                                            # 💡 Lazy Import: 避免頂層循環引用
+                                            from modules.components import show_crew_schedule_modal
                                             show_crew_schedule_modal(
                                                 clean_cand_id,
                                                 current_unit_label,
