@@ -340,17 +340,10 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        if "login_auto_filled" not in st.session_state:
+        # 🔑 修正點 1：初次進入預設自動填入登入者員編，但不設置會強制重置成 "A" 的狀態 Flag
+        if "user_input_field" not in st.session_state:
             login_id = get_login_user_id()
-            if login_id and login_id != "A":
-                st.session_state["user_input_field"] = login_id
-            st.session_state["login_auto_filled"] = True
-
-        if st.session_state.get("should_reset_input_to_A"):
-            st.session_state["user_input_field"] = "A"
-            st.session_state["should_reset_input_to_A"] = False
-        elif "user_input_field" not in st.session_state:
-            st.session_state["user_input_field"] = get_login_user_id()
+            st.session_state["user_input_field"] = login_id if (login_id and login_id != "A") else ""
 
         with st.form(key="draw_schedule_form", border=False):
             target_input = st.text_input(
@@ -362,11 +355,10 @@ def render_user_home() -> None:
         if submit_btn:
             current_input = target_input.strip()
 
-            if not current_input:
-                st.warning("請輸入員編或姓名")
+            if not current_input or current_input.upper() == "A":
+                st.warning("請輸入有效的員編或姓名（例如: A023300）")
             else:
-                st.session_state["should_reset_input_to_A"] = True
-
+                # 🔑 修正點 2：移除 st.session_state["should_reset_input_to_A"] = True，避免第二次查詢被改回 "A"
                 try:
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(
                         current_input
@@ -534,7 +526,6 @@ def render_user_home() -> None:
                     reset_win_search()
                     st.rerun()
 
-                # 🔑 時間選項清單：建立包含每半小時 (00, 30) 的時間粒度，讓拉桿可以更細緻地自由拉動
                 TIME_OPTIONS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
 
                 curr_slider = st.session_state.get("win_time_slider")
@@ -547,7 +538,6 @@ def render_user_home() -> None:
                     default_start = morn_start_time if morn_start_time in TIME_OPTIONS else "05:00"
                     st.session_state["win_time_slider"] = (default_start, "10:00")
 
-                # 🔑 直接使用 select_slider，讓使用者可以自由拖曳，並且拖曳結果能被正確抓取
                 slider_val = st.select_slider(
                     "Sign-In 時段區間 (拖曳調整)",
                     options=TIME_OPTIONS,
