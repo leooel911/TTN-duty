@@ -73,7 +73,7 @@ def get_login_user_id() -> str:
 
     try:
         for k, v in st.session_state.items():
-            if k in ["user_input_field", "stored_user_input", "last_app_mode", "should_reset_input_to_A"]:
+            if k in ["user_input_field", "stored_user_input", "last_app_mode", "should_reset_input_to_A", "draw_input_key"]:
                 continue
             if isinstance(v, str) and v.strip() and v.strip().upper() != "A":
                 m1 = re.search(r"[A-Za-z]\d{6}", v)
@@ -344,25 +344,24 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        if "stored_user_input" not in st.session_state:
+        # 預設載入登入員編
+        if "draw_input_key" not in st.session_state:
             login_id = get_login_user_id()
-            st.session_state["stored_user_input"] = login_id if (login_id and login_id.upper() != "A") else ""
+            st.session_state["draw_input_key"] = login_id if (login_id and login_id.upper() != "A") else ""
 
         with st.form(key="draw_schedule_form", border=False):
-            target_input = st.text_input(
+            st.text_input(
                 "輸入 員編 或 姓名 (例如: A023300 or 波莉)",
-                value=st.session_state["stored_user_input"],
+                key="draw_input_key",
             )
             submit_btn = st.form_submit_button("開始繪製月班表", use_container_width=True)
 
         if submit_btn:
-            current_input = target_input.strip()
+            current_input = st.session_state.get("draw_input_key", "").strip()
 
             if not current_input or current_input.upper() == "A":
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
             else:
-                st.session_state["stored_user_input"] = current_input
-
                 try:
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(
                         current_input
