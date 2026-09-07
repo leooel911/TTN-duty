@@ -534,9 +534,9 @@ def render_user_home() -> None:
                     reset_win_search()
                     st.rerun()
 
-                TIME_OPTIONS = [f"{h:02d}:00" for h in range(19)]
+                # 🔑 時間選項清單：建立包含每半小時 (00, 30) 的時間粒度，讓拉桿可以更細緻地自由拉動
+                TIME_OPTIONS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
 
-                # --- 修正：安全驗證與解構 select_slider，防止 ValueError 導致崩潰 ---
                 curr_slider = st.session_state.get("win_time_slider")
                 if (
                     not isinstance(curr_slider, (tuple, list))
@@ -544,13 +544,16 @@ def render_user_home() -> None:
                     or curr_slider[0] not in TIME_OPTIONS
                     or curr_slider[1] not in TIME_OPTIONS
                 ):
-                    default_start = morn_start_time if morn_start_time in TIME_OPTIONS else TIME_OPTIONS[0]
+                    default_start = morn_start_time if morn_start_time in TIME_OPTIONS else "05:00"
                     st.session_state["win_time_slider"] = (default_start, "10:00")
 
+                # 🔑 直接使用 select_slider，讓使用者可以自由拖曳，並且拖曳結果能被正確抓取
                 slider_val = st.select_slider(
-                    "Sign-In 時段區間",
+                    "Sign-In 時段區間 (拖曳調整)",
                     options=TIME_OPTIONS,
+                    value=st.session_state["win_time_slider"],
                     key="win_time_slider",
+                    on_change=reset_win_search,
                 )
 
                 if isinstance(slider_val, (tuple, list)) and len(slider_val) == 2:
@@ -869,7 +872,6 @@ def render_user_home() -> None:
                         else [d for d in date_cols if d != target_date]
                     )
 
-                    # --- 修正：防禦空選單，避免 selectbox 拋出 ValueError ---
                     if not return_date_options:
                         st.warning("找不到可還假期的其他有效日期。")
                         return_date = None
