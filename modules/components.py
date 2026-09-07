@@ -175,6 +175,7 @@ def show_feedback_modal() -> None:
             ):
                 del st.session_state["fb_submitted_id"]
                 st.session_state["show_feedback_dialog"] = False  # 關閉彈窗
+                st.session_state["show_feedback_modal"] = False   # 雙重相容性防護
                 st.rerun()
 
         # 狀態二：填寫與回報表單
@@ -257,6 +258,7 @@ def show_feedback_modal() -> None:
                     "關閉視窗", key="close_fb_btn_1", use_container_width=True
                 ):
                     st.session_state["show_feedback_dialog"] = False  # 關閉彈窗
+                    st.session_state["show_feedback_modal"] = False   # 雙重相容性防護
                     st.rerun()
 
     with tab_my_records:
@@ -336,6 +338,26 @@ def show_feedback_modal() -> None:
                 )
         else:
             st.info("尚無您的歷史回報紀錄。")
+
+
+# =========================================================
+# 🔑 關鍵新增：安全的彈窗觸發器 (開啟當下即自動將 State 歸零)
+# =========================================================
+def trigger_feedback_modal() -> None:
+    """
+    呼叫意見反饋彈窗的主控函式。
+    開啟彈窗的同時立即將 session_state 歸零，
+    確保使用者不論按「關閉視窗」、右上角「✕」或點擊外圍黑區，都不會導致彈窗反覆跳出。
+    """
+    should_show = (
+        st.session_state.get("show_feedback_dialog", False)
+        or st.session_state.get("show_feedback_modal", False)
+    )
+    if should_show:
+        # 核心防禦：彈窗一跳出來的瞬間就把 State 重置為 False
+        st.session_state["show_feedback_dialog"] = False
+        st.session_state["show_feedback_modal"] = False
+        show_feedback_modal()
 
 
 # =========================================================
