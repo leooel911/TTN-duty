@@ -6,10 +6,10 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import streamlit as st
-from config import LEAVE_CODES, UNITS
+from config import FEEDBACK_IMG_DIR, LEAVE_CODES, UNITS
 from modules.drawing import render_schedule_figure
 from modules.services import process_file_data
-from modules.utils import safe_read_excel
+from modules.utils import log_activity, safe_read_excel
 
 
 def render_zoomable_image(image_bytes: io.BytesIO) -> None:
@@ -69,7 +69,7 @@ def show_crew_schedule_modal(
 ) -> None:
     """跳出對話框 (Dialog Modal) 顯示特定組員的完整月班表圖片"""
     st.markdown(f"### 查詢組員員編：`{emp_id}` ({unit_label})")
-    
+
     with st.spinner(f"正在擷取並繪製組員【{emp_id}】的月班表..."):
         try:
             start_dt, dates, parsed_id, emp_name, cells = process_file_data(emp_id)
@@ -84,7 +84,7 @@ def show_crew_schedule_modal(
             )
             st.success(f"已成功載入【{emp_name} ({parsed_id})】的完整班表")
             render_zoomable_image(buf)
-            
+
             st.download_button(
                 label=f"下載 {emp_name} 月班表圖檔",
                 data=buf,
@@ -112,3 +112,87 @@ def view_feedback_img_modal(img_path: str, ticket_id: str, reporter: str) -> Non
             )
     else:
         st.error("找不到該截圖檔案，可能已被移除。")
+
+
+@st.dialog("系統問題與建議回報", width="large")
+def show_feedback_modal(unit_label: str = "TTN", user_id: str = "") -> None:
+    """跳出問題與建議回報對話框 (Dialog Modal)"""
+    st.markdown(f"### 系統問題與建議回報 [{unit_label}]")
+    st.caption("若你在使用過程中遇到系統 Bug、排班顯示錯誤或有改善建議，歡迎填寫以下表單。")
+
+    with st.form(key="feedback_form_modal", clear_on_submit=True):
+        fb_category = st.selectbox(
+            "問題 / 建議類型",
+            ["系統 Bug 回報", "排班資料疑義", "功能改善建議", "其他"],
+            key="fb_modal_category",
+        )
+
+        fb_reporter = st.text_input(
+            "回報者員編 / 姓名",
+            value=user_id if user_id else "",
+            placeholder="例: A023300 波莉",
+            key="fb_modal_reporter",
+        )
+
+        fb_desc = st.text_area(
+            "詳細說明內容",
+            placeholder="請詳細描述您遇到的問題或希望改善的功能...",
+            height=120,
+            key="fb_modal_desc",
+        )
+
+        uploaded_img = st.file_uploader(
+            "上傳問題畫面截圖 (選填，支援 png, jpg)",
+            type=["png", "jpg", "jpeg"],
+            key="fb_modal_img",
+        )
+
+        submit_fb = st.form_submit_button(
+            "確認提交回報", type="primary", use_container_width=True
+        )
+
+    if submit_fb:
+        if not fb_desc.strip():
+            st.warning("請填寫詳細說明內容！")
+        else:
+            try:
+                from datetime import datetime
+
+                os.makedirs(FEEDBACK_IMG_DIR, exist_ok=True)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                ticket_id = f"FB-{timestamp}"
+
+                # 儲存截圖附件
+                if uploaded_img is not None:
+                    ext = os.path.splitext(uploaded_img.name)[1]
+                    img_filename = f"{ticket_id}{ext}"
+                    img_save_path = os.path.join(FEEDBACK_IMG_DIR, img_filename)
+                    with open(img_save_path, "wb") as f:
+                        f.write(uploaded_img.getbuffer())
+
+                # 儲存文字工單檔案
+                txt_filename = f"{ticket_id}.txt"
+                txt_save_path = os.path.join(FEEDBACK_IMG_DIR, txt_filename)
+
+                content = (
+                    f"處理編號: {ticket_id}\n"
+                    f"狀態: 待處理\n"
+                    f"類別: {fb_category}\n"
+                    f"單位: {unit_label}\n"
+                    f"回報者: {fb_reporter.strip() or '未提供'}\n"
+                    f"時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    f"管理員回覆: 尚無回覆\n"
+                    f"詳細說明:\n{fb_desc.strip()}"
+                )
+
+                with open(txt_save_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+
+                log_activity(
+                    "提交問題回報工單",
+                    f"單位:{unit_label} | 單號:{ticket_id} | 類別:{fb_category}",
+                )
+                st.success(f"回報成功！工單編號：`{ticket_id}`，感謝您的寶貴建議！")
+                st.rerun()
+            except Exception as e:
+                st.error(f"提交失敗，請再試一次：{e}")
