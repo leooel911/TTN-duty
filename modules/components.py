@@ -142,11 +142,10 @@ def view_feedback_img_modal(
 # =========================================================
 @st.dialog("系統問題與建議", width="medium")
 def show_feedback_modal() -> None:
-    # 🔑 強制注入 CSS 隱藏右上角叉叉 (✕)，消除前端點擊未觸發 Rerun 的 Bug
+    # 🔑 1. 隱藏右上角關閉叉叉，避免前端點擊後未發送 Rerun 導致 Session State 殘留
     st.markdown(
         """
         <style>
-        /* 隱藏 st.dialog 右上角的 Close (✕) 按鈕 */
         button[aria-label="Close"], 
         div[data-testid="stDialog"] button[aria-label="Close"],
         div[role="dialog"] button[aria-label="Close"] {
@@ -356,15 +355,20 @@ def show_feedback_modal() -> None:
 
 
 # =========================================================
-# 5. 彈窗觸發主控函式
+# 5. 彈窗觸發主控函式 (開啟當下即自動將 State 歸零)
 # =========================================================
 def trigger_feedback_modal() -> None:
-    """呼叫意見反饋彈窗的主控函式"""
+    """
+    呼叫意見反饋彈窗的主控函式。
+    開啟彈窗的同時立即將 session_state 歸零，
+    確保使用者切換模式或 Rerun 時，都不會導致彈窗反覆跳出。
+    """
     should_show = (
         st.session_state.get("show_feedback_dialog", False)
         or st.session_state.get("show_feedback_modal", False)
     )
     if should_show:
+        # 🔑 開啟彈窗的瞬間立即清空 Key，斷絕後續頁面切換自動觸發
         st.session_state["show_feedback_dialog"] = False
         st.session_state["show_feedback_modal"] = False
         show_feedback_modal()
