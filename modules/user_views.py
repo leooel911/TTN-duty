@@ -212,8 +212,8 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
-        div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button:hover,
-        div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button:hover {
+        div[data-testid="stElementContainer"]:has(.crew-card-top):hover + div[data-testid="stElementContainer"] button,
+        div[data-testid="stElementContainer"]:has(.crew-card-top-warn):hover + div[data-testid="stElementContainer"] button {
             background-color: rgba(30, 41, 59, 0.95) !important;
         }
         </style>
@@ -292,7 +292,7 @@ def render_user_home() -> None:
         st.session_state.pop("win_raw_candidates", None)
         st.session_state.pop("ex_raw_candidates", None)
         st.session_state["ex_search_performed"] = False
-        
+
         modal_keys_to_clear = [
             "show_feedback_modal", "show_feedback_dialog", 
             "feedback_open", "show_issue_modal", "show_feedback"
@@ -1045,9 +1045,9 @@ def render_user_home() -> None:
                                         "連續上班天數": max_consecutive_streak,
                                     })
 
-                                st.session_state["ex_raw_candidates"] = raw_candidates
-                                st.session_state["ex_search_performed"] = True
-                                st.rerun()
+                            st.session_state["ex_raw_candidates"] = raw_candidates
+                            st.session_state["ex_search_performed"] = True
+                            st.rerun()
 
                         if st.session_state.get("ex_search_performed"):
                             raw_list = st.session_state.get("ex_raw_candidates", [])
