@@ -337,7 +337,7 @@ def render_user_home() -> None:
                         f"單位:{current_unit_label} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
                     )
 
-                    with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
+                    with st.spinner(f"正在繪製【{emp_name}】的個人月班表請稍候..."):
                         buf = render_schedule_figure(
                             start_dt,
                             dates,
@@ -477,25 +477,21 @@ def render_user_home() -> None:
                     btn_all_label, key="btn_win_all", use_container_width=True
                 ):
                     st.session_state["win_time_slider"] = (morn_start_time, "18:00")
-                    reset_win_search()
                     st.rerun()
                 if q_col2.button(
                     btn_morn_label, key="btn_win_morn", use_container_width=True
                 ):
                     st.session_state["win_time_slider"] = (morn_start_time, "10:00")
-                    reset_win_search()
                     st.rerun()
                 if q_col3.button(
                     btn_noon_label, key="btn_win_noon", use_container_width=True
                 ):
                     st.session_state["win_time_slider"] = ("10:00", "13:00")
-                    reset_win_search()
                     st.rerun()
                 if q_col4.button(
                     btn_night_label, key="btn_win_night", use_container_width=True
                 ):
                     st.session_state["win_time_slider"] = ("13:00", "18:00")
-                    reset_win_search()
                     st.rerun()
 
                 TIME_OPTIONS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
@@ -515,7 +511,6 @@ def render_user_home() -> None:
                     options=TIME_OPTIONS,
                     value=st.session_state["win_time_slider"],
                     key="win_time_slider",
-                    on_change=reset_win_search,
                 )
 
                 if isinstance(slider_val, (tuple, list)) and len(slider_val) == 2:
@@ -533,7 +528,7 @@ def render_user_home() -> None:
                         "僅顯示長班 (>8.5h)", value=False, key="win_long_shift"
                     )
 
-                if st.button("搜尋可換班組員名單", key="btn_window_search"):
+                if st.button("搜尋可換班組員名單", key="btn_window_search") or st.session_state.get("win_raw_candidates") is None:
                     raw_candidates = []
                     target_col_idx = find_date_column_index(df_search.columns, target_date)
 
@@ -599,23 +594,22 @@ def render_user_home() -> None:
                                     })
 
                     st.session_state["win_raw_candidates"] = raw_candidates
-                    st.rerun()
 
                 if st.session_state.get("win_raw_candidates") is not None:
                     raw_list = st.session_state["win_raw_candidates"]
                     filtered_results = []
 
                     for r in raw_list:
-                        if r["Sign-In"] != "--:--":
-                            if not (min_time <= r["Sign-In"] <= max_time_sel):
-                                continue
+                        # 💡 嚴格根據 Sign-In 時間區間過濾，若無 Sign-In 時間或不在區間內則排除
+                        si_time = r["Sign-In"]
+                        if si_time == "--:--" or not (min_time <= si_time <= max_time_sel):
+                            continue
                         if only_main_line and (r["非正線"] or r["請假"]):
                             continue
                         if only_long_shift and not r["長班"]:
                             continue
                         filtered_results.append(r)
 
-                    # 💡 修正車次混合排序問題：透過正規表達式安全拆解車次英文字母與數字，讓同系列車次完美聚在一起
                     def train_sort_key(x):
                         train_str = str(x.get("車次", "")).strip()
                         m = re.match(r"^([A-Za-z]*)(\d*)(.*)$", train_str)
