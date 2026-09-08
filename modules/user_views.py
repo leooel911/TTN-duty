@@ -170,19 +170,38 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        .crew-card-wrapper {
+        /* CSS Grid 網格佈局：強制手機與電腦皆維持完美雙排 */
+        .crew-grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        @media (max-width: 480px) {
+            .crew-grid-container {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .crew-card-top {
             background: rgba(15, 23, 42, 0.7);
             border: 1px solid rgba(56, 189, 248, 0.3) !important;
             border-radius: 10px !important;
             padding: 12px;
-            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
         }
-        .crew-card-wrapper-warn {
+        .crew-card-top-warn {
             background: rgba(15, 23, 42, 0.7);
             border: 1px solid #F43F5E !important;
             border-radius: 10px !important;
             padding: 12px;
-            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
         }
         </style>
         """,
@@ -254,6 +273,7 @@ def render_user_home() -> None:
     if "last_app_mode" not in st.session_state:
         st.session_state["last_app_mode"] = app_mode
 
+    # 切換模式時重置快取並清理 Modal 彈窗狀態
     if st.session_state["last_app_mode"] != app_mode:
         st.session_state["last_app_mode"] = app_mode
         st.session_state.pop("win_raw_candidates", None)
@@ -337,7 +357,7 @@ def render_user_home() -> None:
                         f"單位:{current_unit_label} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
                     )
 
-                    with st.spinner(f"正在繪製【{emp_name}】的個人月班表請稍候..."):
+                    with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
                         buf = render_schedule_figure(
                             start_dt,
                             dates,
@@ -477,21 +497,25 @@ def render_user_home() -> None:
                     btn_all_label, key="btn_win_all", use_container_width=True
                 ):
                     st.session_state["win_time_slider"] = (morn_start_time, "18:00")
+                    reset_win_search()
                     st.rerun()
                 if q_col2.button(
                     btn_morn_label, key="btn_win_morn", use_container_width=True
                 ):
                     st.session_state["win_time_slider"] = (morn_start_time, "10:00")
+                    reset_win_search()
                     st.rerun()
                 if q_col3.button(
                     btn_noon_label, key="btn_win_noon", use_container_width=True
                 ):
                     st.session_state["win_time_slider"] = ("10:00", "13:00")
+                    reset_win_search()
                     st.rerun()
                 if q_col4.button(
                     btn_night_label, key="btn_win_night", use_container_width=True
                 ):
                     st.session_state["win_time_slider"] = ("13:00", "18:00")
+                    reset_win_search()
                     st.rerun()
 
                 TIME_OPTIONS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
@@ -511,6 +535,7 @@ def render_user_home() -> None:
                     options=TIME_OPTIONS,
                     value=st.session_state["win_time_slider"],
                     key="win_time_slider",
+                    on_change=reset_win_search,
                 )
 
                 if isinstance(slider_val, (tuple, list)) and len(slider_val) == 2:
@@ -528,7 +553,7 @@ def render_user_home() -> None:
                         "僅顯示長班 (>8.5h)", value=False, key="win_long_shift"
                     )
 
-                if st.button("搜尋可換班組員名單", key="btn_window_search") or st.session_state.get("win_raw_candidates") is None:
+                if st.button("搜尋可換班組員名單", key="btn_window_search"):
                     raw_candidates = []
                     target_col_idx = find_date_column_index(df_search.columns, target_date)
 
@@ -594,33 +619,27 @@ def render_user_home() -> None:
                                     })
 
                     st.session_state["win_raw_candidates"] = raw_candidates
+                    st.rerun()
 
                 if st.session_state.get("win_raw_candidates") is not None:
                     raw_list = st.session_state["win_raw_candidates"]
                     filtered_results = []
 
                     for r in raw_list:
-                        # 💡 嚴格根據 Sign-In 時間區間過濾，若無 Sign-In 時間或不在區間內則排除
-                        si_time = r["Sign-In"]
-                        if si_time == "--:--" or not (min_time <= si_time <= max_time_sel):
-                            continue
+                        if r["Sign-In"] != "--:--":
+                            if not (min_time <= r["Sign-In"] <= max_time_sel):
+                                continue
                         if only_main_line and (r["非正線"] or r["請假"]):
                             continue
                         if only_long_shift and not r["長班"]:
                             continue
                         filtered_results.append(r)
 
-                    def train_sort_key(x):
-                        train_str = str(x.get("車次", "")).strip()
-                        m = re.match(r"^([A-Za-z]*)(\d*)(.*)$", train_str)
-                        if m:
-                            prefix = m.group(1).upper()
-                            num_part = int(m.group(2)) if m.group(2) else 0
-                            suffix = m.group(3)
-                            return (prefix, num_part, suffix, str(x.get("員編", "")))
-                        return (train_str, 0, "", str(x.get("員編", "")))
-
-                    filtered_results = sorted(filtered_results, key=train_sort_key)
+                    # 💡 同班別依序排序（先依車次、再依 Sign-In、再依員編）
+                    filtered_results = sorted(
+                        filtered_results,
+                        key=lambda x: (str(x["車次"]), str(x["Sign-In"]), str(x["員編"])),
+                    )
 
                     log_activity(
                         "換班日期快篩",
@@ -662,64 +681,78 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        for i in range(0, len(filtered_results), 2):
-                            col_pair = st.columns(2)
-                            for j in range(2):
-                                if i + j < len(filtered_results):
-                                    r = filtered_results[i + j]
-                                    with col_pair[j]:
-                                        do_tag = r.get("出勤標記", "")
-                                        shift_hours = r.get("工時", "")
-                                        hours_display = f"({shift_hours})" if shift_hours else "&nbsp;"
+                        # 💡 改用 CSS Grid 網格包覆迴圈，達成強制手機雙排與等高對齊
+                        grid_html = '<div class="crew-grid-container">'
+                        card_items_meta = []
 
-                                        badges_html = '<div class="badge-group">'
-                                        if r.get("非正線"):
-                                            badges_html += '<span class="non-line-badge">非正線</span>'
-                                        if r.get("長班"):
-                                            badges_html += '<span class="long-badge">長班</span>'
-                                        if do_tag:
-                                            badges_html += f'<span class="do2w-badge">[{do_tag}]</span>'
-                                        badges_html += "</div>"
+                        for idx, r in enumerate(filtered_results):
+                            do_tag = r.get("出勤標記", "")
+                            shift_hours = r.get("工時", "")
 
-                                        clean_name = str(r.get("姓名", "")).replace("\n", " ").strip()
-                                        clean_id = str(r.get("員編", "")).replace("\n", " ").strip()
-                                        clean_train = str(r.get("車次", "")).replace("\n", " ").strip()
-                                        clean_signin = str(r.get("Sign-In", "--:--")).replace("\n", " ").strip()
-                                        clean_signout = str(r.get("Sign-Out", "--:--")).replace("\n", " ").strip()
-                                        clean_next_signin = str(r.get("隔日Sign-In", "無記錄")).replace("\n", " ").strip()
+                            # 💡 統一工時佔位區高度，解決未顯示時間方框無法對齊的問題
+                            hours_display_html = (
+                                f'<div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px; min-height: 16px;">({shift_hours})</div>'
+                                if shift_hours
+                                else '<div style="font-size: 11px; color: transparent; min-height: 16px; user-select: none;">(佔位)</div>'
+                            )
 
-                                        card_html = f"""
-                                        <div class="crew-card-wrapper">
-                                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                                <div>
-                                                    <div class="compact-name">{clean_name} <span style="color:#94A3B8; font-size:12px;">({clean_id})</span></div>
-                                                    <div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{clean_train}</div>
-                                                </div>
-                                                <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
-                                                    <div style="font-size: 16px; font-weight: 900; color: #4ADE80; font-family: monospace;">Sign-In {clean_signin}</div>
-                                                    <div style="font-size: 16px; font-weight: 900; color: #4ADE80; font-family: monospace;">Sign-Out {clean_signout}</div>
-                                                    <div style="font-size: 11px; color: #CBD5E1; font-family: monospace; min-height: 16px;">{hours_display}</div>
-                                                </div>
-                                            </div>
-                                            <div style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
-                                                <span style="font-size: 11px; color: #94A3B8; font-family: monospace;">隔日 SI：<strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
-                                                {badges_html}
-                                            </div>
-                                        </div>
-                                        """
-                                        st.markdown(card_html, unsafe_allow_html=True)
-                                        if st.button(
-                                            f"檢視 {clean_name} 完整班表",
-                                            key=f"win_btn_{clean_id}_{i+j}",
-                                            use_container_width=True,
-                                        ):
-                                            log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_name}({clean_id})")
-                                            from modules.components import show_crew_schedule_modal
-                                            show_crew_schedule_modal(
-                                                clean_id,
-                                                current_unit_label,
-                                                badge_title="Window Filter | C.L.F",
-                                            )
+                            badges_html = '<div class="badge-group">'
+                            if r.get("非正線"):
+                                badges_html += '<span class="non-line-badge">非正線</span>'
+                            if r.get("長班"):
+                                badges_html += '<span class="long-badge">長班</span>'
+                            if do_tag:
+                                badges_html += f'<span class="do2w-badge">[{do_tag}]</span>'
+                            badges_html += "</div>"
+
+                            clean_name = str(r.get("姓名", "")).replace("\n", " ").strip()
+                            clean_id = str(r.get("員編", "")).replace("\n", " ").strip()
+                            clean_train = str(r.get("車次", "")).replace("\n", " ").strip()
+                            clean_signin = str(r.get("Sign-In", "--:--")).replace("\n", " ").strip()
+                            clean_signout = str(r.get("Sign-Out", "--:--")).replace("\n", " ").strip()
+                            clean_next_signin = str(r.get("隔日Sign-In", "無記錄")).replace("\n", " ").strip()
+
+                            card_html = f"""<div class="crew-card-top">
+<div style="display: flex; justify-content: space-between; align-items: flex-start;">
+<div>
+<div class="compact-name">{clean_name} <span style="color:#94A3B8; font-size:12px;">({clean_id})</span></div>
+<div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{clean_train}</div>
+</div>
+<div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
+<div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-In {clean_signin}</div>
+<div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-Out {clean_signout}</div>
+{hours_display_html}
+</div>
+</div>
+<div style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
+<span style="font-size: 11px; color: #94A3B8; font-family: monospace;">隔日 Sign-In：<strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
+{badges_html}
+</div>
+</div>"""
+
+                            grid_html += card_html
+                            card_items_meta.append((clean_name, clean_id, idx))
+
+                        grid_html += '</div>'
+                        st.markdown(grid_html, unsafe_allow_html=True)
+
+                        # 💡 由於 Grid 內的按鈕需要獨立點擊事件，採用雙欄 Streamlit 渲染按鈕對應下方卡片
+                        b_col1, b_col2 = st.columns(2)
+                        for meta_idx, (c_name, c_id, orig_idx) in enumerate(card_items_meta):
+                            target_btn_col = b_col1 if meta_idx % 2 == 0 else b_col2
+                            with target_btn_col:
+                                if st.button(
+                                    f"檢視 {c_name} 完整班表",
+                                    key=f"win_btn_{c_id}_{orig_idx}",
+                                    use_container_width=True,
+                                ):
+                                    log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{c_name}({c_id})")
+                                    from modules.components import show_crew_schedule_modal
+                                    show_crew_schedule_modal(
+                                        c_id,
+                                        current_unit_label,
+                                        badge_title="Window Filter | C.L.F",
+                                    )
                     else:
                         st.info("在指定條件內，找不到符合的人員")
 
@@ -1027,13 +1060,14 @@ def render_user_home() -> None:
 
                                 filtered_candidates.append(cand)
 
+                            # 💡 依照排序設定進行排序，並加入車次/員編作為次要排序維持同班別依序
                             if sort_order == "依 Sign-In 時間 (由早至晚)":
                                 filtered_candidates = sorted(
                                     filtered_candidates,
                                     key=lambda x: (
                                         x["Sign-In"] or "99:99",
-                                        x["Sign-Out"] or "99:99",
-                                        str(x.get("員編", ""))
+                                        x["還假車次"] or "",
+                                        x["員編"] or "",
                                     ),
                                 )
                             elif sort_order == "依最早 Sign-Out":
@@ -1042,13 +1076,13 @@ def render_user_home() -> None:
                                     key=lambda x: (
                                         x["Sign-Out"] or "99:99",
                                         x["Sign-In"] or "99:99",
-                                        str(x.get("員編", ""))
+                                        x["還假車次"] or "",
                                     ),
                                 )
                             elif sort_order == "依工時長短":
                                 filtered_candidates = sorted(
                                     filtered_candidates,
-                                    key=lambda x: (x["工時"] or "0h00m", str(x.get("員編", ""))),
+                                    key=lambda x: (x["工時"] or "0h00m", x["還假車次"] or ""),
                                     reverse=True,
                                 )
 
@@ -1096,78 +1130,97 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                for i in range(0, len(filtered_candidates), 2):
-                                    col_pair = st.columns(2)
-                                    for j in range(2):
-                                        if i + j < len(filtered_candidates):
-                                            cand = filtered_candidates[i + j]
-                                            with col_pair[j]:
-                                                do_tag = cand.get("出勤標記", "")
-                                                cand_hours = cand.get("工時", "")
-                                                hours_display = f"({cand_hours})" if cand_hours else "&nbsp;"
+                                # 💡 改用 CSS Grid 網格包覆換假名單，達到手機強制雙排與完美等高對齊
+                                grid_html = '<div class="crew-grid-container">'
+                                cand_items_meta = []
 
-                                                badges_html = '<div class="badge-group">'
-                                                if cand.get("非正線"):
-                                                    badges_html += '<span class="non-line-badge">非正線</span>'
-                                                if cand.get("長班"):
-                                                    badges_html += '<span class="long-badge">長班</span>'
-                                                if cand.get("有DO2W標記") or do_tag:
-                                                    tag_text = do_tag if do_tag else "DO2W"
-                                                    badges_html += f'<span class="do2w-badge">[{tag_text}]</span>'
-                                                badges_html += "</div>"
+                                for idx, cand in enumerate(filtered_candidates):
+                                    do_tag = cand.get("出勤標記", "")
+                                    cand_hours = cand.get("工時", "")
 
-                                                streak_cnt = cand.get("連續上班天數", 0)
-                                                streak_color = "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
-                                                card_class = "crew-card-wrapper-warn" if streak_cnt >= 6 else "crew-card-wrapper"
-                                                
-                                                warning_banner_html = ""
-                                                if streak_cnt >= 6:
-                                                    warning_banner_html = f"""<div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
-注意：換假後當月連續上班達 {streak_cnt} 天！
+                                    # 💡 統一工時佔位區高度，解決無工時假別導致方框大小不一的問題
+                                    hours_display_html = (
+                                        f'<div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px; min-height: 16px;">({cand_hours})</div>'
+                                        if cand_hours
+                                        else '<div style="font-size: 11px; color: transparent; min-height: 16px; user-select: none;">(佔位)</div>'
+                                    )
+
+                                    badges_html = '<div class="badge-group">'
+                                    if cand.get("非正線"):
+                                        badges_html += '<span class="non-line-badge">非正線</span>'
+                                    if cand.get("長班"):
+                                        badges_html += '<span class="long-badge">長班</span>'
+                                    if cand.get("有DO2W標記") or do_tag:
+                                        tag_text = do_tag if do_tag else "DO2W"
+                                        badges_html += f'<span class="do2w-badge">[{tag_text}]</span>'
+                                    badges_html += "</div>"
+
+                                    streak_cnt = cand.get("連續上班天數", 0)
+                                    streak_color = (
+                                        "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
+                                    )
+
+                                    card_class = (
+                                        "crew-card-top-warn" if streak_cnt >= 6 else "crew-card-top"
+                                    )
+                                    warning_banner_html = ""
+
+                                    if streak_cnt >= 6:
+                                        warning_banner_html = f"""<div style="background: rgba(225, 29, 72, 0.2); border: 1.5px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
+注意：換假後當月連續上班達 {streak_cnt} 天，請留意出勤規範！
 </div>"""
 
-                                                clean_cand_name = str(cand.get("姓名", "")).replace("\n", " ").strip()
-                                                clean_cand_id = str(cand.get("員編", "")).replace("\n", " ").strip()
-                                                clean_cand_return_date = str(cand.get("還休日", "")).replace("\n", " ").strip()
-                                                clean_cand_return_train = str(cand.get("還假車次", "無")).replace("\n", " ").strip()
-                                                clean_cand_signin = str(cand.get("Sign-In", "--:--")).replace("\n", " ").strip()
-                                                clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
+                                    clean_cand_name = str(cand.get("姓名", "")).replace("\n", " ").strip()
+                                    clean_cand_id = str(cand.get("員編", "")).replace("\n", " ").strip()
+                                    clean_cand_return_date = str(cand.get("還休日", "")).replace("\n", " ").strip()
+                                    clean_cand_return_train = str(cand.get("還假車次", "無")).replace("\n", " ").strip()
+                                    clean_cand_signin = str(cand.get("Sign-In", "--:--")).replace("\n", " ").strip()
+                                    clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
 
-                                                card_html = f"""
-                                                <div class="{card_class}">
-                                                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                                        <div>
-                                                            <div class="compact-name">{clean_cand_name} <span style="color:#94A3B8; font-size:12px;">({clean_cand_id})</span></div>
-                                                            <div style="font-size: 12px; color: #94A3B8; margin-top: 4px; font-family: monospace;">
-                                                                還休日：<strong style="color: #94A3B8;">{clean_cand_return_date}</strong> ｜ 班別：<strong style="color:#38BDF8;">{clean_cand_return_train}</strong>
-                                                            </div>
-                                                        </div>
-                                                        <div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
-                                                            <div style="font-size: 16px; font-weight: 900; color: #4ADE80; font-family: monospace;">Sign-In {clean_cand_signin}</div>
-                                                            <div style="font-size: 16px; font-weight: 900; color: #4ADE80; font-family: monospace;">Sign-Out {clean_cand_signout}</div>
-                                                            <div style="font-size: 11px; color: #CBD5E1; font-family: monospace; min-height: 16px;">{hours_display}</div>
-                                                        </div>
-                                                    </div>
-                                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
-                                                        <span style="font-size: 11.5px; color: {streak_color}; font-weight: 700; font-family: monospace;">換假後連上：{streak_cnt} 天</span>
-                                                        {badges_html}
-                                                    </div>
-                                                    {warning_banner_html}
-                                                </div>
-                                                """
-                                                st.markdown(card_html, unsafe_allow_html=True)
-                                                if st.button(
-                                                    f"檢視 {clean_cand_name} 完整班表",
-                                                    key=f"ex_btn_{clean_cand_id}_{i+j}",
-                                                    use_container_width=True,
-                                                ):
-                                                    log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
-                                                    from modules.components import show_crew_schedule_modal
-                                                    show_crew_schedule_modal(
-                                                        clean_cand_id,
-                                                        current_unit_label,
-                                                        badge_title="Exchange | C.L.F",
-                                                    )
+                                    card_html = f"""<div class="{card_class}">
+<div style="display: flex; justify-content: space-between; align-items: flex-start;">
+<div>
+<div class="compact-name">{clean_cand_name} <span style="color:#94A3B8; font-size:12px;">({clean_cand_id})</span></div>
+<div style="font-size: 12px; color: #94A3B8; margin-top: 4px; font-family: monospace;">
+還休日：<strong style="color: #94A3B8;">{clean_cand_return_date}</strong> ｜ 班別：<strong style="color:#38BDF8;">{clean_cand_return_train}</strong>
+</div>
+</div>
+<div style="text-align: right; display: flex; flex-direction: column; gap: 3px;">
+<div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-In {clean_cand_signin}</div>
+<div style="font-size: 17px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-Out {clean_cand_signout}</div>
+{hours_display_html}
+</div>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06);">
+<span style="font-size: 11.5px; color: {streak_color}; font-weight: 700; font-family: monospace;">換假後連續上班：{streak_cnt} 天</span>
+{badges_html}
+</div>
+{warning_banner_html}
+</div>"""
+
+                                    grid_html += card_html
+                                    cand_items_meta.append((clean_cand_name, clean_cand_id, idx))
+
+                                grid_html += '</div>'
+                                st.markdown(grid_html, unsafe_allow_html=True)
+
+                                # 💡 對應下方按鈕
+                                b_col1, b_col2 = st.columns(2)
+                                for meta_idx, (c_name, c_id, orig_idx) in enumerate(cand_items_meta):
+                                    target_btn_col = b_col1 if meta_idx % 2 == 0 else b_col2
+                                    with target_btn_col:
+                                        if st.button(
+                                            f"檢視 {c_name} 完整班表",
+                                            key=f"ex_btn_{c_id}_{orig_idx}",
+                                            use_container_width=True,
+                                        ):
+                                            log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{c_name}({c_id})")
+                                            from modules.components import show_crew_schedule_modal
+                                            show_crew_schedule_modal(
+                                                c_id,
+                                                current_unit_label,
+                                                badge_title="Exchange | C.L.F",
+                                            )
                             else:
                                 st.info(
                                     "在指定條件內，找不到符合的可換假人員"
