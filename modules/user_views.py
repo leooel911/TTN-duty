@@ -615,10 +615,18 @@ def render_user_home() -> None:
                             continue
                         filtered_results.append(r)
 
-                    filtered_results = sorted(
-                        filtered_results,
-                        key=lambda x: (str(x.get("車次", "")), str(x.get("員編", ""))),
-                    )
+                    # 💡 修正車次混合排序問題：透過正規表達式安全拆解車次英文字母與數字，讓同系列車次完美聚在一起
+                    def train_sort_key(x):
+                        train_str = str(x.get("車次", "")).strip()
+                        m = re.match(r"^([A-Za-z]*)(\d*)(.*)$", train_str)
+                        if m:
+                            prefix = m.group(1).upper()
+                            num_part = int(m.group(2)) if m.group(2) else 0
+                            suffix = m.group(3)
+                            return (prefix, num_part, suffix, str(x.get("員編", "")))
+                        return (train_str, 0, "", str(x.get("員編", "")))
+
+                    filtered_results = sorted(filtered_results, key=train_sort_key)
 
                     log_activity(
                         "換班日期快篩",
@@ -660,7 +668,6 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 💡 改用 Streamlit 原生 st.columns(2) 雙欄排版，絕對安全、不會印出原始碼
                         for i in range(0, len(filtered_results), 2):
                             col_pair = st.columns(2)
                             for j in range(2):
@@ -1095,7 +1102,6 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 💡 改用 Streamlit 原生 st.columns(2) 雙欄排版，絕對安全、不會印出原始碼
                                 for i in range(0, len(filtered_candidates), 2):
                                     col_pair = st.columns(2)
                                     for j in range(2):
