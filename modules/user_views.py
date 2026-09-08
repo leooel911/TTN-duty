@@ -180,7 +180,41 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 1. 卡片上方主體框 */
+        /* 1. 防爆框全域佈局防護 */
+        .stApp {
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+        }
+
+        div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            gap: 4px !important;
+        }
+
+        /* 2. 精準數量查詢 (Quantity Query)：當一排精準只有「2 欄 (雙卡片)」時，手機端強效 50% 橫向並排 */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child:nth-last-child(2),
+        div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child:nth-last-child(2) ~ div[data-testid="stColumn"] {
+            width: calc(50% - 2px) !important;
+            min-width: calc(50% - 2px) !important;
+            max-width: calc(50% - 2px) !important;
+            flex: 1 1 calc(50% - 2px) !important;
+            box-sizing: border-box !important;
+        }
+
+        /* 3. 快捷時段 4 按鈕 (4 欄時每顆 25% 自適應，完全不溢出爆框) */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child:nth-last-child(4),
+        div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child:nth-last-child(4) ~ div[data-testid="stColumn"] {
+            width: calc(25% - 3px) !important;
+            min-width: calc(25% - 3px) !important;
+            flex: 1 1 calc(25% - 3px) !important;
+            box-sizing: border-box !important;
+        }
+
+        /* 4. 融合一體化卡片主體外框 */
         .crew-card-integrated {
             background: rgba(15, 23, 42, 0.85);
             border: 1px solid rgba(56, 189, 248, 0.35) !important;
@@ -211,7 +245,7 @@ def render_user_home() -> None:
             box-shadow: 0 4px 12px rgba(244, 63, 94, 0.15);
         }
 
-        /* 2. 利用萬能相容的 :nth-child(2) 精準抓取卡片正下方的 Streamlit 按鈕進行完美縫合 */
+        /* 5. 跨瀏覽器 100% 縫合卡片底部的「檢視完整班表」按鈕 */
         div[data-testid="stColumn"] > div[data-testid="stElementContainer"]:nth-child(2) button {
             border-top-left-radius: 0px !important;
             border-top-right-radius: 0px !important;
@@ -237,7 +271,7 @@ def render_user_home() -> None:
             border-color: rgba(56, 189, 248, 0.6) !important;
         }
 
-        /* 3. 標籤與徽章精細化樣式 */
+        /* 6. 標籤與徽章精細化樣式 */
         .badge-group {
             display: flex;
             gap: 3px;
@@ -1033,7 +1067,7 @@ def render_user_home() -> None:
                                         do_match = re.search(
                                             r"(DO\d*W?|D\d+W|OGC)", raw_return_str, re.IGNORECASE
                                         )
-                                        return_do_tag = do_match.group(1).upper() if do_match else ""
+                                        do_tag = do_match.group(1).upper() if do_match else ""
 
                                     raw_target_cell = str(row.iloc[target_col_idx]).upper()
                                     raw_return_cell = str(row.iloc[return_col_idx]).upper()
@@ -1240,7 +1274,7 @@ def render_user_home() -> None:
 </div>
 </div>
 <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; shrink: 0;">
-<div style="font-size: 15px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">In {clean_cand_signin}</div>
+<div style="font-size: 15px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">In {clean_signin}</div>
 <div style="font-size: 15px; font-weight: 900; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">Out {clean_signout}</div>
 {hours_display_html}
 </div>
