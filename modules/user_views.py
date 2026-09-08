@@ -775,7 +775,7 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 💡 換班專用：純 CSS Grid 雙排方塊格 + 融合按鈕
+                        # 💡 換班專用：純 CSS Grid 雙排方塊格 + 融合按鈕（標籤語法已完整修復）
                         grid_html = '<div class="crew-grid-container">'
                         for idx, r in enumerate(filtered_results):
                             do_tag = r.get("出勤標記", "")
@@ -813,7 +813,7 @@ def render_user_home() -> None:
                                         </div>
                                     </div>
                                     <div class="crew-footer">
-                                        <span class="crew-next">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
+                                        <span class="crew-info">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
                                         <div style="display: flex; gap: 3px; flex-wrap: wrap;">{badges_html}</div>
                                     </div>
                                 </div>
@@ -1202,7 +1202,7 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 💡 換假專用：純 CSS Grid 雙排方塊格 + 融合按鈕
+                                # 💡 換假專用：純 CSS Grid 雙排方塊格 + 融合按鈕（標籤語法已完整修復）
                                 grid_html = '<div class="crew-grid-container">'
                                 for idx, cand in enumerate(filtered_candidates):
                                     do_tag = cand.get("出勤標記", "")
