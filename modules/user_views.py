@@ -1,5 +1,6 @@
 import os
 import re
+import textwrap
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -775,7 +776,7 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 💡 換班專用：純 CSS Grid 雙排方塊格 + 融合按鈕（標籤語法已完整修復）
+                        # 💡 換班專用：純 CSS Grid 雙排方塊格 + textwrap.dedent 清除排版縮進
                         grid_html = '<div class="crew-grid-container">'
                         for idx, r in enumerate(filtered_results):
                             do_tag = r.get("出勤標記", "")
@@ -821,7 +822,7 @@ def render_user_home() -> None:
                             </div>
                             """
                         grid_html += '</div>'
-                        st.markdown(grid_html, unsafe_allow_html=True)
+                        st.markdown(textwrap.dedent(grid_html).strip(), unsafe_allow_html=True)
                     else:
                         st.info("在指定條件內，找不到符合的人員")
 
@@ -1202,7 +1203,7 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 💡 換假專用：純 CSS Grid 雙排方塊格 + 融合按鈕（標籤語法已完整修復）
+                                # 💡 換假專用：純 CSS Grid 雙排方塊格 + textwrap.dedent 清除排版縮進
                                 grid_html = '<div class="crew-grid-container">'
                                 for idx, cand in enumerate(filtered_candidates):
                                     do_tag = cand.get("出勤標記", "")
@@ -1259,7 +1260,7 @@ def render_user_home() -> None:
                                     </div>
                                     """
                                 grid_html += '</div>'
-                                st.markdown(grid_html, unsafe_allow_html=True)
+                                st.markdown(textwrap.dedent(grid_html).strip(), unsafe_allow_html=True)
                             else:
                                 st.info(
                                     "在指定條件內，找不到符合的可換假人員"
