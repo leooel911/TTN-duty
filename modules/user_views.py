@@ -170,7 +170,6 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 強制手機與電腦皆維持完美雙排網格，統一方格大小與對齊 */
         .crew-grid-container {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -273,7 +272,6 @@ def render_user_home() -> None:
     if "last_app_mode" not in st.session_state:
         st.session_state["last_app_mode"] = app_mode
 
-    # 切換模式時重置快取並清理 Modal 彈窗狀態
     if st.session_state["last_app_mode"] != app_mode:
         st.session_state["last_app_mode"] = app_mode
         st.session_state.pop("win_raw_candidates", None)
@@ -331,7 +329,6 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        # 預設載入登入員編
         if "draw_input_key" not in st.session_state:
             login_id = get_login_user_id()
             st.session_state["draw_input_key"] = login_id if (login_id and login_id.upper() != "A") else ""
@@ -370,7 +367,6 @@ def render_user_home() -> None:
                         )
                     st.success(f"【{emp_name}】個人班表圖片生成成功！")
                     
-                    # 💡 Lazy Import: 避免頂層循環引用
                     from modules.components import render_zoomable_image
                     render_zoomable_image(buf)
 
@@ -484,7 +480,6 @@ def render_user_home() -> None:
                     target_date, date_cols, df_search.columns
                 )
 
-                # 💡 Lazy Import
                 from modules.components import show_holiday_notice
                 show_holiday_notice(win_week_holidays, win_week_str)
 
@@ -638,7 +633,6 @@ def render_user_home() -> None:
                             continue
                         filtered_results.append(r)
 
-                    # 💡 換班排序調整：先依 Sign-In 時間排序，再依車次排序
                     filtered_results = sorted(
                         filtered_results,
                         key=lambda x: (
@@ -687,28 +681,24 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 💡 採 CSS Grid 容器雙排渲染，並確保方格高度一致與完美對齊
-                        grid_html = '<div class="crew-grid-container">'
-                        card_items_meta = []
-
+                        # 💡 修正後：使用安全且獨立的區塊渲染卡片，避免 HTML 標籤直接外露
                         for idx, r in enumerate(filtered_results):
                             do_tag = r.get("出勤標記", "")
                             shift_hours = r.get("工時", "")
 
-                            # 💡 統一方格高度：若無工時則給予隱形佔位
                             hours_display_html = (
                                 f'<div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px; min-height: 16px;">({shift_hours})</div>'
                                 if shift_hours
                                 else '<div style="font-size: 11px; color: transparent; min-height: 16px;">(佔位)</div>'
                             )
 
-                            badges_html = '<div class="badge-group">'
+                            badges_html = '<div style="display: flex; gap: 4px; align-items: center;">'
                             if r.get("非正線"):
-                                badges_html += '<span class="non-line-badge">非正線</span>'
+                                badges_html += '<span style="background: rgba(234, 179, 8, 0.2); color: #FDE047; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700;">非正線</span>'
                             if r.get("長班"):
-                                badges_html += '<span class="long-badge">長班</span>'
+                                badges_html += '<span style="background: rgba(244, 63, 94, 0.2); color: #FDA4AF; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700;">長班</span>'
                             if do_tag:
-                                badges_html += f'<span class="do2w-badge">[{do_tag}]</span>'
+                                badges_html += f'<span style="background: rgba(56, 189, 248, 0.2); color: #7DD3FC; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700;">[{do_tag}]</span>'
                             badges_html += "</div>"
 
                             clean_name = str(r.get("姓名", "")).replace("\n", " ").strip()
@@ -735,29 +725,16 @@ def render_user_home() -> None:
                                 </div>
                             </div>
                             """
-                            grid_html += card_html
-                            card_items_meta.append((clean_name, clean_id, idx))
+                            st.markdown(card_html, unsafe_allow_html=True)
 
-                        grid_html += '</div>'
-                        st.markdown(grid_html, unsafe_allow_html=True)
-
-                        # 按鈕觸發檢視完整班表（在 Grid 下方雙欄配置按鈕）
-                        b_col1, b_col2 = st.columns(2)
-                        for meta_idx, (c_name, c_id, orig_idx) in enumerate(card_items_meta):
-                            target_btn_col = b_col1 if meta_idx % 2 == 0 else b_col2
-                            with target_btn_col:
-                                if st.button(
-                                    f"檢視 {c_name} 完整班表",
-                                    key=f"win_btn_{c_id}_{orig_idx}",
-                                    use_container_width=True,
-                                ):
-                                    log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{c_name}({c_id})")
-                                    from modules.components import show_crew_schedule_modal
-                                    show_crew_schedule_modal(
-                                        c_id,
-                                        current_unit_label,
-                                        badge_title="Window Filter | C.L.F",
-                                    )
+                            if st.button(f"檢視 {clean_name} 完整班表", key=f"win_btn_{clean_id}_{idx}", use_container_width=True):
+                                log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_name}({clean_id})")
+                                from modules.components import show_crew_schedule_modal
+                                show_crew_schedule_modal(
+                                    clean_id,
+                                    current_unit_label,
+                                    badge_title="Window Filter | C.L.F",
+                                )
                     else:
                         st.info("在指定條件內，找不到符合的人員")
 
@@ -904,7 +881,6 @@ def render_user_home() -> None:
                             )
                         )
 
-                        # 💡 Lazy Import
                         from modules.components import show_holiday_notice
                         show_holiday_notice(ex_week_holidays, target_week_str)
 
@@ -923,7 +899,6 @@ def render_user_home() -> None:
                                 key="ex_time_filter",
                             )
                         with col_f2:
-                            # 💡 換假模式排序選項：將「依班別 (車次)」作為預設第一選項
                             sort_order = st.selectbox(
                                 "結果排序方式",
                                 [
@@ -1068,7 +1043,6 @@ def render_user_home() -> None:
 
                                 filtered_candidates.append(cand)
 
-                            # 💡 依照所選排序方式進行排序
                             if sort_order == "依班別 (車次)":
                                 filtered_candidates = sorted(
                                     filtered_candidates,
@@ -1141,29 +1115,24 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 💡 採 CSS Grid 容器雙排渲染，並確保方格高度一致與完美對齊
-                                grid_html = '<div class="crew-grid-container">'
-                                card_items_meta = []
-
                                 for idx, cand in enumerate(filtered_candidates):
                                     do_tag = cand.get("出勤標記", "")
                                     cand_hours = cand.get("工時", "")
 
-                                    # 💡 統一方格高度：若無工時則給予隱形佔位
                                     hours_display_html = (
                                         f'<div style="font-size: 11px; color: #CBD5E1; font-family: monospace; margin-top: 1px; min-height: 16px;">({cand_hours})</div>'
                                         if cand_hours
                                         else '<div style="font-size: 11px; color: transparent; min-height: 16px;">(佔位)</div>'
                                     )
 
-                                    badges_html = '<div class="badge-group">'
+                                    badges_html = '<div style="display: flex; gap: 4px; align-items: center;">'
                                     if cand.get("非正線"):
-                                        badges_html += '<span class="non-line-badge">非正線</span>'
+                                        badges_html += '<span style="background: rgba(234, 179, 8, 0.2); color: #FDE047; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700;">非正線</span>'
                                     if cand.get("長班"):
-                                        badges_html += '<span class="long-badge">長班</span>'
+                                        badges_html += '<span style="background: rgba(244, 63, 94, 0.2); color: #FDA4AF; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700;">長班</span>'
                                     if cand.get("有DO2W標記") or do_tag:
                                         tag_text = do_tag if do_tag else "DO2W"
-                                        badges_html += f'<span class="do2w-badge">[{tag_text}]</span>'
+                                        badges_html += f'<span style="background: rgba(56, 189, 248, 0.2); color: #7DD3FC; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700;">[{tag_text}]</span>'
                                     badges_html += "</div>"
 
                                     streak_cnt = cand.get("連續上班天數", 0)
@@ -1203,29 +1172,16 @@ def render_user_home() -> None:
                                         {warning_banner_html}
                                     </div>
                                     """
-                                    grid_html += card_html
-                                    card_items_meta.append((clean_cand_name, clean_cand_id, idx))
+                                    st.markdown(card_html, unsafe_allow_html=True)
 
-                                grid_html += '</div>'
-                                st.markdown(grid_html, unsafe_allow_html=True)
-
-                                # 按鈕觸發檢視完整班表
-                                b_col1, b_col2 = st.columns(2)
-                                for meta_idx, (c_name, c_id, orig_idx) in enumerate(card_items_meta):
-                                    target_btn_col = b_col1 if meta_idx % 2 == 0 else b_col2
-                                    with target_btn_col:
-                                        if st.button(
-                                            f"檢視 {c_name} 完整班表",
-                                            key=f"ex_btn_{c_id}_{orig_idx}",
-                                            use_container_width=True,
-                                        ):
-                                            log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{c_name}({c_id})")
-                                            from modules.components import show_crew_schedule_modal
-                                            show_crew_schedule_modal(
-                                                c_id,
-                                                current_unit_label,
-                                                badge_title="Exchange | C.L.F",
-                                            )
+                                    if st.button(f"檢視 {clean_cand_name} 完整班表", key=f"ex_btn_{clean_cand_id}_{idx}", use_container_width=True):
+                                        log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
+                                        from modules.components import show_crew_schedule_modal
+                                        show_crew_schedule_modal(
+                                            clean_cand_id,
+                                            current_unit_label,
+                                            badge_title="Exchange | C.L.F",
+                                        )
                             else:
                                 st.info(
                                     "在指定條件內，找不到符合的可換假人員"
