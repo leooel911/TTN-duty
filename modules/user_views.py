@@ -1,3 +1,14 @@
+已為您將所有討論重點（包括 RWD 響應式佈局、換班模式的末四碼數字排序、換假模式預設數字排序與模組化清理）整合完成，以下是最終完整的 modules/user_views.py 程式碼：
+整合調整重點摘要：
+ * Mobile-First RWD 響應式方框佈局：
+   * 手機/小螢幕：滿幅單欄（100% 寬度）向下排列，確保時間數字 (Sign-In/Sign-Out) 與班別資訊放大清晰，徹底防呆不擠壓。
+   * 平板/桌面大螢幕 (\ge 768\text{px})：自動切換為雙欄並排（50% 寬度），充分利用寬螢幕視域空間。
+ * 換班模式排序修正：
+   * 排序鍵調校為：1. Sign-In 時間 ➔ 2. 班別末四碼數字 (get_shift_last4_num) ➔ 3. 班別名稱。同報到時間者（如 05:26），2001 系列班別（NF2001, NG2001, NH2001）會自動聚在一起。
+ * 換假模式預設排序：
+   * 預設為選單第一順位 依同類班別末四碼數字，內部優先提取還假車次中的數字末四碼進行排序。
+ * 程式碼結構優化：
+   * 將 get_shift_last4_num 提升為模組頂層共用函式，避免重複定義。
 import os
 import re
 from datetime import date, timedelta
@@ -28,7 +39,17 @@ from modules.utils import (
 )
 
 
-# --- 輔助函式：精準比對 Excel 日期欄位索引（解決 9/1 比對到 9/10 的 Bug） ---
+# --- 輔助函式：提取班別末四碼數字（用於班別數字精準排序） ---
+def get_shift_last4_num(code_str: str) -> int:
+    """提取班別/車次中的數字，並取末四碼轉為整數進行排序"""
+    nums = re.findall(r"\d+", str(code_str))
+    if nums:
+        s = "".join(nums)
+        return int(s[-4:])
+    return 999999
+
+
+# --- 輔助函式：精準比對 Excel 日期欄位索引 ---
 def find_date_column_index(columns: Any, target_date: str) -> int:
     """精準匹配日期欄位索引，避免 substring 誤判"""
     if columns is None:
@@ -170,21 +191,33 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 強制覆蓋 Streamlit 行動端自動縮為 100% 單排的限制，確保 50% 左右橫向並排 */
+        /* Mobile-First RWD 排版設計：手機滿幅 100% 確保資訊清晰，大螢幕 50% 雙欄並排 */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-top),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) {
             display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 6px !important;
+            flex-direction: column !important;
+            gap: 8px !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-top) > div[data-testid="column"],
         div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) > div[data-testid="column"] {
-            width: 50% !important;
-            flex: 1 1 50% !important;
-            min-width: 0 !important;
-            max-width: 50% !important;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        @media (min-width: 768px) {
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top),
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) {
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                gap: 12px !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top) > div[data-testid="column"],
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) > div[data-testid="column"] {
+                width: 50% !important;
+                flex: 1 1 50% !important;
+                max-width: 50% !important;
+            }
         }
 
         .crew-card-top {
@@ -193,8 +226,8 @@ def render_user_home() -> None:
             border-bottom: none !important;
             border-top-left-radius: 10px !important;
             border-top-right-radius: 10px !important;
-            padding: 8px 10px;
-            min-height: 120px;
+            padding: 10px 12px;
+            min-height: 115px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -206,8 +239,8 @@ def render_user_home() -> None:
             border-bottom: none !important;
             border-top-left-radius: 10px !important;
             border-top-right-radius: 10px !important;
-            padding: 8px 10px;
-            min-height: 120px;
+            padding: 10px 12px;
+            min-height: 115px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -223,8 +256,8 @@ def render_user_home() -> None:
             margin-top: -16px !important;
             box-shadow: none !important;
             font-weight: 700 !important;
-            font-size: 11px !important;
-            padding: 4px 2px !important;
+            font-size: 12px !important;
+            padding: 6px 4px !important;
         }
 
         div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button {
@@ -678,12 +711,13 @@ def render_user_home() -> None:
                             continue
                         filtered_results.append(r)
 
-                    # 💡 換班模式：先依 Sign-In 時間由早至晚排序，同時間者依車次/班別排序（將同班別排在一起）
+                    # 💡 換班模式：先依 Sign-In 時間由早至晚排序，同時間者再依班別末四碼數字排列（將 2001, 2002 等聚在一起）
                     filtered_results = sorted(
                         filtered_results,
                         key=lambda x: (
                             str(x["Sign-In"]) if x["Sign-In"] != "--:--" else "99:99",
-                            str(x["車次"])
+                            get_shift_last4_num(x["車次"]),
+                            str(x["車次"]),
                         ),
                     )
 
@@ -727,7 +761,7 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 💡 每 2 個卡片組成一列，結合特化 CSS 確保手機與電腦皆為 50% 橫向並排
+                        # 💡 每 2 個卡片組成一組容器，結合 RWD CSS 實現手機滿幅、電腦雙欄
                         for i in range(0, len(filtered_results), 2):
                             card_cols = st.columns(2)
                             for j in range(2):
@@ -739,7 +773,7 @@ def render_user_home() -> None:
                                         shift_hours = r.get("工時", "")
 
                                         hours_display_html = (
-                                            f'<div style="font-size: 10px; color: #CBD5E1; font-family:'
+                                            f'<div style="font-size: 11px; color: #CBD5E1; font-family:'
                                             f' monospace; margin-top: 1px;">({shift_hours})</div>'
                                             if shift_hours
                                             else ""
@@ -764,17 +798,17 @@ def render_user_home() -> None:
                                         card_html = f"""<div class="crew-card-top">
 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
 <div>
-<div class="compact-name" style="font-size: 12.5px; font-weight: 700; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_name} <span style="color:#94A3B8; font-size:10.5px;">({clean_id})</span></div>
-<div style="font-size: 12px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{clean_train}</div>
+<div class="compact-name" style="font-size: 13.5px; font-weight: 700; color: #F8FAFC;">{clean_name} <span style="color:#94A3B8; font-size:11.5px;">({clean_id})</span></div>
+<div style="font-size: 13px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{clean_train}</div>
 </div>
 <div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
-<div style="font-size: 15px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">In {clean_signin}</div>
-<div style="font-size: 15px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Out {clean_signout}</div>
+<div style="font-size: 16px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-In {clean_signin}</div>
+<div style="font-size: 16px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-Out {clean_signout}</div>
 {hours_display_html}
 </div>
 </div>
-<div style="display: flex; gap: 4px; align-items: center; justify-content: space-between; margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06);">
-<span style="font-size: 10px; color: #94A3B8; font-family: monospace;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
+<div style="display: flex; gap: 6px; align-items: center; justify-content: space-between; margin-top: 6px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.06);">
+<span style="font-size: 11px; color: #94A3B8; font-family: monospace;">隔日 Sign-In：<strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
 {badges_html}
 </div>
 </div>"""
@@ -957,7 +991,6 @@ def render_user_home() -> None:
                                 key="ex_time_filter",
                             )
                         with col_f2:
-                            # 💡 換假模式第一順位設定為「依同類班別末四碼數字」並作為預設
                             sort_order = st.selectbox(
                                 "結果排序方式",
                                 [
@@ -1104,13 +1137,6 @@ def render_user_home() -> None:
 
                             # 💡 換假模式排序邏輯
                             if sort_order == "依同類班別末四碼數字":
-                                def get_shift_last4_num(code_str: str) -> int:
-                                    nums = re.findall(r"\d+", str(code_str))
-                                    if nums:
-                                        s = "".join(nums)
-                                        return int(s[-4:])
-                                    return 999999
-
                                 filtered_candidates = sorted(
                                     filtered_candidates,
                                     key=lambda x: (
@@ -1186,7 +1212,7 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 💡 每 2 個卡片組成一列，結合特化 CSS 確保手機與電腦皆為 50% 橫向並排
+                                # 💡 每 2 個卡片組成一組容器，結合 RWD CSS 實現手機滿幅、電腦雙欄
                                 for i in range(0, len(filtered_candidates), 2):
                                     card_cols = st.columns(2)
                                     for j in range(2):
@@ -1198,7 +1224,7 @@ def render_user_home() -> None:
                                                 cand_hours = cand.get("工時", "")
 
                                                 hours_display_html = (
-                                                    f'<div style="font-size: 10px; color: #CBD5E1; font-family:'
+                                                    f'<div style="font-size: 11px; color: #CBD5E1; font-family:'
                                                     f' monospace; margin-top: 1px;">({cand_hours})</div>'
                                                     if cand_hours
                                                     else ""
@@ -1239,19 +1265,19 @@ def render_user_home() -> None:
                                                 card_html = f"""<div class="{card_class}">
 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
 <div>
-<div class="compact-name" style="font-size: 12.5px; font-weight: 700; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_name} <span style="color:#94A3B8; font-size:10.5px;">({clean_cand_id})</span></div>
-<div style="font-size: 11px; color: #94A3B8; margin-top: 3px; font-family: monospace;">
+<div class="compact-name" style="font-size: 13.5px; font-weight: 700; color: #F8FAFC;">{clean_cand_name} <span style="color:#94A3B8; font-size:11.5px;">({clean_cand_id})</span></div>
+<div style="font-size: 12px; color: #94A3B8; margin-top: 3px; font-family: monospace;">
 還休：<strong style="color: #94A3B8;">{clean_cand_return_date}</strong> ｜ 班別：<strong style="color:#38BDF8;">{clean_cand_return_train}</strong>
 </div>
 </div>
 <div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
-<div style="font-size: 15px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">In {clean_cand_signin}</div>
-<div style="font-size: 15px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Out {clean_cand_signout}</div>
+<div style="font-size: 16px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-In {clean_cand_signin}</div>
+<div style="font-size: 16px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Sign-Out {clean_cand_signout}</div>
 {hours_display_html}
 </div>
 </div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06);">
-<span style="font-size: 10.5px; color: {streak_color}; font-weight: 700; font-family: monospace;">連續上班：{streak_cnt} 天</span>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.06);">
+<span style="font-size: 11px; color: {streak_color}; font-weight: 700; font-family: monospace;">連續上班：{streak_cnt} 天</span>
 {badges_html}
 </div>
 {warning_banner_html}
@@ -1278,3 +1304,4 @@ def render_user_home() -> None:
                                 )
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
+
