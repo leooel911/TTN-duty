@@ -180,21 +180,19 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 強制所有螢幕尺寸 (包含手機直立) 均維持 50% 橫向雙欄並排 */
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-top),
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) {
+        /* 無需 :has() 選擇器，通用覆蓋 Streamlit 手機端自動疊成 100% 的預設樣式，強制雙欄 50% 並排 */
+        div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
+            width: 100% !important;
             gap: 6px !important;
         }
 
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-top) > div[data-testid="column"],
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) > div[data-testid="column"] {
+        div[data-testid="column"] {
             width: 50% !important;
-            flex: 1 1 50% !important;
             min-width: 0 !important;
-            max-width: 50% !important;
+            flex: 1 1 0% !important;
         }
 
         .crew-card-top {
@@ -688,7 +686,7 @@ def render_user_home() -> None:
                             continue
                         filtered_results.append(r)
 
-                    # 💡 換班模式全新排序：先依「班別末四碼數字」集中同類班別，再依「Sign-In 時間」由早至晚排序
+                    # 💡 換班排序：先依「班別末四碼數字 (2001 系列集中)」➔ 再依「Sign-In 時間」➔ 最後依「完整班別名稱」
                     filtered_results = sorted(
                         filtered_results,
                         key=lambda x: (
@@ -738,7 +736,7 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 💡 每 2 個卡片一組獨立成列，強制左右 50% 並排
+                        # 💡 每 2 個卡片一組獨立成列，手機端亦會強制 50% 橫向並排
                         for i in range(0, len(filtered_results), 2):
                             card_cols = st.columns(2)
                             for j in range(2):
