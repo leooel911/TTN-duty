@@ -180,42 +180,25 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 精準以 Media Query 強制覆蓋 Streamlit 手機端 (max-width: 768px) 的原生 100% 堆疊 */
-        @media screen and (max-width: 768px) {
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-top),
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) {
-                display: flex !important;
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                width: 100% !important;
-                gap: 4px !important;
-            }
-
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-top) > div[data-testid="column"],
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) > div[data-testid="column"],
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-top) > div[data-testid="stColumn"],
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) > div[data-testid="stColumn"] {
-                width: 50% !important;
-                min-width: 0 !important;
-                max-width: 50% !important;
-                flex: 1 1 50% !important;
-            }
+        /* 移除不相容的 :has() 選擇器，全平台（iOS Safari / LINE / Android）強制 50% 橫向雙欄 */
+        div[data-testid="stHorizontalBlock"],
+        div.stHorizontalBlock,
+        div[class*="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            gap: 6px !important;
         }
 
-        /* 桌面大螢幕雙欄設定 */
-        @media screen and (min-width: 769px) {
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-top),
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) {
-                display: flex !important;
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                gap: 8px !important;
-            }
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-top) > div,
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) > div {
-                width: 50% !important;
-                flex: 1 1 50% !important;
-            }
+        div[data-testid="stColumn"],
+        div[data-testid="column"],
+        div.stColumn,
+        div[class*="stColumn"] {
+            width: 50% !important;
+            min-width: 50% !important;
+            max-width: 50% !important;
+            flex: 1 1 50% !important;
         }
 
         .crew-card-top {
@@ -243,38 +226,6 @@ def render_user_home() -> None:
             flex-direction: column;
             justify-content: space-between;
             box-sizing: border-box;
-        }
-
-        div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button,
-        div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button {
-            border-top-left-radius: 0px !important;
-            border-top-right-radius: 0px !important;
-            border-bottom-left-radius: 10px !important;
-            border-bottom-right-radius: 10px !important;
-            margin-top: -16px !important;
-            box-shadow: none !important;
-            font-weight: 700 !important;
-            font-size: 11px !important;
-            padding: 4px 2px !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.crew-card-top) + div[data-testid="stElementContainer"] button {
-            border: 1px solid rgba(56, 189, 248, 0.3) !important;
-            border-top: none !important;
-            background-color: rgba(15, 23, 42, 0.85) !important;
-            color: #38BDF8 !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.crew-card-top-warn) + div[data-testid="stElementContainer"] button {
-            border: 1px solid #F43F5E !important;
-            border-top: none !important;
-            background-color: rgba(15, 23, 42, 0.85) !important;
-            color: #FDA4AF !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.crew-card-top):hover + div[data-testid="stElementContainer"] button,
-        div[data-testid="stElementContainer"]:has(.crew-card-top-warn):hover + div[data-testid="stElementContainer"] button {
-            background-color: rgba(30, 41, 59, 0.95) !important;
         }
         </style>
         """,
@@ -709,10 +660,7 @@ def render_user_home() -> None:
                             continue
                         filtered_results.append(r)
 
-                    # 💡 換班全新精準排序：
-                    # 第一順位：班別末四碼數字 (2001 系列集中)
-                    # 第二順位：Sign-In 報到時間 (由早至晚)
-                    # 第三順位：完整班別名稱
+                    # 💡 換班全新排序：1. 班別末四碼數字 (2001 集中) ➔ 2. 報到時間 (Sign-In) ➔ 3. 完整班別
                     filtered_results = sorted(
                         filtered_results,
                         key=lambda x: (
@@ -762,7 +710,6 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 💡 每 2 個卡片一組獨立成列，實現橫向 50% 強制並排
                         for i in range(0, len(filtered_results), 2):
                             card_cols = st.columns(2)
                             for j in range(2):
@@ -1213,7 +1160,6 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 💡 每 2 個卡片一組獨立成列，強制左右 50% 並排
                                 for i in range(0, len(filtered_candidates), 2):
                                     card_cols = st.columns(2)
                                     for j in range(2):
