@@ -180,22 +180,42 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 深層覆蓋 Streamlit 在手機螢幕下的單欄強制排版，實現 50% 橫向雙欄 */
-        [data-testid="stHorizontalBlock"]:has(.crew-card-top),
-        [data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            width: 100% !important;
-            gap: 6px !important;
+        /* 精準以 Media Query 強制覆蓋 Streamlit 手機端 (max-width: 768px) 的原生 100% 堆疊 */
+        @media screen and (max-width: 768px) {
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top),
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                width: 100% !important;
+                gap: 4px !important;
+            }
+
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top) > div[data-testid="column"],
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) > div[data-testid="column"],
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top) > div[data-testid="stColumn"],
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) > div[data-testid="stColumn"] {
+                width: 50% !important;
+                min-width: 0 !important;
+                max-width: 50% !important;
+                flex: 1 1 50% !important;
+            }
         }
 
-        [data-testid="stHorizontalBlock"]:has(.crew-card-top) > div,
-        [data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) > div {
-            width: 50% !important;
-            min-width: 50% !important;
-            max-width: 50% !important;
-            flex: 1 1 50% !important;
+        /* 桌面大螢幕雙欄設定 */
+        @media screen and (min-width: 769px) {
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top),
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                gap: 8px !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top) > div,
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) > div {
+                width: 50% !important;
+                flex: 1 1 50% !important;
+            }
         }
 
         .crew-card-top {
@@ -204,7 +224,7 @@ def render_user_home() -> None:
             border-bottom: none !important;
             border-top-left-radius: 10px !important;
             border-top-right-radius: 10px !important;
-            padding: 8px 8px;
+            padding: 8px 6px;
             min-height: 125px;
             display: flex;
             flex-direction: column;
@@ -217,7 +237,7 @@ def render_user_home() -> None:
             border-bottom: none !important;
             border-top-left-radius: 10px !important;
             border-top-right-radius: 10px !important;
-            padding: 8px 8px;
+            padding: 8px 6px;
             min-height: 125px;
             display: flex;
             flex-direction: column;
@@ -742,7 +762,7 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 💡 每 2 個卡片組成一列，實現橫向 50% 強制並排
+                        # 💡 每 2 個卡片一組獨立成列，實現橫向 50% 強制並排
                         for i in range(0, len(filtered_results), 2):
                             card_cols = st.columns(2)
                             for j in range(2):
@@ -1193,7 +1213,7 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 💡 每 2 個卡片一組獨立成列，手機端亦會強制 50% 橫向並排
+                                # 💡 每 2 個卡片一組獨立成列，強制左右 50% 並排
                                 for i in range(0, len(filtered_candidates), 2):
                                     card_cols = st.columns(2)
                                     for j in range(2):
