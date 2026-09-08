@@ -170,29 +170,58 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
+        /* 強制手機與電腦皆維持完美雙排（覆蓋 Streamlit 手機預設的單排堆疊） */
+        @media (max-width: 768px) {
+            [data-testid="column"] {
+                width: 48% !important;
+                flex: 1 1 48% !important;
+                min-width: 48% !important;
+            }
+        }
+
         .crew-card-box {
-            background: rgba(15, 23, 42, 0.75);
-            border: 1px solid rgba(56, 189, 248, 0.35);
-            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            border-bottom: none !important;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            border-bottom-left-radius: 0px !important;
+            border-bottom-right-radius: 0px !important;
             padding: 10px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            height: 100%;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-            margin-bottom: 2px;
         }
         .crew-card-box-warn {
-            background: rgba(15, 23, 42, 0.75);
+            background: rgba(15, 23, 42, 0.85);
             border: 1px solid #F43F5E;
-            border-radius: 10px;
+            border-bottom: none !important;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            border-bottom-left-radius: 0px !important;
+            border-bottom-right-radius: 0px !important;
             padding: 10px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            height: 100%;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-            margin-bottom: 2px;
+        }
+
+        /* 讓 Streamlit 按鈕與上方方塊無縫接合，形成一體化外觀 */
+        .stButton > button {
+            border-top-left-radius: 0px !important;
+            border-top-right-radius: 0px !important;
+            border-bottom-left-radius: 10px !important;
+            border-bottom-right-radius: 10px !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+            background-color: rgba(30, 41, 59, 0.95) !important;
+            color: #38BDF8 !important;
+            font-weight: 700 !important;
+            font-size: 11.5px !important;
+            margin-top: -10px !important;
+            margin-bottom: 12px !important;
+            width: 100% !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+        .stButton > button:hover {
+            background-color: rgba(56, 189, 248, 0.2) !important;
+            border-color: #38BDF8 !important;
+            color: #F8FAFC !important;
         }
         </style>
         """,
@@ -673,7 +702,7 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 💡 50% 左右並排網格迴圈（每行 2 個卡片）
+                        # 💡 強制雙排網格迴圈（每行 2 個卡片，手機與電腦皆維持左右並排）
                         for i in range(0, len(filtered_results), 2):
                             card_cols = st.columns(2)
                             for j in range(2):
@@ -725,7 +754,7 @@ def render_user_home() -> None:
                                         """
                                         st.markdown(card_html, unsafe_allow_html=True)
 
-                                        # 💡 底部融合按鈕（與上方方塊格完美結合）
+                                        # 💡 底部融合按鈕（緊密接合於方塊格下方）
                                         if st.button(f"檢視 {clean_name} 完整班表", key=f"win_btn_{clean_id}_{idx}", use_container_width=True):
                                             log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_name}({clean_id})")
                                             from modules.components import show_crew_schedule_modal
@@ -1114,7 +1143,7 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 💡 50% 左右並排網格迴圈（換假專用，每行 2 個卡片）
+                                # 💡 強制雙排網格迴圈（換假專用，手機與電腦皆左右並排）
                                 for i in range(0, len(filtered_candidates), 2):
                                     card_cols = st.columns(2)
                                     for j in range(2):
