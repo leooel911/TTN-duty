@@ -180,7 +180,7 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 移除不相容的 :has() 選擇器，全平台（iOS Safari / LINE / Android）強制 50% 橫向雙欄 */
+        /* 全平台（iOS/LINE/Android/Desktop）統一強效 50% 雙欄並排 CSS */
         div[data-testid="stHorizontalBlock"],
         div.stHorizontalBlock,
         div[class*="stHorizontalBlock"] {
@@ -201,32 +201,82 @@ def render_user_home() -> None:
             flex: 1 1 50% !important;
         }
 
-        .crew-card-top {
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+        /* 融合一體化卡片主體外框 */
+        .crew-card-integrated {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(56, 189, 248, 0.35) !important;
             border-bottom: none !important;
-            border-top-left-radius: 10px !important;
-            border-top-right-radius: 10px !important;
-            padding: 8px 6px;
-            min-height: 125px;
+            border-top-left-radius: 12px !important;
+            border-top-right-radius: 12px !important;
+            padding: 10px 8px 6px 8px;
+            min-height: 128px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             box-sizing: border-box;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
-        .crew-card-top-warn {
-            background: rgba(15, 23, 42, 0.7);
+
+        .crew-card-integrated-warn {
+            background: rgba(15, 23, 42, 0.85);
             border: 1px solid #F43F5E !important;
             border-bottom: none !important;
-            border-top-left-radius: 10px !important;
-            border-top-right-radius: 10px !important;
-            padding: 8px 6px;
-            min-height: 125px;
+            border-top-left-radius: 12px !important;
+            border-top-right-radius: 12px !important;
+            padding: 10px 8px 6px 8px;
+            min-height: 128px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             box-sizing: border-box;
+            box-shadow: 0 4px 12px rgba(244, 63, 94, 0.15);
         }
+
+        /* 完全無縫縫合卡片底部的「檢視完整班表」按鈕 */
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button,
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
+            border-top-left-radius: 0px !important;
+            border-top-right-radius: 0px !important;
+            border-bottom-left-radius: 12px !important;
+            border-bottom-right-radius: 12px !important;
+            margin-top: -16px !important;
+            margin-bottom: 8px !important;
+            box-shadow: none !important;
+            font-weight: 700 !important;
+            font-size: 11.5px !important;
+            padding: 5px 2px !important;
+            letter-spacing: 0.3px !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button {
+            border: 1px solid rgba(56, 189, 248, 0.35) !important;
+            border-top: 1px dashed rgba(56, 189, 248, 0.2) !important;
+            background-color: rgba(15, 23, 42, 0.95) !important;
+            color: #38BDF8 !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
+            border: 1px solid #F43F5E !important;
+            border-top: 1px dashed rgba(244, 63, 94, 0.3) !important;
+            background-color: rgba(15, 23, 42, 0.95) !important;
+            color: #FDA4AF !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated):hover + div[data-testid="stElementContainer"] button,
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn):hover + div[data-testid="stElementContainer"] button {
+            background-color: rgba(30, 41, 59, 0.95) !important;
+            color: #38BDF8 !important;
+        }
+
+        /* 標籤微調 */
+        .badge-group {
+            display: flex;
+            gap: 3px;
+            align-items: center;
+        }
+        .non-line-badge { font-size: 9.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 4px; border-radius: 3px; }
+        .long-badge { font-size: 9.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 4px; border-radius: 3px; }
+        .do2w-badge { font-size: 9.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 4px; border-radius: 3px; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -660,7 +710,7 @@ def render_user_home() -> None:
                             continue
                         filtered_results.append(r)
 
-                    # 💡 換班全新排序：1. 班別末四碼數字 (2001 集中) ➔ 2. 報到時間 (Sign-In) ➔ 3. 完整班別
+                    # 末四碼數字精準排序 (如 2001 系列集中)
                     filtered_results = sorted(
                         filtered_results,
                         key=lambda x: (
@@ -710,6 +760,7 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
+                        # 每 2 個卡片一組進行獨立橫向雙欄佈局
                         for i in range(0, len(filtered_results), 2):
                             card_cols = st.columns(2)
                             for j in range(2):
@@ -721,7 +772,7 @@ def render_user_home() -> None:
                                         shift_hours = r.get("工時", "")
 
                                         hours_display_html = (
-                                            f'<div style="font-size: 10px; color: #CBD5E1; font-family:'
+                                            f'<div style="font-size: 10.5px; color: #94A3B8; font-family:'
                                             f' monospace; margin-top: 1px;">({shift_hours})</div>'
                                             if shift_hours
                                             else ""
@@ -743,19 +794,20 @@ def render_user_home() -> None:
                                         clean_signout = str(r.get("Sign-Out", "--:--")).replace("\n", " ").strip()
                                         clean_next_signin = str(r.get("隔日Sign-In", "無記錄")).replace("\n", " ").strip()
 
-                                        card_html = f"""<div class="crew-card-top">
+                                        # 💡 視覺重設：極致排版 + 加粗放大時間資訊 (15px)
+                                        card_html = f"""<div class="crew-card-integrated">
 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-<div>
-<div class="compact-name" style="font-size: 12px; font-weight: 700; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_name} <span style="color:#94A3B8; font-size:10px;">({clean_id})</span></div>
-<div style="font-size: 11.5px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{clean_train}</div>
+<div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+<div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_name} <span style="color:#94A3B8; font-size:10px; font-weight:500;">({clean_id})</span></div>
+<div style="font-size: 12px; color: #38BDF8; font-weight: 800; margin-top: 2px;">班別：{clean_train}</div>
 </div>
-<div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
-<div style="font-size: 13.5px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">In {clean_signin}</div>
-<div style="font-size: 13.5px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Out {clean_signout}</div>
+<div style="text-align: right; display: flex; flex-direction: column; gap: 1px; shrink: 0;">
+<div style="font-size: 15px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">In {clean_signin}</div>
+<div style="font-size: 15px; font-weight: 900; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">Out {clean_signout}</div>
 {hours_display_html}
 </div>
 </div>
-<div style="display: flex; gap: 4px; align-items: center; justify-content: space-between; margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06);">
+<div style="display: flex; gap: 4px; align-items: center; justify-content: space-between; margin-top: 6px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.08);">
 <span style="font-size: 10px; color: #94A3B8; font-family: monospace;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
 {badges_html}
 </div>
@@ -820,14 +872,13 @@ def render_user_home() -> None:
         if "ex_search_performed" not in st.session_state:
             st.session_state["ex_search_performed"] = False
 
-        ex_c1, ex_c2, ex_c3 = st.columns(3)
-        with ex_c1:
-            selected_role = st.selectbox(
-                "選擇職位類別",
-                ["服勤員", "駕駛", "列車長"],
-                key="ex_role_select",
-                on_change=reset_ex_search,
-            )
+        # 💡 第一列：單獨放職位類別
+        selected_role = st.selectbox(
+            "選擇職位類別",
+            ["服勤員", "駕駛", "列車長"],
+            key="ex_role_select",
+            on_change=reset_ex_search,
+        )
 
         sample_path = active_files.get(selected_role, "")
 
@@ -849,7 +900,10 @@ def render_user_home() -> None:
                 if not date_cols:
                     st.warning("目前的班表檔案中無法解析出有效的日期欄位。")
                 else:
-                    with ex_c2:
+                    # 💡 第二列：休假日期與還假日期「左右並排在隔壁」
+                    ex_date_col1, ex_date_col2 = st.columns(2)
+
+                    with ex_date_col1:
                         target_date = st.selectbox(
                             "選擇想休假日期",
                             date_cols,
@@ -904,7 +958,7 @@ def render_user_home() -> None:
                         ):
                             st.session_state["ex_return_date"] = return_date_options[0]
 
-                        with ex_c3:
+                        with ex_date_col2:
                             return_date = st.selectbox(
                                 "選擇可還假日期",
                                 return_date_options,
@@ -1083,7 +1137,7 @@ def render_user_home() -> None:
 
                                 filtered_candidates.append(cand)
 
-                            # 💡 換假模式排序邏輯
+                            # 換假模式排序邏輯
                             if sort_order == "依同類班別末四碼數字":
                                 filtered_candidates = sorted(
                                     filtered_candidates,
@@ -1171,7 +1225,7 @@ def render_user_home() -> None:
                                                 cand_hours = cand.get("工時", "")
 
                                                 hours_display_html = (
-                                                    f'<div style="font-size: 10px; color: #CBD5E1; font-family:'
+                                                    f'<div style="font-size: 10.5px; color: #94A3B8; font-family:'
                                                     f' monospace; margin-top: 1px;">({cand_hours})</div>'
                                                     if cand_hours
                                                     else ""
@@ -1193,13 +1247,13 @@ def render_user_home() -> None:
                                                 )
 
                                                 card_class = (
-                                                    "crew-card-top-warn" if streak_cnt >= 6 else "crew-card-top"
+                                                    "crew-card-integrated-warn" if streak_cnt >= 6 else "crew-card-integrated"
                                                 )
                                                 warning_banner_html = ""
 
                                                 if streak_cnt >= 6:
-                                                    warning_banner_html = f"""<div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 8px; margin-top: 6px; font-size: 11px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
-注意：換假後當月連續上班達 {streak_cnt} 天，請留意出勤規範！
+                                                    warning_banner_html = f"""<div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 6px; padding: 4px 6px; margin-top: 4px; font-size: 10px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
+注意：連班達 {streak_cnt} 天！
 </div>"""
 
                                                 clean_cand_name = str(cand.get("姓名", "")).replace("\n", " ").strip()
@@ -1211,19 +1265,19 @@ def render_user_home() -> None:
 
                                                 card_html = f"""<div class="{card_class}">
 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-<div>
-<div class="compact-name" style="font-size: 12px; font-weight: 700; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_name} <span style="color:#94A3B8; font-size:10px;">({clean_cand_id})</span></div>
-<div style="font-size: 11px; color: #94A3B8; margin-top: 3px; font-family: monospace;">
-還休：<strong style="color: #94A3B8;">{clean_cand_return_date}</strong> ｜ 班別：<strong style="color:#38BDF8;">{clean_cand_return_train}</strong>
+<div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+<div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_name} <span style="color:#94A3B8; font-size:10px; font-weight:500;">({clean_cand_id})</span></div>
+<div style="font-size: 11px; color: #94A3B8; margin-top: 2px; font-family: monospace;">
+還休：<strong style="color: #CBD5E1;">{clean_cand_return_date}</strong> ｜ 班別：<strong style="color:#38BDF8;">{clean_cand_return_train}</strong>
 </div>
 </div>
-<div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
-<div style="font-size: 13.5px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">In {clean_cand_signin}</div>
-<div style="font-size: 13.5px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Out {clean_cand_signout}</div>
+<div style="text-align: right; display: flex; flex-direction: column; gap: 1px; shrink: 0;">
+<div style="font-size: 15px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">In {clean_cand_signin}</div>
+<div style="font-size: 15px; font-weight: 900; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">Out {clean_cand_signout}</div>
 {hours_display_html}
 </div>
 </div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.06);">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.08);">
 <span style="font-size: 10px; color: {streak_color}; font-weight: 700; font-family: monospace;">連續上班：{streak_cnt} 天</span>
 {badges_html}
 </div>
