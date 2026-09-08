@@ -171,55 +171,65 @@ def render_user_home() -> None:
         """
         <style>
         /* 強制手機與電腦皆維持完美雙排（覆蓋 Streamlit 手機預設的單排堆疊） */
-        @media (max-width: 768px) {
-            [data-testid="column"] {
-                width: 48% !important;
-                flex: 1 1 48% !important;
-                min-width: 48% !important;
-            }
+        [data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            gap: 6px !important;
+        }
+        [data-testid="column"] {
+            width: 50% !important;
+            flex: 1 1 50% !important;
+            min-width: 0 !important;
+        }
+
+        /* 清除欄位內部元素的預設垂直間距，讓卡片與按鈕緊密接合 */
+        [data-testid="column"] [data-testid="stVerticalBlock"] {
+            gap: 0px !important;
         }
 
         .crew-card-box {
             background: rgba(15, 23, 42, 0.85);
             border: 1px solid rgba(56, 189, 248, 0.4);
             border-bottom: none !important;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
-            border-bottom-left-radius: 0px !important;
-            border-bottom-right-radius: 0px !important;
-            padding: 10px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            border-bottom-left-radius: 0px;
+            border-bottom-right-radius: 0px;
+            padding: 9px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
         }
         .crew-card-box-warn {
             background: rgba(15, 23, 42, 0.85);
             border: 1px solid #F43F5E;
             border-bottom: none !important;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
-            border-bottom-left-radius: 0px !important;
-            border-bottom-right-radius: 0px !important;
-            padding: 10px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            border-bottom-left-radius: 0px;
+            border-bottom-right-radius: 0px;
+            padding: 9px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
         }
 
-        /* 讓 Streamlit 按鈕與上方方塊無縫接合，形成一體化外觀 */
+        /* 讓按鈕與上方方塊無縫接合，形成一體化外觀 */
         .stButton > button {
             border-top-left-radius: 0px !important;
             border-top-right-radius: 0px !important;
             border-bottom-left-radius: 10px !important;
             border-bottom-right-radius: 10px !important;
-            border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-top: none !important;
             background-color: rgba(30, 41, 59, 0.95) !important;
             color: #38BDF8 !important;
             font-weight: 700 !important;
-            font-size: 11.5px !important;
-            margin-top: -10px !important;
-            margin-bottom: 12px !important;
+            font-size: 11px !important;
+            min-height: 32px !important;
+            padding: 2px 6px !important;
+            margin-bottom: 8px !important;
             width: 100% !important;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
         }
         .stButton > button:hover {
-            background-color: rgba(56, 189, 248, 0.2) !important;
+            background-color: rgba(56, 189, 248, 0.25) !important;
             border-color: #38BDF8 !important;
             color: #F8FAFC !important;
         }
@@ -702,7 +712,7 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 💡 強制雙排網格迴圈（每行 2 個卡片，手機與電腦皆維持左右並排）
+                        # 💡 強制雙排網格迴圈（手機與電腦皆強制左右並排）
                         for i in range(0, len(filtered_results), 2):
                             card_cols = st.columns(2)
                             for j in range(2):
@@ -714,18 +724,18 @@ def render_user_home() -> None:
                                         shift_hours = r.get("工時", "")
 
                                         hours_display_html = (
-                                            f'<div style="font-size: 10.5px; color: #CBD5E1; font-family: monospace; margin-top: 1px; min-height: 14px;">({shift_hours})</div>'
+                                            f'<div style="font-size: 10px; color: #CBD5E1; font-family: monospace; margin-top: 1px; min-height: 14px;">({shift_hours})</div>'
                                             if shift_hours
-                                            else '<div style="font-size: 10.5px; color: transparent; min-height: 14px;">(佔位)</div>'
+                                            else '<div style="font-size: 10px; color: transparent; min-height: 14px;">(佔位)</div>'
                                         )
 
                                         badges_html = '<div style="display: flex; gap: 3px; align-items: center; flex-wrap: wrap;">'
                                         if r.get("非正線"):
-                                            badges_html += '<span style="background: rgba(234, 179, 8, 0.2); color: #FDE047; padding: 1.5px 4px; border-radius: 3px; font-size: 9px; font-weight: 700;">非正線</span>'
+                                            badges_html += '<span style="background: rgba(234, 179, 8, 0.2); color: #FDE047; padding: 1.5px 4px; border-radius: 3px; font-size: 8.5px; font-weight: 700;">非正線</span>'
                                         if r.get("長班"):
-                                            badges_html += '<span style="background: rgba(244, 63, 94, 0.2); color: #FDA4AF; padding: 1.5px 4px; border-radius: 3px; font-size: 9px; font-weight: 700;">長班</span>'
+                                            badges_html += '<span style="background: rgba(244, 63, 94, 0.2); color: #FDA4AF; padding: 1.5px 4px; border-radius: 3px; font-size: 8.5px; font-weight: 700;">長班</span>'
                                         if do_tag:
-                                            badges_html += f'<span style="background: rgba(56, 189, 248, 0.2); color: #7DD3FC; padding: 1.5px 4px; border-radius: 3px; font-size: 9px; font-weight: 700;">[{do_tag}]</span>'
+                                            badges_html += f'<span style="background: rgba(56, 189, 248, 0.2); color: #7DD3FC; padding: 1.5px 4px; border-radius: 3px; font-size: 8.5px; font-weight: 700;">[{do_tag}]</span>'
                                         badges_html += "</div>"
 
                                         clean_name = str(r.get("姓名", "")).replace("\n", " ").strip()
@@ -738,23 +748,23 @@ def render_user_home() -> None:
                                         card_html = f"""
                                         <div class="crew-card-box">
                                             <div>
-                                                <div style="font-size: 13px; font-weight: 700; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_name} <span style="color:#94A3B8; font-size:10.5px;">({clean_id})</span></div>
-                                                <div style="font-size: 11px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{clean_train}</div>
+                                                <div style="font-size: 12.5px; font-weight: 700; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_name} <span style="color:#94A3B8; font-size:10px;">({clean_id})</span></div>
+                                                <div style="font-size: 10.5px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{clean_train}</div>
                                             </div>
-                                            <div style="margin-top: 4px;">
-                                                <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace;">In {clean_signin}</div>
-                                                <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace;">Out {clean_signout}</div>
+                                            <div style="margin-top: 3px;">
+                                                <div style="font-size: 11.5px; font-weight: 900; color: #4ADE80; font-family: monospace;">In {clean_signin}</div>
+                                                <div style="font-size: 11.5px; font-weight: 900; color: #4ADE80; font-family: monospace;">Out {clean_signout}</div>
                                                 {hours_display_html}
                                             </div>
-                                            <div style="display: flex; gap: 4px; align-items: center; justify-content: space-between; margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.08);">
-                                                <span style="font-size: 9.5px; color: #94A3B8; font-family: monospace;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
+                                            <div style="display: flex; gap: 4px; align-items: center; justify-content: space-between; margin-top: 3px; padding-top: 3px; border-top: 1px solid rgba(255,255,255,0.08);">
+                                                <span style="font-size: 9px; color: #94A3B8; font-family: monospace;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
                                                 {badges_html}
                                             </div>
                                         </div>
                                         """
                                         st.markdown(card_html, unsafe_allow_html=True)
 
-                                        # 💡 底部融合按鈕（緊密接合於方塊格下方）
+                                        # 💡 底部融合按鈕（無縫接合）
                                         if st.button(f"檢視 {clean_name} 完整班表", key=f"win_btn_{clean_id}_{idx}", use_container_width=True):
                                             log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_name}({clean_id})")
                                             from modules.components import show_crew_schedule_modal
@@ -1143,7 +1153,7 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 💡 強制雙排網格迴圈（換假專用，手機與電腦皆左右並排）
+                                # 💡 強制雙排網格迴圈（換假專用，手機與電腦皆強制左右並排）
                                 for i in range(0, len(filtered_candidates), 2):
                                     card_cols = st.columns(2)
                                     for j in range(2):
@@ -1155,19 +1165,19 @@ def render_user_home() -> None:
                                                 cand_hours = cand.get("工時", "")
 
                                                 hours_display_html = (
-                                                    f'<div style="font-size: 10.5px; color: #CBD5E1; font-family: monospace; margin-top: 1px; min-height: 14px;">({cand_hours})</div>'
+                                                    f'<div style="font-size: 10px; color: #CBD5E1; font-family: monospace; margin-top: 1px; min-height: 14px;">({cand_hours})</div>'
                                                     if cand_hours
-                                                    else '<div style="font-size: 10.5px; color: transparent; min-height: 14px;">(佔位)</div>'
+                                                    else '<div style="font-size: 10px; color: transparent; min-height: 14px;">(佔位)</div>'
                                                 )
 
                                                 badges_html = '<div style="display: flex; gap: 3px; align-items: center; flex-wrap: wrap;">'
                                                 if cand.get("非正線"):
-                                                    badges_html += '<span style="background: rgba(234, 179, 8, 0.2); color: #FDE047; padding: 1.5px 4px; border-radius: 3px; font-size: 9px; font-weight: 700;">非正線</span>'
+                                                    badges_html += '<span style="background: rgba(234, 179, 8, 0.2); color: #FDE047; padding: 1.5px 4px; border-radius: 3px; font-size: 8.5px; font-weight: 700;">非正線</span>'
                                                 if cand.get("長班"):
-                                                    badges_html += '<span style="background: rgba(244, 63, 94, 0.2); color: #FDA4AF; padding: 1.5px 4px; border-radius: 3px; font-size: 9px; font-weight: 700;">長班</span>'
+                                                    badges_html += '<span style="background: rgba(244, 63, 94, 0.2); color: #FDA4AF; padding: 1.5px 4px; border-radius: 3px; font-size: 8.5px; font-weight: 700;">長班</span>'
                                                 if cand.get("有DO2W標記") or do_tag:
                                                     tag_text = do_tag if do_tag else "DO2W"
-                                                    badges_html += f'<span style="background: rgba(56, 189, 248, 0.2); color: #7DD3FC; padding: 1.5px 4px; border-radius: 3px; font-size: 9px; font-weight: 700;">[{tag_text}]</span>'
+                                                    badges_html += f'<span style="background: rgba(56, 189, 248, 0.2); color: #7DD3FC; padding: 1.5px 4px; border-radius: 3px; font-size: 8.5px; font-weight: 700;">[{tag_text}]</span>'
                                                 badges_html += "</div>"
 
                                                 streak_cnt = cand.get("連續上班天數", 0)
@@ -1176,8 +1186,8 @@ def render_user_home() -> None:
                                                 warning_banner_html = ""
 
                                                 if streak_cnt >= 6:
-                                                    warning_banner_html = f"""<div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 5px; padding: 3px 6px; margin-top: 4px; font-size: 10px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
-注意：連班達 {streak_cnt} 天！
+                                                    warning_banner_html = f"""<div style="background: rgba(225, 29, 72, 0.2); border: 1px solid #F43F5E; border-radius: 4px; padding: 2px 4px; margin-top: 3px; font-size: 9.5px; color: #FDA4AF; font-weight: 700; font-family: monospace;">
+注意：連班 {streak_cnt} 天！
 </div>"""
 
                                                 clean_cand_name = str(cand.get("姓名", "")).replace("\n", " ").strip()
@@ -1190,18 +1200,18 @@ def render_user_home() -> None:
                                                 card_html = f"""
                                                 <div class="{box_class}">
                                                     <div>
-                                                        <div style="font-size: 13px; font-weight: 700; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_name} <span style="color:#94A3B8; font-size:10.5px;">({clean_cand_id})</span></div>
-                                                        <div style="font-size: 11px; color: #94A3B8; margin-top: 2px; font-family: monospace;">
-                                                            還休：<strong style="color: #CBD5E1;">{clean_cand_return_date}</strong> ｜ 班別：<strong style="color:#38BDF8;">{clean_cand_return_train}</strong>
+                                                        <div style="font-size: 12.5px; font-weight: 700; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_name} <span style="color:#94A3B8; font-size:10px;">({clean_cand_id})</span></div>
+                                                        <div style="font-size: 10.5px; color: #94A3B8; margin-top: 2px; font-family: monospace;">
+                                                            還休: <strong style="color: #CBD5E1;">{clean_cand_return_date}</strong> ｜ 班: <strong style="color:#38BDF8;">{clean_cand_return_train}</strong>
                                                         </div>
                                                     </div>
-                                                    <div style="margin-top: 4px;">
-                                                        <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace;">In {clean_cand_signin}</div>
-                                                        <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace;">Out {clean_cand_signout}</div>
+                                                    <div style="margin-top: 3px;">
+                                                        <div style="font-size: 11.5px; font-weight: 900; color: #4ADE80; font-family: monospace;">In {clean_cand_signin}</div>
+                                                        <div style="font-size: 11.5px; font-weight: 900; color: #4ADE80; font-family: monospace;">Out {clean_cand_signout}</div>
                                                         {hours_display_html}
                                                     </div>
-                                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.08);">
-                                                        <span style="font-size: 10px; color: {streak_color}; font-weight: 700; font-family: monospace;">連班: {streak_cnt}天</span>
+                                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px; padding-top: 3px; border-top: 1px solid rgba(255,255,255,0.08);">
+                                                        <span style="font-size: 9px; color: {streak_color}; font-weight: 700; font-family: monospace;">連班: {streak_cnt}天</span>
                                                         {badges_html}
                                                     </div>
                                                     {warning_banner_html}
