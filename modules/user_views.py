@@ -180,8 +180,9 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 無需 :has() 選擇器，通用覆蓋 Streamlit 手機端自動疊成 100% 的預設樣式，強制雙欄 50% 並排 */
-        div[data-testid="stHorizontalBlock"] {
+        /* 深層覆蓋 Streamlit 在手機螢幕下的單欄強制排版，實現 50% 橫向雙欄 */
+        [data-testid="stHorizontalBlock"]:has(.crew-card-top),
+        [data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -189,10 +190,12 @@ def render_user_home() -> None:
             gap: 6px !important;
         }
 
-        div[data-testid="column"] {
+        [data-testid="stHorizontalBlock"]:has(.crew-card-top) > div,
+        [data-testid="stHorizontalBlock"]:has(.crew-card-top-warn) > div {
             width: 50% !important;
-            min-width: 0 !important;
-            flex: 1 1 0% !important;
+            min-width: 50% !important;
+            max-width: 50% !important;
+            flex: 1 1 50% !important;
         }
 
         .crew-card-top {
@@ -201,8 +204,8 @@ def render_user_home() -> None:
             border-bottom: none !important;
             border-top-left-radius: 10px !important;
             border-top-right-radius: 10px !important;
-            padding: 8px 10px;
-            min-height: 120px;
+            padding: 8px 8px;
+            min-height: 125px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -214,8 +217,8 @@ def render_user_home() -> None:
             border-bottom: none !important;
             border-top-left-radius: 10px !important;
             border-top-right-radius: 10px !important;
-            padding: 8px 10px;
-            min-height: 120px;
+            padding: 8px 8px;
+            min-height: 125px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -686,7 +689,10 @@ def render_user_home() -> None:
                             continue
                         filtered_results.append(r)
 
-                    # 💡 換班排序：先依「班別末四碼數字 (2001 系列集中)」➔ 再依「Sign-In 時間」➔ 最後依「完整班別名稱」
+                    # 💡 換班全新精準排序：
+                    # 第一順位：班別末四碼數字 (2001 系列集中)
+                    # 第二順位：Sign-In 報到時間 (由早至晚)
+                    # 第三順位：完整班別名稱
                     filtered_results = sorted(
                         filtered_results,
                         key=lambda x: (
@@ -736,7 +742,7 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 💡 每 2 個卡片一組獨立成列，手機端亦會強制 50% 橫向並排
+                        # 💡 每 2 個卡片組成一列，實現橫向 50% 強制並排
                         for i in range(0, len(filtered_results), 2):
                             card_cols = st.columns(2)
                             for j in range(2):
@@ -777,8 +783,8 @@ def render_user_home() -> None:
 <div style="font-size: 11.5px; color: #38BDF8; font-weight: 700; margin-top: 2px;">班別：{clean_train}</div>
 </div>
 <div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
-<div style="font-size: 14px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">In {clean_signin}</div>
-<div style="font-size: 14px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Out {clean_signout}</div>
+<div style="font-size: 13.5px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">In {clean_signin}</div>
+<div style="font-size: 13.5px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Out {clean_signout}</div>
 {hours_display_html}
 </div>
 </div>
@@ -1187,7 +1193,7 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 💡 每 2 個卡片一組獨立成列，強制左右 50% 並排
+                                # 💡 每 2 個卡片一組獨立成列，手機端亦會強制 50% 橫向並排
                                 for i in range(0, len(filtered_candidates), 2):
                                     card_cols = st.columns(2)
                                     for j in range(2):
@@ -1246,8 +1252,8 @@ def render_user_home() -> None:
 </div>
 </div>
 <div style="text-align: right; display: flex; flex-direction: column; gap: 2px;">
-<div style="font-size: 14px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">In {clean_cand_signin}</div>
-<div style="font-size: 14px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Out {clean_cand_signout}</div>
+<div style="font-size: 13.5px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">In {clean_cand_signin}</div>
+<div style="font-size: 13.5px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px;">Out {clean_cand_signout}</div>
 {hours_display_html}
 </div>
 </div>
