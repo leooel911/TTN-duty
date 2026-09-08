@@ -180,28 +180,7 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 全平台（iOS/LINE/Android/Desktop）統一強效 50% 雙欄並排 CSS */
-        div[data-testid="stHorizontalBlock"],
-        div.stHorizontalBlock,
-        div[class*="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            width: 100% !important;
-            gap: 6px !important;
-        }
-
-        div[data-testid="stColumn"],
-        div[data-testid="column"],
-        div.stColumn,
-        div[class*="stColumn"] {
-            width: 50% !important;
-            min-width: 50% !important;
-            max-width: 50% !important;
-            flex: 1 1 50% !important;
-        }
-
-        /* 融合一體化卡片主體外框 */
+        /* 1. 卡片上方主體框 */
         .crew-card-integrated {
             background: rgba(15, 23, 42, 0.85);
             border: 1px solid rgba(56, 189, 248, 0.35) !important;
@@ -232,43 +211,33 @@ def render_user_home() -> None:
             box-shadow: 0 4px 12px rgba(244, 63, 94, 0.15);
         }
 
-        /* 完全無縫縫合卡片底部的「檢視完整班表」按鈕 */
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button,
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
+        /* 2. 利用萬能相容的 :nth-child(2) 精準抓取卡片正下方的 Streamlit 按鈕進行完美縫合 */
+        div[data-testid="stColumn"] > div[data-testid="stElementContainer"]:nth-child(2) button {
             border-top-left-radius: 0px !important;
             border-top-right-radius: 0px !important;
             border-bottom-left-radius: 12px !important;
             border-bottom-right-radius: 12px !important;
             margin-top: -16px !important;
             margin-bottom: 8px !important;
-            box-shadow: none !important;
+            width: 100% !important;
+            border: 1px solid rgba(56, 189, 248, 0.35) !important;
+            border-top: 1px dashed rgba(56, 189, 248, 0.25) !important;
+            background-color: rgba(15, 23, 42, 0.95) !important;
+            color: #38BDF8 !important;
             font-weight: 700 !important;
             font-size: 11.5px !important;
             padding: 5px 2px !important;
             letter-spacing: 0.3px !important;
+            box-shadow: none !important;
         }
 
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button {
-            border: 1px solid rgba(56, 189, 248, 0.35) !important;
-            border-top: 1px dashed rgba(56, 189, 248, 0.2) !important;
-            background-color: rgba(15, 23, 42, 0.95) !important;
-            color: #38BDF8 !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
-            border: 1px solid #F43F5E !important;
-            border-top: 1px dashed rgba(244, 63, 94, 0.3) !important;
-            background-color: rgba(15, 23, 42, 0.95) !important;
-            color: #FDA4AF !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated):hover + div[data-testid="stElementContainer"] button,
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn):hover + div[data-testid="stElementContainer"] button {
+        div[data-testid="stColumn"] > div[data-testid="stElementContainer"]:nth-child(2) button:hover {
             background-color: rgba(30, 41, 59, 0.95) !important;
             color: #38BDF8 !important;
+            border-color: rgba(56, 189, 248, 0.6) !important;
         }
 
-        /* 標籤微調 */
+        /* 3. 標籤與徽章精細化樣式 */
         .badge-group {
             display: flex;
             gap: 3px;
@@ -760,7 +729,7 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 每 2 個卡片一組進行獨立橫向雙欄佈局
+                        # 每 2 個卡片一組進行雙欄橫向佈局
                         for i in range(0, len(filtered_results), 2):
                             card_cols = st.columns(2)
                             for j in range(2):
@@ -794,7 +763,6 @@ def render_user_home() -> None:
                                         clean_signout = str(r.get("Sign-Out", "--:--")).replace("\n", " ").strip()
                                         clean_next_signin = str(r.get("隔日Sign-In", "無記錄")).replace("\n", " ").strip()
 
-                                        # 💡 視覺重設：極致排版 + 加粗放大時間資訊 (15px)
                                         card_html = f"""<div class="crew-card-integrated">
 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
 <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
@@ -872,7 +840,7 @@ def render_user_home() -> None:
         if "ex_search_performed" not in st.session_state:
             st.session_state["ex_search_performed"] = False
 
-        # 💡 第一列：單獨放職位類別
+        # 職位類別選單
         selected_role = st.selectbox(
             "選擇職位類別",
             ["服勤員", "駕駛", "列車長"],
@@ -900,7 +868,7 @@ def render_user_home() -> None:
                 if not date_cols:
                     st.warning("目前的班表檔案中無法解析出有效的日期欄位。")
                 else:
-                    # 💡 第二列：休假日期與還假日期「左右並排在隔壁」
+                    # 想休與還休選單：完美左右並排在隔壁
                     ex_date_col1, ex_date_col2 = st.columns(2)
 
                     with ex_date_col1:
@@ -1273,7 +1241,7 @@ def render_user_home() -> None:
 </div>
 <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; shrink: 0;">
 <div style="font-size: 15px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">In {clean_cand_signin}</div>
-<div style="font-size: 15px; font-weight: 900; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">Out {clean_cand_signout}</div>
+<div style="font-size: 15px; font-weight: 900; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">Out {clean_signout}</div>
 {hours_display_html}
 </div>
 </div>
