@@ -1,14 +1,3 @@
-已為您將所有討論重點（包括 RWD 響應式佈局、換班模式的末四碼數字排序、換假模式預設數字排序與模組化清理）整合完成，以下是最終完整的 modules/user_views.py 程式碼：
-整合調整重點摘要：
- * Mobile-First RWD 響應式方框佈局：
-   * 手機/小螢幕：滿幅單欄（100% 寬度）向下排列，確保時間數字 (Sign-In/Sign-Out) 與班別資訊放大清晰，徹底防呆不擠壓。
-   * 平板/桌面大螢幕 (\ge 768\text{px})：自動切換為雙欄並排（50% 寬度），充分利用寬螢幕視域空間。
- * 換班模式排序修正：
-   * 排序鍵調校為：1. Sign-In 時間 ➔ 2. 班別末四碼數字 (get_shift_last4_num) ➔ 3. 班別名稱。同報到時間者（如 05:26），2001 系列班別（NF2001, NG2001, NH2001）會自動聚在一起。
- * 換假模式預設排序：
-   * 預設為選單第一順位 依同類班別末四碼數字，內部優先提取還假車次中的數字末四碼進行排序。
- * 程式碼結構優化：
-   * 將 get_shift_last4_num 提升為模組頂層共用函式，避免重複定義。
 import os
 import re
 from datetime import date, timedelta
@@ -1304,4 +1293,3 @@ def render_user_home() -> None:
                                 )
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
-
