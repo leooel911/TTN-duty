@@ -42,45 +42,71 @@ def safe_read_excel(file_path: str, header: int = 3) -> pd.DataFrame:
 
 
 def parse_cell(cell_value: Any) -> Dict[str, Any]:
-    """解析乘務大表個別儲存格 (相容單行連貫時間與多行獨立時間)"""
+    """解析乘務大表個別儲存格 (依 Excel 原始分行結構對位)"""
     val_str = str(cell_value).strip() if pd.notna(cell_value) else ""
     if not val_str or val_str.lower() in ["nan", "none", ""]:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
     lines = [l.strip() for l in val_str.split("\n") if l.strip()]
-    train_code = lines[0] if lines else "無"
+    if not lines:
+        return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
-    # 1. 搜尋儲存格內所有符合 HH:MM 或 H:MM 格式的時間字串
-    all_times = re.findall(r"\b\d{1,2}:\d{2}\b", val_str)
+    # 1. 休假判定
+    first_line = lines[0]
+    first_upper = first_line.upper()
+    if any(k in first_upper for k in ["DO", "D2W", "D1", "D2", "PAY", "FAC", "休"]):
+        return {
+            "train": first_line,
+            "start": None,
+            "end": None,
+            "hours": None,
+            "note": " ".join(lines[1:]) if len(lines) > 1 else "",
+        }
 
+    # 2. 正確維持第 1 行為班別 / 車次代碼
+    train_code = first_line
     start_time, end_time, hours_str = None, None, None
 
-    # 2. 優先嘗試比對連貫時間對 (支援 -、~、空格或換行符號)
-    time_pair_match = re.search(r"(\d{1,2}:\d{2})\s*[\-~～\s\n\t]+\s*(\d{1,2}:\d{2})", val_str)
-    if time_pair_match:
-        start_time = time_pair_match.group(1)
-        end_time = time_pair_match.group(2)
-    elif len(all_times) >= 2:
-        # 多行格式：第 1 個時間為簽到 (In)，第 2 個時間為簽退 (Out)
-        start_time = all_times[0]
-        end_time = all_times[1]
-    elif len(all_times) == 1:
-        start_time = all_times[0]
+    # 提取第 2 行以後的所有時間字串 (HH:MM / H:MM)
+    sub_lines = lines[1:] if len(lines) > 1 else lines
+    time_matches = []
+    for sl in sub_lines:
+        found = re.findall(r"\b\d{1,2}:\d{2}\b", sl)
+        if found:
+            time_matches.extend(found)
 
-    # 3. 解析預估工時
+    # 3. 依據提取到的時間數量對應 簽到 / 簽退 / 工時
+    if len(time_matches) >= 3:
+        # 第 2 行簽到、第 3 行簽退、第 4 行工時
+        start_time = time_matches[0]
+        end_time = time_matches[1]
+        hours_str = time_matches[2]
+    elif len(time_matches) == 2:
+        start_time = time_matches[0]
+        t2 = time_matches[1]
+        # 判斷第二個數字是「簽退時間」還是「總工時」
+        t2_h = int(t2.split(":")[0])
+        if t2_h <= 12 and ("H" in val_str.upper() or len(sub_lines) == 2):
+            # 為工時，自動推算簽退時間 (Out)
+            hours_str = t2
+            try:
+                sh, sm = map(int, start_time.split(":"))
+                hh, hm = map(int, hours_str.split(":"))
+                tot_m = (sh * 60 + sm) + (hh * 60 + hm)
+                end_time = f"{(tot_m // 60) % 24:02d}:{tot_m % 60:02d}"
+            except Exception:
+                end_time = None
+        else:
+            end_time = t2
+    elif len(time_matches) == 1:
+        start_time = time_matches[0]
+
+    # 顯式工時標籤二次校正 (例如 "(8:00)" 或 "8.0h")
     hours_match = re.search(r"(\d+(?:\.\d+)?(?:h|m|小時|分)+)", val_str, re.IGNORECASE)
     if hours_match:
         hours_str = hours_match.group(1)
-    elif len(all_times) >= 3:
-        # 當存在 3 個時間（如：05:51, 13:51, 8:00），第 3 個時間即為總工時
-        hours_str = all_times[2]
-    elif "(" in val_str and ")" in val_str:
-        paren_match = re.search(r"\((.*?)\)", val_str)
-        if paren_match:
-            hours_str = paren_match.group(1).strip()
 
-    note_lines = lines[1:] if len(lines) > 1 else []
-    note_str = " ".join(note_lines)
+    note_str = " ".join(lines[1:]) if len(lines) > 1 else ""
 
     return {
         "train": train_code,
