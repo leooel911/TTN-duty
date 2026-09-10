@@ -54,57 +54,55 @@ def clean_time_str(time_str: Optional[str]) -> Optional[str]:
 
 
 def parse_cell(cell_value: Any) -> Dict[str, Any]:
-    """解析 Excel 儲存格資料"""
+    """解析乘務大表個別儲存格 (強健處理隱藏字元、全角冒號，並強制時間補零為 HH:MM)"""
     if pd.isna(cell_value) or cell_value is None:
-        return {"train": "", "start": "", "end": "", "hours": "", "note": ""}
+        return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
-    val_str = str(cell_value).replace("\r", "").replace("\xa0", " ").replace("：", ":").strip()
-    if not val_str:
-        return {"train": "", "start": "", "end": "", "hours": "", "note": ""}
+    val_str = (
+        str(cell_value)
+        .replace("\r", "")
+        .replace("\xa0", " ")
+        .replace("：", ":")
+        .strip()
+    )
+    if not val_str or val_str.lower() in ["nan", "none", ""]:
+        return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
     lines = [l.strip() for l in val_str.split("\n") if l.strip()]
+    if not lines:
+        return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
-    # 1. 抓取所有 HH:MM 時間格式並進行補零
+    # 1. 抓取所有符合時間格式 (H:MM 或 HH:MM) 的字串並統一補零
     raw_times = re.findall(r"\b\d{1,2}:\d{2}\b", val_str)
     all_times = [f"{int(tm.split(':')[0]):02d}:{tm.split(':')[1]}" for tm in raw_times]
 
+    # 2. 分離非時間欄位 (車次班號、假別等)
+    non_time_lines = [l for l in lines if not re.search(r"\b\d{1,2}:\d{2}\b", l)]
+
+    # 3. 若儲存格內完全無時間列 (如單純休假/請假文字)
+    if not all_times:
+        first_line = lines[0]
+        note_lines = [l for l in lines[1:] if not re.search(r"\b\d{1,2}:\d{2}\b", l)]
+        return {
+            "train": first_line,
+            "start": None,
+            "end": None,
+            "hours": None,
+            "note": " ".join(note_lines),
+        }
+
+    # 4. 按順序提取 Sign-In, Sign-Out 與工時
     start_time = all_times[0] if len(all_times) >= 1 else None
     end_time = all_times[1] if len(all_times) >= 2 else None
     hours_raw = all_times[2] if len(all_times) >= 3 else None
 
-    # 格式化工時顯示 (如 9h35m)
+    # 格式化工時顯示 (例如 9h35m)
     hours_str = ""
     if hours_raw:
         h, m = map(int, hours_raw.split(":"))
         hours_str = f"{h}h{m:02d}m"
 
-    # 2. 判斷車次/班別 (取第一列非時間格式之文字)
-    non_time_lines = [l for l in lines if not re.search(r"\b\d{1,2}:\d{2}\b", l)]
-    train_code = non_time_lines[0] if non_time_lines else "無"
-
-    # 3. 備註 (note) 解析：直接過濾車次與所有符合時間格式 (H:MM/HH:MM) 的字串
-    note_lines = [
-        l for l in lines 
-        if l != train_code 
-        and not re.search(r"\b\d{1,2}:\d{2}\b", l)
-    ]
-    note_str = " ".join(note_lines)
-
-    return {
-        "train": train_code,
-        "start": start_time if start_time else "",
-        "end": end_time if end_time else "",
-        "hours": hours_str,
-        "note": note_str,
-    }
-        }
-
-    # 5. 時間列精準按順序對位
-    start_time = all_times[0] if len(all_times) >= 1 else None
-    end_time = all_times[1] if len(all_times) >= 2 else None
-    hours_str = all_times[2] if len(all_times) >= 3 else None
-
-    # 6. 車次班號 (train_code) 解析
+    # 5. 車次班號 (train_code) 解析
     train_code = "無"
     if non_time_lines:
         real_trains = [
@@ -116,7 +114,12 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
         else:
             train_code = non_time_lines[0]
 
-    note_str = " ".join([l for l in lines if l not in [train_code, start_time, end_time, hours_str]])
+    # 6. 備註解析：徹底過濾車次與所有時間格式 (如 5:26 或 9:35)
+    note_lines = [
+        l for l in lines
+        if l != train_code and not re.search(r"\b\d{1,2}:\d{2}\b", l)
+    ]
+    note_str = " ".join(note_lines)
 
     return {
         "train": train_code,
@@ -163,10 +166,21 @@ def is_overtime(hours_str: Optional[str], train_code: str = "", note: str = "") 
 
 
 def is_town_shift(train_code: str, note: str = "") -> bool:
-    """判斷是否為非正線勤務 (TOWN, STD, DS, )"""
-    tr = str(train_code).upper()
-    nt = str(note).upper()
-    keys = ["TOWN", "STD", "TTN", "DTT", "OGT", "OGC", "FAC", "DS", "H9", "WRSL"]
+    """
+    判斷是否為非正線勤務：
+    1. 只要班號不是以 'N' 開頭（如 TOWN, STD, DS, 庫備等）即視為非正線
+    2. 或包含特定備勤關鍵字
+    """
+    tr = str(train_code).strip().upper()
+    nt = str(note).strip().upper()
+
+    if not tr or tr in ["無", "NAN", "NONE", "休", "DO"]:
+        return False
+
+    if not tr.startswith("N"):
+        return True
+
+    keys = ["TOWN", "STD", "DS", "駐廠", "預備", "庫", "備"]
     return any(k in tr or k in nt for k in keys)
 
 
