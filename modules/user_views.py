@@ -179,7 +179,7 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 1. 徹底鎖死視口，禁止左右溢出 */
+        /* 1. 全域鎖死視口，禁止任何橫向溢出 */
         html, body, .stApp, [data-testid="stAppViewContainer"], .main,
         [data-testid="stMainBlockContainer"], .block-container {
             max-width: 100vw !important;
@@ -188,12 +188,12 @@ def render_user_home() -> None:
         }
 
         [data-testid="stMainBlockContainer"], .block-container {
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-            padding-top: 0.8rem !important;
+            padding-left: 0.4rem !important;
+            padding-right: 0.4rem !important;
+            padding-top: 0.6rem !important;
         }
 
-        /* 2. 雙排直欄 (2 Columns) 強制約束於 100% 寬度不溢出 */
+        /* 2. 核心修正：強制所有 Streamlit 橫向雙欄容器絕對 50% 等寬，禁止伸縮擠壓 */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -209,22 +209,29 @@ def render_user_home() -> None:
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
             width: calc(50% - 3px) !important;
             max-width: calc(50% - 3px) !important;
-            min-width: 0 !important; /* 防爆版核心：強制子元素不撐大欄位 */
-            flex: 1 1 calc(50% - 3px) !important;
+            min-width: 0 !important;
+            flex: 0 0 calc(50% - 3px) !important; /* 鎖死 50% 不許伸展 */
             box-sizing: border-box !important;
             overflow: hidden !important;
         }
 
-        /* 3. 高質感 Mobile 卡片本體 */
+        /* 3. 強制卡片欄位內部所有元件具備 min-width: 0 以實現 Ellipsis 省略 */
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) *,
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) * {
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        /* 4. 高質感 Mobile 卡片本體 */
         .crew-card-integrated, .crew-card-integrated-warn {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
             border: 1.2px solid rgba(56, 189, 248, 0.45) !important;
             border-bottom: none !important;
-            border-top-left-radius: 10px !important;
-            border-top-right-radius: 10px !important;
+            border-top-left-radius: 8px !important;
+            border-top-right-radius: 8px !important;
             border-bottom-left-radius: 0px !important;
             border-bottom-right-radius: 0px !important;
-            padding: 8px 8px 6px 8px !important;
+            padding: 6px 6px 4px 6px !important;
             box-sizing: border-box !important;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             width: 100% !important;
@@ -236,7 +243,7 @@ def render_user_home() -> None:
             box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25);
         }
 
-        /* 4. 下方按鈕 100% 滿版無縫熔合 */
+        /* 5. 下方按鈕無縫熔合，保護完整文字不破壞版面，過長時於內部 ... 省略 */
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"],
         div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {
             width: 100% !important;
@@ -248,22 +255,34 @@ def render_user_home() -> None:
         div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
             width: 100% !important;
             min-width: 0 !important;
+            max-width: 100% !important;
             box-sizing: border-box !important;
             border-top-left-radius: 0px !important;
             border-top-right-radius: 0px !important;
-            border-bottom-left-radius: 10px !important;
-            border-bottom-right-radius: 10px !important;
+            border-bottom-left-radius: 8px !important;
+            border-bottom-right-radius: 8px !important;
             margin-top: -16px !important;
             margin-bottom: 8px !important;
             box-shadow: none !important;
             font-weight: 700 !important;
-            font-size: 11.5px !important;
-            padding: 4px 2px !important;
-            letter-spacing: 0px !important;
+            padding: 3px 2px !important;
+            letter-spacing: -0.3px !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
             transition: all 0.2s ease-in-out !important;
+        }
+
+        /* 針對 Streamlit 按鈕內層 <p> 標籤鎖死字體與 Ellipsis */
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button p,
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button p {
+            font-size: 10.5px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            width: 100% !important;
+            margin: 0 !important;
+            line-height: 1.2 !important;
         }
 
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button {
@@ -280,22 +299,16 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated):hover + div[data-testid="stElementContainer"] button,
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn):hover + div[data-testid="stElementContainer"] button {
-            background-color: rgba(30, 41, 59, 0.95) !important;
-            color: #38BDF8 !important;
-        }
-
-        /* 5. 標籤微調 */
+        /* 6. 標籤列 */
         .badge-group {
             display: flex;
-            gap: 3px;
+            gap: 2px;
             align-items: center;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
         }
-        .non-line-badge { font-size: 9px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 4px; border-radius: 4px; white-space: nowrap; }
-        .long-badge { font-size: 9px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 4px; border-radius: 4px; white-space: nowrap; }
-        .do2w-badge { font-size: 9px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 4px; border-radius: 4px; white-space: nowrap; }
+        .non-line-badge { font-size: 8.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+        .long-badge { font-size: 8.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+        .do2w-badge { font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -803,17 +816,17 @@ def render_user_home() -> None:
                                     clean_next_signin = str(r.get("隔日Sign-In", "無")).replace("\n", " ").strip()
 
                                     card_html = f"""<div class="crew-card-integrated">
-<div style="display: flex; justify-content: space-between; align-items: baseline; min-width: 0;">
-    <div style="font-size: 13.5px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-        {clean_name} <span style="color:#94A3B8; font-size:10px; font-weight:500;">({clean_id})</span>
+<div style="display: flex; justify-content: space-between; align-items: baseline; min-width: 0; width: 100%;">
+    <div style="font-size: 12.5px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+        {clean_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_id})</span>
     </div>
 </div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.12);">
-    <span style="font-size: 12.5px; color: #38BDF8; font-weight: 800;">{clean_train}</span>
-    <span style="font-size: 11.5px; font-weight: 800; color: #4ADE80; font-family: monospace;">{clean_signin} <span style="color:#38BDF8; font-size:10px;">➔</span> {clean_signout}</span>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px; padding-top: 3px; border-top: 1px dashed rgba(255,255,255,0.12); width: 100%;">
+    <span style="font-size: 12px; color: #38BDF8; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_train}</span>
+    <span style="font-size: 10.5px; font-weight: 800; color: #4ADE80; font-family: monospace; white-space: nowrap;">{clean_signin}➔{clean_signout}</span>
 </div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.08);">
-    <span style="font-size: 10px; color: #94A3B8; font-family: monospace;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px; padding-top: 3px; border-top: 1px solid rgba(255,255,255,0.08); width: 100%;">
+    <span style="font-size: 9.5px; color: #94A3B8; font-family: monospace; white-space: nowrap;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
     {badges_html}
 </div>
 </div>"""
@@ -821,7 +834,7 @@ def render_user_home() -> None:
                                     st.markdown(card_html, unsafe_allow_html=True)
 
                                     if st.button(
-                                        f"完整班表 ➔",
+                                        f"檢視 {clean_name} 完整班表 ➔",
                                         key=f"win_btn_{clean_id}_{i+idx_in_batch}",
                                         use_container_width=True,
                                     ):
@@ -1247,19 +1260,19 @@ def render_user_home() -> None:
                                             clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
 
                                             card_html = f"""<div class="{card_class}">
-<div style="display: flex; justify-content: space-between; align-items: baseline; min-width: 0;">
-    <div style="font-size: 13.5px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-        {clean_cand_name} <span style="color:#94A3B8; font-size:10px; font-weight:500;">({clean_cand_id})</span>
+<div style="display: flex; justify-content: space-between; align-items: baseline; min-width: 0; width: 100%;">
+    <div style="font-size: 12.5px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+        {clean_cand_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_cand_id})</span>
     </div>
 </div>
-<div style="font-size: 10.5px; color: #94A3B8; margin-top: 2px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+<div style="font-size: 10px; color: #94A3B8; margin-top: 2px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
     還休:{clean_cand_return_date} ｜ <strong style="color:#38BDF8;">{clean_cand_return_train}</strong>
 </div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.12);">
-    <span style="font-size: 10px; color: {streak_color}; font-weight: 700; font-family: monospace;">連班:{streak_cnt}天</span>
-    <span style="font-size: 11.5px; font-weight: 800; color: #4ADE80; font-family: monospace;">{clean_cand_signin} <span style="color:#38BDF8; font-size:10px;">➔</span> {clean_cand_signout}</span>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px; padding-top: 3px; border-top: 1px dashed rgba(255,255,255,0.12); width: 100%;">
+    <span style="font-size: 9.5px; color: {streak_color}; font-weight: 700; font-family: monospace; white-space: nowrap;">連班:{streak_cnt}天</span>
+    <span style="font-size: 10.5px; font-weight: 800; color: #4ADE80; font-family: monospace; white-space: nowrap;">{clean_cand_signin}➔{clean_cand_signout}</span>
 </div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px; width: 100%;">
     {badges_html}
 </div>
 </div>"""
@@ -1267,7 +1280,7 @@ def render_user_home() -> None:
                                             st.markdown(card_html, unsafe_allow_html=True)
 
                                             if st.button(
-                                                f"完整班表 ➔",
+                                                f"檢視 {clean_cand_name} 完整班表 ➔",
                                                 key=f"ex_btn_{clean_cand_id}_{i+idx_in_batch}",
                                                 use_container_width=True,
                                             ):
