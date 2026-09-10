@@ -1,12 +1,18 @@
-================================================
 import io
 import os
+import sys
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import matplotlib
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
+from matplotlib.patches import FancyBboxPatch
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 from config import (
     C_DO_BG,
     C_DO_TXT,
@@ -26,8 +32,6 @@ from config import (
     TITLE,
     TRANSPORT_PERIODS,
 )
-from matplotlib.patches import FancyBboxPatch
-from modules.services import load_system_config
 from modules.utils import is_overtime, is_town_shift, parse_cell
 
 matplotlib.use("Agg")
@@ -35,7 +39,7 @@ matplotlib.use("Agg")
 
 def setup_font() -> Optional[fm.FontProperties]:
     """設定並載入中文字型"""
-    font_path = "NotoSansTC.ttf"
+    font_path = os.path.join(BASE_DIR, "NotoSansTC.ttf")
     if os.path.exists(font_path):
         fm.fontManager.addfont(font_path)
         return fm.FontProperties(fname=font_path)
@@ -106,13 +110,13 @@ def render_schedule_figure(
     badge_title: str = "Producer | C.L.F",
 ) -> io.BytesIO:
     """渲染繪製高解析度個人月班表圖檔並回傳影像 BytesIO Buffer"""
-    # 修正：傳入 start_dt.year 動態綁定疏運年分
+    from modules.services import load_system_config
+
     active_transport = parse_transport_periods(
         TRANSPORT_PERIODS, year=start_dt.year if start_dt else 2026
     )
     font_prop = setup_font()
 
-    # 載入動態設定之空值標籤
     sys_cfg = load_system_config()
     target_empty_label = sys_cfg.get("empty_shift_label", "--")
 
@@ -155,7 +159,6 @@ def render_schedule_figure(
         fontproperties=fp(16),
     )
 
-    # 邊界防護：避免 dates 為空時發生 IndexError
     d_start_str = dates[0] if dates else "--"
     d_end_str = dates[-1] if dates else "--"
 
@@ -348,7 +351,6 @@ def render_schedule_figure(
                     fontproperties=fp(10.5),
                 )
 
-            # --- 【右下角】預估總工時 ---
             if d.get("hours"):
                 draw_bold_text(
                     ax,
@@ -365,7 +367,6 @@ def render_schedule_figure(
                     fontproperties=fp(11.5),
                 )
 
-            # --- 【左下角】DO2W / D2W / DO3W 等國定/輪休出勤標籤 ---
             do_match = next(
                 (
                     l
