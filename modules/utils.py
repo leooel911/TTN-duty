@@ -42,15 +42,15 @@ def safe_read_excel(file_path: str, header: int = 3) -> pd.DataFrame:
 
 
 def parse_cell(cell_value: Any) -> Dict[str, Any]:
-    """解析乘務大表個別儲存格 (徹底清除隱藏字元並對應 出勤 / 退勤 / 總工時 / 班號)"""
-    # 淨化字串：移除 \r、\xa0 (不換行空白) 並去除首尾空白
+    """解析乘務大表個別儲存格 (強健處理隱藏控制字元與極致相容 H:MM/HH:MM 格式)"""
+    if pd.isna(cell_value):
+        return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
+
     val_str = (
         str(cell_value)
         .replace("\r", "")
         .replace("\xa0", " ")
         .strip()
-        if pd.notna(cell_value)
-        else ""
     )
     if not val_str or val_str.lower() in ["nan", "none", ""]:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
@@ -59,13 +59,13 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     if not lines:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
-    # 1. 抓取儲存格內所有符合 H:MM 或 HH:MM 格式的時間字串
-    all_times = re.findall(r"\b\d{1,2}:\d{2}\b", val_str)
+    # 1. 搜尋所有符合 H:MM 或 HH:MM 格式的時間字串
+    all_times = re.findall(r"\d{1,2}:\d{2}", val_str)
 
-    # 2. 分離非時間列 (班號、請假註記等)
+    # 2. 分離非時間欄位 (班號、請假註記等)
     non_time_lines = [l for l in lines if not re.search(r"\d{1,2}:\d{2}", l)]
 
-    # 3. 純休假 / 請假判定 (無任何時間列，如 DO1, DO3X, DO2 等)
+    # 3. 純休假 / 無時間列之儲存格 (如 DO1, DO3X, MLP, 例休, 或純車次號如 NF6001)
     if not all_times:
         first_line = lines[0]
         return {
@@ -76,10 +76,10 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
             "note": " ".join(lines[1:]) if len(lines) > 1 else "",
         }
 
-    # 4. 時間列精準按順序對位：
-    # 第 1 個時間 = 出勤/簽到 (Start)
-    # 第 2 個時間 = 退勤/簽退 (End)
-    # 第 3 個時間 = 預估工時 (Hours)
+    # 4. 包含時間時按順序對位：
+    # 第 1 個時間 = 出勤 / 簽到 (Start) -> 如 5:00, 5:26
+    # 第 2 個時間 = 退勤 / 簽退 (End)   -> 如 13:30, 15:01
+    # 第 3 個時間 = 預估工時 (Hours)   -> 如 8:30, 9:35
     start_time = all_times[0] if len(all_times) >= 1 else None
     end_time = all_times[1] if len(all_times) >= 2 else None
     hours_str = all_times[2] if len(all_times) >= 3 else None
@@ -89,7 +89,7 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     if non_time_lines:
         real_trains = [
             l for l in non_time_lines
-            if not any(k in l.upper() for k in ["DO", "D2W", "D1", "D2", "OGC"])
+            if not any(k in l.upper() for k in ["DO", "D2W", "D1", "D2", "OGC", "PAY", "FAC"])
         ]
         if real_trains:
             train_code = real_trains[0]
