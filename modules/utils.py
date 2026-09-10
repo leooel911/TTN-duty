@@ -159,10 +159,10 @@ def is_overtime(hours_str: Optional[str], train_code: str = "", note: str = "") 
 
 
 def is_town_shift(train_code: str, note: str = "") -> bool:
-    """判斷是否為非正線勤務 (TOWN, STD, DS, 庫備等)"""
+    """判斷是否為非正線勤務 (TOWN, STD, DS, )"""
     tr = str(train_code).upper()
     nt = str(note).upper()
-    keys = ["TOWN", "STD", "DS", "駐廠", "預備", "庫", "備"]
+    keys = ["TOWN", "STD", "TTN", "DTT", "OGT", "OGC", "FAC", "DS", "H9", "WRSL"]
     return any(k in tr or k in nt for k in keys)
 
 
