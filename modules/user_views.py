@@ -28,13 +28,12 @@ from modules.utils import (
 )
 
 
-# --- 輔助函式：提取班別末四碼數字（用於班別數字精準排序） ---
-def get_shift_last4_num(code_str: str) -> int:
-    """提取班別/車次中的數字，並取末四碼轉為整數進行排序"""
+# --- 輔助函式：提取班別核心數字，實現同班別 (如 NF1001, NG1001, NH1001) 歸類集中排序 ---
+def get_shift_group_key(code_str: str) -> int:
+    """提取車次/班別中的核心數字，讓同班別歸類在一起排序"""
     nums = re.findall(r"\d+", str(code_str))
     if nums:
-        s = "".join(nums)
-        return int(s[-4:])
+        return int("".join(nums))
     return 999999
 
 
@@ -180,14 +179,14 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 1. 全域寬度嚴格限制 (防止手機網頁滑動爆框而變形為電腦版) */
+        /* 1. 鎖死全域網頁，徹底禁止手機畫面左右偏移滑動 */
         html, body, .stApp, [data-testid="stAppViewContainer"], .main {
             max-width: 100vw !important;
             overflow-x: hidden !important;
             box-sizing: border-box !important;
         }
 
-        /* 2. 僅針對組員卡片區塊進行強效 50% 橫向並排，不干擾其他下拉選單與按鈕 */
+        /* 2. 僅針對卡片橫向區塊進行強效 50% 並排，不干擾其他下拉選單與選單列 */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -195,66 +194,79 @@ def render_user_home() -> None:
             flex-wrap: nowrap !important;
             width: 100% !important;
             max-width: 100% !important;
-            gap: 6px !important;
+            gap: 5px !important;
             box-sizing: border-box !important;
         }
 
+        /* 3. 精準防爆欄位寬度（單欄嚴格鎖定 50% 內，子元件不准推開） */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
-            width: calc(50% - 3px) !important;
-            min-width: calc(50% - 3px) !important;
-            max-width: calc(50% - 3px) !important;
-            flex: 0 0 calc(50% - 3px) !important;
+            width: calc(50% - 2.5px) !important;
+            min-width: 0 !important;
+            max-width: calc(50% - 2.5px) !important;
+            flex: 0 0 calc(50% - 2.5px) !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
         }
 
-        /* 3. 融合一體化卡片主體外框 */
+        /* 4. 融合一體化卡片上半部容器 */
         .crew-card-integrated, .crew-card-integrated-warn {
-            background: rgba(15, 23, 42, 0.85);
-            border: 1px solid rgba(56, 189, 248, 0.35) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.85) 100%);
+            border: 1px solid rgba(56, 189, 248, 0.4) !important;
             border-bottom: none !important;
             border-top-left-radius: 12px !important;
             border-top-right-radius: 12px !important;
-            padding: 8px 6px 6px 6px;
-            min-height: 125px;
+            border-bottom-left-radius: 0px !important;
+            border-bottom-right-radius: 0px !important;
+            padding: 9px 7px 6px 7px;
+            min-height: 122px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             box-sizing: border-box;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
             width: 100% !important;
             overflow: hidden !important;
         }
 
         .crew-card-integrated-warn {
             border-color: #F43F5E !important;
-            box-shadow: 0 4px 12px rgba(244, 63, 94, 0.15);
+            box-shadow: 0 4px 12px rgba(244, 63, 94, 0.2);
         }
 
-        /* 4. 完全無縫縫合卡片底部的「檢視完整班表」按鈕 */
+        /* 5. Streamlit 按鈕容器與按鈕本體無縫融合 */
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"],
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button,
         div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
+            width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
             border-top-left-radius: 0px !important;
             border-top-right-radius: 0px !important;
             border-bottom-left-radius: 12px !important;
             border-bottom-right-radius: 12px !important;
             margin-top: -16px !important;
             margin-bottom: 8px !important;
-            width: 100% !important;
             box-shadow: none !important;
             font-weight: 700 !important;
             font-size: 11px !important;
-            padding: 4px 2px !important;
-            letter-spacing: 0.2px !important;
+            padding: 4px 1px !important;
+            letter-spacing: 0.3px !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
+            transition: all 0.2s ease-in-out !important;
         }
 
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button {
-            border: 1px solid rgba(56, 189, 248, 0.35) !important;
-            border-top: 1px dashed rgba(56, 189, 248, 0.2) !important;
+            border: 1px solid rgba(56, 189, 248, 0.4) !important;
+            border-top: 1px dashed rgba(56, 189, 248, 0.25) !important;
             background-color: rgba(15, 23, 42, 0.95) !important;
             color: #38BDF8 !important;
         }
@@ -272,16 +284,16 @@ def render_user_home() -> None:
             color: #38BDF8 !important;
         }
 
-        /* 5. 標籤自動適應微調 */
+        /* 6. 標籤自動適應微調 */
         .badge-group {
             display: flex;
-            gap: 3px;
+            gap: 2px;
             align-items: center;
             flex-wrap: wrap;
         }
-        .non-line-badge { font-size: 9px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
-        .long-badge { font-size: 9px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
-        .do2w-badge { font-size: 9px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+        .non-line-badge { font-size: 8.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+        .long-badge { font-size: 8.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+        .do2w-badge { font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -715,11 +727,11 @@ def render_user_home() -> None:
                             continue
                         filtered_results.append(r)
 
-                    # 末四碼數字精準排序 (如 2001 系列集中)
+                    # 💡 精準排序：同班別核心數字 (如 NF1001, NG1001, NH1001 提取 1001) 集中集中歸類在一起
                     filtered_results = sorted(
                         filtered_results,
                         key=lambda x: (
-                            get_shift_last4_num(x["車次"]),
+                            get_shift_group_key(x["車次"]),
                             str(x["Sign-In"]) if x["Sign-In"] != "--:--" else "99:99",
                             str(x["車次"]),
                         ),
@@ -799,20 +811,21 @@ def render_user_home() -> None:
                                         clean_signout = str(r.get("Sign-Out", "--:--")).replace("\n", " ").strip()
                                         clean_next_signin = str(r.get("隔日Sign-In", "無記錄")).replace("\n", " ").strip()
 
+                                        # 💡 一體化高質感卡片 (文字超長防爆 + 右側時間強效固定)
                                         card_html = f"""<div class="crew-card-integrated">
-<div style="display: flex; justify-content: space-between; align-items: flex-start;">
-<div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 4px;">
+<div style="display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1;">
 <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_name} <span style="color:#94A3B8; font-size:10px; font-weight:500;">({clean_id})</span></div>
-<div style="font-size: 12px; color: #38BDF8; font-weight: 800; margin-top: 2px;">班別：{clean_train}</div>
+<div style="font-size: 12px; color: #38BDF8; font-weight: 800; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">班別：{clean_train}</div>
 </div>
-<div style="text-align: right; display: flex; flex-direction: column; gap: 1px; shrink: 0;">
-<div style="font-size: 15px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">In {clean_signin}</div>
-<div style="font-size: 15px; font-weight: 900; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">Out {clean_signout}</div>
+<div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
+<div style="font-size: 14.5px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">In {clean_signin}</div>
+<div style="font-size: 14.5px; font-weight: 900; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">Out {clean_signout}</div>
 {hours_display_html}
 </div>
 </div>
 <div style="display: flex; gap: 4px; align-items: center; justify-content: space-between; margin-top: 6px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.08);">
-<span style="font-size: 10px; color: #94A3B8; font-family: monospace;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
+<span style="font-size: 10px; color: #94A3B8; font-family: monospace; white-space: nowrap;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
 {badges_html}
 </div>
 </div>"""
@@ -1144,7 +1157,7 @@ def render_user_home() -> None:
                                 filtered_candidates = sorted(
                                     filtered_candidates,
                                     key=lambda x: (
-                                        get_shift_last4_num(x["還假車次"]),
+                                        get_shift_group_key(x["還假車次"]),
                                         x["Sign-In"] or "99:99",
                                         str(x["還假車次"]),
                                     ),
@@ -1266,21 +1279,21 @@ def render_user_home() -> None:
                                                 clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
 
                                                 card_html = f"""<div class="{card_class}">
-<div style="display: flex; justify-content: space-between; align-items: flex-start;">
-<div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 4px;">
+<div style="display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1;">
 <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_name} <span style="color:#94A3B8; font-size:10px; font-weight:500;">({clean_cand_id})</span></div>
-<div style="font-size: 11px; color: #94A3B8; margin-top: 2px; font-family: monospace;">
+<div style="font-size: 11px; color: #94A3B8; margin-top: 2px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 還休：<strong style="color: #CBD5E1;">{clean_cand_return_date}</strong> ｜ 班別：<strong style="color:#38BDF8;">{clean_cand_return_train}</strong>
 </div>
 </div>
-<div style="text-align: right; display: flex; flex-direction: column; gap: 1px; shrink: 0;">
-<div style="font-size: 15px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">In {clean_cand_signin}</div>
-<div style="font-size: 15px; font-weight: 900; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">Out {clean_cand_signout}</div>
+<div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
+<div style="font-size: 14.5px; font-weight: 900; color: #4ADE80; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">In {clean_cand_signin}</div>
+<div style="font-size: 14.5px; font-weight: 900; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px; line-height: 1.1;">Out {clean_cand_signout}</div>
 {hours_display_html}
 </div>
 </div>
 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.08);">
-<span style="font-size: 10px; color: {streak_color}; font-weight: 700; font-family: monospace;">連續上班：{streak_cnt} 天</span>
+<span style="font-size: 10px; color: {streak_color}; font-weight: 700; font-family: monospace; white-space: nowrap;">連續上班：{streak_cnt} 天</span>
 {badges_html}
 </div>
 {warning_banner_html}
