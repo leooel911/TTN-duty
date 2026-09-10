@@ -42,7 +42,7 @@ def safe_read_excel(file_path: str, header: int = 3) -> pd.DataFrame:
 
 
 def parse_cell(cell_value: Any) -> Dict[str, Any]:
-    """解析乘務大表個別儲存格 (強健處理隱藏控制字元與極致相容 H:MM/HH:MM 格式)"""
+    """解析乘務大表個別儲存格 (強健處理隱藏字元、全角冒號，並強制時間補零為 HH:MM)"""
     if pd.isna(cell_value):
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
@@ -50,6 +50,7 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
         str(cell_value)
         .replace("\r", "")
         .replace("\xa0", " ")
+        .replace("：", ":")
         .strip()
     )
     if not val_str or val_str.lower() in ["nan", "none", ""]:
@@ -59,13 +60,19 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     if not lines:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
-    # 1. 搜尋所有符合 H:MM 或 HH:MM 格式的時間字串
-    all_times = re.findall(r"\d{1,2}:\d{2}", val_str)
+    # 1. 抓取所有符合時間格式的字串
+    raw_times = re.findall(r"\b\d{1,2}:\d{2}\b", val_str)
 
-    # 2. 分離非時間欄位 (班號、請假註記等)
+    # 2. 強制格式化為兩位數小時 HH:MM (將 "5:26" 自動補零轉為 "05:26")
+    all_times = []
+    for tm in raw_times:
+        parts = tm.split(":")
+        all_times.append(f"{int(parts[0]):02d}:{parts[1]}")
+
+    # 3. 分離非時間欄位 (車次班號、請假註記等)
     non_time_lines = [l for l in lines if not re.search(r"\d{1,2}:\d{2}", l)]
 
-    # 3. 純休假 / 無時間列之儲存格 (如 DO1, DO3X, MLP, 例休, 或純車次號如 NF6001)
+    # 4. 若儲存格內無時間列
     if not all_times:
         first_line = lines[0]
         return {
@@ -76,15 +83,12 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
             "note": " ".join(lines[1:]) if len(lines) > 1 else "",
         }
 
-    # 4. 包含時間時按順序對位：
-    # 第 1 個時間 = 出勤 / 簽到 (Start) -> 如 5:00, 5:26
-    # 第 2 個時間 = 退勤 / 簽退 (End)   -> 如 13:30, 15:01
-    # 第 3 個時間 = 預估工時 (Hours)   -> 如 8:30, 9:35
+    # 5. 時間列精準按順序對位
     start_time = all_times[0] if len(all_times) >= 1 else None
     end_time = all_times[1] if len(all_times) >= 2 else None
     hours_str = all_times[2] if len(all_times) >= 3 else None
 
-    # 5. 車次班號 (train_code) 解析
+    # 6. 車次班號 (train_code) 解析
     train_code = "無"
     if non_time_lines:
         real_trains = [
@@ -116,27 +120,24 @@ def is_cell_off_day(cell_value: Any) -> bool:
 
 
 def is_overtime(hours_str: Optional[str], train_code: str = "", note: str = "") -> bool:
-    """檢核工時是否大於 8.5 小時 (支援 H:MM、HH:MM、8.5h、8h30 等各式格式)"""
+    """檢核工時是否大於 8.5 小時 (支援 H:MM、HH:MM、8.5h、8h30 等格式)"""
     if not hours_str:
         return False
     try:
         s = str(hours_str).strip()
 
-        # 1. 相容 H:MM / HH:MM 格式 (例如 "9:30", "8:57", "9:57")
         colon_m = re.search(r"(\d{1,2}):(\d{2})", s)
         if colon_m:
             h = int(colon_m.group(1))
             m = int(colon_m.group(2))
             return (h + m / 60.0) > 8.5
 
-        # 2. 相容 8h30m / 8h 格式
         hm_m = re.search(r"(\d+)\s*h\s*(\d+)?", s, re.I)
         if hm_m:
             h = int(hm_m.group(1))
             m = int(hm_m.group(2)) if hm_m.group(2) else 0
             return (h + m / 60.0) > 8.5
 
-        # 3. 相容 8.5 浮點數格式
         f_m = re.search(r"(\d+(?:\.\d+)?)", s)
         if f_m:
             return float(f_m.group(1)) > 8.5
