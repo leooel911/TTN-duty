@@ -63,7 +63,7 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     # 1. 抓取所有符合時間格式的字串
     raw_times = re.findall(r"\b\d{1,2}:\d{2}\b", val_str)
 
-    # 2. 強制格式化為兩位數小時 HH:MM (將 "5:26" 轉為 "05:26")
+    # 2. 強制格式化為兩位數小時 HH:MM (將 "5:26" 自動補零轉為 "05:26")
     all_times = []
     for tm in raw_times:
         parts = tm.split(":")
