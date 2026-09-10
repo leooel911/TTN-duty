@@ -1333,7 +1333,7 @@ def render_user_home() -> None:
                                 )
 
                                 # 每 2 個結果一組，渲染成直欄 (2 Columns Grid)
-                                # 🔥 換假系統取消同班別配色功能，統一使用預設高質感藍色卡片主題 (card-theme-0)，連 6 警告仍保留紅色警示 (crew-card-integrated-warn)
+                                # 🔥 換假系統：統一使用預設科技藍卡片主題 (card-theme-0)，連 6 警告仍保留紅色警示 (crew-card-integrated-warn)
                                 for i in range(0, len(filtered_candidates), 2):
                                     batch = filtered_candidates[i : i + 2]
                                     cols = st.columns(2)
@@ -1381,7 +1381,7 @@ def render_user_home() -> None:
     </div>
     <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
         <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_cand_signin}</div>
-        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_signout}</div>
+        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_cand_signout}</div>
     </div>
 </div>
 </div>"""
