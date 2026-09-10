@@ -42,7 +42,7 @@ def safe_read_excel(file_path: str, header: int = 3) -> pd.DataFrame:
 
 
 def parse_cell(cell_value: Any) -> Dict[str, Any]:
-    """解析乘務大表個別儲存格 (含車次代碼、簽到退時間、工時與備註)"""
+    """解析乘務大表個別儲存格 (相容單行連貫時間與多行獨立時間)"""
     val_str = str(cell_value).strip() if pd.notna(cell_value) else ""
     if not val_str or val_str.lower() in ["nan", "none", ""]:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
@@ -50,15 +50,34 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     lines = [l.strip() for l in val_str.split("\n") if l.strip()]
     train_code = lines[0] if lines else "無"
 
-    # 正則表達式修正：相容單位數與雙位數小時 (例如 5:26 ~ 13:15 或 05:26 - 13:15)
-    time_match = re.search(r"(\d{1,2}:\d{2})\s*[\-~～]\s*(\d{1,2}:\d{2})", val_str)
-    start_time, end_time = None, None
-    if time_match:
-        start_time = time_match.group(1)
-        end_time = time_match.group(2)
+    # 1. 搜尋儲存格內所有符合 HH:MM 或 H:MM 格式的時間字串
+    all_times = re.findall(r"\b\d{1,2}:\d{2}\b", val_str)
 
+    start_time, end_time, hours_str = None, None, None
+
+    # 2. 優先嘗試比對連貫時間對 (支援 -、~、空格或換行符號)
+    time_pair_match = re.search(r"(\d{1,2}:\d{2})\s*[\-~～\s\n\t]+\s*(\d{1,2}:\d{2})", val_str)
+    if time_pair_match:
+        start_time = time_pair_match.group(1)
+        end_time = time_pair_match.group(2)
+    elif len(all_times) >= 2:
+        # 多行格式：第 1 個時間為簽到 (In)，第 2 個時間為簽退 (Out)
+        start_time = all_times[0]
+        end_time = all_times[1]
+    elif len(all_times) == 1:
+        start_time = all_times[0]
+
+    # 3. 解析預估工時
     hours_match = re.search(r"(\d+(?:\.\d+)?(?:h|m|小時|分)+)", val_str, re.IGNORECASE)
-    hours_str = hours_match.group(1) if hours_match else None
+    if hours_match:
+        hours_str = hours_match.group(1)
+    elif len(all_times) >= 3:
+        # 當存在 3 個時間（如：05:51, 13:51, 8:00），第 3 個時間即為總工時
+        hours_str = all_times[2]
+    elif "(" in val_str and ")" in val_str:
+        paren_match = re.search(r"\((.*?)\)", val_str)
+        if paren_match:
+            hours_str = paren_match.group(1).strip()
 
     note_lines = lines[1:] if len(lines) > 1 else []
     note_str = " ".join(note_lines)
