@@ -24,9 +24,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 }
 
 
-# =========================================================
-# 1. 全域系統動態參數 (System Config)
-# =========================================================
 def load_system_config() -> Dict[str, Any]:
     """載入系統動態參數設定，若檔案不存在則自動建立"""
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -55,11 +52,8 @@ def save_system_config(config_dict: Dict[str, Any]) -> bool:
         return False
 
 
-# =========================================================
-# 2. 白名單與帳號權限管理 (與後台完全對齊)
-# =========================================================
 def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
-    """讀取指定營運單位的白名單 (讀取 WHITELIST_FILE)"""
+    """讀取指定營運單位的白名單"""
     whitelist_path = WHITELIST_FILE
     full_data: Dict[str, Any] = {}
 
@@ -103,7 +97,6 @@ def is_user_allowed(selected_unit: str, emp_id: Any) -> Tuple[bool, Optional[Dic
             "status": "啟用",
         }
 
-    # 1. 優先比對該營運單位的白名單名冊
     unit_whitelist = load_whitelist(selected_unit)
     if emp_id_str in unit_whitelist:
         u_info = unit_whitelist[emp_id_str]
@@ -114,7 +107,6 @@ def is_user_allowed(selected_unit: str, emp_id: Any) -> Tuple[bool, Optional[Dic
             "status": "啟用",
         }
 
-    # 2. 檢查是否有其他單位的全域 VIP/ADMIN 權限
     for u_code in UNITS.keys():
         if u_code != selected_unit:
             other_wl = load_whitelist(u_code)
@@ -132,11 +124,8 @@ def is_user_allowed(selected_unit: str, emp_id: Any) -> Tuple[bool, Optional[Dic
     return False, None
 
 
-# =========================================================
-# 3. 相容介面與輔助函式
-# =========================================================
 def get_current_role_files() -> Dict[str, Any]:
-    """取得目前所屬單位的各大表檔案路徑字典 (連動 config.UNITS)"""
+    """取得目前所屬單位的各大表檔案路徑字典"""
     current_unit = st.session_state.get("current_unit", "TTN")
     return UNITS.get(current_unit, UNITS.get("TTN", {}))
 
@@ -164,15 +153,13 @@ def get_schedule_range() -> str:
 
 
 def verify_crew_membership(selected_unit: str, emp_id: str) -> bool:
-    """驗證組員是否屬於指定單位（檢查白名單或 Excel 大表）"""
+    """驗證組員是否屬於指定單位"""
     emp_id_str = str(emp_id).strip().upper()
 
-    # 1. 白名單中有紀錄者直接認定為該單位組員
     wl = load_whitelist(selected_unit)
     if emp_id_str in wl:
         return True
 
-    # 2. 檢查 Excel 大表中是否有該員編
     unit_files = UNITS.get(selected_unit, {})
     for role_name, file_path in unit_files.items():
         if isinstance(file_path, str) and os.path.exists(file_path):
@@ -187,34 +174,6 @@ def verify_crew_membership(selected_unit: str, emp_id: str) -> bool:
     return False
 
 
-def get_crew_list(selected_unit: str = "TTN") -> List[Dict[str, str]]:
-    """取得指定單位的組員清單"""
-    return [{"emp_id": "A", "name": "測試員 A"}]
-
-
-def get_all_duty_codes(selected_unit: str = "TTN") -> List[str]:
-    """取得所有班別代碼對照表"""
-    return ["DO", "DO1", "DO3X", "NH001", "NH005", "NH007"]
-
-
-def query_schedule(selected_unit: str, emp_id: str) -> Dict[str, Any]:
-    """查詢組員基本出勤統計數據"""
-    return {
-        "emp_id": emp_id,
-        "unit": selected_unit,
-        "duty_count": 20,
-        "off_count": 10,
-    }
-
-
-def get_duty_info(duty_code: str) -> Dict[str, str]:
-    """取得班別詳細起訖時間資訊"""
-    return {"code": duty_code, "start": "08:00", "end": "16:00", "hours": "8h00m"}
-
-
-# =========================================================
-# 4. 真實 Excel 解析繪圖數據引擎
-# =========================================================
 def process_file_data(
     target_emp: str,
 ) -> Tuple[datetime, List[str], str, str, List[str]]:
@@ -228,7 +187,6 @@ def process_file_data(
     emp_id = target_emp_str
     emp_name = ""
 
-    # 1. 在三大表（駕駛、列車長、服勤員）中比對員編或姓名
     for role, path in role_files.items():
         if isinstance(path, str) and os.path.exists(path):
             try:
@@ -253,7 +211,6 @@ def process_file_data(
             f"在 [{current_unit}] 大表中找不到員編或姓名：{target_emp}"
         )
 
-    # 2. 精準鎖定包含日期的欄位索引 (Column Indices) 與名稱
     all_cols = list(found_df.columns)
     dates: List[str] = []
     date_col_indices: List[int] = []
@@ -277,7 +234,6 @@ def process_file_data(
     if start_dt is None:
         start_dt = datetime.now().replace(day=1)
 
-    # 3. 根據正確的欄位索引（date_col_indices）提取組員對應的班表資料
     cells: List[str] = []
     for col_idx in date_col_indices:
         if col_idx < len(found_row):
