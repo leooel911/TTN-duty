@@ -179,14 +179,22 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 1. 鎖死全域網頁，徹底禁止手機畫面左右偏移滑動 */
-        html, body, .stApp, [data-testid="stAppViewContainer"], .main {
+        /* 1. 全域主容器嚴格防爆鎖定：防止頂部按鈕或任何元件擠爆 Streamlit 主版面 */
+        html, body, .stApp, [data-testid="stAppViewContainer"], .main,
+        [data-testid="stMainBlockContainer"], .block-container {
             max-width: 100vw !important;
             overflow-x: hidden !important;
             box-sizing: border-box !important;
         }
 
-        /* 2. 僅針對卡片橫向區塊進行強效 50% 並排，不干擾其他下拉選單與選單列 */
+        /* 修正手持裝置內邊距，加大防爆安全邊界 */
+        [data-testid="stMainBlockContainer"], .block-container {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            padding-top: 1rem !important;
+        }
+
+        /* 2. 僅針對組員卡片橫向區塊進行強效 50% 並排，不干擾其他區塊 */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -209,7 +217,7 @@ def render_user_home() -> None:
             overflow: hidden !important;
         }
 
-        /* 4. 融合一體化卡片上半部容器 */
+        /* 4. 融合一體化卡片主體外框 */
         .crew-card-integrated, .crew-card-integrated-warn {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.85) 100%);
             border: 1px solid rgba(56, 189, 248, 0.4) !important;
@@ -577,33 +585,35 @@ def render_user_home() -> None:
                 from modules.components import show_holiday_notice
                 show_holiday_notice(win_week_holidays, win_week_str)
 
+                # 💡 修復重點：改為 2x2 雙排並排，防止頂部按鈕過寬將手機頁面撐爆！
                 st.write("**快捷選擇時段：**")
-                q_col1, q_col2, q_col3, q_col4 = st.columns(4)
+                q_row1_1, q_row1_2 = st.columns(2)
+                q_row2_1, q_row2_2 = st.columns(2)
 
                 btn_all_label = f"全時段 ({morn_start_time}~18:00)"
                 btn_morn_label = f"早班 ({morn_start_time}~10:00)"
                 btn_noon_label = "中班 (10:00~13:00)"
                 btn_night_label = "晚班 (13:00~18:00)"
 
-                if q_col1.button(
+                if q_row1_1.button(
                     btn_all_label, key="btn_win_all", use_container_width=True
                 ):
                     st.session_state["win_time_slider"] = (morn_start_time, "18:00")
                     reset_win_search()
                     st.rerun()
-                if q_col2.button(
+                if q_row1_2.button(
                     btn_morn_label, key="btn_win_morn", use_container_width=True
                 ):
                     st.session_state["win_time_slider"] = (morn_start_time, "10:00")
                     reset_win_search()
                     st.rerun()
-                if q_col3.button(
+                if q_row2_1.button(
                     btn_noon_label, key="btn_win_noon", use_container_width=True
                 ):
                     st.session_state["win_time_slider"] = ("10:00", "13:00")
                     reset_win_search()
                     st.rerun()
-                if q_col4.button(
+                if q_row2_2.button(
                     btn_night_label, key="btn_win_night", use_container_width=True
                 ):
                     st.session_state["win_time_slider"] = ("13:00", "18:00")
@@ -727,7 +737,7 @@ def render_user_home() -> None:
                             continue
                         filtered_results.append(r)
 
-                    # 💡 精準排序：同班別核心數字 (如 NF1001, NG1001, NH1001 提取 1001) 集中集中歸類在一起
+                    # 💡 精準排序：同班別核心數字 (如 NF1001, NG1001, NH1001 提取 1001) 集中歸類在一起
                     filtered_results = sorted(
                         filtered_results,
                         key=lambda x: (
@@ -811,7 +821,6 @@ def render_user_home() -> None:
                                         clean_signout = str(r.get("Sign-Out", "--:--")).replace("\n", " ").strip()
                                         clean_next_signin = str(r.get("隔日Sign-In", "無記錄")).replace("\n", " ").strip()
 
-                                        # 💡 一體化高質感卡片 (文字超長防爆 + 右側時間強效固定)
                                         card_html = f"""<div class="crew-card-integrated">
 <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 4px;">
 <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1;">
@@ -1080,7 +1089,7 @@ def render_user_home() -> None:
                                         do_match = re.search(
                                             r"(DO\d*W?|D\d+W|OGC)", raw_return_str, re.IGNORECASE
                                         )
-                                        return_do_tag = do_match.group(1).upper() if do_match else ""
+                                        do_tag = do_match.group(1).upper() if do_match else ""
 
                                     raw_target_cell = str(row.iloc[target_col_idx]).upper()
                                     raw_return_cell = str(row.iloc[return_col_idx]).upper()
