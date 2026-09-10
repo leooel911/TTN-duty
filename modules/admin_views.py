@@ -20,9 +20,6 @@ from modules.utils import (
 )
 
 
-# =========================================================
-# 1. 資料處理與輔助工具函式
-# =========================================================
 def clear_logs() -> None:
     """徹底清空全站系統操作日誌檔"""
     possible_paths = [
@@ -40,7 +37,7 @@ def clear_logs() -> None:
 
 
 def create_backup_zip() -> io.BytesIO:
-    """打包 data 資料夾、回報工單截圖與系統設定檔為 ZIP 下載檔"""
+    """打包數據資料夾為 ZIP 下載檔"""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         if os.path.exists(DATA_DIR):
@@ -70,7 +67,7 @@ def create_backup_zip() -> io.BytesIO:
 
 
 def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
-    """讀取指定營運單位的白名單（嚴格獨立隔離並統一 Key 大寫）"""
+    """讀取指定營運單位的白名單"""
     whitelist_path = WHITELIST_FILE
     full_data: Dict[str, Any] = {}
 
@@ -78,7 +75,6 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
         try:
             with open(whitelist_path, "r", encoding="utf-8", errors="ignore") as f:
                 full_data = json.load(f)
-                # 舊版扁平結構相容：若無單位層級 Key，自動轉存至所有單位
                 if full_data and not any(k in UNITS for k in full_data.keys()):
                     full_data = {u: full_data.copy() for u in UNITS.keys()}
         except Exception:
@@ -102,7 +98,6 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
             }
         full_data[unit_code] = unit_default
 
-    # 確保回傳的字典 Key 一律為修飾後的 uppercase 字串
     raw_unit_data = full_data.get(unit_code, {})
     normalized_data = {}
     for uid, info in raw_unit_data.items():
@@ -112,7 +107,7 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
 
 
 def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
-    """儲存特定營運單位的白名單並即時刷新全站 Streamlit 快取"""
+    """儲存特定營運單位的白名單"""
     whitelist_path = WHITELIST_FILE
     os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -126,7 +121,6 @@ def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
         except Exception:
             full_data = {}
 
-    # 格式化所有員編 Key 為大寫
     normalized_data = {}
     for uid, info in unit_data.items():
         normalized_data[str(uid).strip().upper()] = info
@@ -136,13 +130,12 @@ def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
     with open(whitelist_path, "w", encoding="utf-8") as f:
         json.dump(full_data, f, ensure_ascii=False, indent=2)
 
-    # 每次寫入檔案後，強制清除 Streamlit 快取讓前台立刻讀到新白名單
     st.cache_data.clear()
 
 
 @st.cache_data(ttl=60)
 def get_all_crew_options(unit_code: str) -> List[Dict[str, str]]:
-    """動態解析指定單位的各大表，建立（員編 - 姓名）快選選單選項"""
+    """動態解析指定單位的各大表建立選單"""
     unit_files = UNITS.get(unit_code, UNITS.get("TTN", {}))
     crew_options: List[Dict[str, str]] = []
     seen_uids = set()
@@ -170,7 +163,7 @@ def get_all_crew_options(unit_code: str) -> List[Dict[str, str]]:
 
 
 def load_all_feedback_tickets() -> List[Dict[str, Any]]:
-    """讀取 FEEDBACK_IMG_DIR 中所有的 txt 工單與對應截圖"""
+    """讀取所有問題回報工單"""
     tickets: List[Dict[str, Any]] = []
     if not os.path.exists(FEEDBACK_IMG_DIR):
         return tickets
@@ -202,7 +195,6 @@ def load_all_feedback_tickets() -> List[Dict[str, Any]]:
                 info["_txt_path"] = txt_path
                 info["_base_name"] = base_name
 
-                # 尋找對應的截圖附件
                 img_file = None
                 for ext in [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]:
                     candidate = os.path.join(FEEDBACK_IMG_DIR, f"{base_name}{ext}")
@@ -220,7 +212,7 @@ def load_all_feedback_tickets() -> List[Dict[str, Any]]:
 
 
 def save_feedback_ticket(ticket_info: Dict[str, Any]) -> None:
-    """更新儲存工單 txt 檔案內容"""
+    """更新儲存工單內容"""
     txt_path = ticket_info.get("_txt_path")
     if not txt_path:
         return
@@ -249,16 +241,10 @@ def save_feedback_ticket(ticket_info: Dict[str, Any]) -> None:
         f.write(content)
 
 
-# =========================================================
-# 2. 管理員後台主視圖 (Admin Panel)
-# =========================================================
 def render_admin_panel() -> None:
-    """系統管理員後台控制台主繪製函式"""
+    """系統管理員後台控制台"""
     current_unit = st.session_state.get("current_unit", "TTN")
 
-    # ---------------------------------------------------------
-    # 頂部標頭：包含【標題】、【切換營運單位選單】與【返回首頁按鈕】
-    # ---------------------------------------------------------
     col_head_title, col_head_unit, col_head_btn = st.columns([2.2, 1.2, 1])
 
     with col_head_title:
@@ -289,7 +275,6 @@ def render_admin_panel() -> None:
             st.session_state["admin_logged_in"] = False
             st.rerun()
 
-    # 管理員六大分頁
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "大表上傳與管理",
         "模組維護模式",
@@ -299,9 +284,6 @@ def render_admin_panel() -> None:
         "工單與問題回報管理",
     ])
 
-    # ---------------------------------------------------------
-    # Tab 1: 大表上傳與管理
-    # ---------------------------------------------------------
     with tab1:
         st.markdown(f"### [{current_unit}] 班表大表 Excel 上傳與管理")
         unit_files = UNITS.get(current_unit, UNITS.get("TTN", {}))
@@ -343,9 +325,6 @@ def render_admin_panel() -> None:
                         except Exception as e:
                             st.error(f"檔案寫入失敗：{e}")
 
-    # ---------------------------------------------------------
-    # Tab 2: 模組維護模式
-    # ---------------------------------------------------------
     with tab2:
         st.markdown(f"### [{current_unit}] 系統模組維護開關")
         st.info("開啟維護後，一般組員將無法存取該功能，管理員仍可登入後台預覽。")
@@ -365,7 +344,7 @@ def render_admin_panel() -> None:
                 st.caption(
                     "狀態："
                     + (
-                        "<span style='color:#EF4444; font-weight:800;'>🔴 維護中 (已阻擋組員)</span>"
+                        "<span style='color:#EF4444; font-weight:800;'>🔴 維護中</span>"
                         if is_maint
                         else "<span style='color:#34D399; font-weight:800;'>🟢 正常開放中</span>"
                     ),
@@ -386,9 +365,6 @@ def render_admin_panel() -> None:
                     )
                     st.rerun()
 
-    # ---------------------------------------------------------
-    # Tab 3: 白名單與組員權限管理
-    # ---------------------------------------------------------
     with tab3:
         st.markdown(f"### 白名單與組員權限管理 [{current_unit}]")
         whitelist_data = load_whitelist(current_unit)
@@ -424,7 +400,6 @@ def render_admin_panel() -> None:
         selected_row_data: Optional[Dict[str, Any]] = None
         with col_wl_left:
             st.markdown(f"#### 現有白名單名冊 [{current_unit}]")
-            st.caption("直接點擊左表任一組員，右側卡片將自動填入資料進行修改或刪除。")
 
             search_keyword = st.text_input(
                 "搜尋過濾白名單人員",
@@ -531,8 +506,6 @@ def render_admin_panel() -> None:
                 key=f"input_wl_note_{current_unit}",
             )
 
-            st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
-
             col_b1, col_b2 = st.columns(2)
 
             with col_b1:
@@ -578,16 +551,8 @@ def render_admin_panel() -> None:
                             st.success(f"已成功移除【{current_unit}】權限：{target_uid}")
                             st.rerun()
                 else:
-                    st.button(
-                        "刪除人員",
-                        disabled=True,
-                        use_container_width=True,
-                        help="請點選左側名冊中的人員以進行刪除",
-                    )
+                    st.button("刪除人員", disabled=True, use_container_width=True)
 
-    # ---------------------------------------------------------
-    # Tab 4: 全域系統參數
-    # ---------------------------------------------------------
     with tab4:
         st.markdown("### 全域系統參數與授權碼設定")
 
@@ -606,9 +571,7 @@ def render_admin_panel() -> None:
 
             with col_p1:
                 st.markdown("#### 通行授權碼設定")
-                st.caption("若無須修改密碼，保持留空即可。")
 
-                st.markdown("**【一般組員】通行授權碼**")
                 new_user_pwd = st.text_input(
                     "設定新 一般組員授權碼",
                     type="password",
@@ -624,7 +587,6 @@ def render_admin_panel() -> None:
 
                 st.markdown("---")
 
-                st.markdown("**【VIP 組員】通行授權碼**")
                 new_vip_pwd = st.text_input(
                     "設定新 VIP 授權碼",
                     type="password",
@@ -640,7 +602,6 @@ def render_admin_panel() -> None:
 
                 st.markdown("---")
 
-                st.markdown("**【管理員】解鎖密碼**")
                 new_admin_pwd = st.text_input(
                     "設定新 管理員解鎖密碼",
                     type="password",
@@ -736,9 +697,6 @@ def render_admin_panel() -> None:
                     )
                     st.rerun()
 
-    # ---------------------------------------------------------
-    # Tab 5: 系統日誌與備份
-    # ---------------------------------------------------------
     with tab5:
         st.markdown("### 系統操作日誌與資料打包備份")
 
@@ -750,7 +708,6 @@ def render_admin_panel() -> None:
             st.markdown(f"#### 最近系統操作日誌 (共 {len(logs)} 筆)")
 
         with col_log_btn:
-            st.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
             if st.button(
                 "清空紀錄",
                 key="btn_clear_activity_logs",
@@ -763,36 +720,12 @@ def render_admin_panel() -> None:
 
         if logs:
             df_logs = pd.DataFrame(logs)
-            rename_dict = {
-                "timestamp": "紀錄時間",
-                "unit": "單位",
-                "user_id": "操作者員編",
-                "user_name": "姓名",
-                "device": "使用裝置",
-                "action": "操作動作細節",
-            }
-            df_logs = df_logs.rename(
-                columns={k: v for k, v in rename_dict.items() if k in df_logs.columns}
-            )
-            display_cols = [
-                c
-                for c in [
-                    "紀錄時間",
-                    "單位",
-                    "操作者員編",
-                    "姓名",
-                    "使用裝置",
-                    "操作動作細節",
-                ]
-                if c in df_logs.columns
-            ]
-            st.dataframe(df_logs[display_cols], use_container_width=True, height=350)
+            st.dataframe(df_logs, use_container_width=True, height=350)
         else:
             st.info("目前尚無任何系統操作日誌紀錄。")
 
         st.markdown("---")
         st.markdown("#### 一鍵備份全站數據與設定")
-        st.caption("點擊下方按鈕可將系統班表大表、設定檔、回報工單與日誌打包為 ZIP 下載備份。")
 
         zip_buf = create_backup_zip()
         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -805,9 +738,6 @@ def render_admin_panel() -> None:
             key="btn_download_backup",
         )
 
-    # ---------------------------------------------------------
-    # Tab 6: 工單與問題回報管理
-    # ---------------------------------------------------------
     with tab6:
         st.markdown("### 工單與問題回報管理")
 
@@ -827,11 +757,11 @@ def render_admin_panel() -> None:
                         <div style="font-size: 11px; color: #FDA4AF;">待處理工單</div>
                         <div style="font-size: 20px; font-weight: 900; color: #F43F5E;">{cnt_pending} <span style="font-size: 12px;">筆</span></div>
                     </div>
-                    <div style="flex: 1; background: rgba(245, 158, 11, 0.15); border: 1px solid #F59E0B; border-radius: 8px; padding: 10px; text-align: center;">
+                    <div style="flex: 1; background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px; text-align: center;">
                         <div style="font-size: 11px; color: #FDE68A;">處理中工單</div>
                         <div style="font-size: 20px; font-weight: 900; color: #FBBF24;">{cnt_processing} <span style="font-size: 12px;">筆</span></div>
                     </div>
-                    <div style="flex: 1; background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; border-radius: 8px; padding: 10px; text-align: center;">
+                    <div style="flex: 1; background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10B981; border-radius: 8px; padding: 10px; text-align: center;">
                         <div style="font-size: 11px; color: #A7F3D0;">已完成工單</div>
                         <div style="font-size: 20px; font-weight: 900; color: #34D399;">{cnt_done} <span style="font-size: 12px;">筆</span></div>
                     </div>
@@ -897,7 +827,7 @@ def render_admin_panel() -> None:
                             "處理備註 / 給組員的回覆",
                             value=str(t.get("管理員回覆", "")),
                             key=f"reply_input_{ticket_id}_{idx}",
-                            placeholder="例如：已於 9/6 修正程式...",
+                            placeholder="例如：已修正程式...",
                         )
 
                     cb1, cb2 = st.columns(2)
@@ -923,5 +853,4 @@ def render_admin_panel() -> None:
                             st.rerun()
 
 
-# 相容別名宣告
 render_admin_home = render_admin_panel
