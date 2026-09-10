@@ -51,7 +51,6 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     if not lines:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
-    # 分離「時間字串 (HH:MM 或 H:MM)」與「非時間字串 (班號、休假代碼等)」
     time_lines = [l for l in lines if re.match(r"^\d{1,2}:\d{2}$", l)]
     non_time_lines = [l for l in lines if not re.match(r"^\d{1,2}:\d{2}$", l)]
 
@@ -74,7 +73,6 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     # 3. 車次班號 (train_code) 精準對位
     train_code = "無"
     if non_time_lines:
-        # 若有多個非時間列 (例如 9/25 包含 ["DO2W", "NH2545"])，優先揀選真實車次班號
         real_trains = [
             l for l in non_time_lines
             if not any(k in l.upper() for k in ["DO", "D2W", "D1", "D2", "OGC"])
@@ -103,17 +101,29 @@ def is_cell_off_day(cell_value: Any) -> bool:
     return "DO" in val_str or "D2W" in val_str or tr.startswith("DO") or tr in ["休", "D1", "D2"]
 
 
-def is_overtime(hours_str: Optional[str], train_code: str, note: str) -> bool:
-    """檢核工時是否大於 8.5 小時"""
+def is_overtime(hours_str: Optional[str], train_code: str = "", note: str = "") -> bool:
+    """檢核工時是否大於 8.5 小時 (支援 H:MM、HH:MM、8.5h、8h30 等各式格式)"""
     if not hours_str:
         return False
     try:
-        h_m = re.search(r"(\d+)\s*h\s*(\d+)?", hours_str, re.I)
-        if h_m:
-            h = int(h_m.group(1))
-            m = int(h_m.group(2)) if h_m.group(2) else 0
+        s = str(hours_str).strip()
+
+        # 1. 相容 H:MM / HH:MM 格式 (例如 "9:30", "8:57", "9:57")
+        colon_m = re.search(r"(\d{1,2}):(\d{2})", s)
+        if colon_m:
+            h = int(colon_m.group(1))
+            m = int(colon_m.group(2))
             return (h + m / 60.0) > 8.5
-        f_m = re.search(r"(\d+\.\d+)", hours_str)
+
+        # 2. 相容 8h30m / 8h 格式
+        hm_m = re.search(r"(\d+)\s*h\s*(\d+)?", s, re.I)
+        if hm_m:
+            h = int(hm_m.group(1))
+            m = int(hm_m.group(2)) if hm_m.group(2) else 0
+            return (h + m / 60.0) > 8.5
+
+        # 3. 相容 8.5 浮點數格式
+        f_m = re.search(r"(\d+(?:\.\d+)?)", s)
         if f_m:
             return float(f_m.group(1)) > 8.5
     except Exception:
