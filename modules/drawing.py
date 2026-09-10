@@ -1,6 +1,6 @@
 """
 CREW DUTY ENGINE - High-Resolution Schedule Renderer
-包含 300 DPI 月曆生成、動態疏運期/國定假日標記、工時警示與精準圖例 Pill 渲染
+包含 300 DPI 月曆生成、動態疏運期/國定假日標記、工時警示與精準圖例渲染
 """
 import io
 import os
