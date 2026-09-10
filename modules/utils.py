@@ -42,7 +42,7 @@ def safe_read_excel(file_path: str, header: int = 3) -> pd.DataFrame:
 
 
 def parse_cell(cell_value: Any) -> Dict[str, Any]:
-    """解析乘務大表個別儲存格 (精準對應大表 4 行結構: 退勤 / 班號 / 出勤 / 工時)"""
+    """解析乘務大表個別儲存格 (完全依據大表原始 4 行順序：出勤時間 / 班號 / 退勤時間 / 工時)"""
     val_str = str(cell_value).strip() if pd.notna(cell_value) else ""
     if not val_str or val_str.lower() in ["nan", "none", ""]:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
@@ -68,29 +68,25 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     end_time = None
     hours_str = None
 
-    time_lines = [l for l in lines if re.match(r"^\d{1,2}:\d{2}$", l)]
-
-    # 2. 精準對應大表標準 4 行格式
-    if len(lines) == 4 and len(time_lines) == 3:
-        end_time = lines[0]     # 行 1: 退勤 (Out)
-        train_code = lines[1]   # 行 2: 班號 (Train)
-        start_time = lines[2]   # 行 3: 出勤 (In)
-        hours_str = lines[3]    # 行 4: 工時 (Hours)
+    # 2. 標準 4 行結構精準對位解析
+    # 第 1 行: 上排時間 (例如 8:54, 8:00, 6:10, 15:31) -> 繪製於最上方
+    # 第 2 行: 班號代碼 (例如 NF0026, TOWN2, NG0007, NF2536) -> 繪製於最下方
+    # 第 3 行: 中排時間 (例如 17:16, 17:00, 14:10, 23:31) -> 繪製於中間
+    # 第 4 行: 預估工時 (例如 8:22, 8:00) -> 繪製於右下角 (8:22)
+    if len(lines) >= 4:
+        start_time = lines[0]
+        train_code = lines[1]
+        end_time = lines[2]
+        hours_str = lines[3]
+    elif len(lines) == 3:
+        start_time = lines[0]
+        train_code = lines[1]
+        end_time = lines[2]
+    elif len(lines) == 2:
+        start_time = lines[0]
+        train_code = lines[1]
     else:
-        # 備用非標準結構判定
-        non_time_lines = [l for l in lines if not re.match(r"^\d{1,2}:\d{2}$", l)]
-        if non_time_lines:
-            train_code = non_time_lines[0]
-
-        if len(time_lines) >= 3:
-            end_time = time_lines[0]
-            start_time = time_lines[1]
-            hours_str = time_lines[2]
-        elif len(time_lines) == 2:
-            end_time = time_lines[0]
-            start_time = time_lines[1]
-        elif len(time_lines) == 1:
-            start_time = time_lines[0]
+        train_code = lines[0]
 
     note_str = " ".join([l for l in lines if l not in [train_code, start_time, end_time, hours_str]])
 
