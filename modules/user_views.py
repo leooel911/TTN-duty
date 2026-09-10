@@ -755,12 +755,11 @@ def render_user_home() -> None:
                                         parsed["hours"], parsed["train"], parsed["note"]
                                     )
 
-                                    do_tag = parsed.get("note", "")
-                                    if not do_tag:
-                                        do_match = re.search(
-                                            r"(DO\d*W?|D\d+W|OGC)", str(cell_raw), re.IGNORECASE
-                                        )
-                                        do_tag = do_match.group(1).upper() if do_match else ""
+                                    # 精準抓取標準休假/出勤貼紙代碼
+                                    do_match = re.search(
+                                        r"(DO\d*W?|D\d+W|OGC)", str(cell_raw), re.IGNORECASE
+                                    )
+                                    do_tag = do_match.group(1).upper() if do_match else ""
 
                                     next_day_sign_in = "無"
                                     if target_col_idx + 1 < len(row):
@@ -1159,12 +1158,11 @@ def render_user_home() -> None:
                                         parsed_return["train"], parsed_return["note"]
                                     )
 
-                                    return_do_tag = parsed_return.get("note", "")
-                                    if not return_do_tag:
-                                        do_match = re.search(
-                                            r"(DO\d*W?|D\d+W|OGC)", raw_return_str, re.IGNORECASE
-                                        )
-                                        do_tag = do_match.group(1).upper() if do_match else ""
+                                    # 精準抓取還假日標記代碼
+                                    return_do_match = re.search(
+                                        r"(DO\d*W?|D\d+W|OGC)", raw_return_str, re.IGNORECASE
+                                    )
+                                    return_do_tag = return_do_match.group(1).upper() if return_do_match else ""
 
                                     raw_target_cell = str(row.iloc[target_col_idx]).upper()
                                     raw_return_cell = str(row.iloc[return_col_idx]).upper()
