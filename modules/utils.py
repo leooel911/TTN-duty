@@ -37,7 +37,6 @@ from config import (
     TRANSPORT_PERIODS,
 )
 from matplotlib.patches import FancyBboxPatch
-from modules.services import load_system_config
 from modules.utils import is_overtime, is_town_shift, parse_cell
 
 matplotlib.use("Agg")
@@ -116,6 +115,9 @@ def render_schedule_figure(
     badge_title: str = "Producer | C.L.F",
 ) -> io.BytesIO:
     """渲染繪製高解析度個人月班表圖檔並回傳影像 BytesIO Buffer"""
+    # 延遲匯入以解除循環引用死結
+    from modules.services import load_system_config
+
     active_transport = parse_transport_periods(
         TRANSPORT_PERIODS, year=start_dt.year if start_dt else 2026
     )
