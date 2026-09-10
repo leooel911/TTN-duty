@@ -54,45 +54,49 @@ def clean_time_str(time_str: Optional[str]) -> Optional[str]:
 
 
 def parse_cell(cell_value: Any) -> Dict[str, Any]:
-    """解析乘務大表個別儲存格 (強健處理隱藏字元、全角冒號，並強制時間補零為 HH:MM)"""
-    if pd.isna(cell_value):
-        return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
+    """解析 Excel 儲存格資料"""
+    if pd.isna(cell_value) or cell_value is None:
+        return {"train": "", "start": "", "end": "", "hours": "", "note": ""}
 
-    val_str = (
-        str(cell_value)
-        .replace("\r", "")
-        .replace("\xa0", " ")
-        .replace("：", ":")
-        .strip()
-    )
-    if not val_str or val_str.lower() in ["nan", "none", ""]:
-        return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
+    val_str = str(cell_value).replace("\r", "").replace("\xa0", " ").replace("：", ":").strip()
+    if not val_str:
+        return {"train": "", "start": "", "end": "", "hours": "", "note": ""}
 
     lines = [l.strip() for l in val_str.split("\n") if l.strip()]
-    if not lines:
-        return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
-    # 1. 抓取所有符合時間格式的字串
+    # 1. 抓取所有 HH:MM 時間格式並進行補零
     raw_times = re.findall(r"\b\d{1,2}:\d{2}\b", val_str)
+    all_times = [f"{int(tm.split(':')[0]):02d}:{tm.split(':')[1]}" for tm in raw_times]
 
-    # 2. 強制格式化為兩位數小時 HH:MM (將 "5:26" 自動補零轉為 "05:26"，解決早班比對失敗問題)
-    all_times = []
-    for tm in raw_times:
-        parts = tm.split(":")
-        all_times.append(f"{int(parts[0]):02d}:{parts[1]}")
+    start_time = all_times[0] if len(all_times) >= 1 else None
+    end_time = all_times[1] if len(all_times) >= 2 else None
+    hours_raw = all_times[2] if len(all_times) >= 3 else None
 
-    # 3. 分離非時間欄位 (車次班號、請假註記等)
-    non_time_lines = [l for l in lines if not re.search(r"\d{1,2}:\d{2}", l)]
+    # 格式化工時顯示 (如 9h35m)
+    hours_str = ""
+    if hours_raw:
+        h, m = map(int, hours_raw.split(":"))
+        hours_str = f"{h}h{m:02d}m"
 
-    # 4. 若儲存格內無時間列
-    if not all_times:
-        first_line = lines[0]
-        return {
-            "train": first_line,
-            "start": None,
-            "end": None,
-            "hours": None,
-            "note": " ".join(lines[1:]) if len(lines) > 1 else "",
+    # 2. 判斷車次/班別 (取第一列非時間格式之文字)
+    non_time_lines = [l for l in lines if not re.search(r"\b\d{1,2}:\d{2}\b", l)]
+    train_code = non_time_lines[0] if non_time_lines else "無"
+
+    # 3. 備註 (note) 解析：直接過濾車次與所有符合時間格式 (H:MM/HH:MM) 的字串
+    note_lines = [
+        l for l in lines 
+        if l != train_code 
+        and not re.search(r"\b\d{1,2}:\d{2}\b", l)
+    ]
+    note_str = " ".join(note_lines)
+
+    return {
+        "train": train_code,
+        "start": start_time if start_time else "",
+        "end": end_time if end_time else "",
+        "hours": hours_str,
+        "note": note_str,
+    }
         }
 
     # 5. 時間列精準按順序對位
