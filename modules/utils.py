@@ -24,7 +24,7 @@ def get_file_mtime_str(file_path: str) -> str:
     if isinstance(file_path, str) and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
         try:
             mtime = os.path.getmtime(file_path)
-            dt = datetime.fromtimestamp(mtime, tz=TAIWAN_TZ)
+            dt = datetime.fromtimestamp(mtime, tz=TAIWAN_TZ) if TAIWAN_TZ else datetime.fromtimestamp(mtime)
             return dt.strftime("%Y-%m-%d %H:%M")
         except Exception:
             return "時間讀取失敗"
@@ -39,6 +39,18 @@ def safe_read_excel(file_path: str, header: int = 3) -> pd.DataFrame:
         return pd.read_excel(file_path, header=header)
     except Exception:
         return pd.DataFrame()
+
+
+def clean_time_str(time_str: Optional[str]) -> Optional[str]:
+    """將時間字串統一轉換為兩位數小時格式 HH:MM (例如 5:26 -> 05:26)"""
+    if not time_str:
+        return None
+    time_str = str(time_str).strip().replace("：", ":")
+    m = re.search(r"\b(\d{1,2}):(\d{2})\b", time_str)
+    if m:
+        h, mins = int(m.group(1)), m.group(2)
+        return f"{h:02d}:{mins}"
+    return None
 
 
 def parse_cell(cell_value: Any) -> Dict[str, Any]:
@@ -63,7 +75,7 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     # 1. 抓取所有符合時間格式的字串
     raw_times = re.findall(r"\b\d{1,2}:\d{2}\b", val_str)
 
-    # 2. 強制格式化為兩位數小時 HH:MM (將 "5:26" 自動補零轉為 "05:26")
+    # 2. 強制格式化為兩位數小時 HH:MM (將 "5:26" 自動補零轉為 "05:26"，解決早班比對失敗問題)
     all_times = []
     for tm in raw_times:
         parts = tm.split(":")
@@ -146,7 +158,7 @@ def is_overtime(hours_str: Optional[str], train_code: str = "", note: str = "") 
     return False
 
 
-def is_town_shift(train_code: str, note: str) -> bool:
+def is_town_shift(train_code: str, note: str = "") -> bool:
     """判斷是否為非正線勤務 (TOWN, STD, DS, 庫備等)"""
     tr = str(train_code).upper()
     nt = str(note).upper()
@@ -219,7 +231,7 @@ def check_week_has_holiday(target_date: str, date_cols: List[str], columns: Opti
 def log_activity(action: str, details: str = "") -> None:
     """寫入全站系統操作日誌"""
     os.makedirs(DATA_DIR, exist_ok=True)
-    now = datetime.now(TAIWAN_TZ).strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_entry = f"[{now}] {action} | {details}\n"
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
