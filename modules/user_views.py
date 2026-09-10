@@ -222,7 +222,7 @@ def render_user_home() -> None:
             box-sizing: border-box !important;
         }
 
-        /* 4. 高質感 Mobile 卡片本體 */
+        /* 4. 高質感 Mobile 雙層卡片本體 */
         .crew-card-integrated, .crew-card-integrated-warn {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
             border: 1.2px solid rgba(56, 189, 248, 0.45) !important;
@@ -231,7 +231,7 @@ def render_user_home() -> None:
             border-top-right-radius: 8px !important;
             border-bottom-left-radius: 0px !important;
             border-bottom-right-radius: 0px !important;
-            padding: 6px 6px 4px 6px !important;
+            padding: 8px 8px 6px 8px !important;
             box-sizing: border-box !important;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             width: 100% !important;
@@ -299,11 +299,12 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
-        /* 6. 標籤列 */
+        /* 6. 獨立貼紙標籤 */
         .badge-group {
             display: flex;
             gap: 2px;
             align-items: center;
+            justify-content: flex-end;
             flex-wrap: nowrap;
         }
         .non-line-badge { font-size: 8.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
@@ -790,7 +791,7 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 每 2 個結果一組，渲染成精緻雙排直欄 (2 Columns Grid)
+                        # 每 2 個結果一組，渲染成【專業雙層架構】直欄 (2 Columns Grid)
                         for i in range(0, len(filtered_results), 2):
                             batch = filtered_results[i : i + 2]
                             cols = st.columns(2)
@@ -816,18 +817,23 @@ def render_user_home() -> None:
                                     clean_next_signin = str(r.get("隔日Sign-In", "無")).replace("\n", " ").strip()
 
                                     card_html = f"""<div class="crew-card-integrated">
-<div style="display: flex; justify-content: space-between; align-items: baseline; min-width: 0; width: 100%;">
-    <div style="font-size: 12.5px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+<!-- 第一層：姓名 ID (左) + 貼紙標籤 (右，空間充裕不裁切) -->
+<div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+    <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_id})</span>
     </div>
-</div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px; padding-top: 3px; border-top: 1px dashed rgba(255,255,255,0.12); width: 100%;">
-    <span style="font-size: 12px; color: #38BDF8; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_train}</span>
-    <span style="font-size: 10.5px; font-weight: 800; color: #4ADE80; font-family: monospace; white-space: nowrap;">{clean_signin}➔{clean_signout}</span>
-</div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px; padding-top: 3px; border-top: 1px solid rgba(255,255,255,0.08); width: 100%;">
-    <span style="font-size: 9.5px; color: #94A3B8; font-family: monospace; white-space: nowrap;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></span>
     {badges_html}
+</div>
+<!-- 第二層：班別/隔日 (左) + 醒目上下行時間 In/Out (右) -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); width: 100%;">
+    <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+        <div style="font-size: 13.5px; font-weight: 900; color: #38BDF8; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_train}</div>
+        <div style="font-size: 9.5px; color: #94A3B8; font-family: monospace; white-space: nowrap;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></div>
+    </div>
+    <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
+        <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_signin}</div>
+        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_signout}</div>
+    </div>
 </div>
 </div>"""
 
@@ -1229,7 +1235,7 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 每 2 個結果一組，渲染成精緻雙排直欄 (2 Columns Grid)
+                                # 每 2 個結果一組，渲染成【專業雙層架構】直欄 (2 Columns Grid)
                                 for i in range(0, len(filtered_candidates), 2):
                                     batch = filtered_candidates[i : i + 2]
                                     cols = st.columns(2)
@@ -1260,20 +1266,23 @@ def render_user_home() -> None:
                                             clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
 
                                             card_html = f"""<div class="{card_class}">
-<div style="display: flex; justify-content: space-between; align-items: baseline; min-width: 0; width: 100%;">
-    <div style="font-size: 12.5px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+<!-- 第一層：姓名 ID (左) + 貼紙標籤 (右，空間充裕不裁切) -->
+<div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+    <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_cand_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_cand_id})</span>
     </div>
-</div>
-<div style="font-size: 10px; color: #94A3B8; margin-top: 2px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
-    還休:{clean_cand_return_date} ｜ <strong style="color:#38BDF8;">{clean_cand_return_train}</strong>
-</div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px; padding-top: 3px; border-top: 1px dashed rgba(255,255,255,0.12); width: 100%;">
-    <span style="font-size: 9.5px; color: {streak_color}; font-weight: 700; font-family: monospace; white-space: nowrap;">連班:{streak_cnt}天</span>
-    <span style="font-size: 10.5px; font-weight: 800; color: #4ADE80; font-family: monospace; white-space: nowrap;">{clean_cand_signin}➔{clean_cand_signout}</span>
-</div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px; width: 100%;">
     {badges_html}
+</div>
+<!-- 第二層：還休與車次 (左) + 醒目上下行時間 In/Out (右) -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); width: 100%;">
+    <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+        <div style="font-size: 13.5px; font-weight: 900; color: #38BDF8; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_return_train}</div>
+        <div style="font-size: 9.5px; color: #94A3B8; font-family: monospace; white-space: nowrap;">還休:{clean_cand_return_date} ｜ <strong style="color:{streak_color};">連:{streak_cnt}天</strong></div>
+    </div>
+    <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
+        <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_cand_signin}</div>
+        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_cand_signout}</div>
+    </div>
 </div>
 </div>"""
 
