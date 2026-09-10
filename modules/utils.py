@@ -42,8 +42,16 @@ def safe_read_excel(file_path: str, header: int = 3) -> pd.DataFrame:
 
 
 def parse_cell(cell_value: Any) -> Dict[str, Any]:
-    """解析乘務大表個別儲存格 (精準分離出勤/簽到、退勤/簽退、總工時與車次班號)"""
-    val_str = str(cell_value).strip() if pd.notna(cell_value) else ""
+    """解析乘務大表個別儲存格 (徹底清除隱藏字元並對應 出勤 / 退勤 / 總工時 / 班號)"""
+    # 淨化字串：移除 \r、\xa0 (不換行空白) 並去除首尾空白
+    val_str = (
+        str(cell_value)
+        .replace("\r", "")
+        .replace("\xa0", " ")
+        .strip()
+        if pd.notna(cell_value)
+        else ""
+    )
     if not val_str or val_str.lower() in ["nan", "none", ""]:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
@@ -51,11 +59,14 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     if not lines:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
-    time_lines = [l for l in lines if re.match(r"^\d{1,2}:\d{2}$", l)]
-    non_time_lines = [l for l in lines if not re.match(r"^\d{1,2}:\d{2}$", l)]
+    # 1. 抓取儲存格內所有符合 H:MM 或 HH:MM 格式的時間字串
+    all_times = re.findall(r"\b\d{1,2}:\d{2}\b", val_str)
 
-    # 1. 純休假 / 請假判定 (沒有時間列，如 DO1, DO3X, DO2 等)
-    if not time_lines:
+    # 2. 分離非時間列 (班號、請假註記等)
+    non_time_lines = [l for l in lines if not re.search(r"\d{1,2}:\d{2}", l)]
+
+    # 3. 純休假 / 請假判定 (無任何時間列，如 DO1, DO3X, DO2 等)
+    if not all_times:
         first_line = lines[0]
         return {
             "train": first_line,
@@ -65,12 +76,15 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
             "note": " ".join(lines[1:]) if len(lines) > 1 else "",
         }
 
-    # 2. 時間列精準對位 (第 1 個=出勤, 第 2 個=退勤, 第 3 個=總工時)
-    start_time = time_lines[0] if len(time_lines) >= 1 else None
-    end_time = time_lines[1] if len(time_lines) >= 2 else None
-    hours_str = time_lines[2] if len(time_lines) >= 3 else None
+    # 4. 時間列精準按順序對位：
+    # 第 1 個時間 = 出勤/簽到 (Start)
+    # 第 2 個時間 = 退勤/簽退 (End)
+    # 第 3 個時間 = 預估工時 (Hours)
+    start_time = all_times[0] if len(all_times) >= 1 else None
+    end_time = all_times[1] if len(all_times) >= 2 else None
+    hours_str = all_times[2] if len(all_times) >= 3 else None
 
-    # 3. 車次班號 (train_code) 精準對位
+    # 5. 車次班號 (train_code) 解析
     train_code = "無"
     if non_time_lines:
         real_trains = [
