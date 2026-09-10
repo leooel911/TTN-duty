@@ -1,336 +1,474 @@
-"""
-CREW DUTY ENGINE V2 - Main Entrypoint
-整合 V1 全套繪圖與算力引擎 + V2 號誌樓滿版介面
-"""
-import os
-import sys
-
-# 🛠️ 1. 最優先加入專案根目錄搜尋路徑，徹底解決 Streamlit Cloud 跨目錄 Import 問題
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-
-import json
-from datetime import datetime
 import streamlit as st
-import streamlit.components.v1 as components
-
-from modules.services import (
-    get_crew_full_schedule_json,
-    load_system_config,
-    search_exchange_candidates_v2,
-)
+from config import ADMIN_PASSWORD, CREW_ACCESS_PASSWORD, CUSTOM_CSS
 from modules.admin_views import render_admin_panel
+from modules.components import render_zoomable_image, show_feedback_modal
 from modules.drawing import render_schedule_figure
-from modules.components import render_zoomable_image
-
-# 2. 頁面初始化
-st.set_page_config(
-    page_title="CREW DUTY ENGINE — Dispatch Terminal",
-    page_icon="700st.png",
-    layout="wide",
-    initial_sidebar_state="collapsed",
+from modules.services import (
+    is_user_allowed,
+    load_system_config,
+    process_file_data,
+    verify_crew_membership,
+)
+from modules.user_views import render_user_home
+from modules.utils import (
+    format_display_name,
+    get_employee_name,
+    log_activity,
+    send_admin_email,
 )
 
-# 3. Session State 初始化
-if "current_unit" not in st.session_state:
-    st.session_state.current_unit = "TTN"
-if "current_emp_id" not in st.session_state:
-    st.session_state.current_emp_id = "A026047"
-if "admin_logged_in" not in st.session_state:
-    st.session_state.admin_logged_in = False
-if "nav_mode" not in st.session_state:
-    st.session_state.nav_mode = "user"
+# 載入全域動態設定 (每次 Rerun 時重新載入最新設定)
+sys_cfg = load_system_config()
+VIP_PASS_CODE = sys_cfg.get("vip_password") or sys_cfg.get("vip_pass_code") or "0900"
+CREW_PASS_CODE = sys_cfg.get("user_password") or sys_cfg.get("crew_pass_code") or CREW_ACCESS_PASSWORD
+ADMIN_PASS_CODE = sys_cfg.get("admin_password") or ADMIN_PASSWORD
+DEFAULT_EMP_ID = sys_cfg.get("default_emp_id", "A")
 
-# 4. 路由判斷：管理員後台模式
-if st.session_state.nav_mode == "admin" and st.session_state.admin_logged_in:
-    render_admin_panel()
+st.set_page_config(
+    page_title="TTN Shift Producer", page_icon="700st.png", layout="centered"
+)
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------
+# 權限申請彈出視窗對話框 (Dialog)
+# ---------------------------------------------------------
+@st.dialog("申請系統使用權限")
+def show_apply_permission_dialog():
+    st.markdown(
+        """
+        <div style="font-size: 13px; color: #94A3B8; margin-bottom: 12px;">
+            請填寫基本資料，送出後系統將自動發送通知信給管理員進行審核與開通。
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    req_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS", "其他單位"], key="dlg_req_unit")
+    req_emp_id = st.text_input("使用者員編 (例如: 023300)", key="dlg_req_emp_id")
+    req_name = st.text_input("真實姓名 (例如: 波莉)", key="dlg_req_name")
+    req_reason = st.text_area("申請原因 / 備註 (選填)", key="dlg_req_reason", help="說明用途可加速審核")
+
+    col_sub1, col_sub2 = st.columns([1, 1])
+    with col_sub1:
+        submit_clicked = st.button("確認送出申請", type="primary", use_container_width=True)
+    with col_sub2:
+        if st.button("關閉視窗", use_container_width=True):
+            st.session_state["show_apply_dialog"] = False
+            st.rerun()
+
+    if submit_clicked:
+        clean_emp = req_emp_id.strip()
+        clean_name = req_name.strip()
+
+        if not clean_emp or not clean_name:
+            st.warning("請完整填寫「員編」與「姓名」！")
+        else:
+            with st.spinner("正在記錄申請並發送通知信..."):
+                # 1. 寫入系統活動紀錄 (備份留底)
+                log_activity(
+                    "權限申請",
+                    f"單位:{req_unit} | 員編:{clean_emp} | 姓名:{clean_name} | 原因:{req_reason}",
+                )
+
+                # 2. 自動發送通知信給管理員
+                success, msg = send_admin_email(req_unit, clean_emp, clean_name, req_reason)
+
+            if success:
+                st.success("申請已成功送出！管理員已收到信件通知，請靜候開通。")
+            else:
+                st.success("申請已成功記錄！(已登記於系統，可聯繫管理員)")
+
+
+# ---------------------------------------------------------
+# Session State 初始化
+# ---------------------------------------------------------
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+if "admin_logged_in" not in st.session_state:
+    st.session_state["admin_logged_in"] = False
+if "user_input_field" not in st.session_state:
+    st.session_state["user_input_field"] = DEFAULT_EMP_ID
+if "show_admin_login" not in st.session_state:
+    st.session_state["show_admin_login"] = False
+if "show_feedback_dialog" not in st.session_state:
+    st.session_state["show_feedback_dialog"] = False
+if "show_apply_dialog" not in st.session_state:
+    st.session_state["show_apply_dialog"] = False
+if "inspect_emp_target" not in st.session_state:
+    st.session_state["inspect_emp_target"] = None
+if "nav_mode" not in st.session_state:
+    st.session_state["nav_mode"] = "home"
+if "page" not in st.session_state:
+    st.session_state["page"] = "user"
+if "current_user_id" not in st.session_state:
+    st.session_state["current_user_id"] = DEFAULT_EMP_ID
+if "current_unit" not in st.session_state:
+    st.session_state["current_unit"] = "TTN"
+
+# ---------------------------------------------------------
+# 組員完整班表檢視模式 (Inspector Mode)
+# ---------------------------------------------------------
+if st.session_state.get("inspect_emp_target") is not None:
+    target_emp = st.session_state["inspect_emp_target"]
+    current_unit = st.session_state.get("current_unit", "TTN")
+
+    st.markdown(
+        f"""
+    <div class="section-header-box">
+        <div class="section-title">[{current_unit}] 組員完整班表檢視: {target_emp}</div>
+        <div class="section-subtitle">Inspection Mode // Full Schedule View</div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    if st.button("上一頁 (返回快篩結果)"):
+        st.session_state["inspect_emp_target"] = None
+        st.rerun()
+
+    try:
+        start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
+        with st.spinner(f"正在繪製【{emp_name}】的完整月班表，請稍候..."):
+            buf = render_schedule_figure(
+                start_dt,
+                dates,
+                emp_id,
+                emp_name,
+                cells,
+                current_unit,
+                badge_title="Inspector | C.L.F",
+            )
+            st.success(f"已成功載入【{emp_name}】({emp_id}) 之完整月班表")
+            render_zoomable_image(buf)
+
+            col_dl1, col_dl2 = st.columns([1, 1])
+            with col_dl1:
+                st.download_button(
+                    "下載此組員月班表圖檔",
+                    data=buf,
+                    file_name=f"{current_unit}_班表_{emp_name}.png",
+                    mime="image/png",
+                    use_container_width=True,
+                )
+            with col_dl2:
+                st.markdown(
+                    """
+                    <div style="display: flex; align-items: center; height: 100%; font-size: 12px; color: #94A3B8; font-weight: 500; font-family: monospace; padding-left: 6px;">
+                        提示：手機使用者可長按圖片儲存至相簿
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+    except Exception as e:
+        st.error(f"載入組員【{target_emp}】班表時發生錯誤：{e}")
+
     st.stop()
 
-# 5. 前台 Streamlit 側邊欄控制
-with st.sidebar:
-    st.title("⚙️ 調度終端系統控制台")
-    st.caption("CREW DUTY ENGINE V2 · Real-Data Hybrid")
-    st.divider()
-
-    # 切換基地
-    unit_sel = st.selectbox(
-        "選擇營運基地",
-        ["TTN", "TTC", "TTS"],
-        index=["TTN", "TTC", "TTS"].index(st.session_state.current_unit)
-    )
-    if unit_sel != st.session_state.current_unit:
-        st.session_state.current_unit = unit_sel
-        st.rerun()
-
-    # 輸入員編登入
-    input_emp = st.text_input("輸入要查詢/登入的員編", value=st.session_state.current_emp_id)
-    if st.button("載入組員班表", use_container_width=True):
-        st.session_state.current_emp_id = input_emp.strip().upper()
-        st.rerun()
-
-    st.divider()
-
-    # 匯出 V1 高解析度 300 DPI 月曆圖檔按鈕
-    if st.button("🖼️ 生成 300 DPI 高清月班表", use_container_width=True):
-        st.session_state["show_hd_map"] = True
-
-    st.divider()
-    # 管理員後台入口
-    if st.button("🔑 開啟管理員後台 (Admin Panel)", use_container_width=True):
-        st.session_state.admin_logged_in = True
-        st.session_state.nav_mode = "admin"
-        st.rerun()
-
-# 6. 高清繪圖對話框處理
-if st.session_state.get("show_hd_map", False):
-    st.markdown("### 🖼️ 高解析度月班表圖檔預覽 (V1 繪圖引擎)")
-    crew_info = get_crew_full_schedule_json(st.session_state.current_emp_id, st.session_state.current_unit)
-    if crew_info and "raw_cells" in crew_info:
-        buf = render_schedule_figure(
-            start_dt=datetime(2026, 9, 1),
-            dates=crew_info["raw_dates"],
-            emp_id=crew_info["emp_id"],
-            emp_name=crew_info["name"],
-            cells=crew_info["raw_cells"],
-            unit_label=crew_info["unit_name"]
-        )
-        render_zoomable_image(buf)
-        st.download_button("⬇️ 下載高清班表 PNG", buf, file_name=f"{crew_info['emp_id']}_schedule.png", mime="image/png")
-    else:
-        st.error("無法讀取該組員之完整原始儲存格資料以繪製圖檔。")
-    
-    if st.button("關閉圖檔預覽"):
-        st.session_state["show_hd_map"] = False
-        st.rerun()
-
-# 7. 全螢幕滿版 CSS
-st.markdown(
-    """
-    <style>
-    [data-testid="stHeader"] { background: transparent !important; height: 0px !important; }
-    [data-testid="stToolbar"], footer { display: none !important; }
-    [data-testid="stSidebarCollapsedControl"], button[aria-label="Open sidebar"] {
-        position: fixed !important; top: 10px !important; left: 10px !important; z-index: 99999999 !important;
-        background-color: rgba(20, 28, 38, 0.85) !important; border: 1px solid #232E3A !important;
-        border-radius: 8px !important; color: #4C9AE0 !important; backdrop-filter: blur(8px) !important;
-    }
-    html, body, .stApp, [data-testid="stAppViewContainer"] {
-        padding: 0 !important; margin: 0 !important; background-color: #070B10 !important;
-        overflow: hidden !important; height: 100dvh !important;
-    }
-    .block-container { padding: 0 !important; margin: 0 !important; max-width: 100% !important; height: 100dvh !important; }
-    iframe { border: none !important; width: 100vw !important; height: 100dvh !important; position: fixed !important; top: 0 !important; left: 0 !important; z-index: 99999 !important; }
-    </style>
+# ---------------------------------------------------------
+# 前置授權碼門戶檢查 (登入驗證頁面)
+# ---------------------------------------------------------
+if not st.session_state["authenticated"] and not st.session_state.get(
+    "admin_logged_in", False
+):
+    st.markdown(
+        """
+    <div style="text-align: center; margin-top: 1.5rem; margin-bottom: 1.2rem;">
+        <div style="font-size: 26px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
+        <div style="color: #94A3B8; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace;">
+            BUSY DOING NOTHING PRODUCTIVE<br>C.L.F EDITION
+        </div>
+    </div>
     """,
+        unsafe_allow_html=True,
+    )
+
+    col1, col2, col3 = st.columns([1, 2.4, 1])
+    with col2:
+        with st.expander("登入前系統說明與試用須知（點擊展開）", expanded=False):
+            st.markdown(
+                """
+            <div style="font-size: 12.5px; color: #CBD5E1; line-height: 1.7; font-family: monospace;">
+                <div style="color: #38BDF8; font-weight: 800; margin-bottom: 6px;">系統開放試用公告</div>
+                本系統目前為正式環境第一階段特定人員內部測試。<br><br>
+                <div style="color: #FBBF24; font-weight: 800; margin-bottom: 4px;">重要提醒與注意事項：</div>
+                1. <b>排班依據</b>：本系統班表僅供個人調假與換班快篩參考，<b>即時班表務必以公司官方公告為準</b>。<br>
+                2. <b>資訊安全</b>：班表相關資料屬內部營運資訊，<b>請勿外流授權碼與班表截圖</b>。<br>
+                3. <b>權限與回報</b>：尚無權限者請點選下方<b>「申請使用權限」</b>；登入後若發現資料有誤，請善用頁尾<b>「問題回報」</b>。
+            </div>
+            """,
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+        with st.form("auth_form"):
+            selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
+            
+            # 還原預設值為 DEFAULT_EMP_ID ("A")
+            entered_emp = st.text_input(
+                "使用者員編 (範例：023300)",
+                value=DEFAULT_EMP_ID,
+                placeholder="例如: 023300",
+                max_chars=10,
+            )
+            entered_key = st.text_input(
+                "系統授權碼", type="password", placeholder="請輸入系統授權碼..."
+            )
+
+            # 按鈕視覺層級區隔（保留 Primary 醒目色彩，移除貼圖）
+            col_b1, col_b2 = st.columns([1, 1])
+            with col_b1:
+                btn_auth = st.form_submit_button("進入系統", type="primary", use_container_width=True)
+            with col_b2:
+                btn_apply = st.form_submit_button("申請使用權限", use_container_width=True)
+
+            # 點擊「申請使用權限」時切換 State 標記並重刷
+            if btn_apply:
+                st.session_state["show_apply_dialog"] = True
+                st.rerun()
+
+            # 點擊「進入系統」時觸發原本的驗證邏輯
+            if btn_auth:
+                clean_emp = entered_emp.strip().upper()
+                st.session_state["user_input_field"] = clean_emp if clean_emp else "A"
+
+                if entered_key == VIP_PASS_CODE:
+                    target_emp_id = clean_emp if clean_emp else DEFAULT_EMP_ID
+                    st.session_state["authenticated"] = True
+                    st.session_state["admin_logged_in"] = False
+                    st.session_state["nav_mode"] = "home"
+                    st.session_state["page"] = "user"
+                    st.session_state["current_unit"] = selected_unit
+
+                    emp_real_name = get_employee_name(selected_unit, target_emp_id)
+                    disp_name = format_display_name(emp_real_name)
+                    name_suffix = f" {disp_name}" if disp_name else ""
+
+                    if target_emp_id == "A":
+                        st.session_state["current_user_id"] = "VIP_USER (A 全域通行)"
+                    else:
+                        st.session_state["current_user_id"] = (
+                            f"VIP_USER ({target_emp_id}{name_suffix})"
+                        )
+
+                    log_activity(f"VIP 身分登入系統: {target_emp_id}")
+                    st.rerun()
+
+                elif not clean_emp:
+                    st.error("請輸入有效的員編")
+
+                elif entered_key == ADMIN_PASS_CODE:
+                    st.session_state["admin_logged_in"] = True
+                    st.session_state["current_unit"] = selected_unit
+                    st.session_state["current_user_id"] = f"ADMIN_{clean_emp}"
+                    st.session_state["nav_mode"] = "admin_panel"
+                    st.session_state["page"] = "admin"
+                    log_activity("管理員登入後台")
+                    st.rerun()
+
+                elif entered_key == CREW_PASS_CODE:
+                    if clean_emp == "A":
+                        st.session_state["authenticated"] = True
+                        st.session_state["admin_logged_in"] = False
+                        st.session_state["nav_mode"] = "home"
+                        st.session_state["page"] = "user"
+                        st.session_state["current_unit"] = selected_unit
+                        st.session_state["current_user_id"] = "VIP_USER (A 全域通行)"
+                        log_activity("測試員 A 登入系統")
+                        st.rerun()
+
+                    allowed, user_info = is_user_allowed(selected_unit, clean_emp)
+                    u_role = (
+                        str(user_info.get("role", "")).upper() if isinstance(user_info, dict) else ""
+                    )
+                    u_name_from_info = (
+                        user_info.get("name", "") if isinstance(user_info, dict) else ""
+                    )
+
+                    if not allowed:
+                        st.error(
+                            "您的員編尚未開放使用權限，請洽管理員於後台開通。"
+                        )
+                    elif (
+                        verify_crew_membership(selected_unit, clean_emp)
+                        or "VIP" in u_role
+                        or u_role in ["TESTER", "ADMIN"]
+                    ):
+                        st.session_state["authenticated"] = True
+                        st.session_state["admin_logged_in"] = False
+                        st.session_state["nav_mode"] = "home"
+                        st.session_state["page"] = "user"
+                        st.session_state["current_unit"] = selected_unit
+
+                        emp_real_name = get_employee_name(selected_unit, clean_emp)
+                        disp_name = format_display_name(emp_real_name)
+                        u_name = u_name_from_info if u_name_from_info else disp_name
+
+                        if "VIP" in u_role or u_role == "TESTER":
+                            name_str = f" {u_name}" if u_name else ""
+                            role_tag = "TESTER" if u_role == "TESTER" else "VIP_USER"
+                            st.session_state["current_user_id"] = (
+                                f"{role_tag} ({clean_emp}{name_str})".strip()
+                            )
+                        else:
+                            st.session_state["current_user_id"] = (
+                                f"{clean_emp} {u_name}".strip()
+                            )
+
+                        log_activity(f"使用者登入系統: {clean_emp} (單位: {selected_unit}, 角色: {u_role})")
+                        st.rerun()
+                    else:
+                        st.error(
+                            "非所屬單位組員，或輸入不存在的編號，請確認員編。"
+                        )
+                else:
+                    st.error("授權碼或密碼錯誤，請重新輸入")
+
+        # 持續監聽 Session State 控制彈窗渲染
+        if st.session_state.get("show_apply_dialog", False):
+            show_apply_permission_dialog()
+
+    st.stop()
+
+# ---------------------------------------------------------
+# 主頁面 Header 資訊區
+# ---------------------------------------------------------
+current_unit_label = st.session_state.get("current_unit", "TTN")
+current_operator_id = st.session_state.get("current_user_id", DEFAULT_EMP_ID)
+
+st.markdown(
+    f"""
+<div class="header-container">
+    <div class="main-title">CREW DUTY ENGINE</div>
+    <div style="color: #94A3B8; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; font-family: monospace; margin-top: 3px;">
+        BUSY DOING NOTHING PRODUCTIVE &bull; C.L.F EDITION
+    </div>
+    <div class="title-subtitle">
+        <span class="online-dot"></span>WELCOME: {current_unit_label} | {current_operator_id}<span class="online-dot"></span>
+    </div>
+</div>
+""",
     unsafe_allow_html=True,
 )
 
-# 8. 調用算力抓取真實班表 JSON
-current_crew = get_crew_full_schedule_json(st.session_state.current_emp_id, st.session_state.current_unit)
+# ---------------------------------------------------------
+# 動態公告與橫幅標語渲染 (連動 sys_config)
+# ---------------------------------------------------------
+enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
+announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫後台管理者")
 
-user_sched = current_crew["schedule"] if current_crew else []
-formatted_schedule = {
-    "week1": user_sched[:7],
-    "week2": user_sched[7:14],
-    "week3": user_sched[14:21]
-}
-
-# 調用算力計算快搜名單
-dynamic_exchange = search_exchange_candidates_v2(st.session_state.current_unit)
-
-# 9. 前端 HTML 範本
-RAW_HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>CREW DUTY ENGINE — Dispatch Terminal</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&display=swap');
-:root{
-  --ink-900:#070B10; --ink-800:#0E141C; --ink-700:#141C26; --ink-600:#1B2530;
-  --line:#232E3A; --line-soft:#1A222C; --paper:#ECF1F5; --dim:#8492A1; --dim-2:#59636E;
-  --blue:#4C9AE0; --amber:#E3A13D; --red:#E1615C; --green:#4FB88A;
-}
-*{box-sizing:border-box;}
-body{margin:0;padding:0;background:var(--ink-900);color:var(--paper);font-family:'IBM Plex Sans TC','IBM Plex Mono',sans-serif;-webkit-font-smoothing:antialiased;}
-.mono{font-family:'IBM Plex Mono',monospace;}
-.app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative;background:var(--ink-900);}
-.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px 48px;background:linear-gradient(var(--ink-900) 70%, transparent);}
-.brand{display:flex;align-items:center;gap:9px;}
-.brand-mark{width:26px;height:26px;border-radius:6px;background:var(--ink-700);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--blue);}
-.brand-name{font-size:13px;font-weight:600;color:var(--paper);}
-.brand-sub{font-size:9.5px;color:var(--dim-2);}
-.unit-chip{display:flex;align-items:center;gap:6px;background:var(--ink-700);border:1px solid var(--line);padding:6px 10px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--paper);cursor:pointer;}
-.unit-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
-main{flex:1;padding:0 16px 96px;overflow-x:hidden;}
-.screen{display:none;}
-.screen.active{display:block;}
-.section-label{font-size:11px;color:var(--dim-2);font-weight:600;margin:22px 2px 10px;}
-.hero{border:1px solid var(--line);border-radius:14px;background:linear-gradient(165deg, var(--ink-700), var(--ink-800));padding:20px 18px;}
-.panel{border:1px solid var(--line);border-radius:12px;background:var(--ink-800);padding:4px 14px;}
-.week-head{display:flex;justify-content:space-between;padding:12px 2px 8px;font-size:12px;font-weight:600;color:var(--dim);}
-.duty-row{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--line-soft);}
-.duty-row:last-child{border-bottom:none;}
-.duty-date{width:38px;text-align:center;}
-.duty-date .d{font-size:16px;font-weight:600;color:var(--paper);}
-.duty-date .w{font-size:9.5px;color:var(--dim-2);}
-.duty-bar{width:3px;align-self:stretch;border-radius:3px;background:var(--blue);}
-.duty-bar.off{background:var(--red);}
-.duty-main{flex:1;}
-.duty-times{font-size:14.5px;font-weight:600;}
-.duty-meta{font-size:11px;color:var(--dim-2);margin-top:2px;display:flex;gap:8px;}
-.tag{font-size:9.5px;font-weight:600;padding:2.5px 6px;border-radius:5px;}
-.tag.amber{color:var(--amber);background:rgba(227,161,61,0.14);}
-.tag.red{color:var(--red);background:rgba(225,97,92,0.14);}
-.tag.green{color:var(--green);background:rgba(79,184,138,0.14);}
-.empty-box{text-align:center;padding:36px 16px;background:var(--ink-800);border:1px solid var(--line);border-radius:14px;margin-top:16px;}
-.btn{display:block;width:100%;text-align:center;padding:13px;border-radius:10px;border:none;font-size:14.5px;font-weight:600;cursor:pointer;}
-.btn-primary{background:var(--blue);color:var(--ink-900);}
-.role-tabs{display:flex;gap:8px;margin-bottom:14px;}
-.role-tab{flex:1;text-align:center;padding:9px 0;border-radius:9px;font-size:13px;font-weight:600;color:var(--dim);background:var(--ink-800);border:1px solid var(--line);cursor:pointer;}
-.role-tab.active{color:var(--ink-900);background:var(--blue);}
-.result-card{border:1px solid var(--line);border-radius:12px;background:var(--ink-800);padding:13px 14px;margin-bottom:10px;}
-.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;background:rgba(14,20,28,0.92);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:8px 6px;z-index:30;}
-.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;cursor:pointer;color:var(--dim-2);}
-.tab-item.active{color:var(--blue);}
-</style>
-</head>
-<body>
-<div class="app">
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">CD</div>
-      <div>
-        <div class="brand-name">CREW DUTY ENGINE</div>
-        <div class="brand-sub">real-data hybrid · C.L.F</div>
-      </div>
+if enable_beta_banner:
+    st.markdown(
+        f"""
+    <div class="test-env-banner">
+        <div class="test-env-title">Beta測試環境運行中（BETA TEST ENVIRONMENT）</div>
+        <div class="test-env-sub">{announcement_msg}</div>
     </div>
-    <div class="unit-chip" onclick="openAdminPanel()">
-      <span class="dot"></span>
-      <span id="unitText">--</span>
+    """,
+        unsafe_allow_html=True,
+    )
+
+# ---------------------------------------------------------
+# 管理員二次密碼驗證彈窗
+# ---------------------------------------------------------
+if st.session_state.get("show_admin_login", False) and not st.session_state.get(
+    "admin_logged_in", False
+):
+    st.markdown(
+        """
+    <div class="section-header-box">
+        <div class="section-title">管理員身分驗證</div>
+        <div class="section-subtitle">Administrator Security Verification</div>
     </div>
-  </header>
+    """,
+        unsafe_allow_html=True,
+    )
 
-  <main>
-    <section class="screen active" id="screen-home"><div id="homeContent"></div></section>
-    <section class="screen" id="screen-schedule"><div class="section-label" id="schedTitle">我的月班表</div><div id="scheduleContent"></div></section>
-    <section class="screen" id="screen-exchange">
-      <div class="section-label">換班快搜</div>
-      <div class="role-tabs">
-        <div class="role-tab active" onclick="filterRole('服勤員', this)">服勤員</div>
-        <div class="role-tab" onclick="filterRole('駕駛', this)">駕駛</div>
-        <div class="role-tab" onclick="filterRole('列車長', this)">列車長</div>
-      </div>
-      <div id="searchResults"></div>
-    </section>
-    <section class="screen" id="screen-profile"><div id="profileContent"></div></section>
-  </main>
+    col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
+    with col_l2:
+        with st.form("admin_login_form"):
+            adm_pwd_input = st.text_input(
+                "管理員密碼",
+                type="password",
+                placeholder="請輸入管理員解鎖密碼...",
+                key="badge_admin_pwd_box",
+            )
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                btn_submit_adm = st.form_submit_button("登入後台")
+            with col_btn2:
+                btn_cancel_adm = st.form_submit_button("取消")
 
-  <nav class="tabbar">
-    <div class="tab-item active" data-tab="home" onclick="showTab('home')"><span>今日</span></div>
-    <div class="tab-item" data-tab="schedule" onclick="showTab('schedule')"><span>我的班表</span></div>
-    <div class="tab-item" data-tab="exchange" onclick="showTab('exchange')"><span>換班快搜</span></div>
-    <div class="tab-item" data-tab="profile" onclick="showTab('profile')"><span>我的</span></div>
-  </nav>
-</div>
+            if btn_submit_adm:
+                if adm_pwd_input == ADMIN_PASS_CODE:
+                    st.session_state["admin_logged_in"] = True
+                    st.session_state["nav_mode"] = "admin_panel"
+                    st.session_state["page"] = "admin"
+                    st.session_state["show_admin_login"] = False
+                    curr_op = st.session_state.get("user_input_field", DEFAULT_EMP_ID)
+                    st.session_state["current_user_id"] = f"ADMIN ({curr_op})"
+                    log_activity("管理員登入後台")
+                    st.rerun()
+                else:
+                    st.error("管理員密碼錯誤")
+            elif btn_cancel_adm:
+                st.session_state["show_admin_login"] = False
+                st.rerun()
+    st.stop()
 
-<script>
-const crewData = __CREW_JSON__;
-const scheduleData = __SCHEDULE_JSON__;
-const exchangeData = __EXCHANGE_JSON__;
+# ---------------------------------------------------------
+# 路由切換 (管理員後台 / 一般使用者頁面)
+# ---------------------------------------------------------
+is_admin_active = (
+    st.session_state.get("nav_mode") == "admin_panel"
+    or st.session_state.get("page") == "admin"
+) and st.session_state.get("page") != "user"
 
-function openAdminPanel(){
-  try {
-    const btn = window.parent.document.querySelector('button[aria-label="Open sidebar"], [data-testid="stSidebarCollapsedControl"]');
-    if(btn) btn.click();
-  } catch(e) {}
-}
+if is_admin_active and st.session_state.get("admin_logged_in", False):
+    render_admin_panel()
+else:
+    render_user_home()
 
-document.getElementById('unitText').textContent = crewData ? crewData.unit : '切換';
-
-const homeBox = document.getElementById('homeContent');
-if(!crewData){
-  homeBox.innerHTML = `
-    <div class="empty-box">
-      <div class="title" style="font-weight:700;margin-bottom:6px;">未找到組員班表</div>
-      <div class="sub" style="font-size:12px;color:var(--dim-2);margin-bottom:16px;">請點擊左上角「›」按鈕切換基地或輸入正確員編。</div>
-      <button class="btn btn-primary" onclick="openAdminPanel()">⚙️ 開啟控制台</button>
-    </div>`;
-} else {
-  homeBox.innerHTML = `
-    <div class="hero">
-      <div style="font-size:15px;font-weight:700;color:var(--paper);">${crewData.name} (${crewData.emp_id})</div>
-      <div style="font-size:11.5px;color:var(--dim-2);margin-top:3px;">基地：${crewData.unit_name} (${crewData.unit}) · 職掌：${crewData.role_title}</div>
-    </div>
-    <div class="section-label">快速切換</div>
-    <div class="panel">
-      <div class="duty-row" onclick="showTab('schedule')" style="cursor:pointer;"><div style="flex:1;"><b>我的月班表</b><div style="font-size:11px;color:var(--dim-2);">真實大表解析・班間合規警示</div></div>›</div>
-      <div class="duty-row" onclick="showTab('exchange')" style="cursor:pointer;"><div style="flex:1;"><b>換班快搜</b><div style="font-size:11px;color:var(--dim-2);">Sign-In 時段區間搜尋</div></div>›</div>
-    </div>`;
-}
-
-const schedBox = document.getElementById('scheduleContent');
-if(crewData && scheduleData.week1){
-  function renderWeekHtml(days){
-    return days.map(day => {
-      if(day.off){
-        return `<div class="duty-row"><div class="duty-date"><div class="d mono">${day.d}</div><div class="w">${day.wd}</div></div><div class="duty-bar off"></div><div class="duty-main"><div style="color:var(--red);font-weight:600;">${day.off}</div></div><span class="tag red">休假</span></div>`;
-      }
-      const restHtml = day.rest ? `<span style="color:var(--${day.restTag})">班間 ${day.rest}</span>` : '';
-      return `<div class="duty-row"><div class="duty-date"><div class="d mono">${day.d}</div><div class="w">${day.wd}</div></div><div class="duty-bar"></div><div class="duty-main"><div class="duty-times mono">${day.start} → ${day.end}</div><div class="duty-meta"><span>${day.code}</span><span>${day.dur}</span>${restHtml}</div></div></div>`;
-    }).join('');
-  }
-  schedBox.innerHTML = `
-    <div class="week-head">第 1 週</div><div class="panel">${renderWeekHtml(scheduleData.week1)}</div>
-    <div class="week-head">第 2 週</div><div class="panel">${renderWeekHtml(scheduleData.week2)}</div>
-    <div class="week-head">第 3 週</div><div class="panel">${renderWeekHtml(scheduleData.week3)}</div>`;
-}
-
-function filterRole(role, btn){
-  document.querySelectorAll('.role-tab').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
-  renderExchange(role);
-}
-
-function renderExchange(role){
-  const container = document.getElementById('searchResults');
-  const pool = exchangeData[role] || [];
-  if(pool.length === 0){
-    container.innerHTML = `<div class="empty-box"><div style="font-size:13px;color:var(--dim-2);">目前大表中無該職務可換班之組員</div></div>`;
-    return;
-  }
-  container.innerHTML = pool.map(c => `
-    <div class="result-card">
-      <div style="display:flex;justify-content:space-between;">
-        <div><div class="mono" style="font-size:11px;color:var(--dim-2);">${c.id}</div><div style="font-size:14px;font-weight:600;">${c.name}</div></div>
-        <span class="tag ${c.restTag}">${c.restBefore}</span>
-      </div>
-      <div class="mono" style="font-size:17px;font-weight:600;margin-top:6px;">${c.start} → ${c.end}</div>
-      <div style="font-size:11px;color:var(--dim-2);margin-top:2px;">${c.streak}</div>
-    </div>
-  `).join('');
-}
-renderExchange('服勤員');
-
-function showTab(name){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById('screen-'+name).classList.add('active');
-  document.querySelectorAll('.tab-item').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
-}
-</script>
-</body>
-</html>
-"""
-
-HTML_CODE = RAW_HTML_TEMPLATE.replace(
-    "__CREW_JSON__", json.dumps(current_crew, ensure_ascii=False) if current_crew else "null"
-).replace(
-    "__SCHEDULE_JSON__", json.dumps(formatted_schedule, ensure_ascii=False)
-).replace(
-    "__EXCHANGE_JSON__", json.dumps(dynamic_exchange, ensure_ascii=False)
+st.markdown(
+    '<div style="margin-top: 2rem; padding-top: 0.8rem; border-top: 1px'
+    ' dashed rgba(255,255,255,0.08);"></div>',
+    unsafe_allow_html=True,
 )
 
-components.html(HTML_CODE, height=1000, scrolling=False)
+# ---------------------------------------------------------
+# 頁尾功能按鈕與彈窗觸發
+# ---------------------------------------------------------
+col_f1, col_f2 = st.columns(2)
+
+with col_f1:
+    if st.button(
+        "問題回報與建議",
+        key="btn_footer_feedback_left",
+        use_container_width=True,
+    ):
+        st.session_state["show_feedback_dialog"] = True
+        st.rerun()
+
+with col_f2:
+    admin_btn_label = (
+        "ADMIN PANEL [Leo]"
+        if st.session_state.get("admin_logged_in", False)
+        else "ADMIN PANEL [C.L.F]"
+    )
+    if st.button(
+        admin_btn_label, key="btn_footer_admin_right", use_container_width=True
+    ):
+        if st.session_state.get("admin_logged_in", False):
+            if is_admin_active:
+                st.session_state["nav_mode"] = "home"
+                st.session_state["page"] = "user"
+            else:
+                st.session_state["nav_mode"] = "admin_panel"
+                st.session_state["page"] = "admin"
+        else:
+            st.session_state["show_admin_login"] = True
+        st.rerun()
+
+# 只要 show_feedback_dialog 狀態為 True，便維持渲染意見反饋彈窗
+if st.session_state.get("show_feedback_dialog", False):
+    show_feedback_modal()
