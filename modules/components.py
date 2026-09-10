@@ -1,4 +1,3 @@
-================================================
 import base64
 import io
 import os
@@ -68,7 +67,7 @@ def show_crew_schedule_modal(
     unit_label: str = "TTN",
     badge_title: str = "Crew Schedule | C.L.F",
 ) -> None:
-    """跳出對話框 (Dialog Modal) 顯示特定組員的完整月班表圖片"""
+    """跳出對話框顯示特定組員的完整月班表圖片"""
     st.markdown(f"### 查詢組員員編：`{emp_id}` ({unit_label})")
 
     with st.spinner(f"正在擷取並繪製組員【{emp_id}】的月班表..."):
@@ -99,7 +98,7 @@ def show_crew_schedule_modal(
 
 @st.dialog("檢視問題回報截圖", width="large")
 def view_feedback_img_modal(img_path: str, ticket_id: str, reporter: str) -> None:
-    """跳出對話框 (Dialog Modal) 檢視工單圖片附件"""
+    """跳出對話框檢視工單圖片附件"""
     st.markdown(f"### 工單單號：`{ticket_id}` (回報者: {reporter})")
     if os.path.exists(img_path):
         st.image(img_path, use_column_width=True)
@@ -117,7 +116,7 @@ def view_feedback_img_modal(img_path: str, ticket_id: str, reporter: str) -> Non
 
 @st.dialog("系統問題與建議回報", width="large")
 def show_feedback_modal(unit_label: str = "TTN", user_id: str = "") -> None:
-    """跳出問題與建議回報對話框 (Dialog Modal)"""
+    """跳出問題與建議回報對話框"""
     st.markdown(f"### 系統問題與建議回報 [{unit_label}]")
     st.caption("若你在使用過程中遇到系統 Bug、排班顯示錯誤或有改善建議，歡迎填寫以下表單。")
 
@@ -163,7 +162,6 @@ def show_feedback_modal(unit_label: str = "TTN", user_id: str = "") -> None:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 ticket_id = f"FB-{timestamp}"
 
-                # 儲存截圖附件
                 if uploaded_img is not None:
                     ext = os.path.splitext(uploaded_img.name)[1]
                     img_filename = f"{ticket_id}{ext}"
@@ -171,7 +169,6 @@ def show_feedback_modal(unit_label: str = "TTN", user_id: str = "") -> None:
                     with open(img_save_path, "wb") as f:
                         f.write(uploaded_img.getbuffer())
 
-                # 儲存文字工單檔案
                 txt_filename = f"{ticket_id}.txt"
                 txt_save_path = os.path.join(FEEDBACK_IMG_DIR, txt_filename)
 
