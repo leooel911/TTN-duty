@@ -243,7 +243,7 @@ def render_user_home() -> None:
             box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25);
         }
 
-        /* 5. 下方按鈕無縫熔合 */
+        /* 5. 卡片下方「檢視完整班表」按鈕無縫熔合 */
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"],
         div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {
             width: 100% !important;
@@ -298,38 +298,33 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
-        /* 6. 🔥 核心優化：搜尋主按鈕 (Primary Search CTA Buttons) 超醒目風格 */
-        div[data-testid="stElementContainer"]:has(button[key="btn_window_search"]),
-        div[data-testid="stElementContainer"]:has(button[key="btn_ex_search"]) {
-            width: 100% !important;
-            margin-top: 10px !important;
-            margin-bottom: 14px !important;
-        }
-
-        button[key="btn_window_search"],
-        button[key="btn_ex_search"] {
-            background: linear-gradient(135deg, #0284C7 0%, #2563EB 100%) !important;
+        /* 6. 🔥 核心修正：主要搜尋按鈕 (Primary CTA) 實心亮藍漸層 + 發光，徹底區隔次要按鈕 */
+        button[data-testid="stBaseButton-primary"],
+        button[kind="primary"] {
+            background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%) !important;
             color: #FFFFFF !important;
-            border: 1px solid #38BDF8 !important;
+            border: 1.5px solid #38BDF8 !important;
             border-radius: 10px !important;
             padding: 10px 16px !important;
-            box-shadow: 0 4px 16px rgba(37, 99, 235, 0.5) !important;
-            transition: all 0.2s ease-in-out !important;
+            box-shadow: 0 4px 18px rgba(2, 132, 199, 0.6) !important;
+            transition: all 0.25s ease-in-out !important;
+            margin-top: 6px !important;
+            margin-bottom: 12px !important;
         }
 
-        button[key="btn_window_search"]:hover,
-        button[key="btn_ex_search"]:hover {
-            background: linear-gradient(135deg, #0369A1 0%, #1D4ED8 100%) !important;
-            box-shadow: 0 6px 22px rgba(56, 189, 248, 0.7) !important;
+        button[data-testid="stBaseButton-primary"]:hover,
+        button[kind="primary"]:hover {
+            background: linear-gradient(135deg, #0369A1 0%, #1E40AF 100%) !important;
+            box-shadow: 0 6px 24px rgba(56, 189, 248, 0.8) !important;
             transform: translateY(-1px) !important;
         }
 
-        button[key="btn_window_search"] p,
-        button[key="btn_ex_search"] p {
+        button[data-testid="stBaseButton-primary"] p,
+        button[kind="primary"] p {
             font-size: 15px !important;
             font-weight: 800 !important;
             color: #FFFFFF !important;
-            letter-spacing: 0.5px !important;
+            letter-spacing: 0.6px !important;
         }
 
         /* 7. 獨立貼紙標籤 */
@@ -693,8 +688,8 @@ def render_user_home() -> None:
                         "僅顯示長班 (>8.5h)", value=False, key="win_long_shift"
                     )
 
-                # 🔥 超醒目滿版搜尋按鈕
-                if st.button("搜尋可換班組員名單", key="btn_window_search", use_container_width=True):
+                # 🔥 升級為 type="primary" 實心亮藍搜尋按鈕
+                if st.button("搜尋可換班組員名單", key="btn_window_search", type="primary", use_container_width=True):
                     raw_candidates = []
                     target_col_idx = find_date_column_index(df_search.columns, target_date)
 
@@ -1066,8 +1061,8 @@ def render_user_home() -> None:
                             key="ex_strict_limit",
                         )
 
-                        # 🔥 超醒目滿版搜尋按鈕
-                        if st.button("搜尋可換假組員名單", key="btn_ex_search", use_container_width=True):
+                        # 🔥 升級為 type="primary" 實心亮藍搜尋按鈕
+                        if st.button("搜尋可換假組員名單", key="btn_ex_search", type="primary", use_container_width=True):
                             raw_candidates = []
 
                             target_col_idx = find_date_column_index(df_ex.columns, target_date)
