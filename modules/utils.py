@@ -131,11 +131,24 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
 
 
 def is_cell_off_day(cell_value: Any) -> bool:
-    """判斷該儲存格是否為純休假日 (DO / D2W 等)"""
+    """判斷該儲存格是否為純休假日 (DO / D2W / 休 等)"""
+    if pd.isna(cell_value) or cell_value is None:
+        return True
+    val_str = str(cell_value).strip().upper()
+    if not val_str or val_str in ["NAN", "NONE", "休", "OFF"]:
+        return True
+
     parsed = parse_cell(cell_value)
     tr = parsed["train"].upper()
-    val_str = str(cell_value).upper()
-    return "DO" in val_str or "D2W" in val_str or tr.startswith("DO") or tr in ["休", "D1", "D2"]
+
+    if tr in ["無", "休", "OFF", "NAN", "NONE"]:
+        return True
+
+    if "DO" in val_str or "D2W" in val_str or tr.startswith("DO"):
+        if not re.search(r"[A-Z]{1,2}\d{3,4}", val_str):
+            return True
+
+    return False
 
 
 def is_overtime(hours_str: Optional[str], train_code: str = "", note: str = "") -> bool:
@@ -193,8 +206,7 @@ def translate_train_code(code: Any) -> str:
 
 
 def calculate_consecutive_work_days(row: pd.Series, target_date_str: str) -> int:
-    """計算指定日期起的連續出勤天數"""
-    streak = 0
+    """計算包含指定日期 (target_date_str) 在內的連續出勤天數 (雙向向左與向右擴展)"""
     date_cols = []
     for idx, col in enumerate(row.index):
         if idx >= 2:
@@ -208,14 +220,28 @@ def calculate_consecutive_work_days(row: pd.Series, target_date_str: str) -> int
             target_pos = pos
             break
 
-    if target_pos != -1:
-        for p in range(target_pos, -1, -1):
-            c_idx, _ = date_cols[p]
-            cell_val = row.iloc[c_idx]
-            if is_cell_off_day(cell_val):
-                break
-            streak += 1
-    return streak
+    if target_pos == -1:
+        return 0
+
+    c_idx, _ = date_cols[target_pos]
+    if is_cell_off_day(row.iloc[c_idx]):
+        return 0
+
+    left = target_pos
+    while left >= 0:
+        col_i, _ = date_cols[left]
+        if is_cell_off_day(row.iloc[col_i]):
+            break
+        left -= 1
+
+    right = target_pos
+    while right < len(date_cols):
+        col_i, _ = date_cols[right]
+        if is_cell_off_day(row.iloc[col_i]):
+            break
+        right += 1
+
+    return right - left - 1
 
 
 def check_week_has_holiday(target_date: str, date_cols: List[str], columns: Optional[Any] = None) -> Tuple[bool, str]:
