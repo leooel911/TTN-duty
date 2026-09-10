@@ -2,6 +2,7 @@ import base64
 import io
 import os
 import re
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -156,8 +157,6 @@ def show_feedback_modal(unit_label: str = "TTN", user_id: str = "") -> None:
             st.warning("請填寫詳細說明內容！")
         else:
             try:
-                from datetime import datetime
-
                 os.makedirs(FEEDBACK_IMG_DIR, exist_ok=True)
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 ticket_id = f"FB-{timestamp}"
