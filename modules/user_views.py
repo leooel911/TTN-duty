@@ -1196,8 +1196,9 @@ def render_user_home() -> None:
                                         )
                                     )
 
+                                    # 模擬對調後狀態：組員在想休日出勤，在還休日休息
                                     sim_row = row.copy()
-                                    sim_row = set_simulated_cell(sim_row, target_date, "D1")
+                                    sim_row = set_simulated_cell(sim_row, target_date, "勤")
                                     sim_row = set_simulated_cell(sim_row, return_date, "休")
 
                                     max_consecutive_streak = calculate_consecutive_work_days(
@@ -1333,7 +1334,6 @@ def render_user_home() -> None:
                                 )
 
                                 # 每 2 個結果一組，渲染成直欄 (2 Columns Grid)
-                                # 🔥 換假系統：統一使用預設科技藍卡片主題 (card-theme-0)，連 6 警告仍保留紅色警示 (crew-card-integrated-warn)
                                 for i in range(0, len(filtered_candidates), 2):
                                     batch = filtered_candidates[i : i + 2]
                                     cols = st.columns(2)
