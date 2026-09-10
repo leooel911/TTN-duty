@@ -50,7 +50,8 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     lines = [l.strip() for l in val_str.split("\n") if l.strip()]
     train_code = lines[0] if lines else "無"
 
-    time_match = re.search(r"(\d{2}:\d{2})\s*[\-~～]\s*(\d{2}:\d{2})", val_str)
+    # 正則表達式修正：相容單位數與雙位數小時 (例如 5:26 ~ 13:15 或 05:26 - 13:15)
+    time_match = re.search(r"(\d{1,2}:\d{2})\s*[\-~～]\s*(\d{1,2}:\d{2})", val_str)
     start_time, end_time = None, None
     if time_match:
         start_time = time_match.group(1)
@@ -119,7 +120,7 @@ def calculate_consecutive_work_days(row: pd.Series, target_date_str: str) -> int
     date_cols = []
     for idx, col in enumerate(row.index):
         if idx >= 2:
-            m = re.search(r"(\d+/\d+)", str(col))
+            m = re.search(r"(\d{1,2}/\d{1,2})", str(col))
             if m:
                 date_cols.append((idx, m.group(1)))
 
@@ -233,7 +234,7 @@ def set_simulated_cell(row: pd.Series, date_str: str, val: str) -> pd.Series:
     new_row = row.copy()
     for idx, col in enumerate(new_row.index):
         if idx >= 2:
-            m = re.search(r"(\d+/\d+)", str(col))
+            m = re.search(r"(\d{1,2}/\d{1,2})", str(col))
             if m and m.group(1) == date_str:
                 new_row.iloc[idx] = val
                 break
