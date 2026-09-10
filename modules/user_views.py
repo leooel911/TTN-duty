@@ -637,9 +637,20 @@ def render_user_home() -> None:
             ]
 
             if date_cols:
+                # 預設定位於當天日期 (若當天日期在 date_cols 中)
+                default_win_idx = 0
+                today_dt = date.today()
+                for idx, d_str in enumerate(date_cols):
+                    parts = d_str.split("/")
+                    if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                        if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
+                            default_win_idx = idx
+                            break
+
                 target_date = st.selectbox(
                     "選擇換班日期",
                     date_cols,
+                    index=default_win_idx,
                     format_func=lambda d: get_date_label(d, df_search.columns),
                     key="win_target_date",
                     on_change=reset_win_search,
@@ -855,7 +866,7 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 🔥 建立班別對應主題顏色的 Mapping (依不重複班別核心數字排序分配 5 套主題)
+                        # 🔥 換班系統保留：建立班別對應主題顏色的 Mapping (依不重複班別核心數字排序分配 5 套主題)
                         unique_shift_keys = sorted(list(set(
                             get_shift_group_key(r["車次"]) for r in filtered_results
                         )))
@@ -1000,10 +1011,21 @@ def render_user_home() -> None:
                 else:
                     ex_date_col1, ex_date_col2 = st.columns(2)
 
+                    # 預設定位於當天日期 (若當天日期在 date_cols 中)
+                    default_ex_idx = 0
+                    today_dt = date.today()
+                    for idx, d_str in enumerate(date_cols):
+                        parts = d_str.split("/")
+                        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                            if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
+                                default_ex_idx = idx
+                                break
+
                     with ex_date_col1:
                         target_date = st.selectbox(
                             "選擇想休假日期",
                             date_cols,
+                            index=default_ex_idx,
                             format_func=lambda d: get_date_label(d, df_ex.columns),
                             key="ex_target_date",
                             on_change=reset_ex_search,
@@ -1310,13 +1332,8 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 🔥 建立換假模式班別對應主題顏色的 Mapping
-                                unique_shift_keys = sorted(list(set(
-                                    get_shift_group_key(cand["還假車次"]) for cand in filtered_candidates
-                                )))
-                                shift_key_to_theme = {key: idx % 5 for idx, key in enumerate(unique_shift_keys)}
-
-                                # 每 2 個結果一組，渲染成【同班別跳色雙層架構】直欄 (2 Columns Grid)
+                                # 每 2 個結果一組，渲染成直欄 (2 Columns Grid)
+                                # 🔥 換假系統取消同班別配色功能，統一使用預設高質感藍色卡片主題 (card-theme-0)，連 6 警告仍保留紅色警示 (crew-card-integrated-warn)
                                 for i in range(0, len(filtered_candidates), 2):
                                     batch = filtered_candidates[i : i + 2]
                                     cols = st.columns(2)
@@ -1345,10 +1362,8 @@ def render_user_home() -> None:
                                             clean_cand_signin = str(cand.get("Sign-In", "--:--")).replace("\n", " ").strip()
                                             clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
 
-                                            # 動態取得當前班別主題樣式 Class（連 6 警告優先警示）
-                                            g_key = get_shift_group_key(clean_cand_return_train)
-                                            theme_idx = shift_key_to_theme.get(g_key, 0)
-                                            card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else f"crew-card-integrated card-theme-{theme_idx}"
+                                            # 統一使用預設科技藍樣式（若連 6 則優先警示紅邊）
+                                            card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else "crew-card-integrated card-theme-0"
 
                                             card_html = f"""<div class="{card_class}">
 <!-- 第一層：姓名 ID (左) + 貼紙標籤 (右，空間充裕不裁切) -->
@@ -1366,7 +1381,7 @@ def render_user_home() -> None:
     </div>
     <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
         <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_cand_signin}</div>
-        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_cand_signout}</div>
+        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_signout}</div>
     </div>
 </div>
 </div>"""
