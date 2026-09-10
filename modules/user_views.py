@@ -222,10 +222,10 @@ def render_user_home() -> None:
             box-sizing: border-box !important;
         }
 
-        /* 4. 高質感 Mobile 雙層卡片本體 */
+        /* 4. 高質感 Mobile 雙層卡片基礎樣式 */
         .crew-card-integrated, .crew-card-integrated-warn {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
-            border: 1.2px solid rgba(56, 189, 248, 0.45) !important;
+            border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
             border-bottom: none !important;
             border-top-left-radius: 8px !important;
             border-top-right-radius: 8px !important;
@@ -233,17 +233,58 @@ def render_user_home() -> None:
             border-bottom-right-radius: 0px !important;
             padding: 8px 8px 6px 8px !important;
             box-sizing: border-box !important;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             width: 100% !important;
             overflow: hidden !important;
+            transition: all 0.25s ease-in-out !important;
         }
 
         .crew-card-integrated-warn {
             border-color: #F43F5E !important;
-            box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25);
+            box-shadow: 0 4px 14px rgba(244, 63, 94, 0.3) !important;
         }
 
-        /* 5. 卡片下方「檢視完整班表」按鈕無縫熔合 */
+        /* 🎨 5 套班別動態輪播主題色 (Theme Rotations) */
+        /* 主題 0：天藍 (Sky Blue) */
+        .card-theme-0 {
+            border-color: rgba(56, 189, 248, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(14, 116, 144, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15) !important;
+        }
+        .card-theme-0 .train-code-text { color: #38BDF8 !important; }
+
+        /* 主題 1：翠綠 (Emerald Green) */
+        .card-theme-1 {
+            border-color: rgba(52, 211, 153, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(6, 95, 70, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(52, 211, 153, 0.15) !important;
+        }
+        .card-theme-1 .train-code-text { color: #34D399 !important; }
+
+        /* 主題 2：琥珀金 (Amber Gold) */
+        .card-theme-2 {
+            border-color: rgba(251, 191, 36, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(120, 53, 15, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15) !important;
+        }
+        .card-theme-2 .train-code-text { color: #FBBF24 !important; }
+
+        /* 主題 3：霓紫 (Violet Purple) */
+        .card-theme-3 {
+            border-color: rgba(192, 132, 252, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(88, 28, 135, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(192, 132, 252, 0.15) !important;
+        }
+        .card-theme-3 .train-code-text { color: #C084FC !important; }
+
+        /* 主題 4：珊瑚橘 (Coral Orange) */
+        .card-theme-4 {
+            border-color: rgba(251, 146, 60, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(124, 45, 18, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(251, 146, 60, 0.15) !important;
+        }
+        .card-theme-4 .train-code-text { color: #FB923C !important; }
+
+        /* 5. 卡片下方「檢視完整班表」按鈕無縫熔合 & 動態主題色彩配對 */
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"],
         div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {
             width: 100% !important;
@@ -270,6 +311,7 @@ def render_user_home() -> None:
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
+            background-color: rgba(15, 23, 42, 0.95) !important;
             transition: all 0.2s ease-in-out !important;
         }
 
@@ -284,21 +326,20 @@ def render_user_home() -> None:
             line-height: 1.2 !important;
         }
 
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button {
-            border: 1.2px solid rgba(56, 189, 248, 0.45) !important;
-            border-top: 1px dashed rgba(56, 189, 248, 0.25) !important;
-            background-color: rgba(15, 23, 42, 0.95) !important;
-            color: #38BDF8 !important;
-        }
+        /* 按鈕與主題色彩連動 */
+        div[data-testid="stElementContainer"]:has(.card-theme-0) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(56, 189, 248, 0.65) !important; border-top: 1px dashed rgba(56, 189, 248, 0.3) !important; color: #38BDF8 !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-1) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(52, 211, 153, 0.65) !important; border-top: 1px dashed rgba(52, 211, 153, 0.3) !important; color: #34D399 !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-2) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(251, 191, 36, 0.65) !important; border-top: 1px dashed rgba(251, 191, 36, 0.3) !important; color: #FBBF24 !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-3) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(192, 132, 252, 0.65) !important; border-top: 1px dashed rgba(192, 132, 252, 0.3) !important; color: #C084FC !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-4) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(251, 146, 60, 0.65) !important; border-top: 1px dashed rgba(251, 146, 60, 0.3) !important; color: #FB923C !important; }
 
         div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
-            border: 1.2px solid #F43F5E !important;
+            border: 1.5px solid #F43F5E !important;
             border-top: 1px dashed rgba(244, 63, 94, 0.3) !important;
-            background-color: rgba(15, 23, 42, 0.95) !important;
             color: #FDA4AF !important;
         }
 
-        /* 6. 🔥 核心修正：主要搜尋按鈕 (Primary CTA) 實心亮藍漸層 + 發光，徹底區隔次要按鈕 */
+        /* 6. 主要搜尋按鈕 (Primary CTA) 實心亮藍漸層 + 發光 */
         button[data-testid="stBaseButton-primary"],
         button[kind="primary"] {
             background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%) !important;
@@ -688,7 +729,7 @@ def render_user_home() -> None:
                         "僅顯示長班 (>8.5h)", value=False, key="win_long_shift"
                     )
 
-                # 🔥 升級為 type="primary" 實心亮藍搜尋按鈕
+                # 🔥 實心亮藍搜尋按鈕
                 if st.button("搜尋可換班組員名單", key="btn_window_search", type="primary", use_container_width=True):
                     raw_candidates = []
                     target_col_idx = find_date_column_index(df_search.columns, target_date)
@@ -820,7 +861,13 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 每 2 個結果一組，渲染成【專業雙層架構】直欄 (2 Columns Grid)
+                        # 🔥 建立班別對應主題顏色的 Mapping (依不重複班別核心數字排序分配 5 套主題)
+                        unique_shift_keys = sorted(list(set(
+                            get_shift_group_key(r["車次"]) for r in filtered_results
+                        )))
+                        shift_key_to_theme = {key: idx % 5 for idx, key in enumerate(unique_shift_keys)}
+
+                        # 每 2 個結果一組，渲染成【同班別跳色雙層架構】直欄 (2 Columns Grid)
                         for i in range(0, len(filtered_results), 2):
                             batch = filtered_results[i : i + 2]
                             cols = st.columns(2)
@@ -845,7 +892,12 @@ def render_user_home() -> None:
                                     clean_signout = str(r.get("Sign-Out", "--:--")).replace("\n", " ").strip()
                                     clean_next_signin = str(r.get("隔日Sign-In", "無")).replace("\n", " ").strip()
 
-                                    card_html = f"""<div class="crew-card-integrated">
+                                    # 動態取得當前班別主題樣式 Class
+                                    g_key = get_shift_group_key(clean_train)
+                                    theme_idx = shift_key_to_theme.get(g_key, 0)
+                                    card_class = f"crew-card-integrated card-theme-{theme_idx}"
+
+                                    card_html = f"""<div class="{card_class}">
 <!-- 第一層：姓名 ID (左) + 貼紙標籤 (右，空間充裕不裁切) -->
 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
     <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
@@ -856,7 +908,7 @@ def render_user_home() -> None:
 <!-- 第二層：班別/隔日 (左) + 醒目上下行時間 In/Out (右) -->
 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); width: 100%;">
     <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
-        <div style="font-size: 13.5px; font-weight: 900; color: #38BDF8; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_train}</div>
+        <div class="train-code-text" style="font-size: 13.5px; font-weight: 900; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_train}</div>
         <div style="font-size: 9.5px; color: #94A3B8; font-family: monospace; white-space: nowrap;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></div>
     </div>
     <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
@@ -1061,7 +1113,7 @@ def render_user_home() -> None:
                             key="ex_strict_limit",
                         )
 
-                        # 🔥 升級為 type="primary" 實心亮藍搜尋按鈕
+                        # 🔥 實心亮藍搜尋按鈕
                         if st.button("搜尋可換假組員名單", key="btn_ex_search", type="primary", use_container_width=True):
                             raw_candidates = []
 
@@ -1117,7 +1169,7 @@ def render_user_home() -> None:
                                         do_match = re.search(
                                             r"(DO\d*W?|D\d+W|OGC)", raw_return_str, re.IGNORECASE
                                         )
-                                        return_do_tag = do_match.group(1).upper() if do_match else ""
+                                        do_tag = do_match.group(1).upper() if do_match else ""
 
                                     raw_target_cell = str(row.iloc[target_col_idx]).upper()
                                     raw_return_cell = str(row.iloc[return_col_idx]).upper()
@@ -1265,7 +1317,13 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 每 2 個結果一組，渲染成【專業雙層架構】直欄 (2 Columns Grid)
+                                # 🔥 建立換假模式班別對應主題顏色的 Mapping
+                                unique_shift_keys = sorted(list(set(
+                                    get_shift_group_key(cand["還假車次"]) for cand in filtered_candidates
+                                )))
+                                shift_key_to_theme = {key: idx % 5 for idx, key in enumerate(unique_shift_keys)}
+
+                                # 每 2 個結果一組，渲染成【同班別跳色雙層架構】直欄 (2 Columns Grid)
                                 for i in range(0, len(filtered_candidates), 2):
                                     batch = filtered_candidates[i : i + 2]
                                     cols = st.columns(2)
@@ -1286,7 +1344,6 @@ def render_user_home() -> None:
 
                                             streak_cnt = cand.get("連續上班天數", 0)
                                             streak_color = "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
-                                            card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else "crew-card-integrated"
 
                                             clean_cand_name = str(cand.get("姓名", "")).replace("\n", " ").strip()
                                             clean_cand_id = str(cand.get("員編", "")).replace("\n", " ").strip()
@@ -1294,6 +1351,11 @@ def render_user_home() -> None:
                                             clean_cand_return_train = str(cand.get("還假車次", "無")).replace("\n", " ").strip()
                                             clean_cand_signin = str(cand.get("Sign-In", "--:--")).replace("\n", " ").strip()
                                             clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
+
+                                            # 動態取得當前班別主題樣式 Class（連 6 警告優先警示）
+                                            g_key = get_shift_group_key(clean_cand_return_train)
+                                            theme_idx = shift_key_to_theme.get(g_key, 0)
+                                            card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else f"crew-card-integrated card-theme-{theme_idx}"
 
                                             card_html = f"""<div class="{card_class}">
 <!-- 第一層：姓名 ID (左) + 貼紙標籤 (右，空間充裕不裁切) -->
@@ -1306,7 +1368,7 @@ def render_user_home() -> None:
 <!-- 第二層：還休與車次 (左) + 醒目上下行時間 In/Out (右) -->
 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); width: 100%;">
     <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
-        <div style="font-size: 13.5px; font-weight: 900; color: #38BDF8; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_return_train}</div>
+        <div class="train-code-text" style="font-size: 13.5px; font-weight: 900; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_return_train}</div>
         <div style="font-size: 9.5px; color: #94A3B8; font-family: monospace; white-space: nowrap;">還休:{clean_cand_return_date} ｜ <strong style="color:{streak_color};">連:{streak_cnt}天</strong></div>
     </div>
     <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
