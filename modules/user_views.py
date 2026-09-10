@@ -243,7 +243,7 @@ def render_user_home() -> None:
             box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25);
         }
 
-        /* 5. 下方按鈕無縫熔合，保護完整文字不破壞版面，過長時於內部 ... 省略 */
+        /* 5. 下方按鈕無縫熔合 */
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"],
         div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {
             width: 100% !important;
@@ -273,7 +273,6 @@ def render_user_home() -> None:
             transition: all 0.2s ease-in-out !important;
         }
 
-        /* 針對 Streamlit 按鈕內層 <p> 標籤鎖死字體與 Ellipsis */
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button p,
         div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button p {
             font-size: 10.5px !important;
@@ -299,7 +298,41 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
-        /* 6. 獨立貼紙標籤 */
+        /* 6. 🔥 核心優化：搜尋主按鈕 (Primary Search CTA Buttons) 超醒目風格 */
+        div[data-testid="stElementContainer"]:has(button[key="btn_window_search"]),
+        div[data-testid="stElementContainer"]:has(button[key="btn_ex_search"]) {
+            width: 100% !important;
+            margin-top: 10px !important;
+            margin-bottom: 14px !important;
+        }
+
+        button[key="btn_window_search"],
+        button[key="btn_ex_search"] {
+            background: linear-gradient(135deg, #0284C7 0%, #2563EB 100%) !important;
+            color: #FFFFFF !important;
+            border: 1px solid #38BDF8 !important;
+            border-radius: 10px !important;
+            padding: 10px 16px !important;
+            box-shadow: 0 4px 16px rgba(37, 99, 235, 0.5) !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+
+        button[key="btn_window_search"]:hover,
+        button[key="btn_ex_search"]:hover {
+            background: linear-gradient(135deg, #0369A1 0%, #1D4ED8 100%) !important;
+            box-shadow: 0 6px 22px rgba(56, 189, 248, 0.7) !important;
+            transform: translateY(-1px) !important;
+        }
+
+        button[key="btn_window_search"] p,
+        button[key="btn_ex_search"] p {
+            font-size: 15px !important;
+            font-weight: 800 !important;
+            color: #FFFFFF !important;
+            letter-spacing: 0.5px !important;
+        }
+
+        /* 7. 獨立貼紙標籤 */
         .badge-group {
             display: flex;
             gap: 2px;
@@ -660,7 +693,8 @@ def render_user_home() -> None:
                         "僅顯示長班 (>8.5h)", value=False, key="win_long_shift"
                     )
 
-                if st.button("搜尋可換班組員名單", key="btn_window_search"):
+                # 🔥 超醒目滿版搜尋按鈕
+                if st.button("搜尋可換班組員名單", key="btn_window_search", use_container_width=True):
                     raw_candidates = []
                     target_col_idx = find_date_column_index(df_search.columns, target_date)
 
@@ -1032,7 +1066,8 @@ def render_user_home() -> None:
                             key="ex_strict_limit",
                         )
 
-                        if st.button("搜尋可換假組員名單", key="btn_ex_search"):
+                        # 🔥 超醒目滿版搜尋按鈕
+                        if st.button("搜尋可換假組員名單", key="btn_ex_search", use_container_width=True):
                             raw_candidates = []
 
                             target_col_idx = find_date_column_index(df_ex.columns, target_date)
