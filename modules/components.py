@@ -13,38 +13,133 @@ from modules.services import process_file_data
 from modules.utils import log_activity, safe_read_excel
 
 
-def render_zoomable_image(image_bytes: io.BytesIO) -> None:
-    """渲染支援長按、雙擊放大與拖曳的圖片元件 (HTML/CSS)"""
-    encoded = base64.b64encode(image_bytes.getvalue()).decode()
+def render_zoomable_image(image_bytes: Any) -> None:
+    """渲染支援手機兩指縮放、拖曳與快捷按鈕控制的圖片元件 (HTML5 / Panzoom)"""
+    if hasattr(image_bytes, "getvalue"):
+        raw_bytes = image_bytes.getvalue()
+    elif isinstance(image_bytes, bytes):
+        raw_bytes = image_bytes
+    else:
+        raw_bytes = b""
+
+    encoded = base64.b64encode(raw_bytes).decode("utf-8")
+
     html_code = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
-    .img-zoom-container {{
+      * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+      body {{
+        background-color: transparent;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        overflow: hidden;
+      }}
+      .zoom-wrapper {{
+        position: relative;
         width: 100%;
-        overflow-x: auto;
-        overflow-y: hidden;
-        text-align: center;
-        background-color: #0F172A;
+        background: #0F172A;
         border-radius: 10px;
-        padding: 8px;
-        border: 1px solid rgba(56, 189, 248, 0.2);
-    }}
-    .img-zoom-container img {{
-        max-width: 100%;
-        height: auto;
-        border-radius: 6px;
-        transition: transform 0.2s ease;
-        cursor: zoom-in;
-    }}
-    .img-zoom-container img:active {{
-        transform: scale(1.5);
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+        overflow: hidden;
+      }}
+      .zoom-container {{
+        width: 100%;
+        height: 440px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        cursor: grab;
+        touch-action: none;
+      }}
+      .zoom-container:active {{
         cursor: grabbing;
-    }}
+      }}
+      .zoom-img {{
+        max-width: 100%;
+        max-height: 100%;
+        display: block;
+        border-radius: 4px;
+        user-select: none;
+        -webkit-user-drag: none;
+      }}
+      .toolbar {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: rgba(15, 23, 42, 0.95);
+        border-top: 1px solid rgba(255,255,255,0.1);
+      }}
+      .hint-badge {{
+        font-size: 11px;
+        color: #38BDF8;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }}
+      .btn-group {{
+        display: flex;
+        gap: 6px;
+      }}
+      .zoom-btn {{
+        background: rgba(56, 189, 248, 0.15);
+        color: #38BDF8;
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }}
+      .zoom-btn:hover {{
+        background: rgba(56, 189, 248, 0.35);
+        color: #FFFFFF;
+      }}
     </style>
-    <div class="img-zoom-container">
-        <img src="data:image/png;base64,{encoded}" alt="Personal Schedule" />
+    </head>
+    <body>
+
+    <div class="zoom-wrapper">
+      <div class="zoom-container" id="panzoomArea">
+        <img id="scheduleImg" src="data:image/png;base64,{encoded}" alt="Personal Schedule" class="zoom-img" />
+      </div>
+      <div class="toolbar">
+        <div class="hint-badge">🔍 支援手機兩指縮放 / 拖曳移動</div>
+        <div class="btn-group">
+          <button class="zoom-btn" onclick="zoomIn()">＋ 放大</button>
+          <button class="zoom-btn" onclick="zoomOut()">－ 縮小</button>
+          <button class="zoom-btn" onclick="resetZoom()">↺ 重置</button>
+        </div>
+      </div>
     </div>
+
+    <script>
+      const elem = document.getElementById('scheduleImg');
+      const panzoom = Panzoom(elem, {{
+        maxScale: 6,
+        minScale: 0.8,
+        contain: 'outside',
+        startScale: 1
+      }});
+      
+      const parent = document.getElementById('panzoomArea');
+      parent.addEventListener('wheel', panzoom.zoomWithWheel);
+
+      function zoomIn() {{ panzoom.zoomIn(); }}
+      function zoomOut() {{ panzoom.zoomOut(); }}
+      function resetZoom() {{ panzoom.reset(); }}
+    </script>
+    </body>
+    </html>
     """
-    st.components.v1.html(html_code, height=520, scrolling=True)
+    st.components.v1.html(html_code, height=500, scrolling=False)
 
 
 def show_holiday_notice(holidays: List[str], week_range_str: str = "") -> None:
