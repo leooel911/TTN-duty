@@ -15,29 +15,38 @@ from modules.utils import log_activity, safe_read_excel
 
 
 def _convert_to_b64_url(image_bytes: Any) -> str:
-    """內部輔助工具：將各種影像格式統一轉換為 Base64 Data URL"""
+    """內部輔助工具：將各種影像格式（BytesIO / bytes / 檔案路徑）統一轉換為 Base64 Data URL"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
         raw_bytes = image_bytes
     elif isinstance(image_bytes, str) and os.path.exists(image_bytes):
-        with open(image_bytes, "rb") as f:
-            raw_bytes = f.read()
+        try:
+            with open(image_bytes, "rb") as f:
+                raw_bytes = f.read()
+        except Exception:
+            raw_bytes = b""
     else:
         raw_bytes = b""
+
+    if not raw_bytes:
+        return ""
 
     b64_str = base64.b64encode(raw_bytes).decode("utf-8")
     return f"data:image/png;base64,{b64_str}"
 
 
-def render_zoomable_image(image_bytes: Any, height: int = 460) -> None:
+def render_zoomable_image(image_bytes: Any, height: int = 340) -> None:
     """
-    主頁面班表圖片呈現元件（整合 Viewer.js）
-    支援行動端/手機雙指縮放 (Pinch-to-zoom)、雙擊放大與拖曳平移
+    主頁面班表圖片呈現元件（整合 Viewer.js 手勢燈箱）
+    優化點：
+    1. 支援行動端/手機雙指縮放 (Pinch-to-zoom)、雙擊放大與拖曳平移。
+    2. 整合 JS ResizeObserver 與 postMessage("streamlit:setFrameHeight")，根據內容實測高度自動摺疊，徹底消除黑底大空隙。
+    3. 自動隱藏 Streamlit 原生全螢幕浮動遮罩。
     """
     img_data_url = _convert_to_b64_url(image_bytes)
 
-    # 隱藏 Streamlit 原生全螢幕浮動按鈕
+    # 1. 隱藏 Streamlit 原生全螢幕浮動按鈕，並縮減 iframe 外圍 Margin
     st.markdown(
         """
         <style>
@@ -46,10 +55,18 @@ def render_zoomable_image(image_bytes: Any, height: int = 460) -> None:
         [data-testid="StyledFullScreenButton"] {
             display: none !important;
         }
+        div[data-testid="stCustomComponentV1"] {
+            margin-bottom: -12px !important;
+            margin-top: -6px !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,
     )
+
+    if not img_data_url:
+        st.warning("⚠️ 班表影像載入失敗，無法生成預覽。")
+        return
 
     html_code = f"""
     <!DOCTYPE html>
@@ -64,21 +81,24 @@ def render_zoomable_image(image_bytes: Any, height: int = 460) -> None:
             * {{
                 box-sizing: border-box;
             }}
-            body {{
-                margin: 0;
-                padding: 0;
+            html, body {{
+                margin: 0 !important;
+                padding: 0 !important;
                 background: transparent;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+                overflow: hidden;
             }}
             .viewer-wrapper {{
                 width: 100%;
                 text-align: center;
+                padding: 0;
+                margin: 0;
             }}
             .img-container {{
                 width: 100%;
                 cursor: zoom-in;
                 position: relative;
-                display: inline-block;
+                display: block;
             }}
             .img-container img {{
                 width: 100%;
@@ -87,14 +107,15 @@ def render_zoomable_image(image_bytes: Any, height: int = 460) -> None:
                 border-radius: 10px;
                 border: 1.5px solid rgba(56, 189, 248, 0.4);
                 box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-                transition: transform 0.2s ease, border-color 0.2s ease;
+                display: block;
+                transition: border-color 0.2s ease;
             }}
             .img-container img:hover {{
                 border-color: #38BDF8;
             }}
             .zoom-trigger-btn {{
                 width: 100%;
-                margin-top: 8px;
+                margin-top: 6px;
                 padding: 10px 14px;
                 background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
                 border: 1.5px solid rgba(56, 189, 248, 0.5);
@@ -118,7 +139,7 @@ def render_zoomable_image(image_bytes: Any, height: int = 460) -> None:
         </style>
     </head>
     <body>
-        <div class="viewer-wrapper">
+        <div class="viewer-wrapper" id="main-wrapper">
             <div class="img-container" id="img-box">
                 <img id="target-schedule-img" src="{img_data_url}" alt="班表圖片">
             </div>
@@ -128,14 +149,42 @@ def render_zoomable_image(image_bytes: Any, height: int = 460) -> None:
         </div>
 
         <script>
+            // 自動向 Streamlit 匯報渲染內容的實際高度，實現動態自適應
+            function sendHeight() {{
+                const wrapper = document.getElementById('main-wrapper');
+                if (wrapper) {{
+                    const actualHeight = wrapper.offsetHeight + 4;
+                    window.parent.postMessage({{
+                        type: "streamlit:setFrameHeight",
+                        height: actualHeight
+                    }}, "*");
+                }}
+            }}
+
             document.addEventListener("DOMContentLoaded", function() {{
                 const image = document.getElementById('target-schedule-img');
                 const triggerBtn = document.getElementById('btn-open-viewer');
 
+                // 圖片載入各階段觸發高度校準
+                if (image.complete) {{
+                    sendHeight();
+                }} else {{
+                    image.onload = sendHeight;
+                }}
+                setTimeout(sendHeight, 150);
+                setTimeout(sendHeight, 500);
+
+                // 註冊 ResizeObserver 確保螢幕旋轉或視窗改變時高度即時更正
+                if (window.ResizeObserver) {{
+                    const ro = new ResizeObserver(() => sendHeight());
+                    ro.observe(document.body);
+                }}
+
+                // 初始化 Viewer.js 手勢燈箱
                 const viewer = new Viewer(image, {{
-                    inline: false,          // 點擊後跳出燈箱 Modal
-                    navbar: false,          // 隱藏下方多圖選單
-                    title: false,           // 隱藏圖片檔名標題
+                    inline: false,          // 點擊後跳出 Modal 全螢幕燈箱
+                    navbar: false,          // 隱藏縮圖清單
+                    title: false,           // 隱藏檔名檔頭
                     toolbar: {{
                         zoomIn: 1,
                         zoomOut: 1,
@@ -143,18 +192,17 @@ def render_zoomable_image(image_bytes: Any, height: int = 460) -> None:
                         reset: 1,
                     }},
                     tooltip: true,
-                    movable: true,          // 允許拖曳
+                    movable: true,          // 允許手勢拖曳平移
                     zoomable: true,         // 允許縮放
-                    rotatable: false,
+                    rotatable: false,       // 停用不必要的旋轉
                     scalable: false,
                     transition: true,
                     backdrop: true,
-                    // 行動端手勢啟用
-                    pinchZoom: true,
+                    pinchZoom: true,        // 啟用行動端雙指 Pinch 縮放
                     slideOnTouch: false
                 }});
 
-                // 綁定下方按鈕亦可觸發燈箱
+                // 點擊圖片或下方按鈕皆可開啟燈箱
                 triggerBtn.addEventListener('click', function() {{
                     viewer.show();
                 }});
@@ -169,7 +217,7 @@ def render_zoomable_image(image_bytes: Any, height: int = 460) -> None:
 @st.dialog("班表全螢幕放大檢視", width="large")
 def show_zoom_schedule_modal(image_bytes: Any) -> None:
     """對話框彈窗：亦採用 Viewer.js 強化手勢操作體驗"""
-    render_zoomable_image(image_bytes, height=520)
+    render_zoomable_image(image_bytes, height=360)
 
 
 def show_holiday_notice(holidays: List[str], week_range_str: str = "") -> None:
@@ -209,7 +257,7 @@ def show_crew_schedule_modal(
                 badge_title=badge_title,
             )
             st.success(f"已成功載入【{emp_name} ({parsed_id})】的完整班表")
-            render_zoomable_image(buf, height=500)
+            render_zoomable_image(buf, height=360)
 
             st.download_button(
                 label=f"下載 {emp_name} 月班表圖檔",
