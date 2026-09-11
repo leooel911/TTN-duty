@@ -1542,3 +1542,7 @@ def render_user_home() -> None:
                                 )
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
+
+
+if __name__ == "__main__":
+    render_user_home()
