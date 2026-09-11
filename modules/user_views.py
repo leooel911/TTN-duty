@@ -281,22 +281,6 @@ def render_user_home() -> None:
             box-shadow: 0 0 16px rgba(0, 163, 255, 0.85), 0 2px 10px rgba(0, 163, 255, 0.5) !important;
         }
 
-        /* 破除 Streamlit 在手機端/窄螢幕將 st.columns(2) 自動換行摺疊成垂直單欄 */
-        div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            width: 100% !important;
-            gap: 6px !important;
-            box-sizing: border-box !important;
-        }
-
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-            min-width: 0 !important;
-            flex: 1 1 0px !important;
-            box-sizing: border-box !important;
-        }
-
         /* 篩選條件卡片化（Glassmorphic Dark Panel） */
         .glass-filter-card {
             background: rgba(15, 23, 42, 0.65) !important;
@@ -306,6 +290,77 @@ def render_user_home() -> None:
             margin-bottom: 12px !important;
             box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.35) !important;
             backdrop-filter: blur(10px) !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+            overflow: hidden !important;
+        }
+
+        /* 嚴格鎖定卡片內部的 2×2 雙欄 Layout：防止任何手機端自動換行與溢出 */
+        .glass-filter-card div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            gap: 6px !important;
+            box-sizing: border-box !important;
+            margin-bottom: 6px !important;
+        }
+
+        .glass-filter-card div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            width: calc(50% - 3px) !important;
+            max-width: calc(50% - 3px) !important;
+            min-width: 0 !important;
+            flex: 0 0 calc(50% - 3px) !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+
+        /* 快捷時段按鈕與玻璃卡片內次要按鈕極致瘦身：防止邊框與文字溢出 */
+        .glass-filter-card button[data-testid="stBaseButton-secondary"],
+        .glass-filter-card button[kind="secondary"] {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            padding: 6px 2px !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+
+        .glass-filter-card button[data-testid="stBaseButton-secondary"] p,
+        .glass-filter-card button[kind="secondary"] p {
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.3px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            margin: 0 !important;
+            line-height: 1.2 !important;
+        }
+
+        /* 結果組員卡片強制 50% 水平並排 */
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            gap: 6px !important;
+            box-sizing: border-box !important;
+        }
+
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
+            width: calc(50% - 3px) !important;
+            max-width: calc(50% - 3px) !important;
+            min-width: 0 !important;
+            flex: 0 0 calc(50% - 3px) !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
         }
 
         .crew-card-integrated, .crew-card-integrated-warn {
@@ -833,12 +888,12 @@ def render_user_home() -> None:
 
                     st.markdown('<div class="section-field-label" style="margin-top:12px !important;">快捷選擇時段：</div>', unsafe_allow_html=True)
 
-                    btn_all_label = f"全時段 ({morn_start_time}~18)"
-                    btn_morn_label = f"早班 ({morn_start_time}~10)"
+                    btn_all_label = f"全時段 ({start_h:02d}~18)"
+                    btn_morn_label = f"早班 ({start_h:02d}~10)"
                     btn_noon_label = "中班 (10~13)"
                     btn_night_label = "晚班 (13~18)"
 
-                    # 真正嚴格水平並排的 2×2 網格：Row 1 (全時段 | 早班) / Row 2 (中班 | 晚班)
+                    # 快捷按鈕 2×2 雙欄排版：Row 1 (全時段 | 早班) / Row 2 (中班 | 晚班)
                     q1_col1, q1_col2 = st.columns(2)
                     with q1_col1:
                         if st.button(btn_all_label, key="btn_win_all", use_container_width=True):
