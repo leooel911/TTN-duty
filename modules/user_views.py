@@ -719,7 +719,7 @@ def render_user_home() -> None:
         roles_to_query = list(selected_roles) if selected_roles else []
 
         if not roles_to_query:
-            st.warning("⚠️ 請至少點亮一個職位膠囊以進行查詢！")
+            st.warning("請至少選取一個職位 以進行查詢！")
         else:
             # 1. 動態計算起點刻度（選取駕駛時起點為 03:00，否則為 05:00）
             has_driver = "駕駛" in roles_to_query
