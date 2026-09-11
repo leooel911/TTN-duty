@@ -17,7 +17,9 @@ from modules.utils import (
     send_admin_email,
 )
 
+# ---------------------------------------------------------
 # 載入全域動態設定 (每次 Rerun 時重新載入最新設定)
+# ---------------------------------------------------------
 sys_cfg = load_system_config()
 VIP_PASS_CODE = sys_cfg.get("vip_password") or sys_cfg.get("vip_pass_code") or "0900"
 CREW_PASS_CODE = sys_cfg.get("user_password") or sys_cfg.get("crew_pass_code") or CREW_ACCESS_PASSWORD
@@ -80,6 +82,8 @@ def show_apply_permission_dialog():
                 st.success("申請已成功送出！管理員已收到信件通知，請靜候開通。")
             else:
                 st.success("申請已成功記錄！(已登記於系統，可聯繫管理員)")
+            
+            st.session_state["show_apply_dialog"] = False
 
 
 # ---------------------------------------------------------
@@ -208,7 +212,6 @@ if not st.session_state["authenticated"] and not st.session_state.get(
         with st.form("auth_form"):
             selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
             
-            # 還原預設值為 DEFAULT_EMP_ID ("A")
             entered_emp = st.text_input(
                 "使用者員編 (範例：023300)",
                 value=DEFAULT_EMP_ID,
@@ -219,7 +222,6 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                 "系統授權碼", type="password", placeholder="請輸入系統授權碼..."
             )
 
-            # 按鈕視覺層級區隔
             col_b1, col_b2 = st.columns([1, 1])
             with col_b1:
                 btn_auth = st.form_submit_button("進入系統", type="primary", use_container_width=True)
