@@ -87,10 +87,10 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
 
 def is_user_allowed(selected_unit: str, emp_id: Any, pass_code: str = "") -> Tuple[bool, Optional[Dict[str, Any]]]:
     """
-    嚴格權限驗證：
+    純白名單權限驗證：
     1. 未輸入員編或密碼 -> 拒絕放行
     2. 員編 'A' -> 只能搭配 VIP 密碼 (0) 或管理員密碼 (Lf090000)
-    3. 一般員編 -> 必須在白名單或大表內，且密碼正確
+    3. 嚴格限定：必須名列於白名單（Whitelist）內且密碼正確者才能進入
     """
     emp_id_str = str(emp_id).strip().upper()
     code_str = str(pass_code).strip()
@@ -117,13 +117,13 @@ def is_user_allowed(selected_unit: str, emp_id: Any, pass_code: str = "") -> Tup
                 "status": "啟用",
             }
         else:
-            return False, None  # 輸入 09000 或其他密碼會在這裡直接被擋掉
+            return False, None
 
-    # 🛑 3. 一般員編密碼合法性預檢
+    # 🛑 3. 密碼合法性預檢
     if code_str not in [admin_pwd, vip_pwd, user_pwd]:
         return False, None
 
-    # 4. 指定單位白名單驗證
+    # 🛑 4. 指定單位白名單驗證（主要放行門檻）
     unit_whitelist = load_whitelist(selected_unit)
     if emp_id_str in unit_whitelist:
         u_info = unit_whitelist[emp_id_str]
@@ -135,7 +135,7 @@ def is_user_allowed(selected_unit: str, emp_id: Any, pass_code: str = "") -> Tup
             "status": "啟用",
         }
 
-    # 5. 跨單位 VIP / ADMIN 驗證
+    # 🛑 5. 跨單位 VIP / ADMIN 驗證
     for u_code in UNITS.keys():
         if u_code != selected_unit:
             other_wl = load_whitelist(u_code)
@@ -150,16 +150,7 @@ def is_user_allowed(selected_unit: str, emp_id: Any, pass_code: str = "") -> Tup
                         "status": "啟用",
                     }
 
-    # 6. 大表組員驗證
-    if verify_crew_membership(selected_unit, emp_id_str):
-        role_type = "VIP_USER" if code_str in [vip_pwd, admin_pwd] else "USER"
-        return True, {
-            "emp_id": emp_id_str,
-            "name": get_employee_name(selected_unit, emp_id_str) or "大表組員",
-            "role": role_type,
-            "status": "啟用",
-        }
-
+    # 🛑 6. 若不在白名單內，一律拒絕放行
     return False, None
 
 
@@ -192,7 +183,7 @@ def get_schedule_range() -> str:
 
 
 def verify_crew_membership(selected_unit: str, emp_id: str) -> bool:
-    """驗證組員是否屬於指定單位"""
+    """驗證組員是否屬於指定單位（留作查詢輔助）"""
     emp_id_str = str(emp_id).strip().upper()
 
     wl = load_whitelist(selected_unit)
