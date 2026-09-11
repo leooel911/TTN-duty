@@ -14,7 +14,7 @@ import streamlit as st
 # -----------------------------------------------------------------------------
 try:
     from config import DATA_DIR, FEEDBACK_IMG_DIR, LOG_FILE, UNITS, WHITELIST_FILE
-except ImportError:
+except Exception:
     DATA_DIR = "data"
     FEEDBACK_IMG_DIR = "feedback"
     LOG_FILE = "activity.log"
@@ -23,7 +23,7 @@ except ImportError:
 
 try:
     from modules.services import load_system_config, save_system_config
-except ImportError:
+except Exception:
     def load_system_config() -> Dict[str, Any]:
         return {}
     def save_system_config(cfg: Dict[str, Any]) -> None:
@@ -39,7 +39,7 @@ try:
         safe_read_excel,
         set_module_maintenance,
     )
-except ImportError:
+except Exception:
     def get_employee_name(unit: str, uid: str) -> str:
         return ""
     def get_file_mtime_str(path: str) -> str:
@@ -406,7 +406,6 @@ def extract_device_info(detail_str: str) -> str:
 # -----------------------------------------------------------------------------
 def render_admin_panel() -> None:
     """系統管理員後台控制台"""
-    # 延遲引用避開與 components 模組的交叉引用死結
     try:
         from modules.components import view_feedback_img_modal
     except ImportError:
@@ -981,7 +980,7 @@ def render_admin_panel() -> None:
                     )
                     st.rerun()
 
-    # ==================== Tab 5: 系統日誌與備份 ====================
+    # ==================== Tab 5 ====================
     with tab5:
         st.markdown("### 📜 全站系統操作日誌與數據稽核儀表板")
 
