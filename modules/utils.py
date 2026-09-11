@@ -1,12 +1,12 @@
 """
 CREW DUTY ENGINE - Core Utilities & Logic (V1)
-提供 Excel 安全讀取、儲存格解析、勤務特徵識別、連班計算與日誌系統
+提供 Excel 安全讀取、儲存格解析、勤務特徵識別、連班計算、時區校正與 IP/設備日誌系統
 """
 import json
 import os
 import re
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
@@ -17,6 +17,56 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from config import DATA_DIR, LEAVE_CODES, LOG_FILE, NATIONAL_HOLIDAYS, TAIWAN_TZ, UNITS
+
+# 台灣時區預設值 (UTC+8)
+TW_TZ = timezone(timedelta(hours=8))
+
+
+def parse_user_agent(ua_string: str) -> str:
+    """簡易解析 User-Agent 為易讀的設備與瀏覽器標籤"""
+    if not ua_string:
+        return "未知設備"
+
+    if "iPhone" in ua_string:
+        device = "iPhone"
+    elif "iPad" in ua_string:
+        device = "iPad"
+    elif "Android" in ua_string:
+        device = "Android"
+    elif "Macintosh" in ua_string:
+        device = "Mac"
+    elif "Windows" in ua_string:
+        device = "Windows"
+    else:
+        device = "其他裝置"
+
+    if "Edg" in ua_string:
+        browser = "Edge"
+    elif "Chrome" in ua_string:
+        browser = "Chrome"
+    elif "Safari" in ua_string:
+        browser = "Safari"
+    elif "Firefox" in ua_string:
+        browser = "Firefox"
+    else:
+        browser = "其他瀏覽器"
+
+    return f"{device} / {browser}"
+
+
+def get_client_info() -> Tuple[str, str]:
+    """擷取使用者的 IP 位址與裝置資訊 (User-Agent)"""
+    try:
+        headers = getattr(st.context, "headers", {})
+        ip = headers.get("X-Forwarded-For", headers.get("Remote-Addr", "未知 IP"))
+        if "," in ip:
+            ip = ip.split(",")[0].strip()
+
+        ua = headers.get("User-Agent", "")
+        device = parse_user_agent(ua)
+        return ip, device
+    except Exception:
+        return "未知 IP", "未知設備"
 
 
 def normalize_date_str(val: Any) -> str:
@@ -31,11 +81,12 @@ def normalize_date_str(val: Any) -> str:
 
 
 def get_file_mtime_str(file_path: str) -> str:
-    """取得檔案最後修改時間字串"""
+    """取得檔案最後修改時間字串 (強制轉為台灣時間)"""
     if isinstance(file_path, str) and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
         try:
             mtime = os.path.getmtime(file_path)
-            dt = datetime.fromtimestamp(mtime, tz=TAIWAN_TZ) if TAIWAN_TZ else datetime.fromtimestamp(mtime)
+            tz = TAIWAN_TZ if TAIWAN_TZ else TW_TZ
+            dt = datetime.fromtimestamp(mtime, tz=tz)
             return dt.strftime("%Y-%m-%d %H:%M")
         except Exception:
             return "時間讀取失敗"
@@ -193,7 +244,6 @@ def is_town_shift(train_code: str, note: str = "") -> bool:
     if not tr or tr in ["無", "NAN", "NONE", "休", "DO"]:
         return False
 
-    # 11 組精確非正線勤務代碼 (不含請假代號)
     non_line_codes = [
         "STD", "DTT", "TOWN", "TTN", "TTC", "TTS",
         "OGT", "OGC", "DS", "H9", "WRSL"
@@ -287,22 +337,66 @@ def check_week_has_holiday(target_date: str, date_cols: List[str], columns: Opti
         return False, ""
 
 
-def log_activity(action: str, details: str = "") -> None:
-    """寫入全站系統操作日誌"""
+def log_activity(
+    action: str,
+    details: str = "",
+    operator: str = "系統/訪客",
+    unit: str = "全站",
+) -> None:
+    """寫入全站系統操作日誌 (自動記錄台灣時間 UTC+8、IP 與設備資訊)"""
     os.makedirs(DATA_DIR, exist_ok=True)
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = f"[{now}] {action} | {details}\n"
+
+    tz = TAIWAN_TZ if TAIWAN_TZ else TW_TZ
+    now_str = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+
+    client_ip, client_device = get_client_info()
+
+    # 1. 寫入基本 LOG_FILE (純文字檔備份)
+    log_entry = f"[{now_str}] [{operator}] [{unit}] [{action}] IP:{client_ip} | Dev:{client_device} | {details}\n"
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(log_entry)
     except Exception:
         pass
 
+    # 2. 寫入 CSV 結構化日誌 (供管理員後台表格繪製與欄位篩選)
+    csv_file = os.path.join(DATA_DIR, "system_logs.csv")
+    new_log = {
+        "時間": now_str,
+        "操作者/員編": operator,
+        "單位": unit,
+        "類別": action,
+        "IP": client_ip,
+        "設備": client_device,
+        "詳細日誌與動作內容": details,
+    }
+    try:
+        df_new = pd.DataFrame([new_log])
+        if os.path.exists(csv_file):
+            df_new.to_csv(
+                csv_file, mode="a", header=False, index=False, encoding="utf-8-sig"
+            )
+        else:
+            df_new.to_csv(
+                csv_file, mode="w", header=True, index=False, encoding="utf-8-sig"
+            )
+    except Exception:
+        pass
+
 
 def load_activity_logs() -> List[Dict[str, str]]:
-    """讀取系統歷史操作日誌"""
+    """讀取系統歷史操作日誌（優先讀取 CSV 結構化資料，備用 TXT）"""
+    csv_file = os.path.join(DATA_DIR, "system_logs.csv")
+    if os.path.exists(csv_file):
+        try:
+            df = pd.read_csv(csv_file)
+            return df.iloc[::-1].to_dict(orient="records")
+        except Exception:
+            pass
+
     if not os.path.exists(LOG_FILE):
         return []
+
     logs = []
     try:
         with open(LOG_FILE, "r", encoding="utf-8") as f:
@@ -385,5 +479,10 @@ def format_display_name(name: str) -> str:
 
 def send_admin_email(req_unit: str, clean_emp: str, clean_name: str, req_reason: str) -> Tuple[bool, str]:
     """發送管理員通知郵件 (紀錄於系統日誌)"""
-    log_activity("權限申請郵件通知", f"單位:{req_unit} | 員編:{clean_emp} | 姓名:{clean_name}")
+    log_activity(
+        action="權限申請郵件通知",
+        details=f"原因:{req_reason}",
+        operator=f"{clean_name}({clean_emp})",
+        unit=req_unit,
+    )
     return True, "已成功送出權限申請紀錄"
