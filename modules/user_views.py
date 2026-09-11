@@ -228,71 +228,58 @@ def render_user_home() -> None:
             margin-bottom: 6px !important;
         }
 
-        /* 高質感發光膠囊切換列：未選分離／相鄰選中智慧密合 (Segmented Control) */
+        /* 徹底覆蓋 Streamlit 預設膠囊，實現完全分離與亮燈效果 (Segmented Control) */
         div[data-testid="stSegmentedControl"] {
             background: transparent !important;
             border: none !important;
-            padding: 0 !important;
             box-shadow: none !important;
+            padding: 0 !important;
             width: 100% !important;
-            margin-bottom: 10px !important;
+            margin-bottom: 12px !important;
         }
 
-        div[data-testid="stSegmentedControl"] > div {
+        div[data-testid="stSegmentedControl"] > div,
+        div[data-testid="stSegmentedControl"] div[role="group"] {
             display: flex !important;
-            gap: 6px !important;
+            gap: 8px !important;
             width: 100% !important;
             background: transparent !important;
+            border: none !important;
         }
 
-        /* 預設狀態：獨立分離膠囊 */
-        div[data-testid="stSegmentedControl"] button {
+        /* 預設狀態：完全獨立分離的低調黑框膠囊 */
+        div[data-testid="stSegmentedControl"] button,
+        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"] {
             flex: 1 !important;
             border-radius: 12px !important;
-            border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+            border: 1.5px solid rgba(255, 255, 255, 0.18) !important;
             background: #0B101D !important;
             color: #94A3B8 !important;
             font-size: 14px !important;
             font-weight: 700 !important;
             padding: 8px 12px !important;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5) !important;
             margin: 0 !important;
+            transition: all 0.25s ease-in-out !important;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5) !important;
         }
 
-        div[data-testid="stSegmentedControl"] button:hover {
+        div[data-testid="stSegmentedControl"] button:hover,
+        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"]:hover {
             color: #F1F5F9 !important;
             background: rgba(255, 255, 255, 0.08) !important;
             border-color: rgba(0, 163, 255, 0.4) !important;
         }
 
-        /* 單選亮燈態 (Light-Up Active State) */
+        /* 選中亮燈狀態 (Neon Blue Active Glow) */
         div[data-testid="stSegmentedControl"] button[aria-selected="true"],
-        div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"] {
+        div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"],
+        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"],
+        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][data-checked="true"] {
             background: #00A3FF !important;
             color: #000000 !important;
             font-weight: 900 !important;
             border: 1.5px solid #38BDF8 !important;
-            box-shadow: 0 0 16px rgba(0, 163, 255, 0.8), 0 2px 10px rgba(0, 163, 255, 0.5) !important;
-            z-index: 2 !important;
-        }
-
-        /* 相鄰選中時的密合融合效果 (Adjacent Selected Seamless Fusion) */
-        /* 右側緊鄰另一個選中按鈕：右側消除圓角 */
-        div[data-testid="stSegmentedControl"] button[aria-selected="true"]:has(+ button[aria-selected="true"]),
-        div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"]:has(+ button[data-baseweb="button"][aria-checked="true"]) {
-            border-top-right-radius: 0px !important;
-            border-bottom-right-radius: 0px !important;
-            border-right: 1px solid rgba(255, 255, 255, 0.3) !important;
-        }
-
-        /* 左側緊鄰另一個選中按鈕：左側消除圓角 + 負邊界無縫扣合 */
-        div[data-testid="stSegmentedControl"] button[aria-selected="true"] + button[aria-selected="true"],
-        div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"] + button[data-baseweb="button"][aria-checked="true"] {
-            border-top-left-radius: 0px !important;
-            border-bottom-left-radius: 0px !important;
-            margin-left: -7px !important;
-            border-left: 1px solid rgba(255, 255, 255, 0.3) !important;
+            box-shadow: 0 0 16px rgba(0, 163, 255, 0.85), 0 2px 10px rgba(0, 163, 255, 0.5) !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
@@ -708,12 +695,12 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        # 採用可多選的發光膠囊切換元件 (Segmented Control)
+        # 採用可多選的發光膠囊切換元件 (順序: 服勤員 -> 列車長 -> 駕駛，預設: 服勤員)
         if hasattr(st, "segmented_control"):
             selected_roles = st.segmented_control(
                 "點擊選擇查詢職位",
-                options=["駕駛", "列車長", "服勤員"],
-                default=["駕駛", "列車長", "服勤員"],
+                options=["服勤員", "列車長", "駕駛"],
+                default=["服勤員"],
                 selection_mode="multi",
                 label_visibility="collapsed",
                 key="win_seg_roles",
@@ -722,8 +709,8 @@ def render_user_home() -> None:
         else:
             selected_roles = st.multiselect(
                 "點擊選擇查詢職位",
-                options=["駕駛", "列車長", "服勤員"],
-                default=["駕駛", "列車長", "服勤員"],
+                options=["服勤員", "列車長", "駕駛"],
+                default=["服勤員"],
                 label_visibility="collapsed",
                 key="win_multi_roles",
                 on_change=reset_win_search,
@@ -952,8 +939,8 @@ def render_user_home() -> None:
                                 continue
                             filtered_results.append(r)
 
-                        # 多重條件排序：報到時間 ➔ 班別號碼 ➔ 職位順序(駕駛->列車長->服勤員) ➔ 完整車次
-                        ROLE_ORDER = {"駕駛": 1, "列車長": 2, "服勤員": 3}
+                        # 多重條件排序：報到時間 ➔ 班別號碼 ➔ 職位順序(服勤員->列車長->駕駛) ➔ 完整車次
+                        ROLE_ORDER = {"服勤員": 1, "列車長": 2, "駕駛": 3}
                         filtered_results = sorted(
                             filtered_results,
                             key=lambda x: (
@@ -1520,7 +1507,7 @@ def render_user_home() -> None:
                                             card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else f"crew-card-integrated card-theme-{theme_idx}"
 
                                             card_html = f"""<div class="{card_class}">
-<div style="display: flex; justify-content: space-between; align- its: center; width: 100%;">
+<div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
     <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_cand_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_cand_id})</span>
     </div>
