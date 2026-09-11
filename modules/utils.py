@@ -112,7 +112,7 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     if non_time_lines:
         real_trains = [
             l for l in non_time_lines
-            if not any(k in l.upper() for k in ["DO", "D2W", "D1", "D2", "OGC", "PAY", "FAC"])
+            if not any(k in l.upper() for k in ["DO", "D2W", "D1", "D2", "OGC", "PAY", "FAC", "LEV", "MLP", "MTR"])
         ]
         if real_trains:
             train_code = real_trains[0]
@@ -183,25 +183,23 @@ def is_overtime(hours_str: Optional[str], train_code: str = "", note: str = "") 
 
 
 def is_town_shift(train_code: str, note: str = "") -> bool:
-    """判斷是否為非正線勤務（包含駐廠、預備、訓練車次 60xx/65xx 及特種代碼）"""
+    """
+    判斷是否為「非正線」勤務（已精準排除 FAC 家庭照顧假等請假代碼）
+    包含 11 組官方常見非正線勤務代碼：
+    STD, DTT, TOWN, TTN, TTC, TTS, OGT, OGC, DS, H9, WRSL
+    """
     tr = str(train_code).strip().upper()
-    nt = str(note).strip().upper()
 
     if not tr or tr in ["無", "NAN", "NONE", "休", "DO"]:
         return False
 
-    if not tr.startswith("N"):
-        return True
+    # 11 組精確非正線勤務代碼 (不含請假代號)
+    non_line_codes = [
+        "STD", "DTT", "TOWN", "TTN", "TTC", "TTS",
+        "OGT", "OGC", "DS", "H9", "WRSL"
+    ]
 
-    keys = ["TOWN", "STD", "DS", "駐廠", "預備", "庫", "備"]
-    if any(k in tr or k in nt for k in keys):
-        return True
-
-    m = re.search(r"\d{4}", tr)
-    if m and int(m.group(0)) >= 6000:
-        return True
-
-    return False
+    return any(k in tr for k in non_line_codes)
 
 
 def translate_train_code(code: Any) -> str:
