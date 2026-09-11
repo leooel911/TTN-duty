@@ -419,17 +419,20 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
-        /* 統一三大主要按鈕質感 */
+        /* 徹底統一所有主要按鈕 (包含一般 st.button 與表單 st.form_submit_button) 的鮮豔藍色漸層樣式 */
+        div[data-testid="stButton"] > button,
+        div[data-testid="stButton"] button,
         div[data-testid="stFormSubmitButton"] > button,
         div[data-testid="stFormSubmitButton"] button,
         button[data-testid="stBaseButton-primary"],
         button[data-testid="stBaseButton-primaryFormSubmit"],
         button[kind="primary"],
-        button[kind="primaryFormSubmit"] {
+        button[kind="primaryFormSubmit"],
+        .stButton > button {
             background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%) !important;
             color: #FFFFFF !important;
             border: 1.5px solid #38BDF8 !important;
-            border-radius: 10px !important;
+            border-radius: 12px !important;
             padding: 10px 16px !important;
             box-shadow: 0 4px 18px rgba(2, 132, 199, 0.6) !important;
             transition: all 0.25s ease-in-out !important;
@@ -438,24 +441,30 @@ def render_user_home() -> None:
             width: 100% !important;
         }
 
+        div[data-testid="stButton"] > button:hover,
+        div[data-testid="stButton"] button:hover,
         div[data-testid="stFormSubmitButton"] > button:hover,
         div[data-testid="stFormSubmitButton"] button:hover,
         button[data-testid="stBaseButton-primary"]:hover,
         button[data-testid="stBaseButton-primaryFormSubmit"]:hover,
         button[kind="primary"]:hover,
-        button[kind="primaryFormSubmit"]:hover {
+        button[kind="primaryFormSubmit"]:hover,
+        .stButton > button:hover {
             background: linear-gradient(135deg, #0369A1 0%, #1E40AF 100%) !important;
             border-color: #38BDF8 !important;
             box-shadow: 0 6px 24px rgba(56, 189, 248, 0.8) !important;
             transform: translateY(-1px) !important;
         }
 
+        div[data-testid="stButton"] > button p,
+        div[data-testid="stButton"] button p,
         div[data-testid="stFormSubmitButton"] > button p,
         div[data-testid="stFormSubmitButton"] button p,
         button[data-testid="stBaseButton-primary"] p,
         button[data-testid="stBaseButton-primaryFormSubmit"] p,
         button[kind="primary"] p,
-        button[kind="primaryFormSubmit"] p {
+        button[kind="primaryFormSubmit"] p,
+        .stButton > button p {
             font-size: 15px !important;
             font-weight: 800 !important;
             color: #FFFFFF !important;
