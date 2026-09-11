@@ -207,7 +207,6 @@ def render_user_home() -> None:
             padding-top: 0.6rem !important;
         }
 
-        /* 全域統一標題樣式 Class */
         .section-field-label {
             font-size: 15px !important;
             font-weight: 800 !important;
@@ -218,7 +217,6 @@ def render_user_home() -> None:
             line-height: 1.3 !important;
         }
 
-        /* 覆蓋 Streamlit 原生輸入元件標題 (Widget Label) 的顏色與字體大小 */
         div[data-testid="stWidgetLabel"] p,
         div[data-testid="stWidgetLabel"] label,
         label[data-testid="stWidgetLabel"] p {
@@ -229,7 +227,6 @@ def render_user_home() -> None:
             margin-bottom: 6px !important;
         }
 
-        /* 徹底覆蓋 Streamlit 預設膠囊，實現完全分離與亮燈效果 (Segmented Control) */
         div[data-testid="stSegmentedControl"] {
             background: transparent !important;
             border: none !important;
@@ -248,7 +245,6 @@ def render_user_home() -> None:
             border: none !important;
         }
 
-        /* 預設狀態：完全獨立分離的低調黑框膠囊 */
         div[data-testid="stSegmentedControl"] button,
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"] {
             flex: 1 !important;
@@ -271,7 +267,6 @@ def render_user_home() -> None:
             border-color: rgba(0, 163, 255, 0.4) !important;
         }
 
-        /* 選中亮燈狀態 (Neon Blue Active Glow) */
         div[data-testid="stSegmentedControl"] button[aria-selected="true"],
         div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"],
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"],
@@ -283,7 +278,6 @@ def render_user_home() -> None:
             box-shadow: 0 0 16px rgba(0, 163, 255, 0.85), 0 2px 10px rgba(0, 163, 255, 0.5) !important;
         }
 
-        /* 僅針對結果組員卡片強制水平並排 */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -419,7 +413,6 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
-        /* 1. 嚴格僅對三大主要動作按鈕 (type="primary" / FormSubmit) 套用亮藍漸層與光暈 */
         button[data-testid="stBaseButton-primary"],
         button[data-testid="stBaseButton-primaryFormSubmit"],
         button[kind="primary"],
@@ -464,7 +457,6 @@ def render_user_home() -> None:
             letter-spacing: 0.6px !important;
         }
 
-        /* 2. 次要按鈕 (type="secondary" / 預設按鈕：如快捷選擇時段、問題回報、ADMIN PANEL) 強制維持低調黑框深色系 */
         button[data-testid="stBaseButton-secondary"],
         button[kind="secondary"],
         div[data-testid="stButton"] > button[kind="secondary"],
@@ -517,7 +509,7 @@ def render_user_home() -> None:
     active_files = get_current_role_files()
     current_unit_label = st.session_state.get("current_unit", "TTN")
     
-    # ==================== 關鍵功能：大表/完整班表檢視模式 (INSPECTION MODE) ====================
+    # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
     inspect_emp_id = st.session_state.get("inspect_emp_target")
     if inspect_emp_id:
         st.markdown(
@@ -532,7 +524,6 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        # ⚠️ 關鍵：此「上一頁」按鈕只清空 inspect_emp_target，完全不觸發 reset_win_search()，保留所有 120 筆結果名單！
         if st.button("上一頁 (返回快篩結果)", key="btn_back_to_filter", use_container_width=True):
             st.session_state["inspect_emp_target"] = None
             st.rerun()
@@ -614,23 +605,33 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
+    MODE_OPTIONS = [
+        "繪製個人月班表圖檔",
+        "換班｜選擇換班日期",
+        "換假｜選擇換假日期",
+    ]
+
+    # 🔑 關鍵 1：持久化模式選擇，防止因 st.stop() 導致 Key 遺失退回預設選項
+    if "active_app_mode" not in st.session_state:
+        st.session_state["active_app_mode"] = "繪製個人月班表圖檔"
+
+    try:
+        current_mode_idx = MODE_OPTIONS.index(st.session_state["active_app_mode"])
+    except ValueError:
+        current_mode_idx = 0
+
     app_mode = st.radio(
         "系統操作模式選擇",
-        [
-            "繪製個人月班表圖檔",
-            "換班｜選擇換班日期",
-            "換假｜選擇換假日期",
-        ],
+        MODE_OPTIONS,
+        index=current_mode_idx,
         horizontal=False,
         label_visibility="collapsed",
         key="user_app_mode",
     )
 
-    if "last_app_mode" not in st.session_state:
-        st.session_state["last_app_mode"] = app_mode
-
-    if st.session_state["last_app_mode"] != app_mode:
-        st.session_state["last_app_mode"] = app_mode
+    # 僅使用者「主動切換」模式時，才清空快取
+    if app_mode != st.session_state["active_app_mode"]:
+        st.session_state["active_app_mode"] = app_mode
         st.session_state.pop("win_raw_candidates", None)
         st.session_state.pop("ex_raw_candidates", None)
         st.session_state["ex_search_performed"] = False
@@ -777,20 +778,16 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        st.markdown(
-            """
-            <div class="section-field-label">
-                點擊選擇查詢職位
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="section-field-label">點擊選擇查詢職位</div>', unsafe_allow_html=True)
+
+        if "saved_win_roles" not in st.session_state:
+            st.session_state["saved_win_roles"] = ["服勤員"]
 
         if hasattr(st, "segmented_control"):
             selected_roles = st.segmented_control(
                 "點擊選擇查詢職位",
                 options=["服勤員", "列車長", "駕駛"],
-                default=["服勤員"],
+                default=st.session_state["saved_win_roles"],
                 selection_mode="multi",
                 label_visibility="collapsed",
                 key="win_seg_roles",
@@ -800,13 +797,15 @@ def render_user_home() -> None:
             selected_roles = st.multiselect(
                 "點擊選擇查詢職位",
                 options=["服勤員", "列車長", "駕駛"],
-                default=["服勤員"],
+                default=st.session_state["saved_win_roles"],
                 label_visibility="collapsed",
                 key="win_multi_roles",
                 on_change=reset_win_search,
             )
 
         roles_to_query = list(selected_roles) if selected_roles else []
+        if roles_to_query:
+            st.session_state["saved_win_roles"] = roles_to_query
 
         if not roles_to_query:
             st.warning("⚠️請至少選取一個職位 以進行查詢！")
@@ -822,14 +821,17 @@ def render_user_home() -> None:
                 if not (h == 18 and m == 30)
             ]
 
-            curr_slider = st.session_state.get("win_time_slider")
+            if "saved_win_time_slider" not in st.session_state:
+                st.session_state["saved_win_time_slider"] = (morn_start_time, "10:00")
+
+            slider_default = st.session_state["saved_win_time_slider"]
             if (
-                not isinstance(curr_slider, (tuple, list))
-                or len(curr_slider) != 2
-                or curr_slider[0] not in TIME_OPTIONS
-                or curr_slider[1] not in TIME_OPTIONS
+                not isinstance(slider_default, (tuple, list))
+                or len(slider_default) != 2
+                or slider_default[0] not in TIME_OPTIONS
+                or slider_default[1] not in TIME_OPTIONS
             ):
-                st.session_state["win_time_slider"] = (morn_start_time, "10:00")
+                slider_default = (morn_start_time, "10:00")
 
             valid_paths = {}
             for r_name in roles_to_query:
@@ -853,13 +855,17 @@ def render_user_home() -> None:
 
                 if date_cols:
                     default_win_idx = 0
-                    today_dt = date.today()
-                    for idx, d_str in enumerate(date_cols):
-                        parts = d_str.split("/")
-                        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                            if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
-                                default_win_idx = idx
-                                break
+                    saved_target_date = st.session_state.get("saved_win_target_date")
+                    if saved_target_date and saved_target_date in date_cols:
+                        default_win_idx = date_cols.index(saved_target_date)
+                    else:
+                        today_dt = date.today()
+                        for idx, d_str in enumerate(date_cols):
+                            parts = d_str.split("/")
+                            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                                if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
+                                    default_win_idx = idx
+                                    break
 
                     target_date = st.selectbox(
                         "選擇換班日期",
@@ -869,6 +875,7 @@ def render_user_home() -> None:
                         key="win_target_date",
                         on_change=reset_win_search,
                     )
+                    st.session_state["saved_win_target_date"] = target_date
 
                     win_week_holidays = get_week_holidays(
                         target_date, date_cols, df_search_sample.columns
@@ -887,44 +894,56 @@ def render_user_home() -> None:
                     btn_night_label = "晚班 (13:00~18:00)"
 
                     if st.button(btn_all_label, key="btn_win_all", use_container_width=True):
-                        st.session_state["win_time_slider"] = (morn_start_time, "18:00")
+                        st.session_state["saved_win_time_slider"] = (morn_start_time, "18:00")
                         reset_win_search()
                         st.rerun()
                     if st.button(btn_morn_label, key="btn_win_morn", use_container_width=True):
-                        st.session_state["win_time_slider"] = (morn_start_time, "10:00")
+                        st.session_state["saved_win_time_slider"] = (morn_start_time, "10:00")
                         reset_win_search()
                         st.rerun()
                     if st.button(btn_noon_label, key="btn_win_noon", use_container_width=True):
-                        st.session_state["win_time_slider"] = ("10:00", "13:00")
+                        st.session_state["saved_win_time_slider"] = ("10:00", "13:00")
                         reset_win_search()
                         st.rerun()
                     if st.button(btn_night_label, key="btn_win_night", use_container_width=True):
-                        st.session_state["win_time_slider"] = ("13:00", "18:00")
+                        st.session_state["saved_win_time_slider"] = ("13:00", "18:00")
                         reset_win_search()
                         st.rerun()
 
                     slider_val = st.select_slider(
                         "Sign-In 時段區間 (拖曳調整)",
                         options=TIME_OPTIONS,
-                        value=st.session_state["win_time_slider"],
+                        value=slider_default,
                         key="win_time_slider",
                         on_change=reset_win_search,
                     )
+                    st.session_state["saved_win_time_slider"] = slider_val
 
                     if isinstance(slider_val, (tuple, list)) and len(slider_val) == 2:
                         min_time, max_time_sel = slider_val
                     else:
                         min_time, max_time_sel = TIME_OPTIONS[0], TIME_OPTIONS[-1]
 
+                    if "saved_win_main_line" not in st.session_state:
+                        st.session_state["saved_win_main_line"] = False
+                    if "saved_win_long_shift" not in st.session_state:
+                        st.session_state["saved_win_long_shift"] = False
+
                     filter_col1, filter_col2 = st.columns(2)
                     with filter_col1:
                         only_main_line = st.checkbox(
-                            "僅顯示正線勤務", value=False, key="win_main_line"
+                            "僅顯示正線勤務",
+                            value=st.session_state["saved_win_main_line"],
+                            key="win_main_line",
                         )
+                        st.session_state["saved_win_main_line"] = only_main_line
                     with filter_col2:
                         only_long_shift = st.checkbox(
-                            "僅顯示長班 (>8.5h)", value=False, key="win_long_shift"
+                            "僅顯示長班 (>8.5h)",
+                            value=st.session_state["saved_win_long_shift"],
+                            key="win_long_shift",
                         )
+                        st.session_state["saved_win_long_shift"] = only_long_shift
 
                     if st.button("搜尋可換班組員名單", key="btn_window_search", type="primary", use_container_width=True):
                         raw_candidates = []
@@ -1184,12 +1203,23 @@ def render_user_home() -> None:
         if "ex_search_performed" not in st.session_state:
             st.session_state["ex_search_performed"] = False
 
+        if "saved_ex_role" not in st.session_state:
+            st.session_state["saved_ex_role"] = "服勤員"
+
+        ex_roles = ["服勤員", "駕駛", "列車長"]
+        try:
+            ex_role_idx = ex_roles.index(st.session_state["saved_ex_role"])
+        except ValueError:
+            ex_role_idx = 0
+
         selected_role = st.selectbox(
             "選擇職位類別",
-            ["服勤員", "駕駛", "列車長"],
+            ex_roles,
+            index=ex_role_idx,
             key="ex_role_select",
             on_change=reset_ex_search,
         )
+        st.session_state["saved_ex_role"] = selected_role
 
         sample_path = active_files.get(selected_role, "")
 
@@ -1214,13 +1244,17 @@ def render_user_home() -> None:
                     ex_date_col1, ex_date_col2 = st.columns(2)
 
                     default_ex_idx = 0
-                    today_dt = date.today()
-                    for idx, d_str in enumerate(date_cols):
-                        parts = d_str.split("/")
-                        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                            if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
-                                default_ex_idx = idx
-                                break
+                    saved_ex_target = st.session_state.get("saved_ex_target_date")
+                    if saved_ex_target and saved_ex_target in date_cols:
+                        default_ex_idx = date_cols.index(saved_ex_target)
+                    else:
+                        today_dt = date.today()
+                        for idx, d_str in enumerate(date_cols):
+                            parts = d_str.split("/")
+                            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                                if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
+                                    default_ex_idx = idx
+                                    break
 
                     with ex_date_col1:
                         target_date = st.selectbox(
@@ -1231,6 +1265,7 @@ def render_user_home() -> None:
                             key="ex_target_date",
                             on_change=reset_ex_search,
                         )
+                        st.session_state["saved_ex_target_date"] = target_date
 
                     same_week_options = []
                     is_week_has_do2w, target_week_str = check_week_has_holiday(
@@ -1267,27 +1302,22 @@ def render_user_home() -> None:
                         st.warning("找不到可還假期的其他有效日期。")
                         return_date = None
                     else:
-                        if (
-                            "ex_prev_target_date" not in st.session_state
-                            or st.session_state["ex_prev_target_date"] != target_date
-                        ):
-                            st.session_state["ex_prev_target_date"] = target_date
-                            st.session_state["ex_return_date"] = return_date_options[0]
-
-                        if (
-                            "ex_return_date" in st.session_state
-                            and st.session_state["ex_return_date"] not in return_date_options
-                        ):
-                            st.session_state["ex_return_date"] = return_date_options[0]
+                        saved_ex_return = st.session_state.get("saved_ex_return_date")
+                        if saved_ex_return and saved_ex_return in return_date_options:
+                            return_date_idx = return_date_options.index(saved_ex_return)
+                        else:
+                            return_date_idx = 0
 
                         with ex_date_col2:
                             return_date = st.selectbox(
                                 "選擇可還假日期",
                                 return_date_options,
+                                index=return_date_idx,
                                 format_func=lambda d: get_date_label(d, df_ex.columns),
                                 key="ex_return_date",
                                 on_change=reset_ex_search,
                             )
+                            st.session_state["saved_ex_return_date"] = return_date
 
                     if return_date:
                         ex_week_holidays = list(
@@ -1303,33 +1333,57 @@ def render_user_home() -> None:
                             f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）"
                         )
 
+                        if "saved_ex_time_filter" not in st.session_state:
+                            st.session_state["saved_ex_time_filter"] = "不限"
+                        if "saved_ex_sort_order" not in st.session_state:
+                            st.session_state["saved_ex_sort_order"] = "依 Sign-In 時間 (由早至晚)"
+                        if "saved_ex_strict_limit" not in st.session_state:
+                            st.session_state["saved_ex_strict_limit"] = True
+
                         col_f1, col_f2 = st.columns(2)
                         with col_f1:
                             time_filter_options = ["不限"] + [
                                 f"{h:02d}:00 以後" for h in range(5, 17)
                             ]
+                            try:
+                                time_filter_idx = time_filter_options.index(st.session_state["saved_ex_time_filter"])
+                            except ValueError:
+                                time_filter_idx = 0
+
                             return_time_filter = st.selectbox(
                                 "還假日 Sign-In 時間限制",
                                 options=time_filter_options,
+                                index=time_filter_idx,
                                 key="ex_time_filter",
                             )
+                            st.session_state["saved_ex_time_filter"] = return_time_filter
+
                         with col_f2:
+                            sort_options = [
+                                "依 Sign-In 時間 (由早至晚)",
+                                "依同類班別末四碼數字",
+                                "依最早 Sign-Out",
+                                "依工時長短",
+                            ]
+                            try:
+                                sort_idx = sort_options.index(st.session_state["saved_ex_sort_order"])
+                            except ValueError:
+                                sort_idx = 0
+
                             sort_order = st.selectbox(
                                 "結果排序方式",
-                                [
-                                    "依 Sign-In 時間 (由早至晚)",
-                                    "依同類班別末四碼數字",
-                                    "依最早 Sign-Out",
-                                    "依工時長短",
-                                ],
+                                sort_options,
+                                index=sort_idx,
                                 key="ex_sort_order",
                             )
+                            st.session_state["saved_ex_sort_order"] = sort_order
 
                         strict_limit = st.checkbox(
                             "嚴格過濾：排除換假後連續上班已達 6 天以上的人員",
-                            value=True,
+                            value=st.session_state["saved_ex_strict_limit"],
                             key="ex_strict_limit",
                         )
+                        st.session_state["saved_ex_strict_limit"] = strict_limit
 
                         if st.button("搜尋可換假組員名單", key="btn_ex_search", type="primary", use_container_width=True):
                             raw_candidates = []
