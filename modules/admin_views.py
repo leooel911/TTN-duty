@@ -22,20 +22,31 @@ except Exception:
     WHITELIST_FILE = "whitelist.json"
 
 try:
-    from modules.services import load_system_config, save_system_config
+    from modules.services import (
+        load_system_config,
+        save_system_config,
+        load_whitelist,
+        save_whitelist,
+    )
 except Exception:
     def load_system_config() -> Dict[str, Any]:
         return {}
     def save_system_config(cfg: Dict[str, Any]) -> None:
         pass
+    def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
+        return {}
+    def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
+        pass
 
 try:
-    from modules.services import (
-    load_system_config,
-    save_system_config,
-    load_whitelist,
-    save_whitelist,
-
+    from modules.utils import (
+        get_employee_name,
+        get_file_mtime_str,
+        is_module_maintenance,
+        load_activity_logs,
+        log_activity,
+        safe_read_excel,
+        set_module_maintenance,
     )
 except Exception:
     def get_employee_name(unit: str, uid: str) -> str:
@@ -124,73 +135,6 @@ def create_backup_zip() -> io.BytesIO:
                 zf.write(root_file, arcname=root_file)
     buf.seek(0)
     return buf
-
-
-def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
-    """讀取指定營運單位的白名單"""
-    whitelist_path = WHITELIST_FILE
-    full_data: Dict[str, Any] = {}
-
-    if os.path.exists(whitelist_path):
-        try:
-            with open(whitelist_path, "r", encoding="utf-8", errors="ignore") as f:
-                full_data = json.load(f)
-                if full_data and not any(k in UNITS for k in full_data.keys()):
-                    full_data = {u: full_data.copy() for u in UNITS.keys()}
-        except Exception:
-            full_data = {}
-
-    if unit_code not in full_data:
-        unit_default: Dict[str, Any] = {
-            "ADMIN": {
-                "name": f"[{unit_code}] 系統管理員",
-                "role": "ADMIN",
-                "note": f"[{unit_code}] 預設管理員帳號",
-                "created_at": datetime.now().strftime("%Y-%m-%d"),
-            }
-        }
-        if unit_code == "TTN":
-            unit_default["A023300"] = {
-                "name": "波莉",
-                "role": "VIP_USER",
-                "note": "TTN 預設測試員",
-                "created_at": datetime.now().strftime("%Y-%m-%d"),
-            }
-        full_data[unit_code] = unit_default
-
-    raw_unit_data = full_data.get(unit_code, {})
-    normalized_data = {}
-    for uid, info in raw_unit_data.items():
-        normalized_data[str(uid).strip().upper()] = info
-
-    return normalized_data
-
-
-def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
-    """儲存特定營運單位的白名單"""
-    whitelist_path = WHITELIST_FILE
-    os.makedirs(DATA_DIR, exist_ok=True)
-
-    full_data: Dict[str, Any] = {}
-    if os.path.exists(whitelist_path):
-        try:
-            with open(whitelist_path, "r", encoding="utf-8", errors="ignore") as f:
-                full_data = json.load(f)
-                if full_data and not any(k in UNITS for k in full_data.keys()):
-                    full_data = {u: full_data.copy() for u in UNITS.keys()}
-        except Exception:
-            full_data = {}
-
-    normalized_data = {}
-    for uid, info in unit_data.items():
-        normalized_data[str(uid).strip().upper()] = info
-
-    full_data[unit_code] = normalized_data
-
-    with open(whitelist_path, "w", encoding="utf-8") as f:
-        json.dump(full_data, f, ensure_ascii=False, indent=2)
-
-    st.cache_data.clear()
 
 
 @st.cache_data(ttl=60)
