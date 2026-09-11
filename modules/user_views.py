@@ -515,7 +515,6 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 【關鍵修復 1】補上 key="user_app_mode"，防止 Rerun 時切換頁面狀態遺失
     app_mode = st.radio(
         "系統操作模式選擇",
         [
@@ -626,26 +625,17 @@ def render_user_home() -> None:
                         )
                     st.success(f"【{emp_name}】個人班表圖片生成成功！")
                     
+                    # 渲染圖片 (已內含縮放按鈕與「💡 提示：手機使用者可長按圖片儲存至相簿」)
                     comp.render_zoomable_image(buf)
 
-                    col_dl1, col_dl2 = st.columns([1, 1])
-                    with col_dl1:
-                        st.download_button(
-                            "點此下載班表影像檔",
-                            data=buf,
-                            file_name=f"{current_unit_label}_班表_{emp_name}.png",
-                            mime="image/png",
-                            use_container_width=True,
-                        )
-                    with col_dl2:
-                        st.markdown(
-                            """
-                            <div style="display: flex; align-items: center; height: 100%; font-size: 12px; color: #94A3B8; font-weight: 500; font-family: monospace; padding-left: 6px;">
-                                💡 提示：手機使用者可長按圖片儲存至相簿
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
+                    # 下方直接呈現滿版下載按鈕
+                    st.download_button(
+                        "點此下載班表影像檔",
+                        data=buf,
+                        file_name=f"{current_unit_label}_班表_{emp_name}.png",
+                        mime="image/png",
+                        use_container_width=True,
+                    )
                 except Exception as e:
                     st.error(f"繪製班表時發生錯誤：{e}")
 
@@ -1052,7 +1042,6 @@ def render_user_home() -> None:
 
                                         st.markdown(card_html, unsafe_allow_html=True)
 
-                                        # 【關鍵修復 2】正確觸發 app.py 的 inspect_emp_target 全域檢視機制
                                         if st.button(
                                             f"檢視 {clean_name} 完整班表 ➔",
                                             key=f"win_btn_{clean_id}_{i+idx_in_batch}",
@@ -1517,7 +1506,6 @@ def render_user_home() -> None:
 
                                             st.markdown(card_html, unsafe_allow_html=True)
 
-                                            # 【關鍵修復 3】正確觸發 app.py 的 inspect_emp_target 全域檢視機制
                                             if st.button(
                                                 f"檢視 {clean_cand_name} 完整班表 ➔",
                                                 key=f"ex_btn_{clean_cand_id}_{i+idx_in_batch}",
