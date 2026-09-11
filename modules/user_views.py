@@ -266,7 +266,7 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* ===== Segmented Control 滿版 100% 均分 + 賽博龐克外框亮藍高光 ===== */
+        /* ===== Segmented Control 滿版 100% 均分 ===== */
         div[data-testid="stSegmentedControl"] {
             width: 100% !important;
             max-width: 100% !important;
@@ -576,7 +576,7 @@ def render_user_home() -> None:
 
     active_files = get_current_role_files()
     current_unit_label = st.session_state.get("current_unit", "TTN")
-    
+
     # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
     inspect_emp_id = st.session_state.get("inspect_emp_target")
     if inspect_emp_id:
@@ -609,7 +609,7 @@ def render_user_home() -> None:
                     badge_title="Producer | C.L.F",
                 )
             st.success(f"【{emp_name} ({emp_id})】完整班表載入完成！")
-            
+
             comp.render_zoomable_image(buf)
 
             st.download_button(
@@ -621,7 +621,7 @@ def render_user_home() -> None:
             )
         except Exception as e:
             st.error(f"繪製組員班表時發生錯誤：{e}")
-            
+
         st.stop()
 
     missing_files = [
@@ -703,7 +703,7 @@ def render_user_home() -> None:
         st.session_state["ex_search_performed"] = False
 
         modal_keys_to_clear = [
-            "show_feedback_modal", "show_feedback_dialog", 
+            "show_feedback_modal", "show_feedback_dialog",
             "feedback_open", "show_issue_modal", "show_feedback"
         ]
         for mk in modal_keys_to_clear:
@@ -792,7 +792,7 @@ def render_user_home() -> None:
                             badge_title="Producer | C.L.F",
                         )
                     st.success(f"【{emp_name}】個人班表圖片生成成功！")
-                    
+
                     comp.render_zoomable_image(buf)
 
                     st.download_button(
@@ -805,7 +805,7 @@ def render_user_home() -> None:
                 except Exception as e:
                     st.error(f"繪製班表時發生錯誤：{e}")
 
-    # ==================== 模式二：換班｜選擇換班日期 (保留同組多色燈號) ====================
+    # ==================== 模式二：換班｜選擇換班日期 ====================
     elif app_mode == "換班｜選擇換班日期":
         if is_module_maintenance(current_unit_label, "window_filter"):
             if not is_admin_user:
@@ -969,27 +969,43 @@ def render_user_home() -> None:
                     btn_noon_label = "中班 (10:00~13:00)"
                     btn_night_label = "晚班 (13:00~18:00)"
 
+                    # -----------------------------------------------------------------------------
+                    # 修復重點：按鈕觸發時強制更新 win_time_slider widget 的 session_state
+                    # -----------------------------------------------------------------------------
                     if st.button(btn_all_label, key="btn_win_all", use_container_width=True):
-                        st.session_state["saved_win_time_slider"] = (morn_start_time, "18:00")
+                        target_range = (morn_start_time, "18:00")
+                        st.session_state["saved_win_time_slider"] = target_range
+                        st.session_state["win_time_slider"] = target_range
                         reset_win_search()
                         st.rerun()
+
                     if st.button(btn_morn_label, key="btn_win_morn", use_container_width=True):
-                        st.session_state["saved_win_time_slider"] = (morn_start_time, "10:00")
+                        target_range = (morn_start_time, "10:00")
+                        st.session_state["saved_win_time_slider"] = target_range
+                        st.session_state["win_time_slider"] = target_range
                         reset_win_search()
                         st.rerun()
+
                     if st.button(btn_noon_label, key="btn_win_noon", use_container_width=True):
-                        st.session_state["saved_win_time_slider"] = ("10:00", "13:00")
+                        target_range = ("10:00", "13:00")
+                        st.session_state["saved_win_time_slider"] = target_range
+                        st.session_state["win_time_slider"] = target_range
                         reset_win_search()
                         st.rerun()
+
                     if st.button(btn_night_label, key="btn_win_night", use_container_width=True):
-                        st.session_state["saved_win_time_slider"] = ("13:00", "18:00")
+                        target_range = ("13:00", "18:00")
+                        st.session_state["saved_win_time_slider"] = target_range
+                        st.session_state["win_time_slider"] = target_range
                         reset_win_search()
                         st.rerun()
+
+                    if "win_time_slider" not in st.session_state:
+                        st.session_state["win_time_slider"] = slider_default
 
                     slider_val = st.select_slider(
                         "Sign-In 時段區間 (拖曳調整)",
                         options=TIME_OPTIONS,
-                        value=slider_default,
                         key="win_time_slider",
                         on_change=reset_win_search,
                     )
@@ -1123,7 +1139,6 @@ def render_user_home() -> None:
                             ),
                         )
 
-                        # 【換班系統】計算車次組別主題色彩 (保留同組多色燈號)
                         unique_groups_in_order = []
                         for r in filtered_results:
                             g_key = get_shift_group_key(r["車次"])
@@ -1240,7 +1255,7 @@ def render_user_home() -> None:
                         else:
                             st.info("在指定條件內，找不到符合的人員")
 
-    # ==================== 模式三：換假｜選擇換假日期 (單一藍青色，僅連班示警用紅色) ====================
+    # ==================== 模式三：換假｜選擇換假日期 ====================
     elif app_mode == "換假｜選擇換假日期":
         if is_module_maintenance(current_unit_label, "exchange_filter"):
             if not is_admin_user:
@@ -1704,7 +1719,6 @@ def render_user_home() -> None:
                                             clean_cand_signin = str(cand.get("Sign-In", "--:--")).replace("\n", " ").strip()
                                             clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
 
-                                            # 【換假系統】統一使用單一標準藍青色 (card-theme-0)，僅連班 6 天以上時套用紅色警告框 (crew-card-integrated-warn)
                                             card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else "crew-card-integrated card-theme-0"
 
                                             card_html = f"""<div class="{card_class}">
