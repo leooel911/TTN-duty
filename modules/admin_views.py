@@ -22,13 +22,8 @@ from modules.utils import (
 
 
 def clear_logs() -> None:
-    """徹底清空全站系統操作日誌檔、Session 記憶體與全域快取"""
-    # 1. 徹底清除 Session State 記憶體中的日誌暫存
-    keys_to_clear = [k for k in st.session_state.keys() if "log" in k.lower()]
-    for k in keys_to_clear:
-        st.session_state[k] = []
-
-    # 2. 清空所有實體日誌檔案
+    """徹底清空全站系統操作日誌檔與記憶體快取（安全保留登入 Session）"""
+    # 1. 清空所有實體日誌檔案
     possible_paths = [
         LOG_FILE,
         "activity.log",
@@ -46,9 +41,8 @@ def clear_logs() -> None:
             except Exception:
                 pass
 
-    # 3. 強制刷新記憶體快取
+    # 2. 強制刷新數據讀取快取，確保重新載入最新狀態
     st.cache_data.clear()
-    st.cache_resource.clear()
 
 
 @st.dialog("⚠️ 確定要清空全站系統日誌嗎？")
