@@ -22,31 +22,36 @@ from modules.utils import (
 
 
 def clear_logs() -> None:
-    """徹底清空全站系統操作日誌檔並重置 CSV 標頭與記憶體快取"""
+    """徹底清空全站系統操作日誌檔、Session 記憶體與全域快取"""
+    # 1. 徹底清除 Session State 記憶體中的日誌暫存
+    keys_to_clear = [k for k in st.session_state.keys() if "log" in k.lower()]
+    for k in keys_to_clear:
+        st.session_state[k] = []
+
+    # 2. 清空所有實體日誌檔案
     possible_paths = [
         LOG_FILE,
         "activity.log",
         "activity_log.csv",
         "data/activity.log",
         "data/activity_log.csv",
+        os.path.join(DATA_DIR, "activity.log"),
+        os.path.join(DATA_DIR, "activity_log.csv"),
     ]
-    for p in possible_paths:
-        if os.path.exists(p):
+    for p in set(possible_paths):
+        if p and os.path.exists(p):
             try:
-                if p.endswith(".csv"):
-                    with open(p, "w", encoding="utf-8-sig") as f:
-                        f.write("時間,操作者/員編,單位,類別,詳細日誌與動作內容\n")
-                else:
-                    with open(p, "w", encoding="utf-8") as f:
-                        f.write("")
+                with open(p, "w", encoding="utf-8") as f:
+                    f.write("")
             except Exception:
                 pass
 
-    # 關鍵：強制清除 Streamlit 所有記憶體快取
+    # 3. 強制刷新記憶體快取
     st.cache_data.clear()
+    st.cache_resource.clear()
 
 
-@st.dialog("⚠️ 確定要清空全站系統日誌嗎？", width="small")
+@st.dialog("⚠️ 確定要清空全站系統日誌嗎？")
 def show_confirm_clear_logs_modal() -> None:
     """防誤觸對話框：清空全站日誌"""
     st.warning("此動作將徹底清除所有歷史操作與稽核紀錄，且無法恢復！")
@@ -56,12 +61,9 @@ def show_confirm_clear_logs_modal() -> None:
     with col_confirm1:
         if st.button("確認完全清空", type="primary", key="btn_modal_do_clear", use_container_width=True):
             clear_logs()
-            st.session_state["show_clear_log_dialog"] = False
-            st.success("已成功清空所有系統操作日誌！")
             st.rerun()
     with col_confirm2:
         if st.button("取消", key="btn_modal_cancel_clear", use_container_width=True):
-            st.session_state["show_clear_log_dialog"] = False
             st.rerun()
 
 
@@ -272,7 +274,7 @@ def save_feedback_ticket(ticket_info: Dict[str, Any]) -> None:
 
 
 def parse_structured_log(raw_log: Any) -> Dict[str, str]:
-    """高智能解析日誌條目，拆解時間、登入/操作者、營運單位、類別與詳細動作"""
+    """解析日誌條目"""
     timestamp = "--"
     user_info = "系統/訪客"
     unit_info = "全站"
@@ -331,7 +333,7 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
 
 
 def extract_device_info(detail_str: str) -> str:
-    """提取日誌詳細內容開頭的 [裝置] 標籤"""
+    """提取裝置資訊"""
     m = re.search(r"^\[(.*?)\]", str(detail_str).strip())
     if m:
         dev = m.group(1)
@@ -436,7 +438,7 @@ def render_admin_panel() -> None:
         "🎫 工單與問題回報",
     ])
 
-    # ==================== Tab 1: 班表大表上傳與管理 ====================
+    # ==================== Tab 1 ====================
     with tab1:
         st.markdown(f"### 📊 [{current_unit}] 班表大表 Excel 上傳與管理")
         st.caption("即時監控各大表 Excel 檔案狀態，並提供直接覆蓋更新功能。")
@@ -502,7 +504,7 @@ def render_admin_panel() -> None:
                         except Exception as e:
                             st.error(f"檔案寫入失敗：{e}")
 
-    # ==================== Tab 2: 模組維護模式 ====================
+    # ==================== Tab 2 ====================
     with tab2:
         st.markdown(f"### 🛠️ [{current_unit}] 系統模組維護開關")
         st.info("💡 開啟維護後，一般組員將無法存取該功能，管理員仍可登入後台預覽測試。")
@@ -553,7 +555,7 @@ def render_admin_panel() -> None:
                     )
                     st.rerun()
 
-    # ==================== Tab 3: 白名單與組員權限 ====================
+    # ==================== Tab 3 ====================
     with tab3:
         st.markdown(f"### 👥 白名單與組員權限管理 [{current_unit}]")
         whitelist_data = load_whitelist(current_unit)
@@ -766,7 +768,7 @@ def render_admin_panel() -> None:
                 else:
                     st.button("刪除人員", disabled=True, use_container_width=True)
 
-    # ==================== Tab 4: 全域系統參數與授權碼 ====================
+    # ==================== Tab 4 ====================
     with tab4:
         st.markdown("### ⚙️ 全域系統參數與授權碼設定")
 
@@ -911,7 +913,7 @@ def render_admin_panel() -> None:
                     )
                     st.rerun()
 
-    # ==================== Tab 5: 系統日誌與備份 (重點修正區塊) ====================
+    # ==================== Tab 5: 系統日誌與備份 ====================
     with tab5:
         st.markdown("### 📜 全站系統操作日誌與數據稽核儀表板")
 
@@ -1024,14 +1026,8 @@ def render_admin_panel() -> None:
             st.markdown(f"##### 📋 查詢結果（共 {len(df_filtered_logs)} 筆紀錄）")
 
         with col_log_actions:
-            # 透過 Session State 觸發對話框，避免 Streamlit 重新渲染丟失對話框狀態
-            if st.button("🗑️ 清空全站日誌", key="btn_trigger_clear_modal", type="secondary", use_container_width=True):
-                st.session_state["show_clear_log_dialog"] = True
-                st.rerun()
-
-        # 當觸發開關為 True 時顯示彈窗
-        if st.session_state.get("show_clear_log_dialog"):
-            show_confirm_clear_logs_modal()
+            if st.button("🗑️ 清空全站日誌", key="btn_clear_activity_logs", type="secondary", use_container_width=True):
+                show_confirm_clear_logs_modal()
 
         if not df_filtered_logs.empty:
             display_cols = [
@@ -1084,7 +1080,7 @@ def render_admin_panel() -> None:
             key="btn_download_backup",
         )
 
-    # ==================== Tab 6: 工單與問題回報管理 ====================
+    # ==================== Tab 6 ====================
     with tab6:
         st.markdown("### 🎫 工單與問題回報管理")
 
