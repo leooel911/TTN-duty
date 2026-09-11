@@ -4,17 +4,17 @@ from modules.admin_views import render_admin_panel
 from modules.components import render_zoomable_image, show_feedback_modal
 from modules.drawing import render_schedule_figure
 from modules.services import (
-    is_user_allowed,
-    load_system_config,
-    process_file_data,
-    verify_crew_membership,
+    is_user_allowed,
+    load_system_config,
+    process_file_data,
+    verify_crew_membership,
 )
 from modules.user_views import render_user_home
 from modules.utils import (
-    format_display_name,
-    get_employee_name,
-    log_activity,
-    send_admin_email,
+    format_display_name,
+    get_employee_name,
+    log_activity,
+    send_admin_email,
 )
 
 # ---------------------------------------------------------
