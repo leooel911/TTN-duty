@@ -13,7 +13,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "vip_pass_code": "0",
     "crew_pass_code": "09000",
     "vip_password": "0",
-    "user_password": "09000",
     "admin_password": "Lf090000",
     "empty_shift_label": "--",
     "default_emp_id": "A",
