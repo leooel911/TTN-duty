@@ -266,7 +266,7 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* ===== ⚡ Segmented Control 滿版 100% 均分 + 賽博龐克外框亮藍高光 (完美還原圖一) ===== */
+        /* ===== ⚡ Segmented Control 滿版 100% 均分 + 賽博龐克外框亮藍高光 ===== */
         div[data-testid="stSegmentedControl"] {
             width: 100% !important;
             max-width: 100% !important;
@@ -319,7 +319,7 @@ def render_user_home() -> None:
             background: rgba(255, 255, 255, 0.06) !important;
         }
 
-        /* 選取狀態：滿版高光亮藍 (與圖一選取狀態完全一致) */
+        /* 選取狀態：滿版高光亮藍 */
         div[data-testid="stSegmentedControl"] button[aria-selected="true"],
         div[data-testid="stSegmentedControl"] button[aria-checked="true"],
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"],
@@ -568,9 +568,9 @@ def render_user_home() -> None:
             justify-content: flex-end;
             flex-wrap: nowrap;
         }
-        .role-badge-driver { font-size: 8.5px; font-weight: 700; color: #38BDF8; background: rgba(56, 189, 248, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
-        .role-badge-conductor { font-size: 8.5px; font-weight: 700; color: #34D399; background: rgba(52, 211, 153, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
-        .role-badge-crew { font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(251, 191, 36, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+        .role-badge-driver { font-size: 8.5px; font-weight: 800; color: #38BDF8; background: rgba(56, 189, 248, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .role-badge-conductor { font-size: 8.5px; font-weight: 800; color: #34D399; background: rgba(52, 211, 153, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .role-badge-crew { font-size: 8.5px; font-weight: 800; color: #FBBF24; background: rgba(251, 191, 36, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
         .non-line-badge { font-size: 8.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
         .long-badge { font-size: 8.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
         .do2w-badge { font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
@@ -1186,12 +1186,13 @@ def render_user_home() -> None:
                                         r_role = r.get("職位", "")
 
                                         badges_html = '<div class="badge-group">'
+                                        # ⚡ 修改重點：職位貼紙改為英文簡稱 (TD / TM / TA)
                                         if r_role == "駕駛":
-                                            badges_html += '<span class="role-badge-driver">駕駛</span>'
+                                            badges_html += '<span class="role-badge-driver">TD</span>'
                                         elif r_role == "列車長":
-                                            badges_html += '<span class="role-badge-conductor">列車長</span>'
+                                            badges_html += '<span class="role-badge-conductor">TM</span>'
                                         elif r_role == "服勤員":
-                                            badges_html += '<span class="role-badge-crew">服勤員</span>'
+                                            badges_html += '<span class="role-badge-crew">TA</span>'
 
                                         if r.get("非正線"):
                                             badges_html += '<span class="non-line-badge">非正線</span>'
