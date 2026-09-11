@@ -610,26 +610,18 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        st.write("**選擇欲查詢之職位類別（可複選）：**")
-        col_r1, col_r2, col_r3 = st.columns(3)
-        with col_r1:
-            show_driver = st.checkbox("駕駛 (TD)", value=True, key="win_chk_driver", on_change=reset_win_search)
-        with col_r2:
-            show_conductor = st.checkbox("列車長 (TM)", value=True, key="win_chk_conductor", on_change=reset_win_search)
-        with col_r3:
-            show_crew = st.checkbox("服勤員 (TA)", value=True, key="win_chk_crew", on_change=reset_win_search)
+        selected_roles = st.multiselect(
+            "選擇欲查詢之職位類別（可多選併同色比對）",
+            options=["駕駛", "列車長", "服勤員"],
+            default=["駕駛", "列車長", "服勤員"],
+            key="win_selected_roles",
+            on_change=reset_win_search,
+        )
 
-        roles_to_query = []
-        if show_driver:
-            roles_to_query.append("駕駛")
-        if show_conductor:
-            roles_to_query.append("列車長")
-        if show_crew:
-            roles_to_query.append("服勤員")
-
-        if not roles_to_query:
-            st.warning("⚠️ 請至少勾選一個職位類別以進行查詢！")
+        if not selected_roles:
+            st.warning("⚠️ 請至少選擇一個職位類別以進行查詢！")
         else:
+            roles_to_query = selected_roles
             morn_start_time = "03:00" if "駕駛" in roles_to_query else "05:00"
 
             if "win_time_slider" not in st.session_state:
@@ -865,7 +857,7 @@ def render_user_home() -> None:
 
                         log_activity(
                             "換班日期快篩",
-                            f"單位:{current_unit_label} | 勾選職位:{'/'.join(roles_to_query)} | 日期:{target_date} | "
+                            f"單位:{current_unit_label} | 選擇職位:{'/'.join(roles_to_query)} | 日期:{target_date} | "
                             f"時段:{min_time}~{max_time_sel} | 僅正線:{only_main_line} | "
                             f"僅長班:{only_long_shift} | 命中數:{len(filtered_results)}筆"
                         )
