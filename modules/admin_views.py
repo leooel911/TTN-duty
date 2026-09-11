@@ -8,23 +8,67 @@ from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 import streamlit as st
-from config import DATA_DIR, FEEDBACK_IMG_DIR, LOG_FILE, UNITS, WHITELIST_FILE
-from modules.components import view_feedback_img_modal
-from modules.services import load_system_config, save_system_config
-from modules.utils import (
-    get_employee_name,
-    get_file_mtime_str,
-    is_module_maintenance,
-    load_activity_logs,
-    log_activity,
-    safe_read_excel,
-    set_module_maintenance,
-)
+
+# -----------------------------------------------------------------------------
+# 1. 安全載入設定檔與工具模組 (具備防崩潰安全降級機制)
+# -----------------------------------------------------------------------------
+try:
+    from config import DATA_DIR, FEEDBACK_IMG_DIR, LOG_FILE, UNITS, WHITELIST_FILE
+except ImportError:
+    DATA_DIR = "data"
+    FEEDBACK_IMG_DIR = "feedback"
+    LOG_FILE = "activity.log"
+    UNITS = {"TTN": {}}
+    WHITELIST_FILE = "whitelist.json"
+
+try:
+    from modules.components import view_feedback_img_modal
+except ImportError:
+    try:
+        from modules.components import show_feedback_modal as view_feedback_img_modal
+    except ImportError:
+        view_feedback_img_modal = None
+
+try:
+    from modules.services import load_system_config, save_system_config
+except ImportError:
+    def load_system_config() -> Dict[str, Any]:
+        return {}
+    def save_system_config(cfg: Dict[str, Any]) -> None:
+        pass
+
+try:
+    from modules.utils import (
+        get_employee_name,
+        get_file_mtime_str,
+        is_module_maintenance,
+        load_activity_logs,
+        log_activity,
+        safe_read_excel,
+        set_module_maintenance,
+    )
+except ImportError:
+    def get_employee_name(unit: str, uid: str) -> str:
+        return ""
+    def get_file_mtime_str(path: str) -> str:
+        return "--"
+    def is_module_maintenance(unit: str, mod: str) -> bool:
+        return False
+    def set_module_maintenance(unit: str, mod: str, state: bool) -> None:
+        pass
+    def load_activity_logs() -> List[Any]:
+        return []
+    def log_activity(msg: str) -> None:
+        pass
+    def safe_read_excel(path: str, header: int = 0) -> pd.DataFrame:
+        return pd.DataFrame()
 
 
+# -----------------------------------------------------------------------------
+# 2. 系統輔助函式
+# -----------------------------------------------------------------------------
 def clear_logs() -> None:
     """徹底清空全站系統操作日誌檔與記憶體快取（安全保留登入 Session）"""
-    # 1. 清空所有實體日誌檔案
     possible_paths = [
         LOG_FILE,
         "activity.log",
@@ -42,7 +86,6 @@ def clear_logs() -> None:
             except Exception:
                 pass
 
-    # 2. 強制刷新數據讀取快取，確保重新載入最新狀態
     st.cache_data.clear()
 
 
@@ -276,7 +319,6 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
     category = "一般操作"
     action_detail = ""
 
-    # 常見無效/非人名詞彙黑名單
     INVALID_USERS = {
         "系統/訪客", "訪客", "", "NONE", "NAN", "由早至晚", 
         "依 SIGN-IN 時間", "依 SIGN-IN 時間 (由早至晚)", "服勤員", "列車長", 
@@ -288,13 +330,11 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
         act_val = str(raw_log.get("action", raw_log.get("動作", ""))).strip()
         dtl_val = str(raw_log.get("detail", raw_log.get("詳細日誌與動作內容", ""))).strip()
 
-        # 欄位錯位修正
         if dtl_val.lower() in ["nan", "none", ""]:
             action_detail = act_val if act_val.lower() not in ["nan", "none", ""] else "系統操作紀錄"
         else:
             action_detail = dtl_val
 
-        # 抓取登入時寫入的原始 User 資料
         user_info = str(raw_log.get("user", raw_log.get("操作者", raw_log.get("操作者/員編", "系統/訪客")))).strip()
         unit_info = str(raw_log.get("unit", raw_log.get("單位", "全站"))).strip()
         category = str(raw_log.get("category", raw_log.get("類別", act_val or "一般操作"))).strip()
@@ -307,7 +347,6 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
         else:
             action_detail = raw_str
 
-    # 1. 自動修正與歸類【動作類別 Category】
     full_text = f"{category} {action_detail}"
     if "使用者登入" in full_text:
         category = "帳號登入"
@@ -324,12 +363,10 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
     elif category in ["一般操作", "", "nan", "NaN", "None"]:
         category = "系統操作"
 
-    # 2. 自動解析【營運單位 Unit】
     unit_match = re.search(r"單位[:：]\s*([A-Za-z0-9_]+)", action_detail)
     if unit_match and unit_match.group(1).upper() not in ["NAN", "NONE"]:
         unit_info = unit_match.group(1).upper()
 
-    # 3. 保底：若 user_info 為舊的無效字串，從內文自動提取員編
     if user_info.upper() in INVALID_USERS or user_info in INVALID_USERS:
         emp_code_match = re.search(r"\b([A-Za-z]\d{6})\b", action_detail)
         login_match = re.search(r"使用者登入系統[:：]\s*([^\s\(]+)", action_detail)
@@ -346,9 +383,6 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
         else:
             user_info = "系統/訪客"
 
-    # 4. 核心比對邏輯：
-    # 判斷有無標準員編，若向 Excel 大表有查到名字 -> 顯示「員編 (姓名)」
-    # 若查無名字 -> 原封不動保留登入時寫入的原始資料
     emp_match = re.search(r"\b([A-Za-z]\d{6})\b", user_info)
     if emp_match:
         clean_emp_id = emp_match.group(1).upper()
@@ -375,6 +409,9 @@ def extract_device_info(detail_str: str) -> str:
     return "Web 介面"
 
 
+# -----------------------------------------------------------------------------
+# 3. 後台主畫面 UI
+# -----------------------------------------------------------------------------
 def render_admin_panel() -> None:
     """系統管理員後台控制台"""
     st.markdown(
@@ -436,7 +473,7 @@ def render_admin_panel() -> None:
         )
 
     with col_head_unit:
-        unit_options = list(UNITS.keys())
+        unit_options = list(UNITS.keys()) if isinstance(UNITS, dict) and UNITS else ["TTN"]
         selected_u = st.selectbox(
             "切換營運單位",
             options=unit_options,
@@ -475,7 +512,7 @@ def render_admin_panel() -> None:
     with tab1:
         st.markdown(f"### 📊 [{current_unit}] 班表大表 Excel 上傳與管理")
         st.caption("即時監控各大表 Excel 檔案狀態，並提供直接覆蓋更新功能。")
-        unit_files = UNITS.get(current_unit, UNITS.get("TTN", {}))
+        unit_files = UNITS.get(current_unit, UNITS.get("TTN", {})) if isinstance(UNITS, dict) else {}
 
         col_u1, col_u2, col_u3 = st.columns(3)
         roles = [
@@ -487,7 +524,7 @@ def render_admin_panel() -> None:
         for role_name, role_code, col in roles:
             with col:
                 target_path = unit_files.get(role_name, "")
-                exists = os.path.exists(target_path) and os.path.getsize(target_path) > 0
+                exists = os.path.exists(target_path) and os.path.getsize(target_path) > 0 if target_path else False
                 f_size_kb = round(os.path.getsize(target_path) / 1024, 1) if exists else 0
                 mtime_str = get_file_mtime_str(target_path) if exists else "檔案不存在"
 
@@ -519,7 +556,7 @@ def render_admin_panel() -> None:
                     key=f"upload_{current_unit}_{role_code}",
                 )
 
-                if uploaded_file is not None:
+                if uploaded_file is not None and target_path:
                     if st.button(
                         f"確認覆蓋上傳 {role_name} 大表",
                         key=f"btn_save_{role_code}",
@@ -1186,7 +1223,10 @@ def render_admin_panel() -> None:
                     if img_path and os.path.exists(img_path):
                         st.markdown("附加螢幕截圖：")
                         if st.button(f"點此查看/下載截圖附件", key=f"btn_view_img_{ticket_id}_{idx}"):
-                            view_feedback_img_modal(img_path, ticket_id, reporter)
+                            if callable(view_feedback_img_modal):
+                                view_feedback_img_modal(img_path, ticket_id, reporter)
+                            else:
+                                st.image(img_path, caption=f"工單 {ticket_id} 截圖附件 ({reporter})")
 
                     c1, c2 = st.columns([1, 2])
                     with c1:
