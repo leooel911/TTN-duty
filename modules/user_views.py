@@ -30,51 +30,35 @@ from modules.utils import (
 )
 
 
-# ==================== 原生 Streamlit 彈窗元件 (Modal Dialog) ====================
-@st.dialog("組員完整月班表檢視", width="large")
-def show_crew_schedule_dialog(target_emp: str, current_unit: str):
-    """跳出浮動視窗渲染組員完整月班表圖檔"""
-    try:
-        start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
-        
-        st.markdown(
-            f"""
-            <div style="font-size: 15px; font-weight: 800; color: #38BDF8; margin-bottom: 8px;">
-                【{current_unit}】組員：{emp_name} ({emp_id})
-            </div>
-            """,
-            unsafe_allow_html=True,
+# ==================== 原生 Streamlit 彈窗：放大班表檢視 ====================
+@st.dialog("完整月班表放大檢視", width="large")
+def show_zoom_schedule_dialog(buf_data: bytes, emp_name: str, unit_label: str):
+    """跳出浮動視窗並顯示放大/可縮放的完整班表圖檔"""
+    st.markdown(
+        f"""
+        <div style="font-size: 15px; font-weight: 800; color: #38BDF8; margin-bottom: 8px;">
+            【{unit_label}】組員：{emp_name} 個人完整月班表
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    # 渲染縮放元件
+    comp.render_zoomable_image(buf_data)
+
+    col_dl, col_close = st.columns([1, 1])
+    with col_dl:
+        st.download_button(
+            "下載此班表圖檔",
+            data=buf_data,
+            file_name=f"{unit_label}_班表_{emp_name}.png",
+            mime="image/png",
+            use_container_width=True,
         )
-
-        with st.spinner(f"正在繪製【{emp_name}】的完整月班表..."):
-            buf = render_schedule_figure(
-                start_dt,
-                dates,
-                emp_id,
-                emp_name,
-                cells,
-                current_unit,
-                badge_title="Modal | C.L.F",
-            )
-        
-        comp.render_zoomable_image(buf)
-
-        col_dl1, col_dl2 = st.columns([1, 1])
-        with col_dl1:
-            st.download_button(
-                "下載此組員班表圖檔",
-                data=buf,
-                file_name=f"{current_unit}_班表_{emp_name}.png",
-                mime="image/png",
-                use_container_width=True,
-            )
-        with col_dl2:
-            if st.button("關閉視窗", use_container_width=True):
-                st.session_state["inspect_emp_target"] = None
-                st.rerun()
-
-    except Exception as e:
-        st.error(f"讀取組員【{target_emp}】班表時發生錯誤：{e}")
+    with col_close:
+        if st.button("關閉視窗", use_container_width=True, key="btn_close_zoom_modal"):
+            st.session_state["show_zoom_modal"] = False
+            st.rerun()
 
 
 def get_shift_group_key(code_str: str) -> str:
@@ -580,7 +564,8 @@ def render_user_home() -> None:
 
         modal_keys_to_clear = [
             "show_feedback_modal", "show_feedback_dialog", 
-            "feedback_open", "show_issue_modal", "show_feedback"
+            "feedback_open", "show_issue_modal", "show_feedback",
+            "show_zoom_modal"
         ]
         for mk in modal_keys_to_clear:
             if mk in st.session_state:
@@ -665,30 +650,37 @@ def render_user_home() -> None:
                             current_unit_label,
                             badge_title="Producer | C.L.F",
                         )
-                    st.success(f"【{emp_name}】個人班表圖片生成成功！")
                     
-                    comp.render_zoomable_image(buf)
+                    # 儲存繪圖結果至 session state 供放大彈窗使用
+                    st.session_state["active_schedule_buf"] = buf.getvalue() if hasattr(buf, "getvalue") else buf
+                    st.session_state["active_emp_name"] = emp_name
+                    st.success(f"【{emp_name}】個人班表圖片生成成功！")
 
-                    col_dl1, col_dl2 = st.columns([1, 1])
-                    with col_dl1:
-                        st.download_button(
-                            "點此下載班表影像檔",
-                            data=buf,
-                            file_name=f"{current_unit_label}_班表_{emp_name}.png",
-                            mime="image/png",
-                            use_container_width=True,
-                        )
-                    with col_dl2:
-                        st.markdown(
-                            """
-                            <div style="display: flex; align-items: center; height: 100%; font-size: 12px; color: #94A3B8; font-weight: 500; font-family: monospace; padding-left: 6px;">
-                                💡 提示：手機使用者可長按圖片儲存至相簿
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
                 except Exception as e:
                     st.error(f"繪製班表時發生錯誤：{e}")
+
+        # 若已產生班表圖檔，渲染操作按鈕與彈窗預覽
+        if st.session_state.get("active_schedule_buf") is not None:
+            active_buf = st.session_state["active_schedule_buf"]
+            active_name = st.session_state.get("active_emp_name", "")
+
+            # 畫面預覽
+            comp.render_zoomable_image(active_buf)
+
+            col_act1, col_act2 = st.columns([1, 1])
+            with col_act1:
+                if st.button("🔍 放大完整班表 (彈窗檢視)", key="btn_open_zoom", type="primary", use_container_width=True):
+                    st.session_state["show_zoom_modal"] = True
+                    st.rerun()
+
+            with col_act2:
+                st.download_button(
+                    "下載班表影像檔",
+                    data=active_buf,
+                    file_name=f"{current_unit_label}_班表_{active_name}.png",
+                    mime="image/png",
+                    use_container_width=True,
+                )
 
     # ==================== 模式二：換班｜選擇換班日期 ====================
     elif app_mode == "換班｜選擇換班日期":
@@ -1093,7 +1085,6 @@ def render_user_home() -> None:
 
                                         st.markdown(card_html, unsafe_allow_html=True)
 
-                                        # 【觸發原生 Modal 視窗】
                                         if st.button(
                                             f"檢視 {clean_name} 完整班表 ➔",
                                             key=f"win_btn_{clean_id}_{i+idx_in_batch}",
@@ -1558,7 +1549,6 @@ def render_user_home() -> None:
 
                                             st.markdown(card_html, unsafe_allow_html=True)
 
-                                            # 【觸發原生 Modal 視窗】
                                             if st.button(
                                                 f"檢視 {clean_cand_name} 完整班表 ➔",
                                                 key=f"ex_btn_{clean_cand_id}_{i+idx_in_batch}",
@@ -1575,9 +1565,13 @@ def render_user_home() -> None:
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
 
-    # ==================== 全域 Modal 渲染檢查點 ====================
-    if st.session_state.get("inspect_emp_target"):
-        show_crew_schedule_dialog(st.session_state["inspect_emp_target"], current_unit_label)
+    # ==================== 全域 放大班表彈窗 檢查點 ====================
+    if st.session_state.get("show_zoom_modal") and st.session_state.get("active_schedule_buf"):
+        show_zoom_schedule_dialog(
+            st.session_state["active_schedule_buf"],
+            st.session_state.get("active_emp_name", ""),
+            current_unit_label,
+        )
 
 
 if __name__ == "__main__":
