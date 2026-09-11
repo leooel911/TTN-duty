@@ -237,7 +237,7 @@ def is_town_shift(train_code: str, note: str = "") -> bool:
     """
     判斷是否為「非正線」勤務（已精準排除 FAC 家庭照顧假等請假代碼）
     包含 11 組官方常見非正線勤務代碼：
-    STD, DTT, TOWN, TTN, TTC, TTS, OGT, OGC, DS, H9, WRSL
+    STD, DTT, TOWN, TTN, TTC, TTS, OGT, OGC, DS, H9, WRSL, E008G,I308a,
     """
     tr = str(train_code).strip().upper()
 
