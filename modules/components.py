@@ -14,7 +14,7 @@ from modules.utils import log_activity, safe_read_excel
 
 
 def render_zoomable_image(image_bytes: Any) -> None:
-    """渲染支援手機雙指縮放、拖曳與快捷按鈕控制的完整圖片元件 (HTML5 / Panzoom)"""
+    """渲染支援完整顯示、雙指捏合縮放、拖曳與按鈕控制的圖片元件 (HTML5 / Panzoom)"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
@@ -48,7 +48,7 @@ def render_zoomable_image(image_bytes: Any) -> None:
       }}
       .zoom-container {{
         width: 100%;
-        height: 250px;
+        min-height: 220px;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -56,15 +56,14 @@ def render_zoomable_image(image_bytes: Any) -> None:
         cursor: grab;
         touch-action: none;
         background: #020617;
-        padding: 4px;
+        padding: 6px;
       }}
       .zoom-container:active {{
         cursor: grabbing;
       }}
       .zoom-img {{
         width: 100%;
-        height: 100%;
-        object-fit: contain;
+        height: auto;
         display: block;
         border-radius: 4px;
         user-select: none;
@@ -127,8 +126,8 @@ def render_zoomable_image(image_bytes: Any) -> None:
       const panzoom = Panzoom(elem, {{
         maxScale: 6,
         minScale: 1,
-        contain: 'inside',
-        startScale: 1
+        startScale: 1,
+        contain: 'outside'
       }});
       
       const parent = document.getElementById('panzoomArea');
@@ -141,7 +140,7 @@ def render_zoomable_image(image_bytes: Any) -> None:
     </body>
     </html>
     """
-    st.components.v1.html(html_code, height=310, scrolling=False)
+    st.components.v1.html(html_code, height=330, scrolling=False)
 
 
 def show_holiday_notice(holidays: List[str], week_range_str: str = "") -> None:
