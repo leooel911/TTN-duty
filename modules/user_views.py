@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
+import modules.components as comp
 from config import LEAVE_CODES, NATIONAL_HOLIDAYS
 from modules.drawing import render_schedule_figure
 from modules.services import (
@@ -623,8 +624,7 @@ def render_user_home() -> None:
                         )
                     st.success(f"【{emp_name}】個人班表圖片生成成功！")
                     
-                    from modules.components import render_zoomable_image
-                    render_zoomable_image(buf)
+                    comp.render_zoomable_image(buf)
 
                     col_dl1, col_dl2 = st.columns([1, 1])
                     with col_dl1:
@@ -790,8 +790,7 @@ def render_user_home() -> None:
                         target_date, date_cols, df_search_sample.columns
                     )
 
-                    from modules.components import show_holiday_notice
-                    show_holiday_notice(win_week_holidays, win_week_str)
+                    comp.show_holiday_notice(win_week_holidays, win_week_str)
 
                     st.markdown('<div class="section-field-label">快捷選擇時段：</div>', unsafe_allow_html=True)
                     q_row1_1, q_row1_2 = st.columns(2)
@@ -1063,8 +1062,7 @@ def render_user_home() -> None:
                                             use_container_width=True,
                                         ):
                                             log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_name}({clean_id})")
-                                            from modules.components import show_crew_schedule_modal
-                                            show_crew_schedule_modal(
+                                            comp.show_crew_schedule_modal(
                                                 clean_id,
                                                 current_unit_label,
                                                 badge_title="Window Filter | C.L.F",
@@ -1227,8 +1225,7 @@ def render_user_home() -> None:
                             )
                         )
 
-                        from modules.components import show_holiday_notice
-                        show_holiday_notice(ex_week_holidays, target_week_str)
+                        comp.show_holiday_notice(ex_week_holidays, target_week_str)
 
                         st.caption(
                             f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）"
@@ -1533,8 +1530,7 @@ def render_user_home() -> None:
                                                 use_container_width=True,
                                             ):
                                                 log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
-                                                from modules.components import show_crew_schedule_modal
-                                                show_crew_schedule_modal(
+                                                comp.show_crew_schedule_modal(
                                                     clean_cand_id,
                                                     current_unit_label,
                                                     badge_title="Exchange | C.L.F",
