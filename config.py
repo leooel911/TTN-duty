@@ -77,9 +77,9 @@ TRANSPORT_PERIODS: Dict[str, str] = {
 
 TITLE: str = "TRAIN CREW DUTY CALENDAR"
 
-# 預設系統通行密碼預設值（當 json 尚未設定時備援）
-ADMIN_PASSWORD: str = "Lf090000"
-CREW_ACCESS_PASSWORD: str = "0096"
+# 🔑 請在此修改為你的最新真實密碼（系統 json 遺失時的底層備援值）
+ADMIN_PASSWORD: str = "你的最新管理員密碼"
+CREW_ACCESS_PASSWORD: str = "你的最新組員授權碼"
 
 # 完整通用請假代碼集
 LEAVE_CODES: List[str] = [
@@ -113,7 +113,7 @@ LEAVE_CODES: List[str] = [
     "WRSL",
 ]
 
-# 班表圖像渲染色調定義 (Matplotlib / PIL)
+# 班表圖像渲染色調定義
 C_HDR: str = "#0F172A"
 C_BORDER: str = "#475569"
 C_EMPTY: str = "#F1F5F9"
@@ -133,12 +133,10 @@ C_TOWN_TXT: str = "#000000"
 # 全站 CSS 美化樣式
 CUSTOM_CSS: str = """
 <style>
-    /* 全域隱藏預設頁眉頁尾 */
     header[data-testid="stHeader"] { background: transparent !important; }
     div[data-testid="stToolbar"] { visibility: hidden !important; }
     footer { visibility: hidden !important; }
 
-    /* 背景質感：深藍黑極簡漸層 */
     .stApp { 
         background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, #020617 100%) !important; 
         color: #F8FAFC !important; 
@@ -169,7 +167,6 @@ CUSTOM_CSS: str = """
         line-height: 1.2 !important;
     }
     
-    /* 容器邊距 */
     @media (min-width: 1024px) {
         .block-container { padding: 2.5rem 1.5rem 2.5rem 1.5rem !important; max-width: 1050px !important; }
     }
@@ -177,14 +174,12 @@ CUSTOM_CSS: str = """
         .block-container { padding: 1rem 0.75rem 2rem 0.75rem !important; max-width: 100% !important; }
     }
 
-    /* 按鈕通用寬度設定 */
     div[data-testid="stButton"], div.stButton { width: 100% !important; }
     div[data-testid="stButton"] > button, div.stButton > button {
         width: 100% !important;
         min-height: 42px !important;
     }
 
-    /* 輸入框美化 */
     div[data-testid="stTextInput"] div[data-baseweb="input"],
     div[data-testid="stTextArea"] div[data-baseweb="textarea"] {
         background: rgba(15, 23, 42, 0.75) !important;
@@ -208,7 +203,6 @@ CUSTOM_CSS: str = """
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
     }
 
-    /* 下拉選單 (stSelectbox) 滿版美化 */
     div[data-baseweb="select"] { width: 100% !important; }
     div[data-baseweb="select"] > div {
         background-color: rgba(15, 23, 42, 0.8) !important;
@@ -217,7 +211,6 @@ CUSTOM_CSS: str = """
     }
     div[data-baseweb="select"]:hover > div { border-color: #38BDF8 !important; }
 
-    /* 模式選擇按鈕 (st.radio) 強效 100% 單欄直立修復 + 滿格與內容水平居中 */
     div[data-testid="stElementContainer"]:has(div[data-testid="stRadio"]),
     div[data-testid="stRadio"],
     div[data-testid="stRadio"] > div,
@@ -392,7 +385,6 @@ CUSTOM_CSS: str = """
     .section-title { color: #F8FAFC; font-size: 14px !important; font-weight: 700; margin: 0; }
     .section-subtitle { color: #94A3B8; font-size: 9.5px !important; font-weight: 500; text-transform: uppercase; font-family: monospace; }
 
-    /* 組員卡片與 Hover 微互動光影提升 */
     .integrated-crew-box {
         width: 100% !important;
         box-sizing: border-box !important;
@@ -450,7 +442,6 @@ CUSTOM_CSS: str = """
         line-height: 1.2 !important;
     }
 
-    /* 按鈕通用與卡片底部按鈕無縫接軌修飾 */
     div.stButton > button, div.stFormSubmitButton > button { 
         font-weight: 700 !important; padding: 0.4rem 0.8rem !important; border-radius: 0.5rem !important; 
         background: rgba(30, 41, 59, 0.6) !important; 
