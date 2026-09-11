@@ -3,7 +3,7 @@ import json
 import os
 import re
 import zipfile
-from datetime import datetime
+from datetime import datetime, date
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
@@ -27,6 +27,7 @@ def clear_logs() -> None:
         LOG_FILE,
         "activity.log",
         os.path.join(DATA_DIR, "activity.log"),
+        "data/activity_log.csv",
     ]
     for p in possible_paths:
         if os.path.exists(p):
@@ -57,6 +58,7 @@ def create_backup_zip() -> io.BytesIO:
 
         for root_file in [
             "activity.log",
+            "activity_log.csv",
             "maintenance.json",
             "whitelist.json",
             "system_config.json",
@@ -252,9 +254,10 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
 
     if isinstance(raw_log, dict):
         timestamp = str(raw_log.get("timestamp", raw_log.get("時間", "--")))
-        action_detail = str(raw_log.get("action", raw_log.get("動作", raw_log.get("detail", ""))))
-        user_info = str(raw_log.get("user", raw_log.get("操作者", "系統/訪客")))
+        action_detail = str(raw_log.get("action", raw_log.get("動作", raw_log.get("detail", raw_log.get("詳細日誌與動作內容", "")))))
+        user_info = str(raw_log.get("user", raw_log.get("操作者", raw_log.get("操作者/員編", "系統/訪客"))))
         unit_info = str(raw_log.get("unit", raw_log.get("單位", "全站")))
+        category = str(raw_log.get("類別", "一般操作"))
     else:
         raw_str = str(raw_log).strip()
         parts = [p.strip() for p in raw_str.split("|")]
@@ -272,25 +275,27 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
     # 2. 從 action_detail 解析登入者/組員員編與姓名
     crew_match = re.search(r"(?:組員|目標組員|解析組員|操作者)[:：]\s*([^\s\|]+)", action_detail)
     user_match = re.search(r"\[([A-Za-z0-9_\u4e00-\u9fa5]+)\]", action_detail)
-    
-    if crew_match:
-        user_info = crew_match.group(1)
-    elif user_match:
-        user_info = user_match.group(1)
+
+    if user_info in ["系統/訪客", "訪客", "", "NONE", "NAN"]:
+        if crew_match:
+            user_info = crew_match.group(1)
+        elif user_match:
+            user_info = user_match.group(1)
 
     # 3. 解析操作類別
-    if "管理員" in action_detail or "後台" in action_detail:
-        category = "管理員操作"
-    elif "換班" in action_detail:
-        category = "換班快篩"
-    elif "換假" in action_detail:
-        category = "換假快篩"
-    elif "繪製" in action_detail or "圖檔" in action_detail:
-        category = "月班表繪製"
-    elif "登入" in action_detail or "驗證" in action_detail:
-        category = "帳號登入"
-    elif "工單" in action_detail or "回報" in action_detail:
-        category = "問題回報"
+    if category in ["一般操作", ""]:
+        if "管理員" in action_detail or "後台" in action_detail:
+            category = "管理員操作"
+        elif "換班" in action_detail:
+            category = "換班快篩"
+        elif "換假" in action_detail:
+            category = "換假快篩"
+        elif "繪製" in action_detail or "圖檔" in action_detail:
+            category = "月班表繪製"
+        elif "登入" in action_detail or "驗證" in action_detail:
+            category = "帳號登入"
+        elif "工單" in action_detail or "回報" in action_detail:
+            category = "問題回報"
 
     return {
         "時間 (Timestamp)": timestamp,
@@ -299,6 +304,33 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
         "操作類別 (Category)": category,
         "詳細日誌紀錄 (Log Detail)": action_detail,
     }
+
+
+def extract_device_info(detail_str: str) -> str:
+    """提取日誌詳細內容開頭的 [裝置] 標籤"""
+    m = re.search(r"^\[(.*?)\]", str(detail_str).strip())
+    if m:
+        dev = m.group(1)
+        if any(k in dev for k in ["iPhone", "Android", "iPad", "Mac", "Windows", "Linux", "Web"]):
+            return dev
+    return "Web 介面"
+
+
+@st.dialog("⚠️ 確定要清空全站系統日誌嗎？", width="small")
+def show_confirm_clear_logs_modal() -> None:
+    """防誤觸對話框：清空全站日誌"""
+    st.warning("此動作將徹底清除所有歷史操作與稽核紀錄，且無法恢復！")
+    st.markdown("請確認是否繼續？")
+    
+    col_confirm1, col_confirm2 = st.columns(2)
+    with col_confirm1:
+        if st.button("確認完全清空", type="primary", use_container_width=True):
+            clear_logs()
+            st.success("已成功清空所有系統操作日誌！")
+            st.rerun()
+    with col_confirm2:
+        if st.button("取消", use_container_width=True):
+            st.rerun()
 
 
 def render_admin_panel() -> None:
@@ -873,9 +905,9 @@ def render_admin_panel() -> None:
                     )
                     st.rerun()
 
-    # ==================== Tab 5: 系統日誌與備份 (重點增強) ====================
+    # ==================== Tab 5: 系統日誌與備份 (優化版高階儀表板) ====================
     with tab5:
-        st.markdown("### 📜 全站系統操作日誌與數據稽核")
+        st.markdown("### 📜 全站系統操作日誌與數據稽核儀表板")
 
         raw_logs = load_activity_logs()
         parsed_logs = [parse_structured_log(entry) for entry in raw_logs]
@@ -883,115 +915,143 @@ def render_admin_panel() -> None:
             "時間 (Timestamp)", "操作者/員編 (User)", "營運單位 (Unit)", "操作類別 (Category)", "詳細日誌紀錄 (Log Detail)"
         ])
 
-        # 頂部日誌關鍵數據指標 (Log Analytics Matrix)
+        # 1. 提取裝置資訊欄位
+        if not df_logs.empty and "詳細日誌紀錄 (Log Detail)" in df_logs.columns:
+            df_logs["裝置 (Device)"] = df_logs["詳細日誌紀錄 (Log Detail)"].apply(extract_device_info)
+        else:
+            df_logs["裝置 (Device)"] = "Web 介面"
+
+        # 2. 解析時間並預設降序排序
+        if not df_logs.empty and "時間 (Timestamp)" in df_logs.columns:
+            df_logs["時間_DT"] = pd.to_datetime(df_logs["時間 (Timestamp)"], errors="coerce")
+            df_logs = df_logs.sort_values(by="時間_DT", ascending=False)
+
+        # 3. 頂部 KPI 關鍵數據指標卡片 (Log KPI Matrix)
+        today_str = date.today().strftime("%Y-%m-%d")
         total_log_count = len(df_logs)
-        unique_users_count = df_logs["操作者/員編 (User)"].nunique() if not df_logs.empty else 0
         
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        today_logs_count = (
-            sum(1 for t in df_logs["時間 (Timestamp)"] if str(t).startswith(today_str))
-            if not df_logs.empty else 0
-        )
-        admin_logs_count = (
-            sum(1 for c in df_logs["操作類別 (Category)"] if c == "管理員操作")
-            if not df_logs.empty else 0
-        )
+        df_today = df_logs[df_logs["時間 (Timestamp)"].astype(str).str.startswith(today_str)] if not df_logs.empty else pd.DataFrame()
+        today_logs_count = len(df_today)
+        active_users_today = df_today["操作者/員編 (User)"].nunique() if not df_today.empty else 0
+
+        mobile_count = sum(
+            1 for dev in df_logs["裝置 (Device)"]
+            if any(k in str(dev) for k in ["iPhone", "Android", "iPad"])
+        ) if not df_logs.empty else 0
+        
+        mobile_pct_str = f"{(mobile_count / total_log_count * 100):.1f}%" if total_log_count > 0 else "0.0%"
 
         st.markdown(
             f"""
             <div style="display: flex; gap: 10px; margin-bottom: 16px;">
                 <div class="admin-stat-card" style="flex: 1;">
-                    <div class="stat-val">{total_log_count} <span style="font-size: 11px;">筆</span></div>
-                    <div class="stat-lbl">全站總日誌數</div>
-                </div>
-                <div class="admin-stat-card" style="flex: 1; border-color: rgba(56, 189, 248, 0.4);">
-                    <div class="stat-val" style="color: #38BDF8;">{unique_users_count} <span style="font-size: 11px;">位</span></div>
-                    <div class="stat-lbl">獨立不重複操作者</div>
+                    <div class="stat-val">{total_log_count:,} <span style="font-size: 11px;">筆</span></div>
+                    <div class="stat-lbl">歷史總日誌數</div>
                 </div>
                 <div class="admin-stat-card" style="flex: 1; border-color: rgba(52, 211, 153, 0.4);">
-                    <div class="stat-val" style="color: #34D399;">{today_logs_count} <span style="font-size: 11px;">筆</span></div>
-                    <div class="stat-lbl">今日新增日誌</div>
+                    <div class="stat-val" style="color: #34D399;">{today_logs_count:,} <span style="font-size: 11px;">筆</span></div>
+                    <div class="stat-lbl">今日操作筆數</div>
                 </div>
                 <div class="admin-stat-card" style="flex: 1; border-color: rgba(251, 191, 36, 0.4);">
-                    <div class="stat-val" style="color: #FBBF24;">{admin_logs_count} <span style="font-size: 11px;">筆</span></div>
-                    <div class="stat-lbl">管理員後台異動數</div>
+                    <div class="stat-val" style="color: #FBBF24;">{active_users_today} <span style="font-size: 11px;">人</span></div>
+                    <div class="stat-lbl">今日活躍人數</div>
+                </div>
+                <div class="admin-stat-card" style="flex: 1; border-color: rgba(192, 132, 252, 0.4);">
+                    <div class="stat-val" style="color: #C084FC;">{mobile_pct_str}</div>
+                    <div class="stat-lbl">行動裝置占比</div>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-        # 智能日誌過濾器工具列
-        f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 1, 1, 1])
+        # 4. 組合多維度進階過濾器
+        with st.expander("🔍 展開 / 收合 日誌進階篩選條件", expanded=True):
+            f_col1, f_col2, f_col3 = st.columns(3)
 
-        with f_col1:
-            log_kw = st.text_input(
-                "🔍 日誌關鍵字搜尋",
-                placeholder="搜尋員編、姓名、車次或關鍵字...",
-                key="log_search_kw",
-            ).strip()
+            with f_col1:
+                all_units = ["全站 / 全部單位"] + sorted([u for u in df_logs["營運單位 (Unit)"].unique() if u and u != "全站"]) if not df_logs.empty else ["全站 / 全部單位"]
+                sel_unit = st.selectbox("依單位過濾", all_units, key="log_unit_filter")
 
-        with f_col2:
-            all_users = ["全部操作者"] + sorted(list(df_logs["操作者/員編 (User)"].unique())) if not df_logs.empty else ["全部操作者"]
-            sel_user = st.selectbox("操作者 / 員編過濾", all_users, key="log_user_filter")
+            with f_col2:
+                all_cats = ["全部分類", "換班快篩", "換假快篩", "月班表繪製", "管理員操作", "帳號登入", "問題回報", "一般操作"]
+                sel_cat = st.selectbox("依操作類別過濾", all_cats, key="log_cat_filter")
 
-        with f_col3:
-            all_categories = ["全部分類", "換班快篩", "換假快篩", "月班表繪製", "管理員操作", "帳號登入", "問題回報", "一般操作"]
-            sel_cat = st.selectbox("操作類別過濾", all_categories, key="log_cat_filter")
+            with f_col3:
+                all_devs = ["全部裝置"] + sorted(list(df_logs["裝置 (Device)"].unique())) if not df_logs.empty else ["全部裝置"]
+                sel_dev = st.selectbox("依裝置 / 載具過濾", all_devs, key="log_dev_filter")
 
-        with f_col4:
-            all_units = ["全部單位"] + list(UNITS.keys())
-            sel_unit = st.selectbox("營運單位過濾", all_units, key="log_unit_filter")
+            f_col4, f_col5 = st.columns([1.2, 1.8])
+            with f_col4:
+                quick_time = st.radio("時間區間快速切換", ["全部", "今天", "近 3 天", "近 7 天"], horizontal=True, key="log_quick_time")
+            with f_col5:
+                log_kw = st.text_input("搜尋員編 / 車次 / 關鍵字", placeholder="例: A023300 或 換班...", key="log_search_kw").strip()
 
-        # 套用過濾條件
+        # 5. 執行過濾邏輯
         df_filtered_logs = df_logs.copy()
 
         if not df_filtered_logs.empty:
-            if log_kw:
-                kw_l = log_kw.lower()
-                df_filtered_logs = df_filtered_logs[
-                    df_filtered_logs["時間 (Timestamp)"].astype(str).str.lower().str.contains(kw_l)
-                    | df_filtered_logs["操作者/員編 (User)"].astype(str).str.lower().str.contains(kw_l)
-                    | df_filtered_logs["詳細日誌紀錄 (Log Detail)"].astype(str).str.lower().str.contains(kw_l)
-                ]
-
-            if sel_user != "全部操作者":
-                df_filtered_logs = df_filtered_logs[df_filtered_logs["操作者/員編 (User)"] == sel_user]
+            if sel_unit != "全站 / 全部單位":
+                df_filtered_logs = df_filtered_logs[df_filtered_logs["營運單位 (Unit)"] == sel_unit]
 
             if sel_cat != "全部分類":
                 df_filtered_logs = df_filtered_logs[df_filtered_logs["操作類別 (Category)"] == sel_cat]
 
-            if sel_unit != "全部單位":
-                df_filtered_logs = df_filtered_logs[df_filtered_logs["營運單位 (Unit)"] == sel_unit]
+            if sel_dev != "全部裝置":
+                df_filtered_logs = df_filtered_logs[df_filtered_logs["裝置 (Device)"] == sel_dev]
 
+            if quick_time == "今天":
+                df_filtered_logs = df_filtered_logs[df_filtered_logs["時間 (Timestamp)"].astype(str).str.startswith(today_str)]
+            elif quick_time == "近 3 天" and "時間_DT" in df_filtered_logs.columns:
+                three_days_ago = datetime.now() - pd.Timedelta(days=3)
+                df_filtered_logs = df_filtered_logs[df_filtered_logs["時間_DT"] >= three_days_ago]
+            elif quick_time == "近 7 天" and "時間_DT" in df_filtered_logs.columns:
+                seven_days_ago = datetime.now() - pd.Timedelta(days=7)
+                df_filtered_logs = df_filtered_logs[df_filtered_logs["時間_DT"] >= seven_days_ago]
+
+            if log_kw:
+                pattern = re.escape(log_kw)
+                df_filtered_logs = df_filtered_logs[
+                    df_filtered_logs["操作者/員編 (User)"].astype(str).str.contains(pattern, case=False, na=False)
+                    | df_filtered_logs["詳細日誌紀錄 (Log Detail)"].astype(str).str.contains(pattern, case=False, na=False)
+                    | df_filtered_logs["時間 (Timestamp)"].astype(str).str.contains(pattern, case=False, na=False)
+                ]
+
+        # 6. 表格呈現與下載
         col_log_header, col_log_actions = st.columns([3, 1])
 
         with col_log_header:
-            st.caption(f"目前顯示符合條件的日誌紀錄：共 **{len(df_filtered_logs)}** 筆")
+            st.markdown(f"##### 📋 查詢結果（共 {len(df_filtered_logs)} 筆紀錄）")
 
         with col_log_actions:
             if st.button("🗑️ 清空全站日誌", key="btn_clear_activity_logs", type="secondary", use_container_width=True):
-                clear_logs()
-                st.success("已成功清空所有系統操作日誌！")
-                st.rerun()
+                show_confirm_clear_logs_modal()
 
-        # 高質感日誌 Dataframe 呈現
         if not df_filtered_logs.empty:
+            display_cols = [
+                "時間 (Timestamp)",
+                "操作者/員編 (User)",
+                "營運單位 (Unit)",
+                "操作類別 (Category)",
+                "詳細日誌紀錄 (Log Detail)",
+            ]
+            display_df = df_filtered_logs[display_cols]
+
             st.dataframe(
-                df_filtered_logs,
+                display_df,
                 use_container_width=True,
-                height=400,
+                height=420,
+                hide_index=True,
                 column_config={
-                    "時間 (Timestamp)": st.column_config.TextColumn("時間", width="medium"),
+                    "時間 (Timestamp)": st.column_config.TextColumn("時間 (Y-M-D H:M:S)", width="medium"),
                     "操作者/員編 (User)": st.column_config.TextColumn("操作者 / 員編", width="small"),
                     "營運單位 (Unit)": st.column_config.TextColumn("單位", width="small"),
-                    "操作類別 (Category)": st.column_config.TextColumn("類別", width="small"),
-                    "詳細日誌紀錄 (Log Detail)": st.column_config.TextColumn("詳細日誌與動作內容", width="large"),
+                    "操作類別 (Category)": st.column_config.TextColumn("動作類別", width="medium"),
+                    "詳細日誌紀錄 (Log Detail)": st.column_config.TextColumn("詳細日誌內容 (載具與操作細節)", width="large"),
                 },
             )
 
-            # 匯出 CSV 按鈕
-            csv_data = df_filtered_logs.to_csv(index=False).encode("utf-8-sig")
+            csv_data = display_df.to_csv(index=False).encode("utf-8-sig")
             st.download_button(
                 "📥 下載篩選出的日誌檔 (.CSV)",
                 data=csv_data,
@@ -1004,9 +1064,9 @@ def render_admin_panel() -> None:
 
         st.markdown("---")
 
-        # 數據一鍵打包備份區塊
+        # 7. 數據一鍵打包備份區塊
         st.markdown("#### 📦 一鍵備份全站數據與設定檔")
-        st.caption("備份內容包含：`data/` 底下所有 Excel 大表、日誌檔 `activity.log`、白名單 `whitelist.json` 與系統設定檔。")
+        st.caption("備份內容包含：`data/` 底下所有 Excel 大表、日誌檔 `activity_log.csv` / `activity.log`、白名單 `whitelist.json` 與系統設定檔。")
 
         zip_buf = create_backup_zip()
         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
