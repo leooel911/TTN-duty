@@ -675,7 +675,7 @@ def render_user_home() -> None:
         st.markdown(
             """
             <div class="section-field-label">
-                點擊選擇查詢職位
+                點擊選擇查詢職位：
             </div>
             """,
             unsafe_allow_html=True,
@@ -705,11 +705,29 @@ def render_user_home() -> None:
         roles_to_query = list(selected_roles) if selected_roles else []
 
         if not roles_to_query:
-            st.warning("⚠️ 請至少點亮一個職位膠囊以進行查詢！")
+            st.warning("請至少選擇一個職位 以進行查詢！")
         else:
-            morn_start_time = "03:00" if "駕駛" in roles_to_query else "05:00"
+            # 1. 動態計算起點刻度（選取駕駛時起點為 03:00，否則為 05:00）
+            has_driver = "駕駛" in roles_to_query
+            start_h = 3 if has_driver else 5
+            morn_start_time = f"{start_h:02d}:00"
 
-            if "win_time_slider" not in st.session_state:
+            # 2. 生成完全適應刻度範圍的選項（從起點至 18:00，全選時拉吧呈 100% 滿格狀態）
+            TIME_OPTIONS = [
+                f"{h:02d}:{m:02d}"
+                for h in range(start_h, 19)
+                for m in (0, 30)
+                if not (h == 18 and m == 30)
+            ]
+
+            # 3. 確保 Session State 數值位於合法刻度範圍內
+            curr_slider = st.session_state.get("win_time_slider")
+            if (
+                not isinstance(curr_slider, (tuple, list))
+                or len(curr_slider) != 2
+                or curr_slider[0] not in TIME_OPTIONS
+                or curr_slider[1] not in TIME_OPTIONS
+            ):
                 st.session_state["win_time_slider"] = (morn_start_time, "10:00")
 
             valid_paths = {}
@@ -794,18 +812,6 @@ def render_user_home() -> None:
                         st.session_state["win_time_slider"] = ("13:00", "18:00")
                         reset_win_search()
                         st.rerun()
-
-                    TIME_OPTIONS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
-
-                    curr_slider = st.session_state.get("win_time_slider")
-                    if (
-                        not isinstance(curr_slider, (tuple, list))
-                        or len(curr_slider) != 2
-                        or curr_slider[0] not in TIME_OPTIONS
-                        or curr_slider[1] not in TIME_OPTIONS
-                    ):
-                        default_start = morn_start_time if morn_start_time in TIME_OPTIONS else "05:00"
-                        st.session_state["win_time_slider"] = (default_start, "10:00")
 
                     slider_val = st.select_slider(
                         "Sign-In 時段區間 (拖曳調整)",
