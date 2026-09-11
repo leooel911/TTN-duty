@@ -896,13 +896,24 @@ def render_user_home() -> None:
                     if saved_target_date and saved_target_date in date_cols:
                         default_win_idx = date_cols.index(saved_target_date)
                     else:
-                        today_dt = date.today()
+                        # 🔑 預設使用「明天」，若無則嘗試「今天」
+                        tomorrow_dt = date.today() + timedelta(days=1)
+                        found_idx = None
                         for idx, d_str in enumerate(date_cols):
                             parts = d_str.split("/")
                             if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                                if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
-                                    default_win_idx = idx
+                                if int(parts[0]) == tomorrow_dt.month and int(parts[1]) == tomorrow_dt.day:
+                                    found_idx = idx
                                     break
+                        if found_idx is None:
+                            today_dt = date.today()
+                            for idx, d_str in enumerate(date_cols):
+                                parts = d_str.split("/")
+                                if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                                    if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
+                                        found_idx = idx
+                                        break
+                        default_win_idx = found_idx if found_idx is not None else 0
 
                     target_date = st.selectbox(
                         "選擇換班日期",
@@ -1287,13 +1298,24 @@ def render_user_home() -> None:
                     if saved_ex_target and saved_ex_target in date_cols:
                         default_ex_idx = date_cols.index(saved_ex_target)
                     else:
-                        today_dt = date.today()
+                        # 🔑 預設使用「明天」，若無則嘗試「今天」
+                        tomorrow_dt = date.today() + timedelta(days=1)
+                        found_idx = None
                         for idx, d_str in enumerate(date_cols):
                             parts = d_str.split("/")
                             if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                                if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
-                                    default_ex_idx = idx
+                                if int(parts[0]) == tomorrow_dt.month and int(parts[1]) == tomorrow_dt.day:
+                                    found_idx = idx
                                     break
+                        if found_idx is None:
+                            today_dt = date.today()
+                            for idx, d_str in enumerate(date_cols):
+                                parts = d_str.split("/")
+                                if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                                    if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
+                                        found_idx = idx
+                                        break
+                        default_ex_idx = found_idx if found_idx is not None else 0
 
                     with ex_date_col1:
                         target_date = st.selectbox(
