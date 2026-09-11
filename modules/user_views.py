@@ -206,6 +206,28 @@ def render_user_home() -> None:
             padding-top: 0.6rem !important;
         }
 
+        /* 全域統一標題樣式 Class */
+        .section-field-label {
+            font-size: 15px !important;
+            font-weight: 800 !important;
+            color: #F8FAFC !important;
+            margin-top: 10px !important;
+            margin-bottom: 8px !important;
+            letter-spacing: 0.3px !important;
+            line-height: 1.3 !important;
+        }
+
+        /* 覆蓋 Streamlit 原生輸入元件標題 (Widget Label) 的顏色與字體大小 */
+        div[data-testid="stWidgetLabel"] p,
+        div[data-testid="stWidgetLabel"] label,
+        label[data-testid="stWidgetLabel"] p {
+            font-size: 15px !important;
+            font-weight: 800 !important;
+            color: #F8FAFC !important;
+            letter-spacing: 0.3px !important;
+            margin-bottom: 6px !important;
+        }
+
         /* 高質感發光膠囊切換列 (Segmented Light-Up Control) */
         div[data-testid="stSegmentedControl"] {
             background: #0B101D !important;
@@ -652,7 +674,7 @@ def render_user_home() -> None:
 
         st.markdown(
             """
-            <div style="font-size: 12.5px; font-weight: 700; color: #94A3B8; margin-bottom: 6px;">
+            <div class="section-field-label">
                 點擊選擇查詢職位
             </div>
             """,
@@ -662,7 +684,7 @@ def render_user_home() -> None:
         # 採用可多選的發光膠囊切換元件 (Segmented Control)
         if hasattr(st, "segmented_control"):
             selected_roles = st.segmented_control(
-                "職位選擇",
+                "點擊選擇查詢職位",
                 options=["駕駛", "列車長", "服勤員"],
                 default=["駕駛", "列車長", "服勤員"],
                 selection_mode="multi",
@@ -672,7 +694,7 @@ def render_user_home() -> None:
             )
         else:
             selected_roles = st.multiselect(
-                "職位選擇",
+                "點擊選擇查詢職位",
                 options=["駕駛", "列車長", "服勤員"],
                 default=["駕駛", "列車長", "服勤員"],
                 label_visibility="collapsed",
@@ -739,7 +761,7 @@ def render_user_home() -> None:
                     from modules.components import show_holiday_notice
                     show_holiday_notice(win_week_holidays, win_week_str)
 
-                    st.write("**快捷選擇時段：**")
+                    st.markdown('<div class="section-field-label">快捷選擇時段：</div>', unsafe_allow_html=True)
                     q_row1_1, q_row1_2 = st.columns(2)
                     q_row2_1, q_row2_2 = st.columns(2)
 
