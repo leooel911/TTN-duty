@@ -209,11 +209,11 @@ def render_user_home() -> None:
 
         /* 全域統一標題樣式 Class */
         .section-field-label {
-            font-size: 14px !important;
+            font-size: 15px !important;
             font-weight: 800 !important;
             color: #F8FAFC !important;
-            margin-top: 8px !important;
-            margin-bottom: 6px !important;
+            margin-top: 10px !important;
+            margin-bottom: 8px !important;
             letter-spacing: 0.3px !important;
             line-height: 1.3 !important;
         }
@@ -222,14 +222,14 @@ def render_user_home() -> None:
         div[data-testid="stWidgetLabel"] p,
         div[data-testid="stWidgetLabel"] label,
         label[data-testid="stWidgetLabel"] p {
-            font-size: 14px !important;
+            font-size: 15px !important;
             font-weight: 800 !important;
             color: #F8FAFC !important;
             letter-spacing: 0.3px !important;
-            margin-bottom: 4px !important;
+            margin-bottom: 6px !important;
         }
 
-        /* 覆蓋 Streamlit 預設膠囊 (Segmented Control) */
+        /* 徹底覆蓋 Streamlit 預設膠囊，實現完全分離與亮燈效果 (Segmented Control) */
         div[data-testid="stSegmentedControl"] {
             background: transparent !important;
             border: none !important;
@@ -248,6 +248,7 @@ def render_user_home() -> None:
             border: none !important;
         }
 
+        /* 預設狀態：完全獨立分離的低調黑框膠囊 */
         div[data-testid="stSegmentedControl"] button,
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"] {
             flex: 1 !important;
@@ -270,6 +271,7 @@ def render_user_home() -> None:
             border-color: rgba(0, 163, 255, 0.4) !important;
         }
 
+        /* 選中亮燈狀態 (Neon Blue Active Glow) */
         div[data-testid="stSegmentedControl"] button[aria-selected="true"],
         div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"],
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"],
@@ -281,53 +283,7 @@ def render_user_home() -> None:
             box-shadow: 0 0 16px rgba(0, 163, 255, 0.85), 0 2px 10px rgba(0, 163, 255, 0.5) !important;
         }
 
-        /* 強制所有橫向欄位 (st.columns) 在行動端/窄螢幕維持水平並排，不自動拆成多行 */
-        div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            width: 100% !important;
-            gap: 6px !important;
-            box-sizing: border-box !important;
-        }
-
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-            min-width: 0 !important;
-            flex: 1 1 0% !important;
-            box-sizing: border-box !important;
-        }
-
-        /* 快捷時段次要按鈕的高度與字體壓縮，打造精緻緊緻感 */
-        div[data-testid="stHorizontalBlock"] button[kind="secondary"],
-        div[data-testid="stHorizontalBlock"] button[data-testid="stBaseButton-secondary"] {
-            padding: 6px 4px !important;
-            font-size: 12.5px !important;
-            border-radius: 8px !important;
-            margin-top: 2px !important;
-            margin-bottom: 4px !important;
-            background-color: rgba(15, 23, 42, 0.6) !important;
-            border: 1px solid rgba(255, 255, 255, 0.15) !important;
-            transition: all 0.2s ease-in-out !important;
-        }
-
-        div[data-testid="stHorizontalBlock"] button[kind="secondary"]:hover,
-        div[data-testid="stHorizontalBlock"] button[data-testid="stBaseButton-secondary"]:hover {
-            border-color: #38BDF8 !important;
-            background-color: rgba(56, 189, 248, 0.12) !important;
-        }
-
-        div[data-testid="stHorizontalBlock"] button[kind="secondary"] p,
-        div[data-testid="stHorizontalBlock"] button[data-testid="stBaseButton-secondary"] p {
-            font-size: 12.5px !important;
-            font-weight: 600 !important;
-            color: #E2E8F0 !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            margin: 0 !important;
-        }
-
-        /* 卡片佈局 CSS */
+        /* 僅針對結果組員卡片強制水平並排 */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -463,7 +419,7 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
-        /* 統一藍色漸層主按鈕風格 */
+        /* 統一三大主要按鈕質感 */
         div[data-testid="stFormSubmitButton"] > button,
         div[data-testid="stFormSubmitButton"] button,
         button[data-testid="stBaseButton-primary"],
@@ -841,37 +797,25 @@ def render_user_home() -> None:
                     comp.show_holiday_notice(win_week_holidays, win_week_str)
 
                     st.markdown('<div class="section-field-label">快捷選擇時段：</div>', unsafe_allow_html=True)
-                    
-                    # 採用 2x2 網格佈局，搭配 CSS 強制並排與高度壓縮
-                    q_row1_1, q_row1_2 = st.columns(2)
-                    q_row2_1, q_row2_2 = st.columns(2)
 
                     btn_all_label = f"全時段 ({morn_start_time}~18:00)"
                     btn_morn_label = f"早班 ({morn_start_time}~10:00)"
                     btn_noon_label = "中班 (10:00~13:00)"
                     btn_night_label = "晚班 (13:00~18:00)"
 
-                    if q_row1_1.button(
-                        btn_all_label, key="btn_win_all", use_container_width=True
-                    ):
+                    if st.button(btn_all_label, key="btn_win_all", use_container_width=True):
                         st.session_state["win_time_slider"] = (morn_start_time, "18:00")
                         reset_win_search()
                         st.rerun()
-                    if q_row1_2.button(
-                        btn_morn_label, key="btn_win_morn", use_container_width=True
-                    ):
+                    if st.button(btn_morn_label, key="btn_win_morn", use_container_width=True):
                         st.session_state["win_time_slider"] = (morn_start_time, "10:00")
                         reset_win_search()
                         st.rerun()
-                    if q_row2_1.button(
-                        btn_noon_label, key="btn_win_noon", use_container_width=True
-                    ):
+                    if st.button(btn_noon_label, key="btn_win_noon", use_container_width=True):
                         st.session_state["win_time_slider"] = ("10:00", "13:00")
                         reset_win_search()
                         st.rerun()
-                    if q_row2_2.button(
-                        btn_night_label, key="btn_win_night", use_container_width=True
-                    ):
+                    if st.button(btn_night_label, key="btn_win_night", use_container_width=True):
                         st.session_state["win_time_slider"] = ("13:00", "18:00")
                         reset_win_search()
                         st.rerun()
