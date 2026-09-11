@@ -30,37 +30,6 @@ from modules.utils import (
 )
 
 
-# ==================== 原生 Streamlit 彈窗：放大班表檢視 ====================
-@st.dialog("完整月班表放大檢視", width="large")
-def show_zoom_schedule_dialog(buf_data: bytes, emp_name: str, unit_label: str):
-    """跳出浮動視窗並顯示放大/可縮放的完整班表圖檔"""
-    st.markdown(
-        f"""
-        <div style="font-size: 15px; font-weight: 800; color: #38BDF8; margin-bottom: 8px;">
-            【{unit_label}】組員：{emp_name} 個人完整月班表
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    
-    # 渲染縮放元件
-    comp.render_zoomable_image(buf_data)
-
-    col_dl, col_close = st.columns([1, 1])
-    with col_dl:
-        st.download_button(
-            "下載此班表圖檔",
-            data=buf_data,
-            file_name=f"{unit_label}_班表_{emp_name}.png",
-            mime="image/png",
-            use_container_width=True,
-        )
-    with col_close:
-        if st.button("關閉視窗", use_container_width=True, key="btn_close_zoom_modal"):
-            st.session_state["show_zoom_modal"] = False
-            st.rerun()
-
-
 def get_shift_group_key(code_str: str) -> str:
     """提取車次/班別的核心標識 (例: ND0007/NM0007/NF0007 均歸為 '0007', DTT -> 'DTT')"""
     s = str(code_str).strip().upper()
@@ -238,6 +207,7 @@ def render_user_home() -> None:
             padding-top: 0.6rem !important;
         }
 
+        /* 全域統一標題樣式 Class */
         .section-field-label {
             font-size: 15px !important;
             font-weight: 800 !important;
@@ -248,6 +218,7 @@ def render_user_home() -> None:
             line-height: 1.3 !important;
         }
 
+        /* 覆蓋 Streamlit 原生輸入元件標題 (Widget Label) 的顏色與字體大小 */
         div[data-testid="stWidgetLabel"] p,
         div[data-testid="stWidgetLabel"] label,
         label[data-testid="stWidgetLabel"] p {
@@ -258,6 +229,7 @@ def render_user_home() -> None:
             margin-bottom: 6px !important;
         }
 
+        /* 徹底覆蓋 Streamlit 預設膠囊，實現完全分離與亮燈效果 (Segmented Control) */
         div[data-testid="stSegmentedControl"] {
             background: transparent !important;
             border: none !important;
@@ -276,6 +248,7 @@ def render_user_home() -> None:
             border: none !important;
         }
 
+        /* 預設狀態：完全獨立分離的低調黑框膠囊 */
         div[data-testid="stSegmentedControl"] button,
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"] {
             flex: 1 !important;
@@ -298,6 +271,7 @@ def render_user_home() -> None:
             border-color: rgba(0, 163, 255, 0.4) !important;
         }
 
+        /* 選中亮燈狀態 (Neon Blue Active Glow) */
         div[data-testid="stSegmentedControl"] button[aria-selected="true"],
         div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"],
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"],
@@ -541,6 +515,7 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
+    # 【關鍵修復 1】補上 key="user_app_mode"，防止 Rerun 時切換頁面狀態遺失
     app_mode = st.radio(
         "系統操作模式選擇",
         [
@@ -564,8 +539,7 @@ def render_user_home() -> None:
 
         modal_keys_to_clear = [
             "show_feedback_modal", "show_feedback_dialog", 
-            "feedback_open", "show_issue_modal", "show_feedback",
-            "show_zoom_modal"
+            "feedback_open", "show_issue_modal", "show_feedback"
         ]
         for mk in modal_keys_to_clear:
             if mk in st.session_state:
@@ -650,37 +624,30 @@ def render_user_home() -> None:
                             current_unit_label,
                             badge_title="Producer | C.L.F",
                         )
-                    
-                    # 儲存繪圖結果至 session state 供放大彈窗使用
-                    st.session_state["active_schedule_buf"] = buf.getvalue() if hasattr(buf, "getvalue") else buf
-                    st.session_state["active_emp_name"] = emp_name
                     st.success(f"【{emp_name}】個人班表圖片生成成功！")
+                    
+                    comp.render_zoomable_image(buf)
 
+                    col_dl1, col_dl2 = st.columns([1, 1])
+                    with col_dl1:
+                        st.download_button(
+                            "點此下載班表影像檔",
+                            data=buf,
+                            file_name=f"{current_unit_label}_班表_{emp_name}.png",
+                            mime="image/png",
+                            use_container_width=True,
+                        )
+                    with col_dl2:
+                        st.markdown(
+                            """
+                            <div style="display: flex; align-items: center; height: 100%; font-size: 12px; color: #94A3B8; font-weight: 500; font-family: monospace; padding-left: 6px;">
+                                💡 提示：手機使用者可長按圖片儲存至相簿
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
                 except Exception as e:
                     st.error(f"繪製班表時發生錯誤：{e}")
-
-        # 若已產生班表圖檔，渲染操作按鈕與彈窗預覽
-        if st.session_state.get("active_schedule_buf") is not None:
-            active_buf = st.session_state["active_schedule_buf"]
-            active_name = st.session_state.get("active_emp_name", "")
-
-            # 畫面預覽
-            comp.render_zoomable_image(active_buf)
-
-            col_act1, col_act2 = st.columns([1, 1])
-            with col_act1:
-                if st.button("🔍 放大完整班表 (彈窗檢視)", key="btn_open_zoom", type="primary", use_container_width=True):
-                    st.session_state["show_zoom_modal"] = True
-                    st.rerun()
-
-            with col_act2:
-                st.download_button(
-                    "下載班表影像檔",
-                    data=active_buf,
-                    file_name=f"{current_unit_label}_班表_{active_name}.png",
-                    mime="image/png",
-                    use_container_width=True,
-                )
 
     # ==================== 模式二：換班｜選擇換班日期 ====================
     elif app_mode == "換班｜選擇換班日期":
@@ -1085,6 +1052,7 @@ def render_user_home() -> None:
 
                                         st.markdown(card_html, unsafe_allow_html=True)
 
+                                        # 【關鍵修復 2】正確觸發 app.py 的 inspect_emp_target 全域檢視機制
                                         if st.button(
                                             f"檢視 {clean_name} 完整班表 ➔",
                                             key=f"win_btn_{clean_id}_{i+idx_in_batch}",
@@ -1529,7 +1497,7 @@ def render_user_home() -> None:
                                             card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else f"crew-card-integrated card-theme-{theme_idx}"
 
                                             card_html = f"""<div class="{card_class}">
-<div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+<div style="display: flex; justify-content: space-between; align- its: center; width: 100%;">
     <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_cand_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_cand_id})</span>
     </div>
@@ -1549,6 +1517,7 @@ def render_user_home() -> None:
 
                                             st.markdown(card_html, unsafe_allow_html=True)
 
+                                            # 【關鍵修復 3】正確觸發 app.py 的 inspect_emp_target 全域檢視機制
                                             if st.button(
                                                 f"檢視 {clean_cand_name} 完整班表 ➔",
                                                 key=f"ex_btn_{clean_cand_id}_{i+idx_in_batch}",
@@ -1564,14 +1533,6 @@ def render_user_home() -> None:
                                 )
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
-
-    # ==================== 全域 放大班表彈窗 檢查點 ====================
-    if st.session_state.get("show_zoom_modal") and st.session_state.get("active_schedule_buf"):
-        show_zoom_schedule_dialog(
-            st.session_state["active_schedule_buf"],
-            st.session_state.get("active_emp_name", ""),
-            current_unit_label,
-        )
 
 
 if __name__ == "__main__":
