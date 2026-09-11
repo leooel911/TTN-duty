@@ -281,6 +281,22 @@ def render_user_home() -> None:
             box-shadow: 0 0 16px rgba(0, 163, 255, 0.85), 0 2px 10px rgba(0, 163, 255, 0.5) !important;
         }
 
+        /* 破除 Streamlit 在手機端/窄螢幕將 st.columns(2) 自動換行摺疊成垂直單欄 */
+        div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            gap: 6px !important;
+            box-sizing: border-box !important;
+        }
+
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            min-width: 0 !important;
+            flex: 1 1 0px !important;
+            box-sizing: border-box !important;
+        }
+
         /* 篩選條件卡片化（Glassmorphic Dark Panel） */
         .glass-filter-card {
             background: rgba(15, 23, 42, 0.65) !important;
@@ -290,34 +306,6 @@ def render_user_home() -> None:
             margin-bottom: 12px !important;
             box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.35) !important;
             backdrop-filter: blur(10px) !important;
-        }
-
-        /* 僅針對結果組員卡片強制水平並排 */
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            gap: 6px !important;
-            box-sizing: border-box !important;
-        }
-
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
-            width: calc(50% - 3px) !important;
-            max-width: calc(50% - 3px) !important;
-            min-width: 0 !important;
-            flex: 0 0 calc(50% - 3px) !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;
-        }
-
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) *,
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) * {
-            min-width: 0 !important;
-            box-sizing: border-box !important;
         }
 
         .crew-card-integrated, .crew-card-integrated-warn {
@@ -850,23 +838,26 @@ def render_user_home() -> None:
                     btn_noon_label = "中班 (10~13)"
                     btn_night_label = "晚班 (13~18)"
 
-                    # 改為 2×2 雙欄網格 (Grid) 排版：絕不衝出畫面，每個按鈕正好 50% 寬度
-                    q_col1, q_col2 = st.columns(2)
-                    with q_col1:
+                    # 真正嚴格水平並排的 2×2 網格：Row 1 (全時段 | 早班) / Row 2 (中班 | 晚班)
+                    q1_col1, q1_col2 = st.columns(2)
+                    with q1_col1:
                         if st.button(btn_all_label, key="btn_win_all", use_container_width=True):
                             st.session_state["win_time_slider"] = (morn_start_time, "18:00")
                             reset_win_search()
                             st.rerun()
-                        if st.button(btn_noon_label, key="btn_win_noon", use_container_width=True):
-                            st.session_state["win_time_slider"] = ("10:00", "13:00")
-                            reset_win_search()
-                            st.rerun()
-
-                    with q_col2:
+                    with q1_col2:
                         if st.button(btn_morn_label, key="btn_win_morn", use_container_width=True):
                             st.session_state["win_time_slider"] = (morn_start_time, "10:00")
                             reset_win_search()
                             st.rerun()
+
+                    q2_col1, q2_col2 = st.columns(2)
+                    with q2_col1:
+                        if st.button(btn_noon_label, key="btn_win_noon", use_container_width=True):
+                            st.session_state["win_time_slider"] = ("10:00", "13:00")
+                            reset_win_search()
+                            st.rerun()
+                    with q2_col2:
                         if st.button(btn_night_label, key="btn_win_night", use_container_width=True):
                             st.session_state["win_time_slider"] = ("13:00", "18:00")
                             reset_win_search()
