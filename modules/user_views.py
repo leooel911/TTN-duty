@@ -266,14 +266,13 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* ===== ⚡ Segmented Control 滿版 100% 均分 + 賽博龐克外框亮藍高光 ===== */
+        /* ===== Segmented Control 滿版 100% 均分 + 賽博龐克外框亮藍高光 ===== */
         div[data-testid="stSegmentedControl"] {
             width: 100% !important;
             max-width: 100% !important;
             margin-bottom: 12px !important;
         }
 
-        /* 外層對齊外框底板 */
         div[data-testid="stSegmentedControl"] > div,
         div[data-testid="stSegmentedControl"] div[data-baseweb="segmented-control"],
         div[data-testid="stSegmentedControl"] div[role="radiogroup"],
@@ -291,7 +290,6 @@ def render_user_home() -> None:
             box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
         }
 
-        /* 強制內部三選項 100% 均分平分幅寬 (Flex 1/3) */
         div[data-testid="stSegmentedControl"] button,
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"],
         div[data-testid="stSegmentedControl"] label {
@@ -312,14 +310,12 @@ def render_user_home() -> None:
             cursor: pointer !important;
         }
 
-        /* 未選取 Hover 反應 */
         div[data-testid="stSegmentedControl"] button:hover,
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"]:hover {
             color: #F1F5F9 !important;
             background: rgba(255, 255, 255, 0.06) !important;
         }
 
-        /* 選取狀態：滿版高光亮藍 */
         div[data-testid="stSegmentedControl"] button[aria-selected="true"],
         div[data-testid="stSegmentedControl"] button[aria-checked="true"],
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"],
@@ -332,7 +328,6 @@ def render_user_home() -> None:
             box-shadow: 0 0 14px rgba(0, 163, 255, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.35) !important;
         }
 
-        /* 文字樣式微調 */
         div[data-testid="stSegmentedControl"] p,
         div[data-testid="stSegmentedControl"] span {
             font-size: 14px !important;
@@ -627,7 +622,7 @@ def render_user_home() -> None:
         except Exception as e:
             st.error(f"繪製組員班表時發生錯誤：{e}")
             
-        st.stop()  # 阻斷後續畫面渲染，獨佔呈現個人大表
+        st.stop()
 
     missing_files = [
         role
@@ -810,7 +805,7 @@ def render_user_home() -> None:
                 except Exception as e:
                     st.error(f"繪製班表時發生錯誤：{e}")
 
-    # ==================== 模式二：換班｜選擇換班日期 ====================
+    # ==================== 模式二：換班｜選擇換班日期 (保留同組多色燈號) ====================
     elif app_mode == "換班｜選擇換班日期":
         if is_module_maintenance(current_unit_label, "window_filter"):
             if not is_admin_user:
@@ -1128,6 +1123,7 @@ def render_user_home() -> None:
                             ),
                         )
 
+                        # 【換班系統】計算車次組別主題色彩 (保留同組多色燈號)
                         unique_groups_in_order = []
                         for r in filtered_results:
                             g_key = get_shift_group_key(r["車次"])
@@ -1186,7 +1182,6 @@ def render_user_home() -> None:
                                         r_role = r.get("職位", "")
 
                                         badges_html = '<div class="badge-group">'
-                                        # ⚡ 修改重點：職位貼紙改為英文簡稱 (TD / TM / TA)
                                         if r_role == "駕駛":
                                             badges_html += '<span class="role-badge-driver">TD</span>'
                                         elif r_role == "列車長":
@@ -1245,7 +1240,7 @@ def render_user_home() -> None:
                         else:
                             st.info("在指定條件內，找不到符合的人員")
 
-    # ==================== 模式三：換假｜選擇換假日期 ====================
+    # ==================== 模式三：換假｜選擇換假日期 (單一藍青色，僅連班示警用紅色) ====================
     elif app_mode == "換假｜選擇換假日期":
         if is_module_maintenance(current_unit_label, "exchange_filter"):
             if not is_admin_user:
@@ -1637,14 +1632,6 @@ def render_user_home() -> None:
                                     reverse=True,
                                 )
 
-                            unique_ex_groups_in_order = []
-                            for cand in filtered_candidates:
-                                g_key = get_shift_group_key(cand["還假車次"])
-                                if g_key not in unique_ex_groups_in_order:
-                                    unique_ex_groups_in_order.append(g_key)
-
-                            ex_shift_key_to_theme = {g_key: idx % 5 for idx, g_key in enumerate(unique_ex_groups_in_order)}
-
                             log_activity(
                                 "換假日期快篩",
                                 f"單位:{current_unit_label} | 職位:{selected_role} | 想休:{target_date} | "
@@ -1717,10 +1704,8 @@ def render_user_home() -> None:
                                             clean_cand_signin = str(cand.get("Sign-In", "--:--")).replace("\n", " ").strip()
                                             clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
 
-                                            g_key = get_shift_group_key(clean_cand_return_train)
-                                            theme_idx = ex_shift_key_to_theme.get(g_key, 0)
-
-                                            card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else f"crew-card-integrated card-theme-{theme_idx}"
+                                            # 【換假系統】統一使用單一標準藍青色 (card-theme-0)，僅連班 6 天以上時套用紅色警告框 (crew-card-integrated-warn)
+                                            card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else "crew-card-integrated card-theme-0"
 
                                             card_html = f"""<div class="{card_class}">
 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
