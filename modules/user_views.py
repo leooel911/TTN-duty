@@ -653,7 +653,7 @@ def render_user_home() -> None:
         st.markdown(
             """
             <div style="font-size: 12.5px; font-weight: 700; color: #94A3B8; margin-bottom: 6px;">
-                點擊亮燈選擇查詢職位（支援多選併同色比對）
+                點擊選擇查詢職位
             </div>
             """,
             unsafe_allow_html=True,
