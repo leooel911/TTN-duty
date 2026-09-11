@@ -266,126 +266,55 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* ===== 100% 滿版 Cyber Grid Selector ===== */
-        div[data-testid="stHorizontalBlock"]:has(.cyber-role-tag) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            gap: 8px !important;
+        div[data-testid="stSegmentedControl"] {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
             width: 100% !important;
-            box-sizing: border-box !important;
             margin-bottom: 12px !important;
         }
 
-        div[data-testid="stHorizontalBlock"]:has(.cyber-role-tag) > div[data-testid="column"] {
-            flex: 1 1 0 !important;
-            width: calc(33.333% - 5.33px) !important;
-            min-width: 0 !important;
-            max-width: calc(33.333% - 5.33px) !important;
-            box-sizing: border-box !important;
+        div[data-testid="stSegmentedControl"] > div,
+        div[data-testid="stSegmentedControl"] div[role="group"] {
+            display: flex !important;
+            gap: 8px !important;
+            width: 100% !important;
+            background: transparent !important;
+            border: none !important;
         }
 
-        div[data-testid="column"]:has(.cyber-role-tag) div[data-testid="stCheckbox"] {
-            background: rgba(15, 23, 42, 0.75) !important;
-            border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
+        div[data-testid="stSegmentedControl"] button,
+        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"] {
+            flex: 1 !important;
             border-radius: 12px !important;
-            padding: 10px 4px !important;
-            margin: 0 !important;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4) !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            width: 100% !important;
-            box-sizing: border-box !important;
-        }
-
-        div[data-testid="column"]:has(.cyber-role-tag) div[data-testid="stCheckbox"] label {
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            width: 100% !important;
-            cursor: pointer !important;
-            margin: 0 !important;
-        }
-
-        div[data-testid="column"]:has(.cyber-role-tag) div[data-testid="stCheckbox"] label p {
+            border: 1.5px solid rgba(255, 255, 255, 0.18) !important;
+            background: #0B101D !important;
+            color: #94A3B8 !important;
             font-size: 14px !important;
             font-weight: 700 !important;
-            color: #94A3B8 !important;
-            letter-spacing: 0.5px !important;
-            transition: all 0.25s ease !important;
+            padding: 8px 12px !important;
             margin: 0 !important;
-            text-align: center !important;
+            transition: all 0.25s ease-in-out !important;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5) !important;
         }
 
-        /* 服勤員 - 琥珀金 #FBBF24 */
-        div[data-testid="column"]:has(.role-card-crew) div[data-testid="stCheckbox"]:hover {
-            border-color: rgba(251, 191, 36, 0.5) !important;
-            background: rgba(251, 191, 36, 0.08) !important;
+        div[data-testid="stSegmentedControl"] button:hover,
+        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"]:hover {
+            color: #F1F5F9 !important;
+            background: rgba(255, 255, 255, 0.08) !important;
+            border-color: rgba(0, 163, 255, 0.4) !important;
         }
 
-        div[data-testid="column"]:has(.role-card-crew) div[data-testid="stCheckbox"]:has(input:checked) {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(245, 158, 11, 0.25) 100%) !important;
-            border-color: #FBBF24 !important;
-            box-shadow: 0 0 16px rgba(251, 191, 36, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
-        }
-
-        div[data-testid="column"]:has(.role-card-crew) div[data-testid="stCheckbox"]:has(input:checked) label p {
-            color: #FBBF24 !important;
+        div[data-testid="stSegmentedControl"] button[aria-selected="true"],
+        div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"],
+        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"],
+        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][data-checked="true"] {
+            background: #00A3FF !important;
+            color: #000000 !important;
             font-weight: 900 !important;
-            text-shadow: 0 0 10px rgba(251, 191, 36, 0.6) !important;
-        }
-
-        div[data-testid="column"]:has(.role-card-crew) div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div {
-            background-color: #FBBF24 !important;
-            border-color: #FBBF24 !important;
-        }
-
-        /* 列車長 - 翡翠綠 #34D399 */
-        div[data-testid="column"]:has(.role-card-conductor) div[data-testid="stCheckbox"]:hover {
-            border-color: rgba(52, 211, 153, 0.5) !important;
-            background: rgba(52, 211, 153, 0.08) !important;
-        }
-
-        div[data-testid="column"]:has(.role-card-conductor) div[data-testid="stCheckbox"]:has(input:checked) {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(16, 185, 129, 0.25) 100%) !important;
-            border-color: #34D399 !important;
-            box-shadow: 0 0 16px rgba(52, 211, 153, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
-        }
-
-        div[data-testid="column"]:has(.role-card-conductor) div[data-testid="stCheckbox"]:has(input:checked) label p {
-            color: #34D399 !important;
-            font-weight: 900 !important;
-            text-shadow: 0 0 10px rgba(52, 211, 153, 0.6) !important;
-        }
-
-        div[data-testid="column"]:has(.role-card-conductor) div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div {
-            background-color: #34D399 !important;
-            border-color: #34D399 !important;
-        }
-
-        /* 駕駛 - 科技藍 #38BDF8 */
-        div[data-testid="column"]:has(.role-card-driver) div[data-testid="stCheckbox"]:hover {
-            border-color: rgba(56, 189, 248, 0.5) !important;
-            background: rgba(56, 189, 248, 0.08) !important;
-        }
-
-        div[data-testid="column"]:has(.role-card-driver) div[data-testid="stCheckbox"]:has(input:checked) {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 132, 199, 0.25) 100%) !important;
-            border-color: #38BDF8 !important;
-            box-shadow: 0 0 16px rgba(56, 189, 248, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
-        }
-
-        div[data-testid="column"]:has(.role-card-driver) div[data-testid="stCheckbox"]:has(input:checked) label p {
-            color: #38BDF8 !important;
-            font-weight: 900 !important;
-            text-shadow: 0 0 10px rgba(56, 189, 248, 0.6) !important;
-        }
-
-        div[data-testid="column"]:has(.role-card-driver) div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div {
-            background-color: #38BDF8 !important;
-            border-color: #38BDF8 !important;
+            border: 1.5px solid #38BDF8 !important;
+            box-shadow: 0 0 16px rgba(0, 163, 255, 0.85), 0 2px 10px rgba(0, 163, 255, 0.5) !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
@@ -891,45 +820,29 @@ def render_user_home() -> None:
         if "saved_win_roles" not in st.session_state:
             st.session_state["saved_win_roles"] = ["服勤員"]
 
-        # ⚡ 100% 橫向滿版三等分電競感 Cyber Grid Selector
-        c1, c2, c3 = st.columns(3)
-
-        with c1:
-            st.markdown('<div class="role-card-crew cyber-role-tag"></div>', unsafe_allow_html=True)
-            chk_crew = st.checkbox(
-                "服勤員",
-                value="服勤員" in st.session_state["saved_win_roles"],
-                key="win_chk_crew",
+        if hasattr(st, "segmented_control"):
+            selected_roles = st.segmented_control(
+                "點擊選擇查詢職位",
+                options=["服勤員", "列車長", "駕駛"],
+                default=st.session_state["saved_win_roles"],
+                selection_mode="multi",
+                label_visibility="collapsed",
+                key="win_seg_roles",
+                on_change=reset_win_search,
+            )
+        else:
+            selected_roles = st.multiselect(
+                "點擊選擇查詢職位",
+                options=["服勤員", "列車長", "駕駛"],
+                default=st.session_state["saved_win_roles"],
+                label_visibility="collapsed",
+                key="win_multi_roles",
+                on_change=reset_win_search,
             )
 
-        with c2:
-            st.markdown('<div class="role-card-conductor cyber-role-tag"></div>', unsafe_allow_html=True)
-            chk_conductor = st.checkbox(
-                "列車長",
-                value="列車長" in st.session_state["saved_win_roles"],
-                key="win_chk_conductor",
-            )
-
-        with c3:
-            st.markdown('<div class="role-card-driver cyber-role-tag"></div>', unsafe_allow_html=True)
-            chk_driver = st.checkbox(
-                "駕駛",
-                value="駕駛" in st.session_state["saved_win_roles"],
-                key="win_chk_driver",
-            )
-
-        roles_to_query = []
-        if chk_crew:
-            roles_to_query.append("服勤員")
-        if chk_conductor:
-            roles_to_query.append("列車長")
-        if chk_driver:
-            roles_to_query.append("駕駛")
-
-        if roles_to_query != st.session_state["saved_win_roles"]:
+        roles_to_query = list(selected_roles) if selected_roles else []
+        if roles_to_query:
             st.session_state["saved_win_roles"] = roles_to_query
-            reset_win_search()
-            st.rerun()
 
         if not roles_to_query:
             st.warning("⚠️請至少選取一個職位 以進行查詢！")
@@ -983,6 +896,7 @@ def render_user_home() -> None:
                     if saved_target_date and saved_target_date in date_cols:
                         default_win_idx = date_cols.index(saved_target_date)
                     else:
+                        # 🔑 預設使用「明天」，若無則嘗試「今天」
                         tomorrow_dt = date.today() + timedelta(days=1)
                         found_idx = None
                         for idx, d_str in enumerate(date_cols):
@@ -1384,6 +1298,7 @@ def render_user_home() -> None:
                     if saved_ex_target and saved_ex_target in date_cols:
                         default_ex_idx = date_cols.index(saved_ex_target)
                     else:
+                        # 🔑 預設使用「明天」，若無則嘗試「今天」
                         tomorrow_dt = date.today() + timedelta(days=1)
                         found_idx = None
                         for idx, d_str in enumerate(date_cols):
