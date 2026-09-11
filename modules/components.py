@@ -14,7 +14,7 @@ from modules.utils import log_activity, safe_read_excel
 
 
 def render_zoomable_image(image_bytes: Any) -> None:
-    """渲染支援無空白貼合、雙指捏合縮放、拖曳與按鈕控制的圖片元件 (HTML5 / Panzoom)"""
+    """渲染支援浮動控制列、雙指捏合縮放、拖曳與按鈕控制的班表元件 (HTML5 / Panzoom)"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
@@ -34,59 +34,81 @@ def render_zoomable_image(image_bytes: Any) -> None:
       * {{ box-sizing: border-box; margin: 0; padding: 0; }}
       html, body {{
         width: 100%;
+        height: 100%;
         margin: 0;
         padding: 0;
         background-color: transparent;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         overflow: hidden;
       }}
+      
       .zoom-wrapper {{
+        position: relative;
         width: 100%;
-        background: #0B101D;
-        border-radius: 10px;
+        height: 250px;
+        background: #020617;
+        border-radius: 12px;
         border: 1.5px solid rgba(56, 189, 248, 0.35);
-        box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
         overflow: hidden;
       }}
+      
       .zoom-container {{
         width: 100%;
-        position: relative;
-        background: #020617;
-        touch-action: none;
-        cursor: grab;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
         overflow: hidden;
+        cursor: grab;
+        touch-action: none;
       }}
       .zoom-container:active {{
         cursor: grabbing;
       }}
+      
       .zoom-img {{
-        width: 100%;
-        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
         display: block;
         user-select: none;
         -webkit-user-drag: none;
       }}
-      .toolbar {{
+      
+      /* 浮動控制列 (Glassmorphism 樣式) */
+      .floating-toolbar {{
+        position: absolute;
+        bottom: 8px;
+        left: 8px;
+        right: 8px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 6px 10px;
-        background: rgba(15, 23, 42, 0.95);
-        border-top: 1px solid rgba(255,255,255,0.1);
+        background: rgba(15, 23, 42, 0.82);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        pointer-events: auto;
+        z-index: 10;
       }}
+      
       .hint-badge {{
         font-size: 11px;
         color: #38BDF8;
         font-weight: 700;
-        display: flex;
-        align-items: center;
+        letter-spacing: 0.2px;
       }}
+      
       .btn-group {{
         display: flex;
         gap: 5px;
       }}
+      
       .zoom-btn {{
-        background: rgba(56, 189, 248, 0.15);
+        background: rgba(56, 189, 248, 0.2);
         color: #38BDF8;
         border: 1px solid rgba(56, 189, 248, 0.4);
         border-radius: 6px;
@@ -94,10 +116,10 @@ def render_zoomable_image(image_bytes: Any) -> None:
         font-size: 11.5px;
         font-weight: 800;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.15s ease;
       }}
-      .zoom-btn:hover {{
-        background: rgba(56, 189, 248, 0.35);
+      .zoom-btn:active {{
+        background: rgba(56, 189, 248, 0.4);
         color: #FFFFFF;
       }}
     </style>
@@ -108,8 +130,9 @@ def render_zoomable_image(image_bytes: Any) -> None:
       <div class="zoom-container" id="panzoomArea">
         <img id="scheduleImg" src="data:image/png;base64,{encoded}" alt="Personal Schedule" class="zoom-img" />
       </div>
-      <div class="toolbar">
-        <div class="hint-badge">支援雙指縮放 / 滑動拖曳</div>
+      
+      <div class="floating-toolbar">
+        <div class="hint-badge">雙指縮放 / 滑動拖曳</div>
         <div class="btn-group">
           <button class="zoom-btn" onclick="zoomIn()">＋ 放大</button>
           <button class="zoom-btn" onclick="zoomOut()">－ 縮小</button>
@@ -148,7 +171,7 @@ def render_zoomable_image(image_bytes: Any) -> None:
     </body>
     </html>
     """
-    st.components.v1.html(html_code, height=255, scrolling=False)
+    st.components.v1.html(html_code, height=265, scrolling=False)
 
 
 def show_holiday_notice(holidays: List[str], week_range_str: str = "") -> None:
