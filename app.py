@@ -1,6 +1,6 @@
 import streamlit as st
 from config import ADMIN_PASSWORD, CREW_ACCESS_PASSWORD, CUSTOM_CSS
-from modules.admin_views import render_admin_panel
+# 💡 已將 from modules.admin_views import render_admin_panel 移至下方路由區塊，避免 Circular Import
 from modules.components import render_zoomable_image, show_feedback_modal
 from modules.drawing import render_schedule_figure
 from modules.services import (
@@ -460,6 +460,8 @@ is_admin_active = (
 ) and st.session_state.get("page") != "user"
 
 if is_admin_active and st.session_state.get("admin_logged_in", False):
+    # 💡 延遲載入：切換到管理員頁面時才載入，避免頂部循環引用 (Circular Import)
+    from modules.admin_views import render_admin_panel
     render_admin_panel()
 else:
     render_user_home()
