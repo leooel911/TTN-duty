@@ -58,7 +58,7 @@ def show_apply_permission_dialog():
             st.rerun()
 
     if submit_clicked:
-        clean_emp = req_emp_id.strip()
+        clean_emp = req_emp_id.strip().upper()
         clean_name = req_name.strip()
 
         if not clean_emp or not clean_name:
@@ -67,8 +67,10 @@ def show_apply_permission_dialog():
             with st.spinner("正在記錄申請並發送通知信..."):
                 # 1. 寫入系統活動紀錄 (備份留底)
                 log_activity(
-                    "權限申請",
-                    f"單位:{req_unit} | 員編:{clean_emp} | 姓名:{clean_name} | 原因:{req_reason}",
+                    action="權限申請",
+                    detail=f"單位:{req_unit} | 員編:{clean_emp} | 姓名:{clean_name} | 原因:{req_reason}",
+                    user=clean_emp,
+                    unit=req_unit,
                 )
 
                 # 2. 自動發送通知信給管理員
@@ -103,6 +105,8 @@ if "page" not in st.session_state:
     st.session_state["page"] = "user"
 if "current_user_id" not in st.session_state:
     st.session_state["current_user_id"] = DEFAULT_EMP_ID
+if "login_user_id" not in st.session_state:
+    st.session_state["login_user_id"] = DEFAULT_EMP_ID
 if "current_unit" not in st.session_state:
     st.session_state["current_unit"] = "TTN"
 
@@ -237,6 +241,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                     st.session_state["nav_mode"] = "home"
                     st.session_state["page"] = "user"
                     st.session_state["current_unit"] = selected_unit
+                    st.session_state["login_user_id"] = target_emp_id
 
                     emp_real_name = get_employee_name(selected_unit, target_emp_id)
                     disp_name = format_display_name(emp_real_name)
@@ -249,19 +254,31 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                             f"VIP_USER ({target_emp_id}{name_suffix})"
                         )
 
-                    log_activity(f"VIP 身分登入系統: {target_emp_id}")
+                    log_activity(
+                        action="帳號登入",
+                        detail=f"VIP 身分登入系統: {target_emp_id}",
+                        user=target_emp_id,
+                        unit=selected_unit,
+                    )
                     st.rerun()
 
                 elif not clean_emp:
                     st.error("請輸入有效的員編")
 
                 elif entered_key == ADMIN_PASS_CODE:
+                    admin_id = f"ADMIN_{clean_emp}" if clean_emp else "ADMIN"
                     st.session_state["admin_logged_in"] = True
                     st.session_state["current_unit"] = selected_unit
-                    st.session_state["current_user_id"] = f"ADMIN_{clean_emp}"
+                    st.session_state["current_user_id"] = admin_id
+                    st.session_state["login_user_id"] = admin_id
                     st.session_state["nav_mode"] = "admin_panel"
                     st.session_state["page"] = "admin"
-                    log_activity("管理員登入後台")
+                    log_activity(
+                        action="管理員操作",
+                        detail=f"管理員登入後台 ({clean_emp})",
+                        user=admin_id,
+                        unit=selected_unit,
+                    )
                     st.rerun()
 
                 elif entered_key == CREW_PASS_CODE:
@@ -272,7 +289,13 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                         st.session_state["page"] = "user"
                         st.session_state["current_unit"] = selected_unit
                         st.session_state["current_user_id"] = "VIP_USER (A 全域通行)"
-                        log_activity("測試員 A 登入系統")
+                        st.session_state["login_user_id"] = "A"
+                        log_activity(
+                            action="帳號登入",
+                            detail="測試員 A 登入系統",
+                            user="A",
+                            unit=selected_unit,
+                        )
                         st.rerun()
 
                     allowed, user_info = is_user_allowed(selected_unit, clean_emp)
@@ -297,6 +320,7 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                         st.session_state["nav_mode"] = "home"
                         st.session_state["page"] = "user"
                         st.session_state["current_unit"] = selected_unit
+                        st.session_state["login_user_id"] = clean_emp
 
                         emp_real_name = get_employee_name(selected_unit, clean_emp)
                         disp_name = format_display_name(emp_real_name)
@@ -313,7 +337,12 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                                 f"{clean_emp} {u_name}".strip()
                             )
 
-                        log_activity(f"使用者登入系統: {clean_emp} (單位: {selected_unit}, 角色: {u_role})")
+                        log_activity(
+                            action="帳號登入",
+                            detail=f"使用者登入系統: {clean_emp} (單位: {selected_unit}, 角色: {u_role})",
+                            user=clean_emp,
+                            unit=selected_unit,
+                        )
                         st.rerun()
                     else:
                         st.error(
@@ -398,13 +427,20 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
 
             if btn_submit_adm:
                 if adm_pwd_input == ADMIN_PASS_CODE:
+                    curr_op = st.session_state.get("user_input_field", DEFAULT_EMP_ID)
+                    admin_uid = f"ADMIN_{curr_op}"
                     st.session_state["admin_logged_in"] = True
                     st.session_state["nav_mode"] = "admin_panel"
                     st.session_state["page"] = "admin"
                     st.session_state["show_admin_login"] = False
-                    curr_op = st.session_state.get("user_input_field", DEFAULT_EMP_ID)
                     st.session_state["current_user_id"] = f"ADMIN ({curr_op})"
-                    log_activity("管理員登入後台")
+                    st.session_state["login_user_id"] = admin_uid
+                    log_activity(
+                        action="管理員操作",
+                        detail=f"管理員登入後台 ({curr_op})",
+                        user=admin_uid,
+                        unit=st.session_state.get("current_unit", "全站"),
+                    )
                     st.rerun()
                 else:
                     st.error("管理員密碼錯誤")
