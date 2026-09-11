@@ -515,6 +515,7 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
+    # 【關鍵修復 1】補上 key="user_app_mode"，防止 Rerun 時切換頁面狀態遺失
     app_mode = st.radio(
         "系統操作模式選擇",
         [
@@ -524,6 +525,7 @@ def render_user_home() -> None:
         ],
         horizontal=False,
         label_visibility="collapsed",
+        key="user_app_mode",
     )
 
     if "last_app_mode" not in st.session_state:
@@ -695,7 +697,6 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        # 採用可多選的發光膠囊切換元件 (順序: 服勤員 -> 列車長 -> 駕駛，預設: 服勤員)
         if hasattr(st, "segmented_control"):
             selected_roles = st.segmented_control(
                 "點擊選擇查詢職位",
@@ -721,12 +722,10 @@ def render_user_home() -> None:
         if not roles_to_query:
             st.warning("⚠️請至少選取一個職位 以進行查詢！")
         else:
-            # 1. 動態計算起點刻度（選取駕駛時起點為 03:00，否則為 05:00）
             has_driver = "駕駛" in roles_to_query
             start_h = 3 if has_driver else 5
             morn_start_time = f"{start_h:02d}:00"
 
-            # 2. 生成完全適應刻度範圍的選項（從起點至 18:00，全選時拉吧呈 100% 滿格狀態）
             TIME_OPTIONS = [
                 f"{h:02d}:{m:02d}"
                 for h in range(start_h, 19)
@@ -734,7 +733,6 @@ def render_user_home() -> None:
                 if not (h == 18 and m == 30)
             ]
 
-            # 3. 確保 Session State 數值位於合法刻度範圍內
             curr_slider = st.session_state.get("win_time_slider")
             if (
                 not isinstance(curr_slider, (tuple, list))
@@ -938,7 +936,6 @@ def render_user_home() -> None:
                                 continue
                             filtered_results.append(r)
 
-                        # 多重條件排序：報到時間 ➔ 班別號碼 ➔ 職位順序(服勤員->列車長->駕駛) ➔ 完整車次
                         ROLE_ORDER = {"服勤員": 1, "列車長": 2, "駕駛": 3}
                         filtered_results = sorted(
                             filtered_results,
@@ -950,7 +947,6 @@ def render_user_home() -> None:
                             ),
                         )
 
-                        # 動態產生「同車次號碼同色彩、相鄰車次交替」的主題顏色映射表
                         unique_groups_in_order = []
                         for r in filtered_results:
                             g_key = get_shift_group_key(r["車次"])
@@ -1056,15 +1052,14 @@ def render_user_home() -> None:
 
                                         st.markdown(card_html, unsafe_allow_html=True)
 
+                                        # 【關鍵修復 2】正確觸發 app.py 的 inspect_emp_target 全域檢視機制
                                         if st.button(
                                             f"檢視 {clean_name} 完整班表 ➔",
                                             key=f"win_btn_{clean_id}_{i+idx_in_batch}",
                                             use_container_width=True,
                                         ):
                                             log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_name}({clean_id})")
-                                            st.session_state["modal_emp_id"] = clean_id
-                                            st.session_state["modal_unit"] = current_unit_label
-                                            st.session_state["modal_badge"] = "Window Filter | C.L.F"
+                                            st.session_state["inspect_emp_target"] = clean_id
                                             st.rerun()
                         else:
                             st.info("在指定條件內，找不到符合的人員")
@@ -1416,7 +1411,6 @@ def render_user_home() -> None:
                                     reverse=True,
                                 )
 
-                            # 換假模式：依顯示順序產生交替色彩映射
                             unique_ex_groups_in_order = []
                             for cand in filtered_candidates:
                                 g_key = get_shift_group_key(cand["還假車次"])
@@ -1503,7 +1497,7 @@ def render_user_home() -> None:
                                             card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else f"crew-card-integrated card-theme-{theme_idx}"
 
                                             card_html = f"""<div class="{card_class}">
-<div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+<div style="display: flex; justify-content: space-between; align- its: center; width: 100%;">
     <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_cand_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_cand_id})</span>
     </div>
@@ -1523,15 +1517,14 @@ def render_user_home() -> None:
 
                                             st.markdown(card_html, unsafe_allow_html=True)
 
+                                            # 【關鍵修復 3】正確觸發 app.py 的 inspect_emp_target 全域檢視機制
                                             if st.button(
                                                 f"檢視 {clean_cand_name} 完整班表 ➔",
                                                 key=f"ex_btn_{clean_cand_id}_{i+idx_in_batch}",
                                                 use_container_width=True,
                                             ):
                                                 log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
-                                                st.session_state["modal_emp_id"] = clean_cand_id
-                                                st.session_state["modal_unit"] = current_unit_label
-                                                st.session_state["modal_badge"] = "Exchange | C.L.F"
+                                                st.session_state["inspect_emp_target"] = clean_cand_id
                                                 st.rerun()
                             else:
                                 st.info(
@@ -1540,13 +1533,6 @@ def render_user_home() -> None:
                                 )
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
-
-    # 【全域彈窗觸發檢查】確保點擊按鈕後能在頁面重整時正確跳出彈窗
-    if st.session_state.get("modal_emp_id"):
-        target_id = st.session_state.pop("modal_emp_id")
-        target_unit = st.session_state.pop("modal_unit", current_unit_label)
-        target_badge = st.session_state.pop("modal_badge", "C.L.F")
-        comp.show_crew_schedule_modal(target_id, target_unit, badge_title=target_badge)
 
 
 if __name__ == "__main__":
