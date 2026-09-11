@@ -29,8 +29,17 @@ from modules.utils import (
 )
 
 
-def get_shift_group_key(code_str: str) -> int:
-    """提取車次/班別中的核心數字，讓同班別歸類在一起排序"""
+def get_shift_group_key(code_str: str) -> str:
+    """提取車次/班別的核心標識 (例如 NF0003/NG0003/NH0003 -> '0003', DTT -> 'DTT')"""
+    s = str(code_str).strip().upper()
+    nums = re.findall(r"\d+", s)
+    if nums:
+        return "".join(nums)
+    return s
+
+
+def get_shift_group_num(code_str: str) -> int:
+    """提取車次/班別中的核心數字用於排序 (例如 NF0003 -> 3, NF1012 -> 1012)"""
     nums = re.findall(r"\d+", str(code_str))
     if nums:
         return int("".join(nums))
@@ -814,14 +823,24 @@ def render_user_home() -> None:
                             continue
                         filtered_results.append(r)
 
+                    # 多重條件排序：報到時間 ➔ 班別號碼 ➔ 完整車次
                     filtered_results = sorted(
                         filtered_results,
                         key=lambda x: (
                             str(x["Sign-In"]) if x["Sign-In"] != "--:--" else "99:99",
-                            get_shift_group_key(x["車次"]),
+                            get_shift_group_num(x["車次"]),
                             str(x["車次"]),
                         ),
                     )
+
+                    # 動態產生「同班別同色彩、相鄰班別交替」的主題顏色映射表
+                    unique_groups_in_order = []
+                    for r in filtered_results:
+                        g_key = get_shift_group_key(r["車次"])
+                        if g_key not in unique_groups_in_order:
+                            unique_groups_in_order.append(g_key)
+
+                    shift_key_to_theme = {g_key: idx % 5 for idx, g_key in enumerate(unique_groups_in_order)}
 
                     log_activity(
                         "換班日期快篩",
@@ -862,11 +881,6 @@ def render_user_home() -> None:
                             """,
                             unsafe_allow_html=True,
                         )
-
-                        unique_shift_keys = sorted(list(set(
-                            get_shift_group_key(r["車次"]) for r in filtered_results
-                        )))
-                        shift_key_to_theme = {key: idx % 5 for idx, key in enumerate(unique_shift_keys)}
 
                         for i in range(0, len(filtered_results), 2):
                             batch = filtered_results[i : i + 2]
@@ -1252,7 +1266,7 @@ def render_user_home() -> None:
                                     filtered_candidates,
                                     key=lambda x: (
                                         x["Sign-In"] if x["Sign-In"] != "--:--" else "99:99",
-                                        get_shift_group_key(x["還假車次"]),
+                                        get_shift_group_num(x["還假車次"]),
                                         str(x["還假車次"]),
                                     ),
                                 )
@@ -1260,7 +1274,7 @@ def render_user_home() -> None:
                                 filtered_candidates = sorted(
                                     filtered_candidates,
                                     key=lambda x: (
-                                        get_shift_group_key(x["還假車次"]),
+                                        get_shift_group_num(x["還假車次"]),
                                         x["Sign-In"] if x["Sign-In"] != "--:--" else "99:99",
                                         str(x["還假車次"]),
                                     ),
@@ -1279,6 +1293,15 @@ def render_user_home() -> None:
                                     key=lambda x: x["工時"] or "0h00m",
                                     reverse=True,
                                 )
+
+                            # 換假模式：依顯示順序產生交替色彩映射
+                            unique_ex_groups_in_order = []
+                            for cand in filtered_candidates:
+                                g_key = get_shift_group_key(cand["還假車次"])
+                                if g_key not in unique_ex_groups_in_order:
+                                    unique_ex_groups_in_order.append(g_key)
+
+                            ex_shift_key_to_theme = {g_key: idx % 5 for idx, g_key in enumerate(unique_ex_groups_in_order)}
 
                             log_activity(
                                 "換假日期快篩",
@@ -1352,7 +1375,10 @@ def render_user_home() -> None:
                                             clean_cand_signin = str(cand.get("Sign-In", "--:--")).replace("\n", " ").strip()
                                             clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
 
-                                            card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else "crew-card-integrated card-theme-0"
+                                            g_key = get_shift_group_key(clean_cand_return_train)
+                                            theme_idx = ex_shift_key_to_theme.get(g_key, 0)
+
+                                            card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else f"crew-card-integrated card-theme-{theme_idx}"
 
                                             card_html = f"""<div class="{card_class}">
 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
