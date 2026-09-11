@@ -36,17 +36,16 @@ def _convert_to_b64_url(image_bytes: Any) -> str:
     return f"data:image/png;base64,{b64_str}"
 
 
-def render_zoomable_image(image_bytes: Any, height: int = 340) -> None:
+def render_zoomable_image(image_bytes: Any, height: int = 380) -> None:
     """
     主頁面班表圖片呈現元件（整合 Viewer.js 手勢燈箱）
-    優化點：
     1. 支援行動端/手機雙指縮放 (Pinch-to-zoom)、雙擊放大與拖曳平移。
-    2. 整合 JS ResizeObserver 與 postMessage("streamlit:setFrameHeight")，根據內容實測高度自動摺疊，徹底消除黑底大空隙。
-    3. 自動隱藏 Streamlit 原生全螢幕浮動遮罩。
+    2. 內建長按儲存提示文字於按鈕下方，夾在兩按鈕中間。
+    3. 自動微調緩衝高度 (+14px)，徹底解決底部按鈕邊框被切到的問題。
     """
     img_data_url = _convert_to_b64_url(image_bytes)
 
-    # 1. 隱藏 Streamlit 原生全螢幕浮動按鈕，並縮減 iframe 外圍 Margin
+    # 隱藏 Streamlit 原生全螢幕浮動按鈕，並縮減外圍 Margin
     st.markdown(
         """
         <style>
@@ -56,8 +55,8 @@ def render_zoomable_image(image_bytes: Any, height: int = 340) -> None:
             display: none !important;
         }
         div[data-testid="stCustomComponentV1"] {
-            margin-bottom: -12px !important;
-            margin-top: -6px !important;
+            margin-bottom: 2px !important;
+            margin-top: -4px !important;
         }
         </style>
         """,
@@ -91,7 +90,7 @@ def render_zoomable_image(image_bytes: Any, height: int = 340) -> None:
             .viewer-wrapper {{
                 width: 100%;
                 text-align: center;
-                padding: 0;
+                padding: 0 0 4px 0;
                 margin: 0;
             }}
             .img-container {{
@@ -121,7 +120,7 @@ def render_zoomable_image(image_bytes: Any, height: int = 340) -> None:
                 border: 1.5px solid rgba(56, 189, 248, 0.5);
                 border-radius: 8px;
                 color: #38BDF8;
-                font-size: 13px;
+                font-size: 13.5px;
                 font-weight: 700;
                 letter-spacing: 0.5px;
                 cursor: pointer;
@@ -136,6 +135,15 @@ def render_zoomable_image(image_bytes: Any, height: int = 340) -> None:
                 border-color: #38BDF8;
                 box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
             }}
+            .hint-text {{
+                font-size: 12px;
+                color: #94A3B8;
+                font-weight: 500;
+                margin-top: 8px;
+                margin-bottom: 4px;
+                text-align: center;
+                letter-spacing: 0.3px;
+            }}
         </style>
     </head>
     <body>
@@ -146,14 +154,17 @@ def render_zoomable_image(image_bytes: Any, height: int = 340) -> None:
             <button class="zoom-trigger-btn" id="btn-open-viewer">
                 點擊可縮放此班表
             </button>
+            <div class="hint-text">
+                💡 提示：手機使用者可長按圖片儲存至相簿
+            </div>
         </div>
 
         <script>
-            // 自動向 Streamlit 匯報渲染內容的實際高度，實現動態自適應
+            // 自動匯報實際高度，並預留 +14px 緩衝空間防止按鈕切邊
             function sendHeight() {{
                 const wrapper = document.getElementById('main-wrapper');
                 if (wrapper) {{
-                    const actualHeight = wrapper.offsetHeight + 4;
+                    const actualHeight = wrapper.offsetHeight + 14;
                     window.parent.postMessage({{
                         type: "streamlit:setFrameHeight",
                         height: actualHeight
@@ -165,26 +176,23 @@ def render_zoomable_image(image_bytes: Any, height: int = 340) -> None:
                 const image = document.getElementById('target-schedule-img');
                 const triggerBtn = document.getElementById('btn-open-viewer');
 
-                // 圖片載入各階段觸發高度校準
                 if (image.complete) {{
                     sendHeight();
                 }} else {{
                     image.onload = sendHeight;
                 }}
                 setTimeout(sendHeight, 150);
-                setTimeout(sendHeight, 500);
+                setTimeout(sendHeight, 400);
 
-                // 註冊 ResizeObserver 確保螢幕旋轉或視窗改變時高度即時更正
                 if (window.ResizeObserver) {{
                     const ro = new ResizeObserver(() => sendHeight());
                     ro.observe(document.body);
                 }}
 
-                // 初始化 Viewer.js 手勢燈箱
                 const viewer = new Viewer(image, {{
-                    inline: false,          // 點擊後跳出 Modal 全螢幕燈箱
-                    navbar: false,          // 隱藏縮圖清單
-                    title: false,           // 隱藏檔名檔頭
+                    inline: false,
+                    navbar: false,
+                    title: false,
                     toolbar: {{
                         zoomIn: 1,
                         zoomOut: 1,
@@ -192,17 +200,16 @@ def render_zoomable_image(image_bytes: Any, height: int = 340) -> None:
                         reset: 1,
                     }},
                     tooltip: true,
-                    movable: true,          // 允許手勢拖曳平移
-                    zoomable: true,         // 允許縮放
-                    rotatable: false,       // 停用不必要的旋轉
+                    movable: true,
+                    zoomable: true,
+                    rotatable: false,
                     scalable: false,
                     transition: true,
                     backdrop: true,
-                    pinchZoom: true,        // 啟用行動端雙指 Pinch 縮放
+                    pinchZoom: true,
                     slideOnTouch: false
                 }});
 
-                // 點擊圖片或下方按鈕皆可開啟燈箱
                 triggerBtn.addEventListener('click', function() {{
                     viewer.show();
                 }});
