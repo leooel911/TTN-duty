@@ -340,8 +340,11 @@ def log_activity(
     details: str = "",
     operator: str = "系統/訪客",
     unit: str = "全站",
+    user: Optional[str] = None,
+    detail: Optional[str] = None,
+    **kwargs: Any,
 ) -> None:
-    """寫入全站系統操作日誌 (自動記錄台灣時間 UTC+8、IP 與設備資訊)"""
+    """寫入全站系統操作日誌 (自動記錄台灣時間 UTC+8、IP 與設備資訊，並雙向相容 user/operator 與 Session 自動補齊)"""
     os.makedirs(DATA_DIR, exist_ok=True)
 
     tz = TAIWAN_TZ if TAIWAN_TZ else TW_TZ
@@ -349,24 +352,46 @@ def log_activity(
 
     client_ip, client_device = get_client_info()
 
-    # 1. 寫入基本 LOG_FILE (純文字檔備份)
-    log_entry = f"[{now_str}] [{operator}] [{unit}] [{action}] IP:{client_ip} | Dev:{client_device} | {details}\n"
+    # 1. 優先使用傳入的 user / detail 參數，若無則降級使用 operator / details
+    effective_operator = str(user if user is not None else operator).strip()
+    effective_details = str(detail if detail is not None else details).strip()
+    effective_unit = str(unit).strip()
+
+    # 2. 自動保底機制：若 operator/user 為無效詞彙，從 Session State 自動擷取當前登入者員編
+    invalid_users = ["系統/訪客", "訪客", "", "NONE", "NAN", "NONE", "NONE"]
+    if not effective_operator or effective_operator.upper() in invalid_users:
+        effective_operator = (
+            st.session_state.get("login_user_id")
+            or st.session_state.get("user_input_field")
+            or st.session_state.get("current_user_id")
+            or "系統/訪客"
+        )
+
+    # 3. 自動保底機制：若 unit 為空或全站預設，從 Session State 自動補齊
+    if not effective_unit or effective_unit in ["全站", "", "NONE", "NAN"]:
+        effective_unit = st.session_state.get("current_unit", "全站")
+
+    effective_operator = str(effective_operator).strip().upper()
+    effective_unit = str(effective_unit).strip().upper()
+
+    # 4. 寫入基本 LOG_FILE (純文字檔備份)
+    log_entry = f"[{now_str}] [{effective_operator}] [{effective_unit}] [{action}] IP:{client_ip} | Dev:{client_device} | {effective_details}\n"
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(log_entry)
     except Exception:
         pass
 
-    # 2. 寫入 CSV 結構化日誌 (供管理員後台表格繪製與欄位篩選)
+    # 5. 寫入 CSV 結構化日誌 (供管理員後台表格繪製與欄位篩選)
     csv_file = os.path.join(DATA_DIR, "system_logs.csv")
     new_log = {
         "時間": now_str,
-        "操作者/員編": operator,
-        "單位": unit,
+        "操作者/員編": effective_operator,
+        "單位": effective_unit,
         "類別": action,
         "IP": client_ip,
         "設備": client_device,
-        "詳細日誌與動作內容": details,
+        "詳細日誌與動作內容": effective_details,
     }
     try:
         df_new = pd.DataFrame([new_log])
