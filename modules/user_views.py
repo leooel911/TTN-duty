@@ -266,31 +266,30 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* ===== ⚡ 100% 滿版 Cyber Grid Selector（強行覆寫 Streamlit 手機版跑版機制） ===== */
+        /* ===== 100% 滿版 Cyber Grid Selector ===== */
         div[data-testid="stHorizontalBlock"]:has(.cyber-role-tag) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            gap: 4px !important;
+            gap: 8px !important;
             width: 100% !important;
-            max-width: 100% !important;
             box-sizing: border-box !important;
             margin-bottom: 12px !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.cyber-role-tag) > div[data-testid="column"] {
-            flex: 1 1 0% !important;
-            width: 33.333% !important;
+            flex: 1 1 0 !important;
+            width: calc(33.333% - 5.33px) !important;
             min-width: 0 !important;
-            max-width: 33.333% !important;
+            max-width: calc(33.333% - 5.33px) !important;
             box-sizing: border-box !important;
         }
 
         div[data-testid="column"]:has(.cyber-role-tag) div[data-testid="stCheckbox"] {
             background: rgba(15, 23, 42, 0.75) !important;
             border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
-            border-radius: 10px !important;
-            padding: 6px 2px !important;
+            border-radius: 12px !important;
+            padding: 10px 4px !important;
             margin: 0 !important;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4) !important;
@@ -299,29 +298,25 @@ def render_user_home() -> None:
             align-items: center !important;
             width: 100% !important;
             box-sizing: border-box !important;
-            overflow: hidden !important;
         }
 
         div[data-testid="column"]:has(.cyber-role-tag) div[data-testid="stCheckbox"] label {
             display: flex !important;
             justify-content: center !important;
             align-items: center !important;
-            gap: 2px !important;
             width: 100% !important;
             cursor: pointer !important;
             margin: 0 !important;
-            padding: 0 !important;
         }
 
         div[data-testid="column"]:has(.cyber-role-tag) div[data-testid="stCheckbox"] label p {
-            font-size: 12px !important;
+            font-size: 14px !important;
             font-weight: 700 !important;
             color: #94A3B8 !important;
-            letter-spacing: 0px !important;
+            letter-spacing: 0.5px !important;
             transition: all 0.25s ease !important;
             margin: 0 !important;
             text-align: center !important;
-            white-space: nowrap !important;
         }
 
         /* 服勤員 - 琥珀金 #FBBF24 */
@@ -333,13 +328,13 @@ def render_user_home() -> None:
         div[data-testid="column"]:has(.role-card-crew) div[data-testid="stCheckbox"]:has(input:checked) {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(245, 158, 11, 0.25) 100%) !important;
             border-color: #FBBF24 !important;
-            box-shadow: 0 0 14px rgba(251, 191, 36, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
+            box-shadow: 0 0 16px rgba(251, 191, 36, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
         }
 
         div[data-testid="column"]:has(.role-card-crew) div[data-testid="stCheckbox"]:has(input:checked) label p {
             color: #FBBF24 !important;
             font-weight: 900 !important;
-            text-shadow: 0 0 8px rgba(251, 191, 36, 0.6) !important;
+            text-shadow: 0 0 10px rgba(251, 191, 36, 0.6) !important;
         }
 
         div[data-testid="column"]:has(.role-card-crew) div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div {
@@ -356,13 +351,13 @@ def render_user_home() -> None:
         div[data-testid="column"]:has(.role-card-conductor) div[data-testid="stCheckbox"]:has(input:checked) {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(16, 185, 129, 0.25) 100%) !important;
             border-color: #34D399 !important;
-            box-shadow: 0 0 14px rgba(52, 211, 153, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
+            box-shadow: 0 0 16px rgba(52, 211, 153, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
         }
 
         div[data-testid="column"]:has(.role-card-conductor) div[data-testid="stCheckbox"]:has(input:checked) label p {
             color: #34D399 !important;
             font-weight: 900 !important;
-            text-shadow: 0 0 8px rgba(52, 211, 153, 0.6) !important;
+            text-shadow: 0 0 10px rgba(52, 211, 153, 0.6) !important;
         }
 
         div[data-testid="column"]:has(.role-card-conductor) div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div {
@@ -379,13 +374,13 @@ def render_user_home() -> None:
         div[data-testid="column"]:has(.role-card-driver) div[data-testid="stCheckbox"]:has(input:checked) {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 132, 199, 0.25) 100%) !important;
             border-color: #38BDF8 !important;
-            box-shadow: 0 0 14px rgba(56, 189, 248, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
         }
 
         div[data-testid="column"]:has(.role-card-driver) div[data-testid="stCheckbox"]:has(input:checked) label p {
             color: #38BDF8 !important;
             font-weight: 900 !important;
-            text-shadow: 0 0 8px rgba(56, 189, 248, 0.6) !important;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.6) !important;
         }
 
         div[data-testid="column"]:has(.role-card-driver) div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div {
