@@ -1,4 +1,5 @@
 import base64
+import io
 import os
 import re
 from datetime import datetime
@@ -6,36 +7,37 @@ from typing import Any, List, Optional
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from config import FEEDBACK_IMG_DIR, LEAVE_CODES, UNITS
 from modules.drawing import render_schedule_figure
 from modules.services import process_file_data
 from modules.utils import log_activity, safe_read_excel
 
 
-@st.dialog("班表全螢幕放大檢視", width="large")
-def show_zoom_schedule_modal(image_bytes: Any) -> None:
-    """彈窗視窗：使用原生高解析度圖片呈現，避免 iframe 觸發二次 Rerun 導致彈窗閃退"""
+def _convert_to_b64_url(image_bytes: Any) -> str:
+    """內部輔助工具：將各種影像格式統一轉換為 Base64 Data URL"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
         raw_bytes = image_bytes
+    elif isinstance(image_bytes, str) and os.path.exists(image_bytes):
+        with open(image_bytes, "rb") as f:
+            raw_bytes = f.read()
     else:
         raw_bytes = b""
 
-    st.image(raw_bytes, use_container_width=True)
-    st.caption("💡 提示：手機端可雙指放大畫面檢視細節，或長按圖片儲存至相簿。")
+    b64_str = base64.b64encode(raw_bytes).decode("utf-8")
+    return f"data:image/png;base64,{b64_str}"
 
 
-def render_zoomable_image(image_bytes: Any) -> None:
-    """主頁面預覽：完整展示原圖，徹底隱藏 Streamlit 原生全螢幕按鈕，並精簡點擊放大觸發器"""
-    if hasattr(image_bytes, "getvalue"):
-        raw_bytes = image_bytes.getvalue()
-    elif isinstance(image_bytes, bytes):
-        raw_bytes = image_bytes
-    else:
-        raw_bytes = b""
+def render_zoomable_image(image_bytes: Any, height: int = 460) -> None:
+    """
+    主頁面班表圖片呈現元件（整合 Viewer.js）
+    支援行動端/手機雙指縮放 (Pinch-to-zoom)、雙擊放大與拖曳平移
+    """
+    img_data_url = _convert_to_b64_url(image_bytes)
 
-    # 強制隱藏 Streamlit 原生圖片 hover 時右上角浮現的放大與全螢幕按鈕
+    # 隱藏 Streamlit 原生全螢幕浮動按鈕
     st.markdown(
         """
         <style>
@@ -49,12 +51,125 @@ def render_zoomable_image(image_bytes: Any) -> None:
         unsafe_allow_html=True,
     )
 
-    # 1. 完整無裁切呈現預覽圖
-    st.image(raw_bytes, use_container_width=True)
+    html_code = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+        <!-- 引入 Viewer.js CSS & JS CDN -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.js"></script>
+        <style>
+            * {{
+                box-sizing: border-box;
+            }}
+            body {{
+                margin: 0;
+                padding: 0;
+                background: transparent;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+            }}
+            .viewer-wrapper {{
+                width: 100%;
+                text-align: center;
+            }}
+            .img-container {{
+                width: 100%;
+                cursor: zoom-in;
+                position: relative;
+                display: inline-block;
+            }}
+            .img-container img {{
+                width: 100%;
+                height: auto;
+                max-width: 100%;
+                border-radius: 10px;
+                border: 1.5px solid rgba(56, 189, 248, 0.4);
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+                transition: transform 0.2s ease, border-color 0.2s ease;
+            }}
+            .img-container img:hover {{
+                border-color: #38BDF8;
+            }}
+            .zoom-trigger-btn {{
+                width: 100%;
+                margin-top: 8px;
+                padding: 10px 14px;
+                background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+                border: 1.5px solid rgba(56, 189, 248, 0.5);
+                border-radius: 8px;
+                color: #38BDF8;
+                font-size: 13px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                transition: all 0.2s ease;
+            }}
+            .zoom-trigger-btn:hover {{
+                background: rgba(56, 189, 248, 0.15);
+                border-color: #38BDF8;
+                box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="viewer-wrapper">
+            <div class="img-container" id="img-box">
+                <img id="target-schedule-img" src="{img_data_url}" alt="班表圖片">
+            </div>
+            <button class="zoom-trigger-btn" id="btn-open-viewer">
+                🔍 點擊開啟全螢幕高畫質燈箱（支援手機雙指無損縮放）
+            </button>
+        </div>
 
-    # 2. 點擊按鈕直接調用 @st.dialog 彈窗
-    if st.button("放大點擊檢視全螢幕班表", type="secondary", use_container_width=True, key="trigger_zoom_modal"):
-        show_zoom_schedule_modal(raw_bytes)
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {{
+                const image = document.getElementById('target-schedule-img');
+                const triggerBtn = document.getElementById('btn-open-viewer');
+
+                const viewer = new Viewer(image, {{
+                    inline: false,          // 點擊後跳出燈箱 Modal
+                    navbar: false,          // 隱藏下方多圖選單
+                    title: false,           // 隱藏圖片檔名標題
+                    toolbar: {{
+                        zoomIn: 1,
+                        zoomOut: 1,
+                        oneToOne: 1,
+                        reset: 1,
+                    }},
+                    tooltip: true,
+                    movable: true,          // 允許拖曳
+                    zoomable: true,         // 允許縮放
+                    rotatable: false,
+                    scalable: false,
+                    transition: true,
+                    backdrop: true,
+                    // 行動端手勢啟用
+                    pinchZoom: true,
+                    slideOnTouch: false
+                }});
+
+                // 綁定下方按鈕亦可觸發燈箱
+                triggerBtn.addEventListener('click', function() {{
+                    viewer.show();
+                }});
+            }});
+        </script>
+    </body>
+    </html>
+    """
+    components.html(html_code, height=height, scrolling=False)
+
+
+@st.dialog("班表全螢幕放大檢視", width="large")
+def show_zoom_schedule_modal(image_bytes: Any) -> None:
+    """對話框彈窗：亦採用 Viewer.js 強化手勢操作體驗"""
+    render_zoomable_image(image_bytes, height=520)
 
 
 def show_holiday_notice(holidays: List[str], week_range_str: str = "") -> None:
@@ -94,7 +209,7 @@ def show_crew_schedule_modal(
                 badge_title=badge_title,
             )
             st.success(f"已成功載入【{emp_name} ({parsed_id})】的完整班表")
-            show_zoom_schedule_modal(buf)
+            render_zoomable_image(buf, height=500)
 
             st.download_button(
                 label=f"下載 {emp_name} 月班表圖檔",
