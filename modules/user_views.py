@@ -419,16 +419,15 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
-        /* 徹底統一所有主要按鈕 (包含一般 st.button 與表單 st.form_submit_button) 的鮮豔藍色漸層樣式 */
-        div[data-testid="stButton"] > button,
-        div[data-testid="stButton"] button,
-        div[data-testid="stFormSubmitButton"] > button,
-        div[data-testid="stFormSubmitButton"] button,
+        /* 1. 嚴格僅對三大主要動作按鈕 (type="primary" / FormSubmit) 套用亮藍漸層與光暈 */
         button[data-testid="stBaseButton-primary"],
         button[data-testid="stBaseButton-primaryFormSubmit"],
         button[kind="primary"],
         button[kind="primaryFormSubmit"],
-        .stButton > button {
+        div[data-testid="stFormSubmitButton"] > button[kind="primary"],
+        div[data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"],
+        div[data-testid="stButton"] > button[kind="primary"],
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"] {
             background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%) !important;
             color: #FFFFFF !important;
             border: 1.5px solid #38BDF8 !important;
@@ -441,34 +440,60 @@ def render_user_home() -> None:
             width: 100% !important;
         }
 
-        div[data-testid="stButton"] > button:hover,
-        div[data-testid="stButton"] button:hover,
-        div[data-testid="stFormSubmitButton"] > button:hover,
-        div[data-testid="stFormSubmitButton"] button:hover,
         button[data-testid="stBaseButton-primary"]:hover,
         button[data-testid="stBaseButton-primaryFormSubmit"]:hover,
         button[kind="primary"]:hover,
         button[kind="primaryFormSubmit"]:hover,
-        .stButton > button:hover {
+        div[data-testid="stFormSubmitButton"] > button[kind="primary"]:hover,
+        div[data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"]:hover,
+        div[data-testid="stButton"] > button[kind="primary"]:hover,
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"]:hover {
             background: linear-gradient(135deg, #0369A1 0%, #1E40AF 100%) !important;
             border-color: #38BDF8 !important;
             box-shadow: 0 6px 24px rgba(56, 189, 248, 0.8) !important;
             transform: translateY(-1px) !important;
         }
 
-        div[data-testid="stButton"] > button p,
-        div[data-testid="stButton"] button p,
-        div[data-testid="stFormSubmitButton"] > button p,
-        div[data-testid="stFormSubmitButton"] button p,
         button[data-testid="stBaseButton-primary"] p,
         button[data-testid="stBaseButton-primaryFormSubmit"] p,
         button[kind="primary"] p,
-        button[kind="primaryFormSubmit"] p,
-        .stButton > button p {
+        button[kind="primaryFormSubmit"] p {
             font-size: 15px !important;
             font-weight: 800 !important;
             color: #FFFFFF !important;
             letter-spacing: 0.6px !important;
+        }
+
+        /* 2. 次要按鈕 (type="secondary" / 預設按鈕：如快捷選擇時段、問題回報、ADMIN PANEL) 強制維持低調黑框深色系 */
+        button[data-testid="stBaseButton-secondary"],
+        button[kind="secondary"],
+        div[data-testid="stButton"] > button[kind="secondary"],
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] {
+            background: rgba(15, 23, 42, 0.6) !important;
+            color: #94A3B8 !important;
+            border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+            box-shadow: none !important;
+            border-radius: 10px !important;
+            padding: 8px 12px !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+
+        button[data-testid="stBaseButton-secondary"]:hover,
+        button[kind="secondary"]:hover,
+        div[data-testid="stButton"] > button[kind="secondary"]:hover,
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"]:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: #F1F5F9 !important;
+            border-color: rgba(56, 189, 248, 0.4) !important;
+        }
+
+        button[data-testid="stBaseButton-secondary"] p,
+        button[kind="secondary"] p,
+        div[data-testid="stButton"] > button[kind="secondary"] p,
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] p {
+            color: #94A3B8 !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
         }
 
         .badge-group {
@@ -1514,7 +1539,7 @@ def render_user_home() -> None:
     </div>
     <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
         <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_cand_signin}</div>
-        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_cand_signout}</div>
+        <div style="font-size: 9.5px; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_cand_signout}</div>
     </div>
 </div>
 </div>"""
