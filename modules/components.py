@@ -12,8 +12,9 @@ from modules.services import process_file_data
 from modules.utils import log_activity, safe_read_excel
 
 
-def render_zoomable_modal_image(image_bytes: Any) -> None:
-    """彈窗專用：無按鈕、支援手機雙指捏合放大與單指拖曳的純手勢圖片元件"""
+@st.dialog("班表全螢幕放大檢視", width="large")
+def show_zoom_schedule_modal(image_bytes: Any) -> None:
+    """彈窗視窗：使用原生高解析度圖片呈現，避免 iframe 觸發二次 Rerun 導致彈窗閃退"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
@@ -21,94 +22,8 @@ def render_zoomable_modal_image(image_bytes: Any) -> None:
     else:
         raw_bytes = b""
 
-    encoded = base64.b64encode(raw_bytes).decode("utf-8")
-
-    html_code = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
-    <style>
-      * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-      html, body {{
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        background-color: transparent;
-        overflow: hidden;
-      }}
-      .modal-viewport {{
-        width: 100%;
-        height: 60vh;
-        background: #020617;
-        border-radius: 8px;
-        overflow: hidden;
-        position: relative;
-        touch-action: none;
-        cursor: grab;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border: 1px solid rgba(56, 189, 248, 0.3);
-      }}
-      .modal-viewport:active {{
-        cursor: grabbing;
-      }}
-      .modal-img {{
-        width: 100%;
-        height: auto;
-        display: block;
-        user-select: none;
-        -webkit-user-drag: none;
-      }}
-    </style>
-    </head>
-    <body>
-
-    <div class="modal-viewport" id="panzoomArea">
-      <img id="scheduleImg" src="data:image/png;base64,{encoded}" alt="Schedule Preview" class="modal-img" />
-    </div>
-
-    <script>
-      let panzoom = null;
-      const elem = document.getElementById('scheduleImg');
-
-      function initPanzoom() {{
-        if (!panzoom) {{
-          panzoom = Panzoom(elem, {{
-            maxScale: 6,
-            minScale: 1,
-            startScale: 1,
-            contain: 'outside'
-          }});
-          const parent = document.getElementById('panzoomArea');
-          parent.addEventListener('wheel', panzoom.zoomWithWheel);
-        }}
-      }}
-
-      if (elem.complete) {{
-        initPanzoom();
-      }} else {{
-        elem.onload = initPanzoom;
-      }}
-    </script>
-    </body>
-    </html>
-    """
-    st.components.v1.html(html_code, height=420, scrolling=False, key="modal_panzoom_canvas")
-
-
-@st.dialog("班表全螢幕放大檢視", width="large")
-def show_zoom_schedule_modal(image_bytes: Any) -> None:
-    """彈窗視窗：呈現純手勢縮放班表"""
-    st.caption("💡 提示：手機端支援雙指捏合放大與單指滑動拖曳（亦可點擊右上角 ✕ 關閉）")
-    render_zoomable_modal_image(image_bytes)
-    
-    if st.button("關閉全螢幕視窗", use_container_width=True, key="close_modal_inner_btn"):
-        st.session_state["show_zoom_modal"] = False
-        st.rerun()
+    st.image(raw_bytes, use_container_width=True)
+    st.caption("💡 提示：手機端可雙指放大畫面檢視細節，或長按圖片儲存至相簿。")
 
 
 def render_zoomable_image(image_bytes: Any) -> None:
@@ -137,13 +52,8 @@ def render_zoomable_image(image_bytes: Any) -> None:
     # 1. 完整無裁切呈現預覽圖
     st.image(raw_bytes, use_container_width=True)
 
-    # 2. 點擊觸發按鈕，透過 Session State 持久化狀態
+    # 2. 點擊按鈕直接調用 @st.dialog 彈窗
     if st.button("放大點擊檢視全螢幕班表", type="secondary", use_container_width=True, key="trigger_zoom_modal"):
-        st.session_state["show_zoom_modal"] = True
-        st.rerun()
-
-    # 3. 只要 Session State 標記為 True，就穩定維持彈窗開啟
-    if st.session_state.get("show_zoom_modal", False):
         show_zoom_schedule_modal(raw_bytes)
 
 
@@ -184,7 +94,7 @@ def show_crew_schedule_modal(
                 badge_title=badge_title,
             )
             st.success(f"已成功載入【{emp_name} ({parsed_id})】的完整班表")
-            render_zoomable_modal_image(buf)
+            show_zoom_schedule_modal(buf)
 
             st.download_button(
                 label=f"下載 {emp_name} 月班表圖檔",
