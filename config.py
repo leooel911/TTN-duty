@@ -17,62 +17,62 @@ WHITELIST_FILE: str = os.path.join(DATA_DIR, "whitelist.json")
 
 # 各基地所屬單位班表與 Mapping 映射路徑設定
 UNITS: Dict[str, Dict[str, Any]] = {
-    "TTN": {
-        "駕駛": os.path.join(DATA_DIR, "TTN_TD.xlsx"),
-        "列車長": os.path.join(DATA_DIR, "TTN_TM.xlsx"),
-        "服勤員": os.path.join(DATA_DIR, "TTN_TA.xlsx"),
-        "mapping": {
-            "駕駛": os.path.join(DATA_DIR, "TTN_shift_mapping_TD.xlsx"),
-            "列車長": os.path.join(DATA_DIR, "TTN_shift_mapping_TM.xlsx"),
-            "服勤員": os.path.join(DATA_DIR, "TTN_shift_mapping_TA.xlsx"),
-        },
-    },
-    "TTC": {
-        "駕駛": os.path.join(DATA_DIR, "TTC_TD.xlsx"),
-        "列車長": os.path.join(DATA_DIR, "TTC_TM.xlsx"),
-        "服勤員": os.path.join(DATA_DIR, "TTC_TA.xlsx"),
-        "mapping": {
-            "駕駛": os.path.join(DATA_DIR, "TTC_shift_mapping_TD.xlsx"),
-            "列車長": os.path.join(DATA_DIR, "TTC_shift_mapping_TM.xlsx"),
-            "服勤員": os.path.join(DATA_DIR, "TTC_shift_mapping_TA.xlsx"),
-        },
-    },
-    "TTS": {
-        "駕駛": os.path.join(DATA_DIR, "TTS_TD.xlsx"),
-        "列車長": os.path.join(DATA_DIR, "TTS_TM.xlsx"),
-        "服勤員": os.path.join(DATA_DIR, "TTS_TA.xlsx"),
-        "mapping": {
-            "駕駛": os.path.join(DATA_DIR, "TTS_shift_mapping_TD.xlsx"),
-            "列車長": os.path.join(DATA_DIR, "TTS_shift_mapping_TM.xlsx"),
-            "服勤員": os.path.join(DATA_DIR, "TTS_shift_mapping_TA.xlsx"),
-        },
-    },
+    "TTN": {
+        "駕駛": os.path.join(DATA_DIR, "TTN_TD.xlsx"),
+        "列車長": os.path.join(DATA_DIR, "TTN_TM.xlsx"),
+        "服勤員": os.path.join(DATA_DIR, "TTN_TA.xlsx"),
+        "mapping": {
+            "駕駛": os.path.join(DATA_DIR, "TTN_shift_mapping_TD.xlsx"),
+            "列車長": os.path.join(DATA_DIR, "TTN_shift_mapping_TM.xlsx"),
+            "服勤員": os.path.join(DATA_DIR, "TTN_shift_mapping_TA.xlsx"),
+        },
+    },
+    "TTC": {
+        "駕駛": os.path.join(DATA_DIR, "TTC_TD.xlsx"),
+        "列車長": os.path.join(DATA_DIR, "TTC_TM.xlsx"),
+        "服勤員": os.path.join(DATA_DIR, "TTC_TA.xlsx"),
+        "mapping": {
+            "駕駛": os.path.join(DATA_DIR, "TTC_shift_mapping_TD.xlsx"),
+            "列車長": os.path.join(DATA_DIR, "TTC_shift_mapping_TM.xlsx"),
+            "服勤員": os.path.join(DATA_DIR, "TTC_shift_mapping_TA.xlsx"),
+        },
+    },
+    "TTS": {
+        "駕駛": os.path.join(DATA_DIR, "TTS_TD.xlsx"),
+        "列車長": os.path.join(DATA_DIR, "TTS_TM.xlsx"),
+        "服勤員": os.path.join(DATA_DIR, "TTS_TA.xlsx"),
+        "mapping": {
+            "駕駛": os.path.join(DATA_DIR, "TTS_shift_mapping_TD.xlsx"),
+            "列車長": os.path.join(DATA_DIR, "TTS_shift_mapping_TM.xlsx"),
+            "服勤員": os.path.join(DATA_DIR, "TTS_shift_mapping_TA.xlsx"),
+        },
+    },
 }
 
 # 國定假日標記對照字典
 NATIONAL_HOLIDAYS: Dict[str, str] = {
-    "1/1": "元旦",
-    "2/16": "除夕",
-    "2/17": "初一",
-    "2/18": "初二",
-    "2/19": "初三",
-    "2/28": "和平紀念日",
-    "4/4": "兒童節",
-    "4/5": "清明節",
-    "5/1": "勞動節",
-    "6/19": "端午節",
-    "9/25": "中秋節",
-    "9/28": "教師節",
-    "10/10": "國慶日",
-    "10/25": "台灣光復節",
-    "12/25": "行憲紀念日",
+    "1/1": "元旦",
+    "2/16": "除夕",
+    "2/17": "初一",
+    "2/18": "初二",
+    "2/19": "初三",
+    "2/28": "和平紀念日",
+    "4/4": "兒童節",
+    "4/5": "清明節",
+    "5/1": "勞動節",
+    "6/19": "端午節",
+    "9/25": "中秋節",
+    "9/28": "教師節",
+    "10/10": "國慶日",
+    "10/25": "台灣光復節",
+    "12/25": "行憲紀念日",
 }
 
 # 疏運期間標記字典
 TRANSPORT_PERIODS: Dict[str, str] = {
-    "9/24-9/29": "中秋疏運",
-    "10/4-10/10": "雙十節疏運",
-    "10/25-10/31": "光復節疏運",
+    "9/24-9/29": "中秋疏運",
+    "10/4-10/10": "雙十節疏運",
+    "10/25-10/31": "光復節疏運",
 }
 
 TITLE: str = "TRAIN CREW DUTY CALENDAR"
@@ -83,35 +83,35 @@ CREW_ACCESS_PASSWORD: str = "0096"
 
 # 🔑 完整通用請假代碼集（已更新去重）
 LEAVE_CODES: List[str] = [
-    "PAY",     # 特休
-    "CMP",    # 喪假
-    "FAC",    # 家庭照顧假
-    "FAC1",   # 家庭照顧假1
-    "FPL",    # 彈性育嬰留停
-    "HPS",    # 住院病假
-    "HPS1",   # 確診後居家照護
-    "LEV",    # 公假
-    "LU",     # 會務假
-    "LUP",    # 長期事假
-    "LUTS",   # 會務假
-    "MAT",    # 產假
-    "ML",     # 教召假
-    "MLP",    # 生理假
-    "MTR",    # 婚假
-    "NHS",    # 未住院病假
-    "NHS1",   # 未住院病假1
-    "NHS2",   # 確診輕症
-    "NTD",    # 天然災害假
-    "OPI",    # 公傷假
-    "PAT",    # 陪產假
-    "PAY",    # 特休
-    "PAY1",   # 特休1
-    "RCL",    # 遷調假
-    "TRN",    # 訓練
-    "UNP",    # 事假
-    "UNP1",   # 事假1
-    "UNP2",   # 隔離假
-    "WRSL",   # 淨灘假
+    "PAY",     # 特休
+    "CMP",    # 喪假
+    "FAC",    # 家庭照顧假
+    "FAC1",   # 家庭照顧假1
+    "FPL",    # 彈性育嬰留停
+    "HPS",    # 住院病假
+    "HPS1",   # 確診後居家照護
+    "LEV",    # 公假
+    "LU",     # 會務假
+    "LUP",    # 長期事假
+    "LUTS",   # 會務假
+    "MAT",    # 產假
+    "ML",     # 教召假
+    "MLP",    # 生理假
+    "MTR",    # 婚假
+    "NHS",    # 未住院病假
+    "NHS1",   # 未住院病假1
+    "NHS2",   # 確診輕症
+    "NTD",    # 天然災害假
+    "OPI",    # 公傷假
+    "PAT",    # 陪產假
+    "PAY",    # 特休
+    "PAY1",   # 特休1
+    "RCL",    # 遷調假
+    "TRN",    # 訓練
+    "UNP",    # 事假
+    "UNP1",   # 事假1
+    "UNP2",   # 隔離假
+    "WRSL",   # 淨灘假
 ]
 
 # 班表圖像渲染色調定義 (Matplotlib / PIL)
@@ -134,362 +134,362 @@ C_TOWN_TXT: str = "#000000"
 # 全站 CSS 美化樣式
 CUSTOM_CSS: str = """
 <style>
-    /* 全域隱藏預設頁眉頁尾 */
-    header[data-testid="stHeader"] { background: transparent !important; }
-    div[data-testid="stToolbar"] { visibility: hidden !important; }
-    footer { visibility: hidden !important; }
+    /* 全域隱藏預設頁眉頁尾 */
+    header[data-testid="stHeader"] { background: transparent !important; }
+    div[data-testid="stToolbar"] { visibility: hidden !important; }
+    footer { visibility: hidden !important; }
 
-    /* 背景質感：深藍黑極簡漸層 */
-    .stApp { 
-        background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, #020617 100%) !important; 
-        color: #F8FAFC !important; 
-        background-attachment: fixed !important;
-    }
-    
-    .hours-badge {
-        background: rgba(56, 189, 248, 0.15) !important;
-        color: #38BDF8 !important;
-        border: 1px solid rgba(56, 189, 248, 0.4) !important;
-        border-radius: 6px !important;
-        padding: 2px 6px !important;
-        font-size: 10.5px !important;
-        font-weight: 800 !important;
-        font-family: monospace !important;
-        line-height: 1.2 !important;
-    }
-    
-    .do2w-badge {
-        background: rgba(245, 158, 11, 0.2) !important;
-        color: #FDE68A !important;
-        border: 1px solid #F59E0B !important;
-        border-radius: 6px !important;
-        padding: 2px 6px !important;
-        font-size: 10.5px !important;
-        font-weight: 800 !important;
-        font-family: monospace !important;
-        line-height: 1.2 !important;
-    }
-    
-    /* 容器邊距 */
-    @media (min-width: 1024px) {
-        .block-container { padding: 2.5rem 1.5rem 2.5rem 1.5rem !important; max-width: 1050px !important; }
-    }
-    @media (max-width: 1023px) {
-        .block-container { padding: 1rem 0.75rem 2rem 0.75rem !important; max-width: 100% !important; }
-    }
+    /* 背景質感：深藍黑極簡漸層 */
+    .stApp { 
+        background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, #020617 100%) !important; 
+        color: #F8FAFC !important; 
+        background-attachment: fixed !important;
+    }
+    
+    .hours-badge {
+        background: rgba(56, 189, 248, 0.15) !important;
+        color: #38BDF8 !important;
+        border: 1px solid rgba(56, 189, 248, 0.4) !important;
+        border-radius: 6px !important;
+        padding: 2px 6px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        font-family: monospace !important;
+        line-height: 1.2 !important;
+    }
+    
+    .do2w-badge {
+        background: rgba(245, 158, 11, 0.2) !important;
+        color: #FDE68A !important;
+        border: 1px solid #F59E0B !important;
+        border-radius: 6px !important;
+        padding: 2px 6px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        font-family: monospace !important;
+        line-height: 1.2 !important;
+    }
+    
+    /* 容器邊距 */
+    @media (min-width: 1024px) {
+        .block-container { padding: 2.5rem 1.5rem 2.5rem 1.5rem !important; max-width: 1050px !important; }
+    }
+    @media (max-width: 1023px) {
+        .block-container { padding: 1rem 0.75rem 2rem 0.75rem !important; max-width: 100% !important; }
+    }
 
-    /* 按鈕通用寬度設定 */
-    div[data-testid="stButton"], div.stButton { width: 100% !important; }
-    div[data-testid="stButton"] > button, div.stButton > button {
-        width: 100% !important;
-        min-height: 42px !important;
-    }
+    /* 按鈕通用寬度設定 */
+    div[data-testid="stButton"], div.stButton { width: 100% !important; }
+    div[data-testid="stButton"] > button, div.stButton > button {
+        width: 100% !important;
+        min-height: 42px !important;
+    }
 
-    /* 輸入框美化 */
-    div[data-testid="stTextInput"] div[data-baseweb="input"],
-    div[data-testid="stTextArea"] div[data-baseweb="textarea"] {
-        background: rgba(15, 23, 42, 0.75) !important;
-        border: 1px solid rgba(56, 189, 248, 0.35) !important;
-        border-radius: 10px !important;
-        padding: 2px 4px !important;
-        transition: all 0.25s ease !important;
-    }
-    div[data-testid="stTextInput"] input,
-    div[data-testid="stTextArea"] textarea {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        color: #F8FAFC !important;
-        padding: 6px 10px !important;
-        font-family: monospace !important;
-    }
-    div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within,
-    div[data-testid="stTextArea"] div[data-baseweb="textarea"]:focus-within {
-        border-color: #38BDF8 !important;
-        box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
-    }
+    /* 輸入框美化 */
+    div[data-testid="stTextInput"] div[data-baseweb="input"],
+    div[data-testid="stTextArea"] div[data-baseweb="textarea"] {
+        background: rgba(15, 23, 42, 0.75) !important;
+        border: 1px solid rgba(56, 189, 248, 0.35) !important;
+        border-radius: 10px !important;
+        padding: 2px 4px !important;
+        transition: all 0.25s ease !important;
+    }
+    div[data-testid="stTextInput"] input,
+    div[data-testid="stTextArea"] textarea {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: #F8FAFC !important;
+        padding: 6px 10px !important;
+        font-family: monospace !important;
+    }
+    div[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within,
+    div[data-testid="stTextArea"] div[data-baseweb="textarea"]:focus-within {
+        border-color: #38BDF8 !important;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
+    }
 
-    /* 下拉選單 (stSelectbox) 滿版美化 */
-    div[data-baseweb="select"] { width: 100% !important; }
-    div[data-baseweb="select"] > div {
-        background-color: rgba(15, 23, 42, 0.8) !important;
-        border: 1px solid rgba(56, 189, 248, 0.3) !important;
-        border-radius: 10px !important;
-    }
-    div[data-baseweb="select"]:hover > div { border-color: #38BDF8 !important; }
+    /* 下拉選單 (stSelectbox) 滿版美化 */
+    div[data-baseweb="select"] { width: 100% !important; }
+    div[data-baseweb="select"] > div {
+        background-color: rgba(15, 23, 42, 0.8) !important;
+        border: 1px solid rgba(56, 189, 248, 0.3) !important;
+        border-radius: 10px !important;
+    }
+    div[data-baseweb="select"]:hover > div { border-color: #38BDF8 !important; }
 
-    /* 模式選擇按鈕 (st.radio) 強效 100% 單欄直立修復 + 滿格與內容水平居中 */
-    div[data-testid="stElementContainer"]:has(div[data-testid="stRadio"]),
-    div[data-testid="stRadio"],
-    div[data-testid="stRadio"] > div,
-    div[data-testid="stRadio"] div[role="radiogroup"] {
-        width: 100% !important;
-        max-width: 100% !important;
-        display: flex !important;
-        flex-direction: column !important;
-        flex-wrap: nowrap !important;
-        align-items: stretch !important;
-        gap: 8px !important;
-    }
+    /* 模式選擇按鈕 (st.radio) 強效 100% 單欄直立修復 + 滿格與內容水平居中 */
+    div[data-testid="stElementContainer"]:has(div[data-testid="stRadio"]),
+    div[data-testid="stRadio"],
+    div[data-testid="stRadio"] > div,
+    div[data-testid="stRadio"] div[role="radiogroup"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
 
-    div[role="radiogroup"] label div[data-testid="stRadioButtonCustomIcon"],
-    div[role="radiogroup"] label input,
-    div[role="radiogroup"] label > div:first-child { display: none !important; }
+    div[role="radiogroup"] label div[data-testid="stRadioButtonCustomIcon"],
+    div[role="radiogroup"] label input,
+    div[role="radiogroup"] label > div:first-child { display: none !important; }
 
-    div[role="radiogroup"] > label {
-        width: 100% !important;
-        flex: 1 1 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        background: rgba(30, 41, 59, 0.7) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-left: 4px solid #38BDF8 !important;
-        border-radius: 8px !important;
-        padding: 12px 16px !important;
-        margin: 0 !important;
-        cursor: pointer !important;
-        transition: all 0.2s ease-in-out !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-    }
+    div[role="radiogroup"] > label {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        background: rgba(30, 41, 59, 0.7) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-left: 4px solid #38BDF8 !important;
+        border-radius: 8px !important;
+        padding: 12px 16px !important;
+        margin: 0 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease-in-out !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
 
-    div[role="radiogroup"] label p {
-        font-size: 14.5px !important;
-        font-weight: 700 !important;
-        color: #E2E8F0 !important;
-        margin: 0 !important;
-        white-space: normal !important;
-        text-overflow: clip !important;
-        word-break: break-word !important;
-        line-height: 1.4 !important;
-        text-align: center !important;
-        width: 100% !important;
-    }
+    div[role="radiogroup"] label p {
+        font-size: 14.5px !important;
+        font-weight: 700 !important;
+        color: #E2E8F0 !important;
+        margin: 0 !important;
+        white-space: normal !important;
+        text-overflow: clip !important;
+        word-break: break-word !important;
+        line-height: 1.4 !important;
+        text-align: center !important;
+        width: 100% !important;
+    }
 
-    div[role="radiogroup"] > label:hover {
-        background: rgba(51, 65, 85, 0.8) !important;
-        border-color: rgba(56, 189, 248, 0.4) !important;
-    }
+    div[role="radiogroup"] > label:hover {
+        background: rgba(51, 65, 85, 0.8) !important;
+        border-color: rgba(56, 189, 248, 0.4) !important;
+    }
 
-    div[role="radiogroup"] > label[data-checked="true"], 
-    div[role="radiogroup"] > label:has(input:checked) {
-        background: rgba(30, 64, 175, 0.5) !important;
-        border-color: #60A5FA !important;
-        border-left-color: #60A5FA !important;
-        box-shadow: 0 0 12px rgba(96, 165, 250, 0.25) !important;
-    }
+    div[role="radiogroup"] > label[data-checked="true"], 
+    div[role="radiogroup"] > label:has(input:checked) {
+        background: rgba(30, 64, 175, 0.5) !important;
+        border-color: #60A5FA !important;
+        border-left-color: #60A5FA !important;
+        box-shadow: 0 0 12px rgba(96, 165, 250, 0.25) !important;
+    }
 
-    div[role="radiogroup"] > label[data-checked="true"] p,
-    div[role="radiogroup"] > label:has(input:checked) p {
-        color: #FFFFFF !important;
-        font-weight: 800 !important;
-    }
+    div[role="radiogroup"] > label[data-checked="true"] p,
+    div[role="radiogroup"] > label:has(input:checked) p {
+        color: #FFFFFF !important;
+        font-weight: 800 !important;
+    }
 
-    @keyframes online-green-pulse {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6); }
-        70% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
-    }
+    @keyframes online-green-pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6); }
+        70% { transform: scale(1.05); box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+    }
 
-    .online-dot {
-        width: 6px; height: 6px; background-color: #4ADE80; border-radius: 50%;
-        display: inline-block; animation: online-green-pulse 2.5s infinite ease-in-out;
-        box-shadow: 0 0 8px #4ADE80; margin: 0 5px; vertical-align: middle;
-    }
+    .online-dot {
+        width: 6px; height: 6px; background-color: #4ADE80; border-radius: 50%;
+        display: inline-block; animation: online-green-pulse 2.5s infinite ease-in-out;
+        box-shadow: 0 0 8px #4ADE80; margin: 0 5px; vertical-align: middle;
+    }
 
-    .header-container { 
-        display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
-        width: 100%; margin-bottom: 0.6rem !important; padding: 12px 10px !important;
-        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-        background: rgba(15, 23, 42, 0.55);
-        border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 14px;
-    }
-    .main-title { color: #F8FAFC !important; font-size: 16px !important; font-weight: 800; letter-spacing: 1.2px; margin: 0; font-family: monospace; }
-    .title-subtitle { color: #94A3B8; font-size: 10px !important; font-weight: 600; letter-spacing: 0.8px; font-family: monospace; margin-top: 3px; }
+    .header-container { 
+        display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+        width: 100%; margin-bottom: 0.6rem !important; padding: 12px 10px !important;
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 14px;
+    }
+    .main-title { color: #F8FAFC !important; font-size: 16px !important; font-weight: 800; letter-spacing: 1.2px; margin: 0; font-family: monospace; }
+    .title-subtitle { color: #94A3B8; font-size: 10px !important; font-weight: 600; letter-spacing: 0.8px; font-family: monospace; margin-top: 3px; }
 
-    .test-env-banner {
-        border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 6px 10px !important; margin-bottom: 0.8rem !important;
-        text-align: center; background: rgba(39, 28, 12, 0.55); backdrop-filter: blur(12px); font-family: monospace;
-    }
-    .test-env-title { color: #FDE68A; font-size: 11px !important; font-weight: 800; letter-spacing: 1px; }
-    .test-env-sub { color: #FCD34D; font-size: 9.5px !important; font-weight: 500; opacity: 0.85; margin-top: 1px; }
+    .test-env-banner {
+        border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 6px 10px !important; margin-bottom: 0.8rem !important;
+        text-align: center; background: rgba(39, 28, 12, 0.55); backdrop-filter: blur(12px); font-family: monospace;
+    }
+    .test-env-title { color: #FDE68A; font-size: 11px !important; font-weight: 800; letter-spacing: 1px; }
+    .test-env-sub { color: #FCD34D; font-size: 9.5px !important; font-weight: 500; opacity: 0.85; margin-top: 1px; }
 
-    div.stButton > button[key*="btn_footer_feedback_left"],
-    div.stButton > button[key*="btn_footer_admin_right"] {
-        background: rgba(30, 41, 59, 0.45) !important;
-        border: 1px solid rgba(56, 189, 248, 0.25) !important;
-        color: #94A3B8 !important;
-        font-size: 11px !important;
-        font-weight: 600 !important;
-        border-radius: 20px !important;
-        padding: 4px 10px !important;
-        min-height: 32px !important;
-        height: 32px !important;
-        letter-spacing: 0.5px !important;
-        transition: all 0.25s ease !important;
-        box-shadow: none !important;
-        font-family: monospace !important;
-    }
-    div.stButton > button[key*="btn_footer_feedback_left"]:hover,
-    div.stButton > button[key*="btn_footer_admin_right"]:hover {
-        background: rgba(56, 189, 248, 0.15) !important;
-        border-color: #38BDF8 !important;
-        color: #38BDF8 !important;
-        box-shadow: 0 0 10px rgba(56, 189, 248, 0.25) !important;
-    }
+    div.stButton > button[key*="btn_footer_feedback_left"],
+    div.stButton > button[key*="btn_footer_admin_right"] {
+        background: rgba(30, 41, 59, 0.45) !important;
+        border: 1px solid rgba(56, 189, 248, 0.25) !important;
+        color: #94A3B8 !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        border-radius: 20px !important;
+        padding: 4px 10px !important;
+        min-height: 32px !important;
+        height: 32px !important;
+        letter-spacing: 0.5px !important;
+        transition: all 0.25s ease !important;
+        box-shadow: none !important;
+        font-family: monospace !important;
+    }
+    div.stButton > button[key*="btn_footer_feedback_left"]:hover,
+    div.stButton > button[key*="btn_footer_admin_right"]:hover {
+        background: rgba(56, 189, 248, 0.15) !important;
+        border-color: #38BDF8 !important;
+        color: #38BDF8 !important;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.25) !important;
+    }
 
-    .admin-maint-banner {
-        border: 1px solid rgba(245, 158, 11, 0.6);
-        border-left: 5px solid #F59E0B;
-        border-radius: 10px;
-        padding: 8px 12px;
-        margin-bottom: 0.8rem;
-        background: rgba(245, 158, 11, 0.12);
-        backdrop-filter: blur(8px);
-        color: #FDE68A;
-        font-size: 11.5px;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-    }
+    .admin-maint-banner {
+        border: 1px solid rgba(245, 158, 11, 0.6);
+        border-left: 5px solid #F59E0B;
+        border-radius: 10px;
+        padding: 8px 12px;
+        margin-bottom: 0.8rem;
+        background: rgba(245, 158, 11, 0.12);
+        backdrop-filter: blur(8px);
+        color: #FDE68A;
+        font-size: 11.5px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
 
-    .user-maint-banner {
-        border: 1px solid rgba(245, 158, 11, 0.45);
-        border-left: 5px solid #F59E0B;
-        border-radius: 12px;
-        padding: 14px 16px;
-        margin-top: 10px;
-        margin-bottom: 14px;
-        background: radial-gradient(circle at 50% 0%, rgba(69, 41, 10, 0.6) 0%, rgba(24, 18, 11, 0.75) 100%);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-        text-align: center;
-    }
-    .user-maint-title {
-        color: #FDE68A;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 1.2px;
-        font-family: monospace;
-        text-transform: uppercase;
-        margin-bottom: 4px;
-    }
-    .user-maint-sub {
-        color: #CBD5E1;
-        font-size: 11px;
-        font-weight: 500;
-        letter-spacing: 0.5px;
-        font-family: monospace;
-        margin-top: 4px;
-        opacity: 0.85;
-    }
+    .user-maint-banner {
+        border: 1px solid rgba(245, 158, 11, 0.45);
+        border-left: 5px solid #F59E0B;
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-top: 10px;
+        margin-bottom: 14px;
+        background: radial-gradient(circle at 50% 0%, rgba(69, 41, 10, 0.6) 0%, rgba(24, 18, 11, 0.75) 100%);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        text-align: center;
+    }
+    .user-maint-title {
+        color: #FDE68A;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1.2px;
+        font-family: monospace;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+    .user-maint-sub {
+        color: #CBD5E1;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        font-family: monospace;
+        margin-top: 4px;
+        opacity: 0.85;
+    }
 
-    .section-header-box { 
-        background: rgba(30, 41, 59, 0.45); 
-        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid #3B82F6; border-radius: 12px; padding: 10px 14px !important; margin-top: 8px !important; margin-bottom: 10px !important; 
-    }
-    .section-title { color: #F8FAFC; font-size: 14px !important; font-weight: 700; margin: 0; }
-    .section-subtitle { color: #94A3B8; font-size: 9.5px !important; font-weight: 500; text-transform: uppercase; font-family: monospace; }
+    .section-header-box { 
+        background: rgba(30, 41, 59, 0.45); 
+        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08); border-left: 4px solid #3B82F6; border-radius: 12px; padding: 10px 14px !important; margin-top: 8px !important; margin-bottom: 10px !important; 
+    }
+    .section-title { color: #F8FAFC; font-size: 14px !important; font-weight: 700; margin: 0; }
+    .section-subtitle { color: #94A3B8; font-size: 9.5px !important; font-weight: 500; text-transform: uppercase; font-family: monospace; }
 
-    /* 組員卡片與 Hover 微互動光影提升 */
-    .integrated-crew-box {
-        width: 100% !important;
-        box-sizing: border-box !important;
-        background: rgba(30, 41, 59, 0.75);
-        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(56, 189, 248, 0.25);
-        border-bottom: none !important;
-        border-left: 4px solid #10B981;
-        border-top-left-radius: 12px;
-        border-top-right-radius: 12px;
-        border-bottom-left-radius: 0px !important;
-        border-bottom-right-radius: 0px !important;
-        padding: 12px 12px 8px 12px;
-        margin-bottom: 0px !important;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
-    }
-    .integrated-crew-box:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(56, 189, 248, 0.2) !important;
-        border-color: rgba(56, 189, 248, 0.5) !important;
-    }
+    /* 組員卡片與 Hover 微互動光影提升 */
+    .integrated-crew-box {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        background: rgba(30, 41, 59, 0.75);
+        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        border-bottom: none !important;
+        border-left: 4px solid #10B981;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+        border-bottom-left-radius: 0px !important;
+        border-bottom-right-radius: 0px !important;
+        padding: 12px 12px 8px 12px;
+        margin-bottom: 0px !important;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+    }
+    .integrated-crew-box:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(56, 189, 248, 0.2) !important;
+        border-color: rgba(56, 189, 248, 0.5) !important;
+    }
 
-    .compact-name {
-        font-size: 15px !important;
-        font-weight: 800 !important;
-        color: #F8FAFC !important;
-    }
-    .badge-group {
-        display: flex;
-        gap: 4px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-    .long-badge {
-        background: rgba(225, 29, 72, 0.2) !important;
-        color: #FB7185 !important;
-        border: 1px solid rgba(244, 63, 94, 0.5) !important;
-        border-radius: 6px !important;
-        padding: 2px 6px !important;
-        font-size: 10.5px !important;
-        font-weight: 800 !important;
-        font-family: monospace !important;
-        line-height: 1.2 !important;
-    }
-    .non-line-badge {
-        background: rgba(148, 163, 184, 0.2) !important;
-        color: #CBD5E1 !important;
-        border: 1px solid rgba(148, 163, 184, 0.4) !important;
-        border-radius: 6px !important;
-        padding: 2px 6px !important;
-        font-size: 10.5px !important;
-        font-weight: 800 !important;
-        font-family: monospace !important;
-        line-height: 1.2 !important;
-    }
+    .compact-name {
+        font-size: 15px !important;
+        font-weight: 800 !important;
+        color: #F8FAFC !important;
+    }
+    .badge-group {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .long-badge {
+        background: rgba(225, 29, 72, 0.2) !important;
+        color: #FB7185 !important;
+        border: 1px solid rgba(244, 63, 94, 0.5) !important;
+        border-radius: 6px !important;
+        padding: 2px 6px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        font-family: monospace !important;
+        line-height: 1.2 !important;
+    }
+    .non-line-badge {
+        background: rgba(148, 163, 184, 0.2) !important;
+        color: #CBD5E1 !important;
+        border: 1px solid rgba(148, 163, 184, 0.4) !important;
+        border-radius: 6px !important;
+        padding: 2px 6px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        font-family: monospace !important;
+        line-height: 1.2 !important;
+    }
 
-    /* 按鈕通用與卡片底部按鈕無縫接軌修飾 */
-    div.stButton > button, div.stFormSubmitButton > button { 
-        font-weight: 700 !important; padding: 0.4rem 0.8rem !important; border-radius: 0.5rem !important; 
-        background: rgba(30, 41, 59, 0.6) !important; 
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        color: #38BDF8 !important; width: 100% !important; 
-        transition: all 0.2s ease !important; letter-spacing: 0.5px; font-family: monospace;
-    }
+    /* 按鈕通用與卡片底部按鈕無縫接軌修飾 */
+    div.stButton > button, div.stFormSubmitButton > button { 
+        font-weight: 700 !important; padding: 0.4rem 0.8rem !important; border-radius: 0.5rem !important; 
+        background: rgba(30, 41, 59, 0.6) !important; 
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        color: #38BDF8 !important; width: 100% !important; 
+        transition: all 0.2s ease !important; letter-spacing: 0.5px; font-family: monospace;
+    }
 
-    div.stButton > button[key*="win_btn_"],
-    div.stButton > button[key*="ex_btn_"] {
-        border-top-left-radius: 0px !important;
-        border-top-right-radius: 0px !important;
-        border-bottom-left-radius: 12px !important;
-        border-bottom-right-radius: 12px !important;
-        border-top: 1px dashed rgba(255, 255, 255, 0.1) !important;
-        background: rgba(15, 23, 42, 0.85) !important;
-        margin-top: 0px !important;
-    }
+    div.stButton > button[key*="win_btn_"],
+    div.stButton > button[key*="ex_btn_"] {
+        border-top-left-radius: 0px !important;
+        border-top-right-radius: 0px !important;
+        border-bottom-left-radius: 12px !important;
+        border-bottom-right-radius: 12px !important;
+        border-top: 1px dashed rgba(255, 255, 255, 0.1) !important;
+        background: rgba(15, 23, 42, 0.85) !important;
+        margin-top: 0px !important;
+    }
 
-    div[data-baseweb="tab-list"] {
-        gap: 8px !important;
-        background: rgba(15, 23, 42, 0.5) !important;
-        padding: 6px !important;
-        border-radius: 12px !important;
-        border: 1px solid rgba(56, 189, 248, 0.2) !important;
-    }
-    button[data-baseweb="tab"] {
-        border-radius: 8px !important;
-        color: #94A3B8 !important;
-        font-weight: 700 !important;
-        font-size: 12.5px !important;
-        padding: 8px 16px !important;
-        background: transparent !important;
-    }
-    button[aria-selected="true"] {
-        background: rgba(56, 189, 248, 0.2) !important;
-        color: #38BDF8 !important;
-        border: 1px solid rgba(56, 189, 248, 0.4) !important;
-    }
+    div[data-baseweb="tab-list"] {
+        gap: 8px !important;
+        background: rgba(15, 23, 42, 0.5) !important;
+        padding: 6px !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(56, 189, 248, 0.2) !important;
+    }
+    button[data-baseweb="tab"] {
+        border-radius: 8px !important;
+        color: #94A3B8 !important;
+        font-weight: 700 !important;
+        font-size: 12.5px !important;
+        padding: 8px 16px !important;
+        background: transparent !important;
+    }
+    button[aria-selected="true"] {
+        background: rgba(56, 189, 248, 0.2) !important;
+        color: #38BDF8 !important;
+        border: 1px solid rgba(56, 189, 248, 0.4) !important;
+    }
 </style>
 """
