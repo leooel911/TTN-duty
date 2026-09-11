@@ -235,7 +235,7 @@ def show_holiday_notice(holidays: List[str], week_range_str: str = "") -> None:
             f"""
             <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: #FDE68A;">
                 <strong>當週包含國定假日：</strong>{holiday_list_str}<br/>
-                <span style="font-size: 11px; color: #CBD5E1;">請注意：換班 / 換假時，若涉及國定假日或雙倍薪當週，請務必遵循公司規定辦理！</span>
+                <span style="font-size: 11px; color: #CBD5E1;">請注意：換班 / 換假時，若涉及國定假日，請務必遵循公司規定辦理！</span>
             </div>
             """,
             unsafe_allow_html=True,
@@ -263,7 +263,7 @@ def show_crew_schedule_modal(
                 unit_label,
                 badge_title=badge_title,
             )
-            st.success(f"已成功載入【{emp_name} ({parsed_id})】的完整班表")
+            st.success(f"已成功載入【{emp_name} ({parsed_id})】的完整班表 請稍後！")
             render_zoomable_image(buf, height=360)
 
             st.download_button(
