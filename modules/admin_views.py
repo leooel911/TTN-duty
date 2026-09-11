@@ -12,13 +12,13 @@ from config import DATA_DIR, FEEDBACK_IMG_DIR, LOG_FILE, UNITS, WHITELIST_FILE
 from modules.components import view_feedback_img_modal
 from modules.services import load_system_config, save_system_config
 from modules.utils import (
+    get_employee_name,
     get_file_mtime_str,
     is_module_maintenance,
     load_activity_logs,
     log_activity,
     safe_read_excel,
     set_module_maintenance,
-    get_employee_name,
 )
 
 
@@ -346,9 +346,9 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
         else:
             user_info = "系統/訪客"
 
-    # 4. 🔥 核心比對邏輯：
-    # 判斷有無 7 碼標準員編，若向 Excel 大表有查到名字 -> 顯示「員編 (姓名)」
-    # 若查無名字 -> 原封不動保留登入時寫入的原始資料 (例如 VIP_USER (A) 或 A026925)
+    # 4. 核心比對邏輯：
+    # 判斷有無標準員編，若向 Excel 大表有查到名字 -> 顯示「員編 (姓名)」
+    # 若查無名字 -> 原封不動保留登入時寫入的原始資料
     emp_match = re.search(r"\b([A-Za-z]\d{6})\b", user_info)
     if emp_match:
         clean_emp_id = emp_match.group(1).upper()
