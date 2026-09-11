@@ -10,7 +10,6 @@ import streamlit as st
 import streamlit.components.v1 as components
 from config import FEEDBACK_IMG_DIR, LEAVE_CODES, UNITS
 from modules.drawing import render_schedule_figure
-from modules.services import process_file_data
 from modules.utils import log_activity, safe_read_excel
 
 
@@ -160,7 +159,6 @@ def render_zoomable_image(image_bytes: Any, height: int = 380) -> None:
         </div>
 
         <script>
-            // 自動匯報實際高度，並預留 +14px 緩衝空間防止按鈕切邊
             function sendHeight() {{
                 const wrapper = document.getElementById('main-wrapper');
                 if (wrapper) {{
@@ -249,6 +247,9 @@ def show_crew_schedule_modal(
     badge_title: str = "Crew Schedule | C.L.F",
 ) -> None:
     """跳出對話框顯示特定組員的完整月班表圖片"""
+    # 延遲引用避開循環依賴
+    from modules.services import process_file_data
+
     st.markdown(f"### 查詢組員員編：`{emp_id}` ({unit_label})")
 
     with st.spinner(f"正在擷取並繪製組員【{emp_id}】的月班表..."):
@@ -263,7 +264,7 @@ def show_crew_schedule_modal(
                 unit_label,
                 badge_title=badge_title,
             )
-            st.success(f"已成功載入【{emp_name} ({parsed_id})】的完整班表 請稍後！")
+            st.success(f"已成功載入【{emp_name} ({parsed_id})】的完整班表！")
             render_zoomable_image(buf, height=360)
 
             st.download_button(
