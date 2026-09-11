@@ -22,14 +22,6 @@ except ImportError:
     WHITELIST_FILE = "whitelist.json"
 
 try:
-    from modules.components import view_feedback_img_modal
-except ImportError:
-    try:
-        from modules.components import show_feedback_modal as view_feedback_img_modal
-    except ImportError:
-        view_feedback_img_modal = None
-
-try:
     from modules.services import load_system_config, save_system_config
 except ImportError:
     def load_system_config() -> Dict[str, Any]:
@@ -414,6 +406,12 @@ def extract_device_info(detail_str: str) -> str:
 # -----------------------------------------------------------------------------
 def render_admin_panel() -> None:
     """系統管理員後台控制台"""
+    # 延遲引用避開與 components 模組的交叉引用死結
+    try:
+        from modules.components import view_feedback_img_modal
+    except ImportError:
+        view_feedback_img_modal = None
+
     st.markdown(
         """
         <style>
