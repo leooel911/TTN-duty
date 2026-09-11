@@ -13,8 +13,8 @@ from modules.services import process_file_data
 from modules.utils import log_activity, safe_read_excel
 
 
-def render_zoomable_image(image_bytes: Any) -> None:
-    """渲染支援浮動控制列、雙指捏合縮放、拖曳與按鈕控制的班表元件 (HTML5 / Panzoom)"""
+def render_zoomable_modal_image(image_bytes: Any) -> None:
+    """彈窗內專用的無按鈕雙指縮放圖片元件 (Panzoom)"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
@@ -38,107 +38,38 @@ def render_zoomable_image(image_bytes: Any) -> None:
         margin: 0;
         padding: 0;
         background-color: transparent;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         overflow: hidden;
       }}
-      
-      .zoom-wrapper {{
-        position: relative;
+      .modal-zoom-container {{
         width: 100%;
-        height: 250px;
+        height: 65vh;
         background: #020617;
-        border-radius: 12px;
-        border: 1.5px solid rgba(56, 189, 248, 0.35);
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+        border-radius: 8px;
         overflow: hidden;
-      }}
-      
-      .zoom-container {{
-        width: 100%;
-        height: 100%;
+        position: relative;
+        touch-action: none;
+        cursor: grab;
         display: flex;
         justify-content: center;
         align-items: center;
-        overflow: hidden;
-        cursor: grab;
-        touch-action: none;
+        border: 1px solid rgba(56, 189, 248, 0.3);
       }}
-      .zoom-container:active {{
+      .modal-zoom-container:active {{
         cursor: grabbing;
       }}
-      
-      .zoom-img {{
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
+      .modal-zoom-img {{
+        width: 100%;
+        height: auto;
         display: block;
         user-select: none;
         -webkit-user-drag: none;
-      }}
-      
-      /* 浮動控制列 (Glassmorphism 樣式) */
-      .floating-toolbar {{
-        position: absolute;
-        bottom: 8px;
-        left: 8px;
-        right: 8px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 6px 10px;
-        background: rgba(15, 23, 42, 0.82);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 8px;
-        pointer-events: auto;
-        z-index: 10;
-      }}
-      
-      .hint-badge {{
-        font-size: 11px;
-        color: #38BDF8;
-        font-weight: 700;
-        letter-spacing: 0.2px;
-      }}
-      
-      .btn-group {{
-        display: flex;
-        gap: 5px;
-      }}
-      
-      .zoom-btn {{
-        background: rgba(56, 189, 248, 0.2);
-        color: #38BDF8;
-        border: 1px solid rgba(56, 189, 248, 0.4);
-        border-radius: 6px;
-        padding: 3px 8px;
-        font-size: 11.5px;
-        font-weight: 800;
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }}
-      .zoom-btn:active {{
-        background: rgba(56, 189, 248, 0.4);
-        color: #FFFFFF;
       }}
     </style>
     </head>
     <body>
 
-    <div class="zoom-wrapper">
-      <div class="zoom-container" id="panzoomArea">
-        <img id="scheduleImg" src="data:image/png;base64,{encoded}" alt="Personal Schedule" class="zoom-img" />
-      </div>
-      
-      <div class="floating-toolbar">
-        <div class="hint-badge">雙指縮放 / 滑動拖曳</div>
-        <div class="btn-group">
-          <button class="zoom-btn" onclick="zoomIn()">＋ 放大</button>
-          <button class="zoom-btn" onclick="zoomOut()">－ 縮小</button>
-          <button class="zoom-btn" onclick="resetZoom()">↺ 重置</button>
-        </div>
-      </div>
+    <div class="modal-zoom-container" id="panzoomArea">
+      <img id="scheduleImg" src="data:image/png;base64,{encoded}" alt="Personal Schedule" class="modal-zoom-img" />
     </div>
 
     <script>
@@ -163,15 +94,35 @@ def render_zoomable_image(image_bytes: Any) -> None:
       }} else {{
         elem.onload = initPanzoom;
       }}
-
-      function zoomIn() {{ if(panzoom) panzoom.zoomIn(); }}
-      function zoomOut() {{ if(panzoom) panzoom.zoomOut(); }}
-      function resetZoom() {{ if(panzoom) panzoom.reset(); }}
     </script>
     </body>
     </html>
     """
-    st.components.v1.html(html_code, height=265, scrolling=False)
+    st.components.v1.html(html_code, height=460, scrolling=False)
+
+
+@st.dialog("個人班表全螢幕放大檢視", width="large")
+def show_zoom_schedule_modal(image_bytes: Any) -> None:
+    """彈窗：檢視放大版月班表"""
+    st.caption("支援雙指捏合放大與單指滑動拖曳（按右上角 ✕ 可關閉視窗）")
+    render_zoomable_modal_image(image_bytes)
+
+
+def render_zoomable_image(image_bytes: Any) -> None:
+    """主頁面預覽：完整呈現圖片並提供彈窗檢視按鈕"""
+    if hasattr(image_bytes, "getvalue"):
+        raw_bytes = image_bytes.getvalue()
+    elif isinstance(image_bytes, bytes):
+        raw_bytes = image_bytes
+    else:
+        raw_bytes = b""
+
+    # 1. 主頁面先 100% 完整顯示圖檔
+    st.image(raw_bytes, use_container_width=True)
+
+    # 2. 點擊開啟縮放彈窗按鈕
+    if st.button("點擊開啟全螢幕放大檢視視窗", type="primary", use_container_width=True):
+        show_zoom_schedule_modal(raw_bytes)
 
 
 def show_holiday_notice(holidays: List[str], week_range_str: str = "") -> None:
@@ -211,7 +162,7 @@ def show_crew_schedule_modal(
                 badge_title=badge_title,
             )
             st.success(f"已成功載入【{emp_name} ({parsed_id})】的完整班表")
-            render_zoomable_image(buf)
+            render_zoomable_modal_image(buf)
 
             st.download_button(
                 label=f"下載 {emp_name} 月班表圖檔",
