@@ -206,6 +206,54 @@ def render_user_home() -> None:
             padding-top: 0.6rem !important;
         }
 
+        /* 職位膠囊選擇列 (Role Segmented Control Bar) */
+        .role-pill-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            background: rgba(15, 23, 42, 0.7);
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        /* 美化原生 Checkbox 按鈕態 */
+        div[data-testid="stCheckbox"] {
+            background: rgba(30, 41, 59, 0.6) !important;
+            border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
+            border-radius: 8px !important;
+            padding: 6px 12px !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+
+        div[data-testid="stCheckbox"]:hover {
+            border-color: rgba(255, 255, 255, 0.3) !important;
+            background: rgba(30, 41, 59, 0.9) !important;
+            transform: translateY(-1px);
+        }
+
+        /* 駕駛特定樣式發光 */
+        div[data-testid="stCheckbox"]:has(input[aria-label*="駕駛"]:checked) {
+            border-color: #38BDF8 !important;
+            background: linear-gradient(135deg, rgba(14, 116, 144, 0.35) 0%, rgba(15, 23, 42, 0.8) 100%) !important;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.3) !important;
+        }
+
+        /* 列車長特定樣式發光 */
+        div[data-testid="stCheckbox"]:has(input[aria-label*="列車長"]:checked) {
+            border-color: #34D399 !important;
+            background: linear-gradient(135deg, rgba(6, 95, 70, 0.35) 0%, rgba(15, 23, 42, 0.8) 100%) !important;
+            box-shadow: 0 0 12px rgba(52, 211, 153, 0.3) !important;
+        }
+
+        /* 服勤員特定樣式發光 */
+        div[data-testid="stCheckbox"]:has(input[aria-label*="服勤員"]:checked) {
+            border-color: #FBBF24 !important;
+            background: linear-gradient(135deg, rgba(120, 53, 15, 0.35) 0%, rgba(15, 23, 42, 0.8) 100%) !important;
+            box-shadow: 0 0 12px rgba(251, 191, 36, 0.3) !important;
+        }
+
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -610,18 +658,35 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        selected_roles = st.multiselect(
-            "選擇欲查詢之職位類別（可多選併同色比對）",
-            options=["駕駛", "列車長", "服勤員"],
-            default=["駕駛", "列車長", "服勤員"],
-            key="win_selected_roles",
-            on_change=reset_win_search,
+        st.markdown(
+            """
+            <div style="font-size: 12.5px; font-weight: 700; color: #94A3B8; margin-bottom: 6px;">
+                點擊勾選查詢職位類別（可多選併同色比對）
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
-        if not selected_roles:
-            st.warning("⚠️ 請至少選擇一個職位類別以進行查詢！")
+        # 採用高質感 Segmented Pill Control 方案
+        col_pill1, col_pill2, col_pill3 = st.columns(3)
+        with col_pill1:
+            chk_driver = st.checkbox("駕駛 (TD)", value=True, key="role_chk_driver", on_change=reset_win_search)
+        with col_pill2:
+            chk_conductor = st.checkbox("列車長 (TM)", value=True, key="role_chk_conductor", on_change=reset_win_search)
+        with col_pill3:
+            chk_crew = st.checkbox("服勤員 (TA)", value=True, key="role_chk_crew", on_change=reset_win_search)
+
+        roles_to_query = []
+        if chk_driver:
+            roles_to_query.append("駕駛")
+        if chk_conductor:
+            roles_to_query.append("列車長")
+        if chk_crew:
+            roles_to_query.append("服勤員")
+
+        if not roles_to_query:
+            st.warning("⚠️ 請至少點選一個職位類別以進行查詢！")
         else:
-            roles_to_query = selected_roles
             morn_start_time = "03:00" if "駕駛" in roles_to_query else "05:00"
 
             if "win_time_slider" not in st.session_state:
@@ -1402,7 +1467,7 @@ def render_user_home() -> None:
                                             card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else f"crew-card-integrated card-theme-{theme_idx}"
 
                                             card_html = f"""<div class="{card_class}">
-<div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+<div style="display: flex; justify-content: space-between; align- items: center; width: 100%;">
     <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_cand_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_cand_id})</span>
     </div>
