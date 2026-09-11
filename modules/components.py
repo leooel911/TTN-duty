@@ -14,7 +14,7 @@ from modules.utils import log_activity, safe_read_excel
 
 
 def render_zoomable_modal_image(image_bytes: Any) -> None:
-    """彈窗內專用的無按鈕雙指縮放圖片元件 (Panzoom)"""
+    """彈窗專用：無按鈕、支援手機雙指捏合放大與單指拖曳的圖片元件"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
@@ -42,7 +42,7 @@ def render_zoomable_modal_image(image_bytes: Any) -> None:
       }}
       .modal-zoom-container {{
         width: 100%;
-        height: 65vh;
+        height: 60vh;
         background: #020617;
         border-radius: 8px;
         overflow: hidden;
@@ -98,18 +98,18 @@ def render_zoomable_modal_image(image_bytes: Any) -> None:
     </body>
     </html>
     """
-    st.components.v1.html(html_code, height=460, scrolling=False)
+    st.components.v1.html(html_code, height=430, scrolling=False)
 
 
 @st.dialog("個人班表全螢幕放大檢視", width="large")
 def show_zoom_schedule_modal(image_bytes: Any) -> None:
-    """彈窗：檢視放大版月班表"""
-    st.caption("支援雙指捏合放大與單指滑動拖曳（按右上角 ✕ 可關閉視窗）")
+    """跳出對話框：顯示可雙指放大的完整月班表"""
+    st.caption("支援雙指捏合放大與單指滑動拖曳（可按右上角 ✕ 關閉視窗）")
     render_zoomable_modal_image(image_bytes)
 
 
 def render_zoomable_image(image_bytes: Any) -> None:
-    """主頁面預覽：完整呈現圖片並提供彈窗檢視按鈕"""
+    """主頁面預覽：完整呈現圖片，並提供彈窗放大檢視按鈕"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
@@ -117,10 +117,10 @@ def render_zoomable_image(image_bytes: Any) -> None:
     else:
         raw_bytes = b""
 
-    # 1. 主頁面先 100% 完整顯示圖檔
+    # 1. 主頁面先 100% 完整顯示圖檔 (無任何壓迫與裁切)
     st.image(raw_bytes, use_container_width=True)
 
-    # 2. 點擊開啟縮放彈窗按鈕
+    # 2. 提供全螢幕放大檢視彈窗按鈕
     if st.button("點擊開啟全螢幕放大檢視視窗", type="primary", use_container_width=True):
         show_zoom_schedule_modal(raw_bytes)
 
