@@ -19,6 +19,17 @@ if BASE_DIR not in sys.path:
 from config import DATA_DIR, LEAVE_CODES, LOG_FILE, NATIONAL_HOLIDAYS, TAIWAN_TZ, UNITS
 
 
+def normalize_date_str(val: Any) -> str:
+    """將各種日期格式 (如 "2026/09/06", "09/06", "9/6", "09/06(日)") 統一轉換為標準 "M/D" 格式"""
+    if pd.isna(val) or val is None:
+        return ""
+    s = str(val).strip()
+    m = re.search(r"(?:\d{4}/)?(\d{1,2})/(\d{1,2})", s)
+    if m:
+        return f"{int(m.group(1))}/{int(m.group(2))}"
+    return ""
+
+
 def get_file_mtime_str(file_path: str) -> str:
     """取得檔案最後修改時間字串"""
     if isinstance(file_path, str) and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
@@ -72,14 +83,11 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     if not lines:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
-    # 1. 抓取所有符合時間格式 (H:MM 或 HH:MM) 的字串並統一補零
     raw_times = re.findall(r"\b\d{1,2}:\d{2}\b", val_str)
     all_times = [f"{int(tm.split(':')[0]):02d}:{tm.split(':')[1]}" for tm in raw_times]
 
-    # 2. 分離非時間欄位 (車次班號、假別等)
     non_time_lines = [l for l in lines if not re.search(r"\b\d{1,2}:\d{2}\b", l)]
 
-    # 3. 若儲存格內完全無時間列 (如單純休假/請假文字)
     if not all_times:
         first_line = lines[0]
         note_lines = [l for l in lines[1:] if not re.search(r"\b\d{1,2}:\d{2}\b", l)]
@@ -91,18 +99,15 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
             "note": " ".join(note_lines),
         }
 
-    # 4. 按順序提取 Sign-In, Sign-Out 與工時
     start_time = all_times[0] if len(all_times) >= 1 else None
     end_time = all_times[1] if len(all_times) >= 2 else None
     hours_raw = all_times[2] if len(all_times) >= 3 else None
 
-    # 格式化工時顯示 (例如 9h35m)
     hours_str = ""
     if hours_raw:
         h, m = map(int, hours_raw.split(":"))
         hours_str = f"{h}h{m:02d}m"
 
-    # 5. 車次班號 (train_code) 解析
     train_code = "無"
     if non_time_lines:
         real_trains = [
@@ -114,7 +119,6 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
         else:
             train_code = non_time_lines[0]
 
-    # 6. 備註解析：徹底過濾車次與所有時間格式 (如 5:26 或 9:35)
     note_lines = [
         l for l in lines
         if l != train_code and not re.search(r"\b\d{1,2}:\d{2}\b", l)
@@ -179,11 +183,7 @@ def is_overtime(hours_str: Optional[str], train_code: str = "", note: str = "") 
 
 
 def is_town_shift(train_code: str, note: str = "") -> bool:
-    """
-    判斷是否為非正線勤務：
-    1. 只要班號不是以 'N' 開頭（如 TOWN, STD, DS, 庫備等）即視為非正線
-    2. 或包含特定備勤關鍵字
-    """
+    """判斷是否為非正線勤務"""
     tr = str(train_code).strip().upper()
     nt = str(note).strip().upper()
 
@@ -207,16 +207,20 @@ def translate_train_code(code: Any) -> str:
 
 def calculate_consecutive_work_days(row: pd.Series, target_date_str: str) -> int:
     """計算包含指定日期 (target_date_str) 在內的連續出勤天數 (雙向向左與向右擴展)"""
+    norm_target = normalize_date_str(target_date_str)
+    if not norm_target:
+        return 0
+
     date_cols = []
     for idx, col in enumerate(row.index):
         if idx >= 2:
-            m = re.search(r"(\d{1,2}/\d{1,2})", str(col))
-            if m:
-                date_cols.append((idx, m.group(1)))
+            norm_d = normalize_date_str(col)
+            if norm_d:
+                date_cols.append((idx, norm_d))
 
     target_pos = -1
     for pos, (col_idx, d_str) in enumerate(date_cols):
-        if d_str == target_date_str:
+        if d_str == norm_target:
             target_pos = pos
             break
 
@@ -250,7 +254,10 @@ def check_week_has_holiday(target_date: str, date_cols: List[str], columns: Opti
         return False, ""
     try:
         cur_year = date.today().year
-        tm, td = map(int, target_date.split("/"))
+        norm_target = normalize_date_str(target_date)
+        if not norm_target:
+            return False, ""
+        tm, td = map(int, norm_target.split("/"))
         tdt = date(cur_year, tm, td)
         tsun = tdt - timedelta(days=(tdt.weekday() + 1) % 7)
         tsat = tsun + timedelta(days=6)
@@ -259,10 +266,13 @@ def check_week_has_holiday(target_date: str, date_cols: List[str], columns: Opti
         has_hol = False
         for d_str in date_cols:
             try:
-                dm, dd = map(int, d_str.split("/"))
+                norm_d = normalize_date_str(d_str)
+                if not norm_d:
+                    continue
+                dm, dd = map(int, norm_d.split("/"))
                 ddt = date(cur_year, dm, dd)
                 if tsun <= ddt <= tsat:
-                    if d_str in NATIONAL_HOLIDAYS:
+                    if norm_d in NATIONAL_HOLIDAYS or d_str in NATIONAL_HOLIDAYS:
                         has_hol = True
                         break
             except Exception:
@@ -335,11 +345,12 @@ def set_module_maintenance(unit_code: str, module_key: str, state: bool) -> None
 
 def set_simulated_cell(row: pd.Series, date_str: str, val: str) -> pd.Series:
     """模擬換假試算時更新該日期的儲存格"""
+    norm_target = normalize_date_str(date_str)
     new_row = row.copy()
     for idx, col in enumerate(new_row.index):
         if idx >= 2:
-            m = re.search(r"(\d{1,2}/\d{1,2})", str(col))
-            if m and m.group(1) == date_str:
+            norm_d = normalize_date_str(col)
+            if norm_d and norm_d == norm_target:
                 new_row.iloc[idx] = val
                 break
     return new_row
