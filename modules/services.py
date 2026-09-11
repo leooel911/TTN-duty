@@ -53,13 +53,13 @@ def save_system_config(config_dict: Dict[str, Any]) -> bool:
 
 
 def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
-    """讀取指定營運單位的白名單"""
+    """統一讀取白名單（確保全站格式規範化）"""
     whitelist_path = WHITELIST_FILE
     full_data: Dict[str, Any] = {}
 
     if os.path.exists(whitelist_path):
         try:
-            with open(whitelist_path, "r", encoding="utf-8") as f:
+            with open(whitelist_path, "r", encoding="utf-8", errors="ignore") as f:
                 full_data = json.load(f)
                 if full_data and not any(k in UNITS for k in full_data.keys()):
                     full_data = {u: full_data.copy() for u in UNITS.keys()}
@@ -80,9 +80,40 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
     raw_unit_data = full_data.get(unit_code, {})
     normalized_data = {}
     for uid, info in raw_unit_data.items():
-        normalized_data[str(uid).strip().upper()] = info
+        clean_uid = str(uid).strip().upper()
+        if clean_uid:
+            normalized_data[clean_uid] = info
 
     return normalized_data
+
+
+def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
+    """統一儲存特定營運單位的白名單，並即時刷快取"""
+    whitelist_path = WHITELIST_FILE
+    os.makedirs(DATA_DIR, exist_ok=True)
+
+    full_data: Dict[str, Any] = {}
+    if os.path.exists(whitelist_path):
+        try:
+            with open(whitelist_path, "r", encoding="utf-8", errors="ignore") as f:
+                full_data = json.load(f)
+                if full_data and not any(k in UNITS for k in full_data.keys()):
+                    full_data = {u: full_data.copy() for u in UNITS.keys()}
+        except Exception:
+            full_data = {}
+
+    normalized_data = {}
+    for uid, info in unit_data.items():
+        clean_uid = str(uid).strip().upper()
+        if clean_uid:
+            normalized_data[clean_uid] = info
+
+    full_data[unit_code] = normalized_data
+
+    with open(whitelist_path, "w", encoding="utf-8") as f:
+        json.dump(full_data, f, ensure_ascii=False, indent=2)
+
+    st.cache_data.clear()
 
 
 def is_user_allowed(selected_unit: str, emp_id: Any, pass_code: str = "") -> Tuple[bool, Optional[Dict[str, Any]]]:
