@@ -183,7 +183,7 @@ def is_overtime(hours_str: Optional[str], train_code: str = "", note: str = "") 
 
 
 def is_town_shift(train_code: str, note: str = "") -> bool:
-    """判斷是否為非正線勤務"""
+    """判斷是否為非正線勤務（包含駐廠、預備、訓練車次 60xx/65xx 及特種代碼）"""
     tr = str(train_code).strip().upper()
     nt = str(note).strip().upper()
 
@@ -194,7 +194,14 @@ def is_town_shift(train_code: str, note: str = "") -> bool:
         return True
 
     keys = ["TOWN", "STD", "DS", "駐廠", "預備", "庫", "備"]
-    return any(k in tr or k in nt for k in keys)
+    if any(k in tr or k in nt for k in keys):
+        return True
+
+    m = re.search(r"\d{4}", tr)
+    if m and int(m.group(0)) >= 6000:
+        return True
+
+    return False
 
 
 def translate_train_code(code: Any) -> str:
