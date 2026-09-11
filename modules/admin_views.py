@@ -3,7 +3,7 @@ import json
 import os
 import re
 import zipfile
-from datetime import datetime, date
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
@@ -268,7 +268,7 @@ def save_feedback_ticket(ticket_info: Dict[str, Any]) -> None:
 
 
 def parse_structured_log(raw_log: Any) -> Dict[str, str]:
-    """解析日誌條目"""
+    """高靈敏度解析日誌條目，自動從紀錄內容精準提取員編與單位"""
     timestamp = "--"
     user_info = "系統/訪客"
     unit_info = "全站"
@@ -284,25 +284,40 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
     else:
         raw_str = str(raw_log).strip()
         parts = [p.strip() for p in raw_str.split("|")]
-        if len(parts) >= 2:
+        if len(parts) >= 2 and re.match(r"\d{4}-\d{2}-\d{2}", parts[0]):
             timestamp = parts[0]
             action_detail = " | ".join(parts[1:])
         else:
             action_detail = raw_str
 
+    # 1. 自動從紀錄中解析【營運單位】
     unit_match = re.search(r"單位[:：]\s*([A-Za-z0-9_]+)", action_detail)
     if unit_match:
         unit_info = unit_match.group(1).upper()
 
-    crew_match = re.search(r"(?:組員|目標組員|解析組員|操作者)[:：]\s*([^\s\|]+)", action_detail)
-    user_match = re.search(r"\[([A-Za-z0-9_\u4e00-\u9fa5]+)\]", action_detail)
+    # 2. 自動從紀錄中比對【操作者 / 員編】
+    if user_info in ["系統/訪客", "訪客", "", "NONE", "NAN", "None"]:
+        # 比對「使用者登入系統: A026925」
+        login_match = re.search(r"使用者登入系統[:：]\s*([^\s\(]+)", action_detail)
+        # 比對「員編/目標組員/解析組員/操作者: XXX」
+        crew_match = re.search(r"(?:組員|目標組員|解析組員|操作者|員編)[:：]\s*([^\s\|,\(\)]+)", action_detail)
+        # 比對標準員編格式 (英文字母 + 6位數字，例如 A023300)
+        emp_code_match = re.search(r"\b([A-Za-z]\d{6})\b", action_detail)
+        # 比對括號或中括號內的名稱/員編 (例如 [波莉] 或 (A023300))
+        bracket_match = re.search(r"[\[\(]([A-Za-z0-9_\u4e00-\u9fa5]+)[\]\)]", action_detail)
 
-    if user_info in ["系統/訪客", "訪客", "", "NONE", "NAN"]:
-        if crew_match:
-            user_info = crew_match.group(1)
-        elif user_match:
-            user_info = user_match.group(1)
+        if login_match:
+            user_info = login_match.group(1).strip()
+        elif crew_match:
+            user_info = crew_match.group(1).strip()
+        elif emp_code_match:
+            user_info = emp_code_match.group(1).strip().upper()
+        elif bracket_match:
+            user_info = bracket_match.group(1).strip()
+        elif "管理員" in action_detail:
+            user_info = "ADMIN (管理員)"
 
+    # 3. 自動分類【動作類別】
     if category in ["一般操作", ""]:
         if "管理員" in action_detail or "後台" in action_detail:
             category = "管理員操作"
@@ -310,12 +325,12 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
             category = "換班快篩"
         elif "換假" in action_detail:
             category = "換假快篩"
-        elif "繪製" in action_detail or "圖檔" in action_detail:
+        elif "繪製" in action_detail or "圖檔" in action_detail or "個人班表" in action_detail:
             category = "月班表繪製"
         elif "登入" in action_detail or "驗證" in action_detail:
             category = "帳號登入"
-        elif "工單" in action_detail or "回報" in action_detail:
-            category = "問題回報"
+        elif "工單" in action_detail or "回報" in action_detail or "權限申請" in action_detail:
+            category = "問題與申請"
 
     return {
         "時間 (Timestamp)": timestamp,
@@ -972,7 +987,7 @@ def render_admin_panel() -> None:
                 sel_unit = st.selectbox("依單位過濾", all_units, key="log_unit_filter")
 
             with f_col2:
-                all_cats = ["全部分類", "換班快篩", "換假快篩", "月班表繪製", "管理員操作", "帳號登入", "問題回報", "一般操作"]
+                all_cats = ["全部分類", "換班快篩", "換假快篩", "月班表繪製", "管理員操作", "帳號登入", "問題與申請", "一般操作"]
                 sel_cat = st.selectbox("依操作類別過濾", all_cats, key="log_cat_filter")
 
             with f_col3:
