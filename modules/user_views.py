@@ -418,11 +418,13 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
-        /* 統一包含一般主按鈕 (st.button) 與 表單提交按鈕 (st.form_submit_button) 的藍色漸層風格 */
-        button[data-testid="stBaseButton-primary"],
-        button[kind="primary"],
+        /* 徹底覆蓋並統一三大主要按鈕（一般 Primary 按鈕 + 表單 Form Submit 按鈕）的質感樣式 */
+        div[data-testid="stFormSubmitButton"] > button,
         div[data-testid="stFormSubmitButton"] button,
-        button[data-testid="stFormSubmitButton"] {
+        button[data-testid="stBaseButton-primary"],
+        button[data-testid="stBaseButton-primaryFormSubmit"],
+        button[kind="primary"],
+        button[kind="primaryFormSubmit"] {
             background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%) !important;
             color: #FFFFFF !important;
             border: 1.5px solid #38BDF8 !important;
@@ -432,21 +434,27 @@ def render_user_home() -> None:
             transition: all 0.25s ease-in-out !important;
             margin-top: 6px !important;
             margin-bottom: 12px !important;
+            width: 100% !important;
         }
 
-        button[data-testid="stBaseButton-primary"]:hover,
-        button[kind="primary"]:hover,
+        div[data-testid="stFormSubmitButton"] > button:hover,
         div[data-testid="stFormSubmitButton"] button:hover,
-        button[data-testid="stFormSubmitButton"]:hover {
+        button[data-testid="stBaseButton-primary"]:hover,
+        button[data-testid="stBaseButton-primaryFormSubmit"]:hover,
+        button[kind="primary"]:hover,
+        button[kind="primaryFormSubmit"]:hover {
             background: linear-gradient(135deg, #0369A1 0%, #1E40AF 100%) !important;
+            border-color: #38BDF8 !important;
             box-shadow: 0 6px 24px rgba(56, 189, 248, 0.8) !important;
             transform: translateY(-1px) !important;
         }
 
-        button[data-testid="stBaseButton-primary"] p,
-        button[kind="primary"] p,
+        div[data-testid="stFormSubmitButton"] > button p,
         div[data-testid="stFormSubmitButton"] button p,
-        button[data-testid="stFormSubmitButton"] p {
+        button[data-testid="stBaseButton-primary"] p,
+        button[data-testid="stBaseButton-primaryFormSubmit"] p,
+        button[kind="primary"] p,
+        button[kind="primaryFormSubmit"] p {
             font-size: 15px !important;
             font-weight: 800 !important;
             color: #FFFFFF !important;
@@ -1506,7 +1514,7 @@ def render_user_home() -> None:
     </div>
     <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
         <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_cand_signin}</div>
-        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_cand_signout}</div>
+        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_signout}</div>
     </div>
 </div>
 </div>"""
