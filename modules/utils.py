@@ -21,6 +21,9 @@ from config import DATA_DIR, LEAVE_CODES, LOG_FILE, NATIONAL_HOLIDAYS, TAIWAN_TZ
 # 台灣時區預設值 (UTC+8)
 TW_TZ = timezone(timedelta(hours=8))
 
+# 預編譯正線車次規則：[第一碼運轉區域 N/C/S] + [第二碼職位別 D/M/F/G/H] + [三位數以上班別數字]
+MAINLINE_PATTERN = re.compile(r"^[NCS][DMFGH]\d+", re.IGNORECASE)
+
 
 def parse_user_agent(ua_string: str) -> str:
     """簡易解析 User-Agent 為易讀的設備與瀏覽器標籤"""
@@ -235,21 +238,16 @@ def is_overtime(hours_str: Optional[str], train_code: str = "", note: str = "") 
 
 def is_town_shift(train_code: str, note: str = "") -> bool:
     """
-    判斷是否為「非正線」勤務（已精準排除 FAC 家庭照顧假等請假代碼）
-    包含 11 組官方常見非正線勤務代碼：
-    STD, DTT, TOWN, TTN, TTC, TTS, OGT, OGC, DS, H9, WRSL, E008G,I308a,
+    判斷是否為「非正線」勤務
+    邏輯：只要包含有效車次代碼且「不符合正線規則」(N/C/S + D/M/F/G/H + 數字)，即判定為非正線 (True)
+    如 E008G, I308a, DTT, OGC, WRSL 等均會被正確判為非正線
     """
     tr = str(train_code).strip().upper()
 
-    if not tr or tr in ["無", "NAN", "NONE", "休", "DO"]:
+    if not tr or tr in ["無", "NAN", "NONE", "休", "OFF", "DO"]:
         return False
 
-    non_line_codes = [
-        "STD", "DTT", "TOWN", "TTN", "TTC", "TTS",
-        "OGT", "OGC", "DS", "H9", "WRSL"
-    ]
-
-    return any(k in tr for k in non_line_codes)
+    return not bool(MAINLINE_PATTERN.match(tr))
 
 
 def translate_train_code(code: Any) -> str:
