@@ -1497,7 +1497,7 @@ def render_user_home() -> None:
                                             card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else f"crew-card-integrated card-theme-{theme_idx}"
 
                                             card_html = f"""<div class="{card_class}">
-<div style="display: flex; justify-content: space-between; align- its: center; width: 100%;">
+<div style="display: flex; justify-content: space-between; align- items: center; width: 100%;">
     <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_cand_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_cand_id})</span>
     </div>
