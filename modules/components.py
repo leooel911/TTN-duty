@@ -14,7 +14,7 @@ from modules.utils import log_activity, safe_read_excel
 
 
 def render_zoomable_image(image_bytes: Any) -> None:
-    """渲染支援手機兩指縮放、拖曳與快捷按鈕控制的圖片元件 (HTML5 / Panzoom)"""
+    """渲染支援手機雙指捏合縮放、拖曳與快捷按鈕控制的圖片元件 (HTML5 / Panzoom)"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
@@ -42,13 +42,13 @@ def render_zoomable_image(image_bytes: Any) -> None:
         width: 100%;
         background: #0F172A;
         border-radius: 10px;
-        border: 1px solid rgba(56, 189, 248, 0.3);
+        border: 1.5px solid rgba(56, 189, 248, 0.4);
         box-shadow: 0 4px 18px rgba(0,0,0,0.4);
         overflow: hidden;
       }}
       .zoom-container {{
         width: 100%;
-        height: 440px;
+        height: 380px;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -111,7 +111,7 @@ def render_zoomable_image(image_bytes: Any) -> None:
         <img id="scheduleImg" src="data:image/png;base64,{encoded}" alt="Personal Schedule" class="zoom-img" />
       </div>
       <div class="toolbar">
-        <div class="hint-badge">🔍 支援手機兩指縮放 / 拖曳移動</div>
+        <div class="hint-badge">🔍 支援雙指縮放 / 滑動拖曳</div>
         <div class="btn-group">
           <button class="zoom-btn" onclick="zoomIn()">＋ 放大</button>
           <button class="zoom-btn" onclick="zoomOut()">－ 縮小</button>
@@ -139,7 +139,7 @@ def render_zoomable_image(image_bytes: Any) -> None:
     </body>
     </html>
     """
-    st.components.v1.html(html_code, height=500, scrolling=False)
+    st.components.v1.html(html_code, height=440, scrolling=False)
 
 
 def show_holiday_notice(holidays: List[str], week_range_str: str = "") -> None:
