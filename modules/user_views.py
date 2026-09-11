@@ -266,55 +266,89 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
+        /* ===== ⚡ Segmented Control 滿版 100% 均分 + 賽博龐克外框亮藍高光 (完美還原圖一) ===== */
         div[data-testid="stSegmentedControl"] {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            padding: 0 !important;
             width: 100% !important;
+            max-width: 100% !important;
             margin-bottom: 12px !important;
         }
 
+        /* 外層對齊外框底板 */
         div[data-testid="stSegmentedControl"] > div,
+        div[data-testid="stSegmentedControl"] div[data-baseweb="segmented-control"],
+        div[data-testid="stSegmentedControl"] div[role="radiogroup"],
         div[data-testid="stSegmentedControl"] div[role="group"] {
             display: flex !important;
-            gap: 8px !important;
+            flex-direction: row !important;
             width: 100% !important;
-            background: transparent !important;
-            border: none !important;
-        }
-
-        div[data-testid="stSegmentedControl"] button,
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"] {
-            flex: 1 !important;
+            max-width: 100% !important;
+            background: rgba(15, 23, 42, 0.8) !important;
+            border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
             border-radius: 12px !important;
-            border: 1.5px solid rgba(255, 255, 255, 0.18) !important;
-            background: #0B101D !important;
-            color: #94A3B8 !important;
-            font-size: 14px !important;
-            font-weight: 700 !important;
-            padding: 8px 12px !important;
-            margin: 0 !important;
-            transition: all 0.25s ease-in-out !important;
-            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5) !important;
+            padding: 4px !important;
+            gap: 4px !important;
+            box-sizing: border-box !important;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
         }
 
+        /* 強制內部三選項 100% 均分平分幅寬 (Flex 1/3) */
+        div[data-testid="stSegmentedControl"] button,
+        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"],
+        div[data-testid="stSegmentedControl"] label {
+            flex: 1 1 0% !important;
+            width: 33.333% !important;
+            min-width: 0 !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            border-radius: 8px !important;
+            border: none !important;
+            background: transparent !important;
+            color: #94A3B8 !important;
+            padding: 8px 4px !important;
+            margin: 0 !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: none !important;
+            cursor: pointer !important;
+        }
+
+        /* 未選取 Hover 反應 */
         div[data-testid="stSegmentedControl"] button:hover,
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"]:hover {
             color: #F1F5F9 !important;
-            background: rgba(255, 255, 255, 0.08) !important;
-            border-color: rgba(0, 163, 255, 0.4) !important;
+            background: rgba(255, 255, 255, 0.06) !important;
         }
 
+        /* 選取狀態：滿版高光亮藍 (與圖一選取狀態完全一致) */
         div[data-testid="stSegmentedControl"] button[aria-selected="true"],
-        div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"],
+        div[data-testid="stSegmentedControl"] button[aria-checked="true"],
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"],
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][data-checked="true"] {
-            background: #00A3FF !important;
-            color: #000000 !important;
+        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][data-checked="true"],
+        div[data-testid="stSegmentedControl"] label:has(input:checked) {
+            background: linear-gradient(135deg, #0284C7 0%, #00A3FF 100%) !important;
+            color: #FFFFFF !important;
             font-weight: 900 !important;
-            border: 1.5px solid #38BDF8 !important;
-            box-shadow: 0 0 16px rgba(0, 163, 255, 0.85), 0 2px 10px rgba(0, 163, 255, 0.5) !important;
+            border-radius: 8px !important;
+            box-shadow: 0 0 14px rgba(0, 163, 255, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.35) !important;
+        }
+
+        /* 文字樣式微調 */
+        div[data-testid="stSegmentedControl"] p,
+        div[data-testid="stSegmentedControl"] span {
+            font-size: 14px !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.5px !important;
+            margin: 0 !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+        }
+
+        div[data-testid="stSegmentedControl"] button[aria-selected="true"] p,
+        div[data-testid="stSegmentedControl"] button[aria-checked="true"] p,
+        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"] p,
+        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][data-checked="true"] p {
+            color: #FFFFFF !important;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.6) !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
@@ -896,7 +930,6 @@ def render_user_home() -> None:
                     if saved_target_date and saved_target_date in date_cols:
                         default_win_idx = date_cols.index(saved_target_date)
                     else:
-                        # 🔑 預設使用「明天」，若無則嘗試「今天」
                         tomorrow_dt = date.today() + timedelta(days=1)
                         found_idx = None
                         for idx, d_str in enumerate(date_cols):
@@ -1298,7 +1331,6 @@ def render_user_home() -> None:
                     if saved_ex_target and saved_ex_target in date_cols:
                         default_ex_idx = date_cols.index(saved_ex_target)
                     else:
-                        # 🔑 預設使用「明天」，若無則嘗試「今天」
                         tomorrow_dt = date.today() + timedelta(days=1)
                         found_idx = None
                         for idx, d_str in enumerate(date_cols):
