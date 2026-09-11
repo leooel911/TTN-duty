@@ -1062,11 +1062,10 @@ def render_user_home() -> None:
                                             use_container_width=True,
                                         ):
                                             log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_name}({clean_id})")
-                                            comp.show_crew_schedule_modal(
-                                                clean_id,
-                                                current_unit_label,
-                                                badge_title="Window Filter | C.L.F",
-                                            )
+                                            st.session_state["modal_emp_id"] = clean_id
+                                            st.session_state["modal_unit"] = current_unit_label
+                                            st.session_state["modal_badge"] = "Window Filter | C.L.F"
+                                            st.rerun()
                         else:
                             st.info("在指定條件內，找不到符合的人員")
 
@@ -1530,11 +1529,10 @@ def render_user_home() -> None:
                                                 use_container_width=True,
                                             ):
                                                 log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
-                                                comp.show_crew_schedule_modal(
-                                                    clean_cand_id,
-                                                    current_unit_label,
-                                                    badge_title="Exchange | C.L.F",
-                                                )
+                                                st.session_state["modal_emp_id"] = clean_cand_id
+                                                st.session_state["modal_unit"] = current_unit_label
+                                                st.session_state["modal_badge"] = "Exchange | C.L.F"
+                                                st.rerun()
                             else:
                                 st.info(
                                     "在指定條件內，找不到符合的可換假人員"
@@ -1542,6 +1540,13 @@ def render_user_home() -> None:
                                 )
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
+
+    # 【全域彈窗觸發檢查】確保點擊按鈕後能在頁面重整時正確跳出彈窗
+    if st.session_state.get("modal_emp_id"):
+        target_id = st.session_state.pop("modal_emp_id")
+        target_unit = st.session_state.pop("modal_unit", current_unit_label)
+        target_badge = st.session_state.pop("modal_badge", "C.L.F")
+        comp.show_crew_schedule_modal(target_id, target_unit, badge_title=target_badge)
 
 
 if __name__ == "__main__":
