@@ -209,11 +209,11 @@ def render_user_home() -> None:
 
         /* 全域統一標題樣式 Class */
         .section-field-label {
-            font-size: 15px !important;
+            font-size: 14px !important;
             font-weight: 800 !important;
             color: #F8FAFC !important;
-            margin-top: 10px !important;
-            margin-bottom: 8px !important;
+            margin-top: 8px !important;
+            margin-bottom: 6px !important;
             letter-spacing: 0.3px !important;
             line-height: 1.3 !important;
         }
@@ -222,14 +222,14 @@ def render_user_home() -> None:
         div[data-testid="stWidgetLabel"] p,
         div[data-testid="stWidgetLabel"] label,
         label[data-testid="stWidgetLabel"] p {
-            font-size: 15px !important;
+            font-size: 14px !important;
             font-weight: 800 !important;
             color: #F8FAFC !important;
             letter-spacing: 0.3px !important;
-            margin-bottom: 6px !important;
+            margin-bottom: 4px !important;
         }
 
-        /* 徹底覆蓋 Streamlit 預設膠囊，實現完全分離與亮燈效果 (Segmented Control) */
+        /* 覆蓋 Streamlit 預設膠囊 (Segmented Control) */
         div[data-testid="stSegmentedControl"] {
             background: transparent !important;
             border: none !important;
@@ -248,7 +248,6 @@ def render_user_home() -> None:
             border: none !important;
         }
 
-        /* 預設狀態：完全獨立分離的低調黑框膠囊 */
         div[data-testid="stSegmentedControl"] button,
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"] {
             flex: 1 !important;
@@ -271,7 +270,6 @@ def render_user_home() -> None:
             border-color: rgba(0, 163, 255, 0.4) !important;
         }
 
-        /* 選中亮燈狀態 (Neon Blue Active Glow) */
         div[data-testid="stSegmentedControl"] button[aria-selected="true"],
         div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"],
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"],
@@ -283,6 +281,53 @@ def render_user_home() -> None:
             box-shadow: 0 0 16px rgba(0, 163, 255, 0.85), 0 2px 10px rgba(0, 163, 255, 0.5) !important;
         }
 
+        /* 強制所有橫向欄位 (st.columns) 在行動端/窄螢幕維持水平並排，不自動拆成多行 */
+        div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            gap: 6px !important;
+            box-sizing: border-box !important;
+        }
+
+        div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            min-width: 0 !important;
+            flex: 1 1 0% !important;
+            box-sizing: border-box !important;
+        }
+
+        /* 快捷時段次要按鈕的高度與字體壓縮，打造精緻緊緻感 */
+        div[data-testid="stHorizontalBlock"] button[kind="secondary"],
+        div[data-testid="stHorizontalBlock"] button[data-testid="stBaseButton-secondary"] {
+            padding: 6px 4px !important;
+            font-size: 12.5px !important;
+            border-radius: 8px !important;
+            margin-top: 2px !important;
+            margin-bottom: 4px !important;
+            background-color: rgba(15, 23, 42, 0.6) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+
+        div[data-testid="stHorizontalBlock"] button[kind="secondary"]:hover,
+        div[data-testid="stHorizontalBlock"] button[data-testid="stBaseButton-secondary"]:hover {
+            border-color: #38BDF8 !important;
+            background-color: rgba(56, 189, 248, 0.12) !important;
+        }
+
+        div[data-testid="stHorizontalBlock"] button[kind="secondary"] p,
+        div[data-testid="stHorizontalBlock"] button[data-testid="stBaseButton-secondary"] p {
+            font-size: 12.5px !important;
+            font-weight: 600 !important;
+            color: #E2E8F0 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            margin: 0 !important;
+        }
+
+        /* 卡片佈局 CSS */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -418,7 +463,7 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
-        /* 徹底覆蓋並統一三大主要按鈕（一般 Primary 按鈕 + 表單 Form Submit 按鈕）的質感樣式 */
+        /* 統一藍色漸層主按鈕風格 */
         div[data-testid="stFormSubmitButton"] > button,
         div[data-testid="stFormSubmitButton"] button,
         button[data-testid="stBaseButton-primary"],
@@ -796,6 +841,8 @@ def render_user_home() -> None:
                     comp.show_holiday_notice(win_week_holidays, win_week_str)
 
                     st.markdown('<div class="section-field-label">快捷選擇時段：</div>', unsafe_allow_html=True)
+                    
+                    # 採用 2x2 網格佈局，搭配 CSS 強制並排與高度壓縮
                     q_row1_1, q_row1_2 = st.columns(2)
                     q_row2_1, q_row2_2 = st.columns(2)
 
@@ -1514,7 +1561,7 @@ def render_user_home() -> None:
     </div>
     <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
         <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_cand_signin}</div>
-        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_signout}</div>
+        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_cand_signout}</div>
     </div>
 </div>
 </div>"""
