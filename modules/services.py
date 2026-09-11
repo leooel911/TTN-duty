@@ -85,10 +85,26 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
     return normalized_data
 
 
-def is_user_allowed(selected_unit: str, emp_id: Any) -> Tuple[bool, Optional[Dict[str, Any]]]:
-    """檢查員編是否在指定單位的白名單內或具有全域通行權限"""
+def is_user_allowed(selected_unit: str, emp_id: Any, pass_code: str = "") -> Tuple[bool, Optional[Dict[str, Any]]]:
+    """檢查員編是否在指定單位的白名單內或具有全域通行權限（具備空員編攔截）"""
     emp_id_str = str(emp_id).strip().upper()
+    code_str = str(pass_code).strip()
 
+    # 🛑 1. 空員編強行攔截：未輸入員編一律拒絕通行
+    if not emp_id_str or emp_id_str in ["NONE", "NAN", ""]:
+        return False, None
+
+    # 🛑 2. 若有傳入密碼，檢查密碼是否符合系統預設
+    if pass_code != "":
+        sys_cfg = load_system_config()
+        admin_pwd = str(sys_cfg.get("admin_password", "Lf090000")).strip()
+        vip_pwd = str(sys_cfg.get("vip_password", sys_cfg.get("vip_pass_code", "0"))).strip()
+        user_pwd = str(sys_cfg.get("user_password", sys_cfg.get("crew_pass_code", "09000"))).strip()
+
+        if code_str not in [admin_pwd, vip_pwd, user_pwd]:
+            return False, None
+
+    # 3. 全域通行帳號 "A" 驗證
     if emp_id_str == "A":
         return True, {
             "emp_id": "A",
@@ -97,6 +113,7 @@ def is_user_allowed(selected_unit: str, emp_id: Any) -> Tuple[bool, Optional[Dic
             "status": "啟用",
         }
 
+    # 4. 指定單位白名單驗證
     unit_whitelist = load_whitelist(selected_unit)
     if emp_id_str in unit_whitelist:
         u_info = unit_whitelist[emp_id_str]
@@ -107,6 +124,7 @@ def is_user_allowed(selected_unit: str, emp_id: Any) -> Tuple[bool, Optional[Dic
             "status": "啟用",
         }
 
+    # 5. 跨單位 VIP / ADMIN 驗證
     for u_code in UNITS.keys():
         if u_code != selected_unit:
             other_wl = load_whitelist(u_code)
@@ -120,6 +138,15 @@ def is_user_allowed(selected_unit: str, emp_id: Any) -> Tuple[bool, Optional[Dic
                         "role": other_info.get("role", "VIP_USER"),
                         "status": "啟用",
                     }
+
+    # 6. 大表組員驗證
+    if verify_crew_membership(selected_unit, emp_id_str):
+        return True, {
+            "emp_id": emp_id_str,
+            "name": get_employee_name(selected_unit, emp_id_str) or "大表組員",
+            "role": "USER",
+            "status": "啟用",
+        }
 
     return False, None
 
