@@ -22,20 +22,47 @@ from modules.utils import (
 
 
 def clear_logs() -> None:
-    """徹底清空全站系統操作日誌檔"""
+    """徹底清空全站系統操作日誌檔並重置 CSV 標頭與記憶體快取"""
     possible_paths = [
         LOG_FILE,
         "activity.log",
-        os.path.join(DATA_DIR, "activity.log"),
+        "activity_log.csv",
+        "data/activity.log",
         "data/activity_log.csv",
     ]
     for p in possible_paths:
         if os.path.exists(p):
             try:
-                with open(p, "w", encoding="utf-8") as f:
-                    f.write("")
+                if p.endswith(".csv"):
+                    with open(p, "w", encoding="utf-8-sig") as f:
+                        f.write("時間,操作者/員編,單位,類別,詳細日誌與動作內容\n")
+                else:
+                    with open(p, "w", encoding="utf-8") as f:
+                        f.write("")
             except Exception:
                 pass
+
+    # 關鍵：強制清除 Streamlit 所有記憶體快取
+    st.cache_data.clear()
+
+
+@st.dialog("⚠️ 確定要清空全站系統日誌嗎？", width="small")
+def show_confirm_clear_logs_modal() -> None:
+    """防誤觸對話框：清空全站日誌"""
+    st.warning("此動作將徹底清除所有歷史操作與稽核紀錄，且無法恢復！")
+    st.markdown("請確認是否繼續？")
+
+    col_confirm1, col_confirm2 = st.columns(2)
+    with col_confirm1:
+        if st.button("確認完全清空", type="primary", key="btn_modal_do_clear", use_container_width=True):
+            clear_logs()
+            st.session_state["show_clear_log_dialog"] = False
+            st.success("已成功清空所有系統操作日誌！")
+            st.rerun()
+    with col_confirm2:
+        if st.button("取消", key="btn_modal_cancel_clear", use_container_width=True):
+            st.session_state["show_clear_log_dialog"] = False
+            st.rerun()
 
 
 def create_backup_zip() -> io.BytesIO:
@@ -267,12 +294,10 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
         else:
             action_detail = raw_str
 
-    # 1. 從 action_detail 解析營運單位
     unit_match = re.search(r"單位[:：]\s*([A-Za-z0-9_]+)", action_detail)
     if unit_match:
         unit_info = unit_match.group(1).upper()
 
-    # 2. 從 action_detail 解析登入者/組員員編與姓名
     crew_match = re.search(r"(?:組員|目標組員|解析組員|操作者)[:：]\s*([^\s\|]+)", action_detail)
     user_match = re.search(r"\[([A-Za-z0-9_\u4e00-\u9fa5]+)\]", action_detail)
 
@@ -282,7 +307,6 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
         elif user_match:
             user_info = user_match.group(1)
 
-    # 3. 解析操作類別
     if category in ["一般操作", ""]:
         if "管理員" in action_detail or "後台" in action_detail:
             category = "管理員操作"
@@ -316,29 +340,11 @@ def extract_device_info(detail_str: str) -> str:
     return "Web 介面"
 
 
-@st.dialog("⚠️ 確定要清空全站系統日誌嗎？", width="small")
-def show_confirm_clear_logs_modal() -> None:
-    """防誤觸對話框：清空全站日誌"""
-    st.warning("此動作將徹底清除所有歷史操作與稽核紀錄，且無法恢復！")
-    st.markdown("請確認是否繼續？")
-    
-    col_confirm1, col_confirm2 = st.columns(2)
-    with col_confirm1:
-        if st.button("確認完全清空", type="primary", use_container_width=True):
-            clear_logs()
-            st.success("已成功清空所有系統操作日誌！")
-            st.rerun()
-    with col_confirm2:
-        if st.button("取消", use_container_width=True):
-            st.rerun()
-
-
 def render_admin_panel() -> None:
     """系統管理員後台控制台"""
     st.markdown(
         """
         <style>
-        /* 管理員後台專用高科技 Cyber 風格 CSS */
         .admin-stat-card {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%);
             border: 1.5px solid rgba(56, 189, 248, 0.35);
@@ -905,7 +911,7 @@ def render_admin_panel() -> None:
                     )
                     st.rerun()
 
-    # ==================== Tab 5: 系統日誌與備份 (優化版高階儀表板) ====================
+    # ==================== Tab 5: 系統日誌與備份 (重點修正區塊) ====================
     with tab5:
         st.markdown("### 📜 全站系統操作日誌與數據稽核儀表板")
 
@@ -915,21 +921,18 @@ def render_admin_panel() -> None:
             "時間 (Timestamp)", "操作者/員編 (User)", "營運單位 (Unit)", "操作類別 (Category)", "詳細日誌紀錄 (Log Detail)"
         ])
 
-        # 1. 提取裝置資訊欄位
         if not df_logs.empty and "詳細日誌紀錄 (Log Detail)" in df_logs.columns:
             df_logs["裝置 (Device)"] = df_logs["詳細日誌紀錄 (Log Detail)"].apply(extract_device_info)
         else:
             df_logs["裝置 (Device)"] = "Web 介面"
 
-        # 2. 解析時間並預設降序排序
         if not df_logs.empty and "時間 (Timestamp)" in df_logs.columns:
             df_logs["時間_DT"] = pd.to_datetime(df_logs["時間 (Timestamp)"], errors="coerce")
             df_logs = df_logs.sort_values(by="時間_DT", ascending=False)
 
-        # 3. 頂部 KPI 關鍵數據指標卡片 (Log KPI Matrix)
         today_str = date.today().strftime("%Y-%m-%d")
         total_log_count = len(df_logs)
-        
+
         df_today = df_logs[df_logs["時間 (Timestamp)"].astype(str).str.startswith(today_str)] if not df_logs.empty else pd.DataFrame()
         today_logs_count = len(df_today)
         active_users_today = df_today["操作者/員編 (User)"].nunique() if not df_today.empty else 0
@@ -938,7 +941,7 @@ def render_admin_panel() -> None:
             1 for dev in df_logs["裝置 (Device)"]
             if any(k in str(dev) for k in ["iPhone", "Android", "iPad"])
         ) if not df_logs.empty else 0
-        
+
         mobile_pct_str = f"{(mobile_count / total_log_count * 100):.1f}%" if total_log_count > 0 else "0.0%"
 
         st.markdown(
@@ -965,7 +968,6 @@ def render_admin_panel() -> None:
             unsafe_allow_html=True,
         )
 
-        # 4. 組合多維度進階過濾器
         with st.expander("🔍 展開 / 收合 日誌進階篩選條件", expanded=True):
             f_col1, f_col2, f_col3 = st.columns(3)
 
@@ -987,7 +989,6 @@ def render_admin_panel() -> None:
             with f_col5:
                 log_kw = st.text_input("搜尋員編 / 車次 / 關鍵字", placeholder="例: A023300 或 換班...", key="log_search_kw").strip()
 
-        # 5. 執行過濾邏輯
         df_filtered_logs = df_logs.copy()
 
         if not df_filtered_logs.empty:
@@ -1017,15 +1018,20 @@ def render_admin_panel() -> None:
                     | df_filtered_logs["時間 (Timestamp)"].astype(str).str.contains(pattern, case=False, na=False)
                 ]
 
-        # 6. 表格呈現與下載
         col_log_header, col_log_actions = st.columns([3, 1])
 
         with col_log_header:
             st.markdown(f"##### 📋 查詢結果（共 {len(df_filtered_logs)} 筆紀錄）")
 
         with col_log_actions:
-            if st.button("🗑️ 清空全站日誌", key="btn_clear_activity_logs", type="secondary", use_container_width=True):
-                show_confirm_clear_logs_modal()
+            # 透過 Session State 觸發對話框，避免 Streamlit 重新渲染丟失對話框狀態
+            if st.button("🗑️ 清空全站日誌", key="btn_trigger_clear_modal", type="secondary", use_container_width=True):
+                st.session_state["show_clear_log_dialog"] = True
+                st.rerun()
+
+        # 當觸發開關為 True 時顯示彈窗
+        if st.session_state.get("show_clear_log_dialog"):
+            show_confirm_clear_logs_modal()
 
         if not df_filtered_logs.empty:
             display_cols = [
@@ -1064,7 +1070,6 @@ def render_admin_panel() -> None:
 
         st.markdown("---")
 
-        # 7. 數據一鍵打包備份區塊
         st.markdown("#### 📦 一鍵備份全站數據與設定檔")
         st.caption("備份內容包含：`data/` 底下所有 Excel 大表、日誌檔 `activity_log.csv` / `activity.log`、白名單 `whitelist.json` 與系統設定檔。")
 
