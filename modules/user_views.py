@@ -227,6 +227,45 @@ def render_user_home() -> None:
             margin-bottom: 6px !important;
         }
 
+        /* 升級科技感 Checkbox Filter Chip */
+        div[data-testid="stCheckbox"] {
+            background: rgba(15, 23, 42, 0.6) !important;
+            border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
+            border-radius: 10px !important;
+            padding: 8px 12px !important;
+            transition: all 0.25s ease-in-out !important;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+            margin-bottom: 6px !important;
+        }
+
+        div[data-testid="stCheckbox"]:hover {
+            background: rgba(30, 41, 59, 0.8) !important;
+            border-color: rgba(56, 189, 248, 0.4) !important;
+        }
+
+        div[data-testid="stCheckbox"]:has(input:checked) {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(2, 132, 199, 0.25) 100%) !important;
+            border-color: #38BDF8 !important;
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
+        }
+
+        div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div {
+            background-color: #00A3FF !important;
+            border-color: #38BDF8 !important;
+        }
+
+        div[data-testid="stCheckbox"] label p {
+            font-size: 13.5px !important;
+            font-weight: 700 !important;
+            color: #94A3B8 !important;
+            transition: color 0.2s ease !important;
+        }
+
+        div[data-testid="stCheckbox"]:has(input:checked) label p {
+            color: #F8FAFC !important;
+            font-weight: 800 !important;
+        }
+
         div[data-testid="stSegmentedControl"] {
             background: transparent !important;
             border: none !important;
@@ -611,7 +650,6 @@ def render_user_home() -> None:
         "換假｜選擇換假日期",
     ]
 
-    # 🔑 關鍵 1：持久化模式選擇，防止因 st.stop() 導致 Key 遺失退回預設選項
     if "active_app_mode" not in st.session_state:
         st.session_state["active_app_mode"] = "繪製個人月班表圖檔"
 
@@ -629,7 +667,6 @@ def render_user_home() -> None:
         key="user_app_mode",
     )
 
-    # 僅使用者「主動切換」模式時，才清空快取
     if app_mode != st.session_state["active_app_mode"]:
         st.session_state["active_app_mode"] = app_mode
         st.session_state.pop("win_raw_candidates", None)
@@ -923,6 +960,8 @@ def render_user_home() -> None:
                         min_time, max_time_sel = slider_val
                     else:
                         min_time, max_time_sel = TIME_OPTIONS[0], TIME_OPTIONS[-1]
+
+                    st.markdown('<div class="section-field-label">進階篩選條件</div>', unsafe_allow_html=True)
 
                     if "saved_win_main_line" not in st.session_state:
                         st.session_state["saved_win_main_line"] = False
