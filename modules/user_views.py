@@ -596,7 +596,10 @@ def render_user_home() -> None:
                 "輸入 員編 或 姓名 (例如: A023300 or 波莉)",
                 key="draw_input_key",
             )
-            submit_btn = st.form_submit_button("開始繪製月班表", use_container_width=True)
+            # 關鍵修改：加上 type="primary" 套用主要亮色漸層風格
+            submit_btn = st.form_submit_button(
+                "開始繪製月班表", type="primary", use_container_width=True
+            )
 
         if submit_btn:
             current_input = st.session_state.get("draw_input_key", "").strip()
@@ -625,7 +628,7 @@ def render_user_home() -> None:
                         )
                     st.success(f"【{emp_name}】個人班表圖片生成成功！")
                     
-                    # 渲染圖片 (已內含縮放按鈕與「💡 提示：手機使用者可長按圖片儲存至相簿」)
+                    # 渲染圖片 (內含縮放按鈕與長按提示)
                     comp.render_zoomable_image(buf)
 
                     # 下方直接呈現滿版下載按鈕
