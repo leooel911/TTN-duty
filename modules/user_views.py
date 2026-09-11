@@ -21,6 +21,7 @@ from modules.utils import (
     is_overtime,
     is_town_shift,
     log_activity,
+    normalize_date_str,
     parse_cell,
     safe_read_excel,
     set_simulated_cell,
@@ -28,7 +29,6 @@ from modules.utils import (
 )
 
 
-# --- 輔助函式：提取班別核心數字，實現同班別 (如 NF1001, NG1001, NH1001) 歸類集中排序 ---
 def get_shift_group_key(code_str: str) -> int:
     """提取車次/班別中的核心數字，讓同班別歸類在一起排序"""
     nums = re.findall(r"\d+", str(code_str))
@@ -37,21 +37,19 @@ def get_shift_group_key(code_str: str) -> int:
     return 999999
 
 
-# --- 輔助函式：精準比對 Excel 日期欄位索引 ---
 def find_date_column_index(columns: Any, target_date: str) -> int:
-    """精準匹配日期欄位索引，避免 substring 誤判"""
+    """精準匹配日期欄位索引，避免 substring 誤判與年份格式不符"""
     if columns is None:
         return -1
+    target_norm = normalize_date_str(target_date)
     for idx, col in enumerate(columns):
         if idx < 2:
             continue
-        match = re.search(r"(\d+/\d+)", str(col).strip())
-        if match and match.group(1) == target_date:
+        if normalize_date_str(col) == target_norm:
             return idx
     return -1
 
 
-# --- 全方位自動抓取登入頁面與 Session 中的使用者員編 ---
 def get_login_user_id() -> str:
     """自動掃描登入頁面輸入框 Key 與 Session State 抓取員編"""
     login_widget_keys = [
@@ -108,9 +106,10 @@ def get_login_user_id() -> str:
 
 def get_date_label(d_str: str, columns: Optional[Any] = None) -> str:
     """取得包含國定假日名稱的日期顯示標籤"""
-    holiday_name = NATIONAL_HOLIDAYS.get(d_str)
+    norm_d = normalize_date_str(d_str)
+    holiday_name = NATIONAL_HOLIDAYS.get(norm_d) or NATIONAL_HOLIDAYS.get(d_str)
     if not holiday_name and columns is not None:
-        matching_col = next((c for c in columns[2:] if d_str in str(c)), None)
+        matching_col = next((c for c in columns[2:] if norm_d and norm_d in normalize_date_str(c)), None)
         if matching_col:
             col_raw = str(matching_col)
             name_match = re.search(r"[\(（]([^\)）]+)[\)）]", col_raw)
@@ -130,20 +129,26 @@ def get_week_holidays(target_date: str, date_cols: List[str], columns: Optional[
 
     try:
         current_year = date.today().year
-        t_m, t_d = map(int, target_date.split("/"))
+        norm_target = normalize_date_str(target_date)
+        if not norm_target:
+            return holidays_found
+        t_m, t_d = map(int, norm_target.split("/"))
         t_dt = date(current_year, t_m, t_d)
         t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
         t_sat = t_sun + timedelta(days=6)
 
         for d_str in date_cols:
             try:
-                d_m, d_d = map(int, d_str.split("/"))
+                norm_d = normalize_date_str(d_str)
+                if not norm_d:
+                    continue
+                d_m, d_d = map(int, norm_d.split("/"))
                 d_dt = date(current_year, d_m, d_d)
                 if t_sun <= d_dt <= t_sat:
-                    holiday_name = NATIONAL_HOLIDAYS.get(d_str)
+                    holiday_name = NATIONAL_HOLIDAYS.get(norm_d) or NATIONAL_HOLIDAYS.get(d_str)
                     if not holiday_name and columns is not None:
                         matching_col = next(
-                            (c for c in columns[2:] if d_str in str(c)), None
+                            (c for c in columns[2:] if norm_d in normalize_date_str(c)), None
                         )
                         if matching_col:
                             col_raw = str(matching_col)
@@ -179,7 +184,6 @@ def render_user_home() -> None:
     st.markdown(
         """
         <style>
-        /* 1. 全域鎖死視口，禁止任何橫向溢出 */
         html, body, .stApp, [data-testid="stAppViewContainer"], .main,
         [data-testid="stMainBlockContainer"], .block-container {
             max-width: 100vw !important;
@@ -193,7 +197,6 @@ def render_user_home() -> None:
             padding-top: 0.6rem !important;
         }
 
-        /* 2. 核心修正：強制所有 Streamlit 橫向雙欄容器絕對 50% 等寬，禁止伸縮擠壓 */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -215,14 +218,12 @@ def render_user_home() -> None:
             overflow: hidden !important;
         }
 
-        /* 3. 強制卡片欄位內部所有元件具備 min-width: 0 以實現 Ellipsis 省略 */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) *,
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) * {
             min-width: 0 !important;
             box-sizing: border-box !important;
         }
 
-        /* 4. 高質感 Mobile 雙層卡片基礎樣式 */
         .crew-card-integrated, .crew-card-integrated-warn {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
             border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
@@ -243,7 +244,6 @@ def render_user_home() -> None:
             box-shadow: 0 4px 14px rgba(244, 63, 94, 0.3) !important;
         }
 
-        /* 🎨 5 套班別動態輪播主題色 (Theme Rotations) */
         .card-theme-0 {
             border-color: rgba(56, 189, 248, 0.65) !important;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(14, 116, 144, 0.2) 100%) !important;
@@ -279,7 +279,6 @@ def render_user_home() -> None:
         }
         .card-theme-4 .train-code-text { color: #FB923C !important; }
 
-        /* 5. 卡片下方「檢視完整班表」按鈕無縫熔合 & 動態主題色彩配對 */
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"],
         div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {
             width: 100% !important;
@@ -321,7 +320,6 @@ def render_user_home() -> None:
             line-height: 1.2 !important;
         }
 
-        /* 按鈕與主題色彩連動 */
         div[data-testid="stElementContainer"]:has(.card-theme-0) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(56, 189, 248, 0.65) !important; border-top: 1px dashed rgba(56, 189, 248, 0.3) !important; color: #38BDF8 !important; }
         div[data-testid="stElementContainer"]:has(.card-theme-1) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(52, 211, 153, 0.65) !important; border-top: 1px dashed rgba(52, 211, 153, 0.3) !important; color: #34D399 !important; }
         div[data-testid="stElementContainer"]:has(.card-theme-2) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(251, 191, 36, 0.65) !important; border-top: 1px dashed rgba(251, 191, 36, 0.3) !important; color: #FBBF24 !important; }
@@ -334,7 +332,6 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
-        /* 6. 主要搜尋按鈕 (Primary CTA) 實心亮藍漸層 + 發光 */
         button[data-testid="stBaseButton-primary"],
         button[kind="primary"] {
             background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%) !important;
@@ -363,7 +360,6 @@ def render_user_home() -> None:
             letter-spacing: 0.6px !important;
         }
 
-        /* 7. 獨立貼紙標籤 */
         .badge-group {
             display: flex;
             gap: 2px;
@@ -631,13 +627,12 @@ def render_user_home() -> None:
             df_search = safe_read_excel(target_path, header=3)
             df_search.columns = [str(c).strip() for c in df_search.columns]
             date_cols = [
-                re.search(r"(\d+/\d+)", str(col)).group(1)
+                normalize_date_str(col)
                 for col in df_search.columns[2:]
-                if re.search(r"(\d+/\d+)", str(col))
+                if normalize_date_str(col)
             ]
 
             if date_cols:
-                # 預設定位於當天日期 (若當天日期在 date_cols 中)
                 default_win_idx = 0
                 today_dt = date.today()
                 for idx, d_str in enumerate(date_cols):
@@ -735,7 +730,6 @@ def render_user_home() -> None:
                         "僅顯示長班 (>8.5h)", value=False, key="win_long_shift"
                     )
 
-                # 🔥 實心亮藍搜尋按鈕
                 if st.button("搜尋可換班組員名單", key="btn_window_search", type="primary", use_container_width=True):
                     raw_candidates = []
                     target_col_idx = find_date_column_index(df_search.columns, target_date)
@@ -766,7 +760,6 @@ def render_user_home() -> None:
                                         parsed["hours"], parsed["train"], parsed["note"]
                                     )
 
-                                    # 精準抓取標準休假/出勤貼紙代碼
                                     do_match = re.search(
                                         r"(DO\d*W?|D\d+W|OGC)", str(cell_raw), re.IGNORECASE
                                     )
@@ -808,9 +801,13 @@ def render_user_home() -> None:
                     filtered_results = []
 
                     for r in raw_list:
-                        if r["Sign-In"] != "--:--":
+                        if r["Sign-In"] == "--:--":
+                            if not (min_time <= morn_start_time and max_time_sel >= "18:00"):
+                                continue
+                        else:
                             if not (min_time <= r["Sign-In"] <= max_time_sel):
                                 continue
+
                         if only_main_line and (r["非正線"] or r["請假"]):
                             continue
                         if only_long_shift and not r["長班"]:
@@ -820,8 +817,8 @@ def render_user_home() -> None:
                     filtered_results = sorted(
                         filtered_results,
                         key=lambda x: (
-                            get_shift_group_key(x["車次"]),
                             str(x["Sign-In"]) if x["Sign-In"] != "--:--" else "99:99",
+                            get_shift_group_key(x["車次"]),
                             str(x["車次"]),
                         ),
                     )
@@ -866,13 +863,11 @@ def render_user_home() -> None:
                             unsafe_allow_html=True,
                         )
 
-                        # 🔥 換班系統保留：建立班別對應主題顏色的 Mapping (依不重複班別核心數字排序分配 5 套主題)
                         unique_shift_keys = sorted(list(set(
                             get_shift_group_key(r["車次"]) for r in filtered_results
                         )))
                         shift_key_to_theme = {key: idx % 5 for idx, key in enumerate(unique_shift_keys)}
 
-                        # 每 2 個結果一組，渲染成【同班別跳色雙層架構】直欄 (2 Columns Grid)
                         for i in range(0, len(filtered_results), 2):
                             batch = filtered_results[i : i + 2]
                             cols = st.columns(2)
@@ -897,20 +892,17 @@ def render_user_home() -> None:
                                     clean_signout = str(r.get("Sign-Out", "--:--")).replace("\n", " ").strip()
                                     clean_next_signin = str(r.get("隔日Sign-In", "無")).replace("\n", " ").strip()
 
-                                    # 動態取得當前班別主題樣式 Class
                                     g_key = get_shift_group_key(clean_train)
                                     theme_idx = shift_key_to_theme.get(g_key, 0)
                                     card_class = f"crew-card-integrated card-theme-{theme_idx}"
 
                                     card_html = f"""<div class="{card_class}">
-<!-- 第一層：姓名 ID (左) + 貼紙標籤 (右，空間充裕不裁切) -->
 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
     <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_id})</span>
     </div>
     {badges_html}
 </div>
-<!-- 第二層：班別/隔日 (左) + 醒目上下行時間 In/Out (右) -->
 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); width: 100%;">
     <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
         <div class="train-code-text" style="font-size: 13.5px; font-weight: 900; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_train}</div>
@@ -1001,9 +993,9 @@ def render_user_home() -> None:
                 df_ex = safe_read_excel(sample_path, header=3)
                 df_ex.columns = [str(c).strip() for c in df_ex.columns]
                 date_cols = [
-                    re.search(r"(\d+/\d+)", str(c)).group(1)
+                    normalize_date_str(c)
                     for c in df_ex.columns[2:]
-                    if re.search(r"(\d+/\d+)", str(c))
+                    if normalize_date_str(c)
                 ]
 
                 if not date_cols:
@@ -1011,7 +1003,6 @@ def render_user_home() -> None:
                 else:
                     ex_date_col1, ex_date_col2 = st.columns(2)
 
-                    # 預設定位於當天日期 (若當天日期在 date_cols 中)
                     default_ex_idx = 0
                     today_dt = date.today()
                     for idx, d_str in enumerate(date_cols):
@@ -1038,16 +1029,18 @@ def render_user_home() -> None:
 
                     try:
                         current_year = date.today().year
-                        t_m, t_d = map(int, target_date.split("/"))
+                        norm_target = normalize_date_str(target_date)
+                        t_m, t_d = map(int, norm_target.split("/"))
                         t_dt = date(current_year, t_m, t_d)
                         t_sun = t_dt - timedelta(days=(t_dt.weekday() + 1) % 7)
                         t_sat = t_sun + timedelta(days=6)
 
                         for d_str in date_cols:
                             try:
-                                d_m, d_d = map(int, d_str.split("/"))
+                                norm_d = normalize_date_str(d_str)
+                                d_m, d_d = map(int, norm_d.split("/"))
                                 d_dt = date(current_year, d_m, d_d)
-                                if t_sun <= d_dt <= t_sat and d_str != target_date:
+                                if t_sun <= d_dt <= t_sat and norm_d != norm_target:
                                     same_week_options.append(d_str)
                             except Exception:
                                 pass
@@ -1057,7 +1050,7 @@ def render_user_home() -> None:
                     return_date_options = (
                         same_week_options
                         if same_week_options
-                        else [d for d in date_cols if d != target_date]
+                        else [d for d in date_cols if normalize_date_str(d) != normalize_date_str(target_date)]
                     )
 
                     if not return_date_options:
@@ -1115,8 +1108,8 @@ def render_user_home() -> None:
                             sort_order = st.selectbox(
                                 "結果排序方式",
                                 [
-                                    "依同類班別末四碼數字",
                                     "依 Sign-In 時間 (由早至晚)",
+                                    "依同類班別末四碼數字",
                                     "依最早 Sign-Out",
                                     "依工時長短",
                                 ],
@@ -1129,7 +1122,6 @@ def render_user_home() -> None:
                             key="ex_strict_limit",
                         )
 
-                        # 🔥 實心亮藍搜尋按鈕
                         if st.button("搜尋可換假組員名單", key="btn_ex_search", type="primary", use_container_width=True):
                             raw_candidates = []
 
@@ -1180,7 +1172,6 @@ def render_user_home() -> None:
                                         parsed_return["train"], parsed_return["note"]
                                     )
 
-                                    # 精準抓取還假日標記代碼
                                     return_do_match = re.search(
                                         r"(DO\d*W?|D\d+W|OGC)", raw_return_str, re.IGNORECASE
                                     )
@@ -1196,7 +1187,6 @@ def render_user_home() -> None:
                                         )
                                     )
 
-                                    # 模擬對調後狀態：組員在想休日出勤，在還休日休息
                                     sim_row = row.copy()
                                     sim_row = set_simulated_cell(sim_row, target_date, "勤")
                                     sim_row = set_simulated_cell(sim_row, return_date, "休")
@@ -1257,29 +1247,30 @@ def render_user_home() -> None:
 
                                 filtered_candidates.append(cand)
 
-                            if sort_order == "依同類班別末四碼數字":
+                            if sort_order == "依 Sign-In 時間 (由早至晚)":
+                                filtered_candidates = sorted(
+                                    filtered_candidates,
+                                    key=lambda x: (
+                                        x["Sign-In"] if x["Sign-In"] != "--:--" else "99:99",
+                                        get_shift_group_key(x["還假車次"]),
+                                        str(x["還假車次"]),
+                                    ),
+                                )
+                            elif sort_order == "依同類班別末四碼數字":
                                 filtered_candidates = sorted(
                                     filtered_candidates,
                                     key=lambda x: (
                                         get_shift_group_key(x["還假車次"]),
-                                        x["Sign-In"] or "99:99",
+                                        x["Sign-In"] if x["Sign-In"] != "--:--" else "99:99",
                                         str(x["還假車次"]),
-                                    ),
-                                )
-                            elif sort_order == "依 Sign-In 時間 (由早至晚)":
-                                filtered_candidates = sorted(
-                                    filtered_candidates,
-                                    key=lambda x: (
-                                        x["Sign-In"] or "99:99",
-                                        x["Sign-Out"] or "99:99",
                                     ),
                                 )
                             elif sort_order == "依最早 Sign-Out":
                                 filtered_candidates = sorted(
                                     filtered_candidates,
                                     key=lambda x: (
-                                        x["Sign-Out"] or "99:99",
-                                        x["Sign-In"] or "99:99",
+                                        x["Sign-Out"] if x["Sign-Out"] != "--:--" else "99:99",
+                                        x["Sign-In"] if x["Sign-In"] != "--:--" else "99:99",
                                     ),
                                 )
                             elif sort_order == "依工時長短":
@@ -1333,7 +1324,6 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                # 每 2 個結果一組，渲染成直欄 (2 Columns Grid)
                                 for i in range(0, len(filtered_candidates), 2):
                                     batch = filtered_candidates[i : i + 2]
                                     cols = st.columns(2)
@@ -1362,18 +1352,15 @@ def render_user_home() -> None:
                                             clean_cand_signin = str(cand.get("Sign-In", "--:--")).replace("\n", " ").strip()
                                             clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
 
-                                            # 統一使用預設科技藍樣式（若連 6 則優先警示紅邊）
                                             card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else "crew-card-integrated card-theme-0"
 
                                             card_html = f"""<div class="{card_class}">
-<!-- 第一層：姓名 ID (左) + 貼紙標籤 (右，空間充裕不裁切) -->
 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
     <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_cand_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_cand_id})</span>
     </div>
     {badges_html}
 </div>
-<!-- 第二層：還休與車次 (左) + 醒目上下行時間 In/Out (右) -->
 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); width: 100%;">
     <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
         <div class="train-code-text" style="font-size: 13.5px; font-weight: 900; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_return_train}</div>
@@ -1381,7 +1368,7 @@ def render_user_home() -> None:
     </div>
     <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
         <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_cand_signin}</div>
-        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_cand_signout}</div>
+        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_signout}</div>
     </div>
 </div>
 </div>"""
