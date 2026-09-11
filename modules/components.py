@@ -97,7 +97,6 @@ def render_zoomable_modal_image(image_bytes: Any) -> None:
     </body>
     </html>
     """
-    # 使用固定 key，避免 Streamlit 重新渲染時頻繁重建 iframe 導致畫面閃爍
     st.components.v1.html(html_code, height=450, scrolling=False, key="schedule_panzoom_canvas")
 
 
@@ -109,7 +108,7 @@ def show_zoom_schedule_modal(image_bytes: Any) -> None:
 
 
 def render_zoomable_image(image_bytes: Any) -> None:
-    """主頁面預覽：完整展示原圖，並精簡點擊放大觸發器"""
+    """主頁面預覽：完整展示原圖，徹底隱藏 Streamlit 原生全螢幕按鈕，並精簡點擊放大觸發器"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
@@ -117,10 +116,24 @@ def render_zoomable_image(image_bytes: Any) -> None:
     else:
         raw_bytes = b""
 
+    # 強制透過 CSS 隱藏 Streamlit st.image Hover 時右上角跳出的原生放大與全螢幕按鈕
+    st.markdown(
+        """
+        <style>
+        [data-testid="stImage"] button,
+        button[title="View fullscreen"],
+        [data-testid="StyledFullScreenButton"] {
+            display: none !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # 1. 完整無裁切呈現預覽圖
     st.image(raw_bytes, use_container_width=True)
 
-    # 2. 輕量點擊提示列（替代突兀的大按鈕）
+    # 2. 點擊觸發全螢幕放大視窗
     if st.button("放大點擊檢視全螢幕班表", type="secondary", use_container_width=True, key="trigger_zoom_modal"):
         show_zoom_schedule_modal(raw_bytes)
 
@@ -180,7 +193,7 @@ def view_feedback_img_modal(img_path: str, ticket_id: str, reporter: str) -> Non
     """跳出對話框檢視工單圖片附件"""
     st.markdown(f"### 工單單號：`{ticket_id}` (回報者: {reporter})")
     if os.path.exists(img_path):
-        st.image(img_path, use_column_width=True)
+        st.image(img_path, use_container_width=True)
         with open(img_path, "rb") as file:
             st.download_button(
                 label="下載此截圖附件",
