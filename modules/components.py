@@ -41,7 +41,7 @@ def render_zoomable_modal_image(image_bytes: Any) -> None:
       }}
       .modal-viewport {{
         width: 100%;
-        height: 65vh;
+        height: 60vh;
         background: #020617;
         border-radius: 8px;
         overflow: hidden;
@@ -97,14 +97,18 @@ def render_zoomable_modal_image(image_bytes: Any) -> None:
     </body>
     </html>
     """
-    st.components.v1.html(html_code, height=450, scrolling=False, key="schedule_panzoom_canvas")
+    st.components.v1.html(html_code, height=420, scrolling=False, key="modal_panzoom_canvas")
 
 
 @st.dialog("班表全螢幕放大檢視", width="large")
 def show_zoom_schedule_modal(image_bytes: Any) -> None:
     """彈窗視窗：呈現純手勢縮放班表"""
-    st.caption("提示：手機端支援雙指捏合放大與單指滑動拖曳（點擊右上角 ✕ 可關閉）")
+    st.caption("💡 提示：手機端支援雙指捏合放大與單指滑動拖曳（亦可點擊右上角 ✕ 關閉）")
     render_zoomable_modal_image(image_bytes)
+    
+    if st.button("關閉全螢幕視窗", use_container_width=True, key="close_modal_inner_btn"):
+        st.session_state["show_zoom_modal"] = False
+        st.rerun()
 
 
 def render_zoomable_image(image_bytes: Any) -> None:
@@ -116,7 +120,7 @@ def render_zoomable_image(image_bytes: Any) -> None:
     else:
         raw_bytes = b""
 
-    # 強制透過 CSS 隱藏 Streamlit st.image Hover 時右上角跳出的原生放大與全螢幕按鈕
+    # 強制隱藏 Streamlit 原生圖片 hover 時右上角浮現的放大與全螢幕按鈕
     st.markdown(
         """
         <style>
@@ -133,8 +137,13 @@ def render_zoomable_image(image_bytes: Any) -> None:
     # 1. 完整無裁切呈現預覽圖
     st.image(raw_bytes, use_container_width=True)
 
-    # 2. 點擊觸發全螢幕放大視窗
+    # 2. 點擊觸發按鈕，透過 Session State 持久化狀態
     if st.button("放大點擊檢視全螢幕班表", type="secondary", use_container_width=True, key="trigger_zoom_modal"):
+        st.session_state["show_zoom_modal"] = True
+        st.rerun()
+
+    # 3. 只要 Session State 標記為 True，就穩定維持彈窗開啟
+    if st.session_state.get("show_zoom_modal", False):
         show_zoom_schedule_modal(raw_bytes)
 
 
