@@ -77,9 +77,9 @@ TRANSPORT_PERIODS: Dict[str, str] = {
 
 TITLE: str = "TRAIN CREW DUTY CALENDAR"
 
-# 🔑 請在此修改為你的最新真實密碼（系統 json 遺失時的底層備援值）
-ADMIN_PASSWORD: str = "你的最新管理員密碼"
-CREW_ACCESS_PASSWORD: str = "你的最新組員授權碼"
+# 預設系統通行密碼預設值（當 json 尚未設定時備援）
+ADMIN_PASSWORD: str = "Lf090000"
+CREW_ACCESS_PASSWORD: str = "0"
 
 # 完整通用請假代碼集
 LEAVE_CODES: List[str] = [
