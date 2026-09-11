@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import re
 import zipfile
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
@@ -241,14 +242,125 @@ def save_feedback_ticket(ticket_info: Dict[str, Any]) -> None:
         f.write(content)
 
 
+def parse_structured_log(raw_log: Any) -> Dict[str, str]:
+    """高智能解析日誌條目，拆解時間、登入/操作者、營運單位、類別與詳細動作"""
+    timestamp = "--"
+    user_info = "系統/訪客"
+    unit_info = "全站"
+    category = "一般操作"
+    action_detail = ""
+
+    if isinstance(raw_log, dict):
+        timestamp = str(raw_log.get("timestamp", raw_log.get("時間", "--")))
+        action_detail = str(raw_log.get("action", raw_log.get("動作", raw_log.get("detail", ""))))
+        user_info = str(raw_log.get("user", raw_log.get("操作者", "系統/訪客")))
+        unit_info = str(raw_log.get("unit", raw_log.get("單位", "全站")))
+    else:
+        raw_str = str(raw_log).strip()
+        parts = [p.strip() for p in raw_str.split("|")]
+        if len(parts) >= 2:
+            timestamp = parts[0]
+            action_detail = " | ".join(parts[1:])
+        else:
+            action_detail = raw_str
+
+    # 1. 從 action_detail 解析營運單位
+    unit_match = re.search(r"單位[:：]\s*([A-Za-z0-9_]+)", action_detail)
+    if unit_match:
+        unit_info = unit_match.group(1).upper()
+
+    # 2. 從 action_detail 解析登入者/組員員編與姓名
+    crew_match = re.search(r"(?:組員|目標組員|解析組員|操作者)[:：]\s*([^\s\|]+)", action_detail)
+    user_match = re.search(r"\[([A-Za-z0-9_\u4e00-\u9fa5]+)\]", action_detail)
+    
+    if crew_match:
+        user_info = crew_match.group(1)
+    elif user_match:
+        user_info = user_match.group(1)
+
+    # 3. 解析操作類別
+    if "管理員" in action_detail or "後台" in action_detail:
+        category = "管理員操作"
+    elif "換班" in action_detail:
+        category = "換班快篩"
+    elif "換假" in action_detail:
+        category = "換假快篩"
+    elif "繪製" in action_detail or "圖檔" in action_detail:
+        category = "月班表繪製"
+    elif "登入" in action_detail or "驗證" in action_detail:
+        category = "帳號登入"
+    elif "工單" in action_detail or "回報" in action_detail:
+        category = "問題回報"
+
+    return {
+        "時間 (Timestamp)": timestamp,
+        "操作者/員編 (User)": user_info,
+        "營運單位 (Unit)": unit_info,
+        "操作類別 (Category)": category,
+        "詳細日誌紀錄 (Log Detail)": action_detail,
+    }
+
+
 def render_admin_panel() -> None:
     """系統管理員後台控制台"""
+    st.markdown(
+        """
+        <style>
+        /* 管理員後台專用高科技 Cyber 風格 CSS */
+        .admin-stat-card {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%);
+            border: 1.5px solid rgba(56, 189, 248, 0.35);
+            border-radius: 12px;
+            padding: 12px 16px;
+            text-align: center;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+            transition: all 0.25s ease-in-out;
+        }
+        .admin-stat-card:hover {
+            border-color: #38BDF8;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+            transform: translateY(-2px);
+        }
+        .stat-val {
+            font-size: 22px;
+            font-weight: 900;
+            font-family: monospace;
+            color: #38BDF8;
+            line-height: 1.2;
+        }
+        .stat-lbl {
+            font-size: 11px;
+            font-weight: 700;
+            color: #94A3B8;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+        .admin-card-box {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     current_unit = st.session_state.get("current_unit", "TTN")
 
     col_head_title, col_head_unit, col_head_btn = st.columns([2.2, 1.2, 1])
 
     with col_head_title:
-        st.markdown("## 系統管理後台 (Administrator Console)")
+        st.markdown(
+            """
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 24px; font-weight: 900; color: #38BDF8; letter-spacing: 0.5px;">⚙️ 系統管理後台</span>
+                <span style="font-size: 10px; font-weight: 800; color: #000; background: #38BDF8; padding: 2px 8px; border-radius: 12px; font-family: monospace;">ADMIN CONSOLE</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     with col_head_unit:
         unit_options = list(UNITS.keys())
@@ -267,7 +379,7 @@ def render_admin_panel() -> None:
     with col_head_btn:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
         if st.button(
-            "返回前台首頁",
+            "🚪 返回前台首頁",
             key="btn_top_return_home",
             type="primary",
             use_container_width=True,
@@ -275,17 +387,21 @@ def render_admin_panel() -> None:
             st.session_state["admin_logged_in"] = False
             st.rerun()
 
+    st.markdown("---")
+
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "大表上傳與管理",
-        "模組維護模式",
-        "白名單與組員權限管理",
-        "全域系統參數",
-        "系統日誌與備份",
-        "工單與問題回報管理",
+        "📊 大表上傳與管理",
+        "🛠️ 模組維護模式",
+        "👥 白名單與組員權限",
+        "⚙️ 全域系統參數",
+        "📜 系統日誌與備份",
+        "🎫 工單與問題回報",
     ])
 
+    # ==================== Tab 1: 班表大表上傳與管理 ====================
     with tab1:
-        st.markdown(f"### [{current_unit}] 班表大表 Excel 上傳與管理")
+        st.markdown(f"### 📊 [{current_unit}] 班表大表 Excel 上傳與管理")
+        st.caption("即時監控各大表 Excel 檔案狀態，並提供直接覆蓋更新功能。")
         unit_files = UNITS.get(current_unit, UNITS.get("TTN", {}))
 
         col_u1, col_u2, col_u3 = st.columns(3)
@@ -297,12 +413,35 @@ def render_admin_panel() -> None:
 
         for role_name, role_code, col in roles:
             with col:
-                st.markdown(f"#### {role_name} ({role_code})")
                 target_path = unit_files.get(role_name, "")
-                st.caption(f"更新時間：{get_file_mtime_str(target_path)}")
+                exists = os.path.exists(target_path) and os.path.getsize(target_path) > 0
+                f_size_kb = round(os.path.getsize(target_path) / 1024, 1) if exists else 0
+                mtime_str = get_file_mtime_str(target_path) if exists else "檔案不存在"
+
+                status_pill = (
+                    "<span style='color:#34D399; font-weight:800;'>🟢 檔案正常</span>"
+                    if exists
+                    else "<span style='color:#EF4444; font-weight:800;'>🔴 缺失 / 異常</span>"
+                )
+
+                st.markdown(
+                    f"""
+                    <div class="admin-card-box">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 16px; font-weight: 800; color: #F8FAFC;">{role_name} ({role_code})</span>
+                            {status_pill}
+                        </div>
+                        <div style="font-size: 11px; color: #94A3B8; font-family: monospace; display: flex; flex-direction: column; gap: 3px;">
+                            <div>檔案大小：<strong style="color:#CBD5E1;">{f_size_kb} KB</strong></div>
+                            <div>更新時間：<strong style="color:#CBD5E1;">{mtime_str}</strong></div>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 uploaded_file = st.file_uploader(
-                    f"上傳 {role_name} 大表 (.xlsx / .xls)",
+                    f"選擇 {role_name} 大表 (.xlsx / .xls)",
                     type=["xlsx", "xls"],
                     key=f"upload_{current_unit}_{role_code}",
                 )
@@ -325,35 +464,46 @@ def render_admin_panel() -> None:
                         except Exception as e:
                             st.error(f"檔案寫入失敗：{e}")
 
+    # ==================== Tab 2: 模組維護模式 ====================
     with tab2:
-        st.markdown(f"### [{current_unit}] 系統模組維護開關")
-        st.info("開啟維護後，一般組員將無法存取該功能，管理員仍可登入後台預覽。")
+        st.markdown(f"### 🛠️ [{current_unit}] 系統模組維護開關")
+        st.info("💡 開啟維護後，一般組員將無法存取該功能，管理員仍可登入後台預覽測試。")
 
         modules_def = [
-            ("producer", "個人月班表圖檔生成系統"),
-            ("window_filter", "換班｜選擇換班日期快篩"),
-            ("exchange_filter", "換假｜選擇換假日期快篩"),
+            ("producer", "個人月班表圖檔生成系統", "負責生成個人高解析度月班表圖片與圖檔下載"),
+            ("window_filter", "換班｜選擇換班日期快篩", "提供指定 Sign-In 時段區間與多職位組員快篩"),
+            ("exchange_filter", "換假｜選擇換假日期快篩", "提供想休日與還休日相符組員配對與連班過濾"),
         ]
 
-        for m_key, m_title in modules_def:
-            c_title, c_sw = st.columns([3, 1])
-            is_maint = is_module_maintenance(current_unit, m_key)
+        m_cols = st.columns(3)
+        for idx, (m_key, m_title, m_desc) in enumerate(modules_def):
+            with m_cols[idx]:
+                is_maint = is_module_maintenance(current_unit, m_key)
+                border_color = "#EF4444" if is_maint else "#34D399"
+                status_html = (
+                    "<span style='color:#EF4444; font-weight:900;'>🔴 維護中</span>"
+                    if is_maint
+                    else "<span style='color:#34D399; font-weight:900;'>🟢 正常開放中</span>"
+                )
 
-            with c_title:
-                st.markdown(f"**{m_title}**")
-                st.caption(
-                    "狀態："
-                    + (
-                        "<span style='color:#EF4444; font-weight:800;'>🔴 維護中</span>"
-                        if is_maint
-                        else "<span style='color:#34D399; font-weight:800;'>🟢 正常開放中</span>"
-                    ),
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(15, 23, 42, 0.8); border: 1.5px solid {border_color}; border-radius: 12px; padding: 14px; height: 140px; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="font-size: 15px; font-weight: 800; color: #F8FAFC; margin-bottom: 4px;">{m_title}</div>
+                            <div style="font-size: 11px; color: #94A3B8;">{m_desc}</div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
+                            <span style="font-size: 11px; color: #CBD5E1;">當前狀態：</span>
+                            {status_html}
+                        </div>
+                    </div>
+                    """,
                     unsafe_allow_html=True,
                 )
 
-            with c_sw:
                 new_state = st.toggle(
-                    "開啟維護",
+                    "開啟維護狀態",
                     value=is_maint,
                     key=f"toggle_maint_{current_unit}_{m_key}",
                 )
@@ -365,9 +515,34 @@ def render_admin_panel() -> None:
                     )
                     st.rerun()
 
+    # ==================== Tab 3: 白名單與組員權限 ====================
     with tab3:
-        st.markdown(f"### 白名單與組員權限管理 [{current_unit}]")
+        st.markdown(f"### 👥 白名單與組員權限管理 [{current_unit}]")
         whitelist_data = load_whitelist(current_unit)
+
+        cnt_total = len(whitelist_data)
+        cnt_admin = sum(1 for v in whitelist_data.values() if isinstance(v, dict) and v.get("role") == "ADMIN")
+        cnt_vip = sum(1 for v in whitelist_data.values() if isinstance(v, dict) and v.get("role") in ["VIP_USER", "TESTER"])
+
+        st.markdown(
+            f"""
+            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                <div class="admin-stat-card" style="flex: 1;">
+                    <div class="stat-val">{cnt_total} <span style="font-size: 12px;">位</span></div>
+                    <div class="stat-lbl">白名單總人數</div>
+                </div>
+                <div class="admin-stat-card" style="flex: 1; border-color: rgba(52, 211, 153, 0.4);">
+                    <div class="stat-val" style="color: #34D399;">{cnt_admin} <span style="font-size: 12px;">位</span></div>
+                    <div class="stat-lbl">系統管理員 (ADMIN)</div>
+                </div>
+                <div class="admin-stat-card" style="flex: 1; border-color: rgba(251, 191, 36, 0.4);">
+                    <div class="stat-val" style="color: #FBBF24;">{cnt_vip} <span style="font-size: 12px;">位</span></div>
+                    <div class="stat-lbl">VIP / 測試員 (TESTER)</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         ver_key = f"wl_reset_ver_{current_unit}"
         if ver_key not in st.session_state:
@@ -553,8 +728,9 @@ def render_admin_panel() -> None:
                 else:
                     st.button("刪除人員", disabled=True, use_container_width=True)
 
+    # ==================== Tab 4: 全域系統參數與授權碼 ====================
     with tab4:
-        st.markdown("### 全域系統參數與授權碼設定")
+        st.markdown("### ⚙️ 全域系統參數與授權碼設定")
 
         if "cfg_toast" in st.session_state:
             t_type, t_msg = st.session_state["cfg_toast"]
@@ -570,7 +746,7 @@ def render_admin_panel() -> None:
             col_p1, col_p2 = st.columns(2)
 
             with col_p1:
-                st.markdown("#### 通行授權碼設定")
+                st.markdown("#### 🔐 通行授權碼設定")
 
                 new_user_pwd = st.text_input(
                     "設定新 一般組員授權碼",
@@ -616,7 +792,7 @@ def render_admin_panel() -> None:
                 )
 
             with col_p2:
-                st.markdown("#### 換假嚴格過濾天數門檻")
+                st.markdown("#### ⚠️ 換假嚴格過濾天數門檻")
                 streak_threshold = st.number_input(
                     "連續上班天數警戒門檻（預設 6 天）",
                     min_value=3,
@@ -626,7 +802,7 @@ def render_admin_panel() -> None:
                 )
 
                 st.markdown("---")
-                st.markdown("#### 前台公告與橫幅標語設定")
+                st.markdown("#### 📢 前台公告與橫幅標語設定")
                 announce_text = st.text_area(
                     "前台頂部公告文字",
                     value=str(
@@ -697,40 +873,145 @@ def render_admin_panel() -> None:
                     )
                     st.rerun()
 
+    # ==================== Tab 5: 系統日誌與備份 (重點增強) ====================
     with tab5:
-        st.markdown("### 系統操作日誌與資料打包備份")
+        st.markdown("### 📜 全站系統操作日誌與數據稽核")
 
-        logs = load_activity_logs()
+        raw_logs = load_activity_logs()
+        parsed_logs = [parse_structured_log(entry) for entry in raw_logs]
+        df_logs = pd.DataFrame(parsed_logs) if parsed_logs else pd.DataFrame(columns=[
+            "時間 (Timestamp)", "操作者/員編 (User)", "營運單位 (Unit)", "操作類別 (Category)", "詳細日誌紀錄 (Log Detail)"
+        ])
 
-        col_log_title, col_log_btn = st.columns([3, 1])
+        # 頂部日誌關鍵數據指標 (Log Analytics Matrix)
+        total_log_count = len(df_logs)
+        unique_users_count = df_logs["操作者/員編 (User)"].nunique() if not df_logs.empty else 0
+        
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        today_logs_count = (
+            sum(1 for t in df_logs["時間 (Timestamp)"] if str(t).startswith(today_str))
+            if not df_logs.empty else 0
+        )
+        admin_logs_count = (
+            sum(1 for c in df_logs["操作類別 (Category)"] if c == "管理員操作")
+            if not df_logs.empty else 0
+        )
 
-        with col_log_title:
-            st.markdown(f"#### 最近系統操作日誌 (共 {len(logs)} 筆)")
+        st.markdown(
+            f"""
+            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                <div class="admin-stat-card" style="flex: 1;">
+                    <div class="stat-val">{total_log_count} <span style="font-size: 11px;">筆</span></div>
+                    <div class="stat-lbl">全站總日誌數</div>
+                </div>
+                <div class="admin-stat-card" style="flex: 1; border-color: rgba(56, 189, 248, 0.4);">
+                    <div class="stat-val" style="color: #38BDF8;">{unique_users_count} <span style="font-size: 11px;">位</span></div>
+                    <div class="stat-lbl">獨立不重複操作者</div>
+                </div>
+                <div class="admin-stat-card" style="flex: 1; border-color: rgba(52, 211, 153, 0.4);">
+                    <div class="stat-val" style="color: #34D399;">{today_logs_count} <span style="font-size: 11px;">筆</span></div>
+                    <div class="stat-lbl">今日新增日誌</div>
+                </div>
+                <div class="admin-stat-card" style="flex: 1; border-color: rgba(251, 191, 36, 0.4);">
+                    <div class="stat-val" style="color: #FBBF24;">{admin_logs_count} <span style="font-size: 11px;">筆</span></div>
+                    <div class="stat-lbl">管理員後台異動數</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        with col_log_btn:
-            if st.button(
-                "清空紀錄",
-                key="btn_clear_activity_logs",
-                type="secondary",
-                use_container_width=True,
-            ):
+        # 智能日誌過濾器工具列
+        f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 1, 1, 1])
+
+        with f_col1:
+            log_kw = st.text_input(
+                "🔍 日誌關鍵字搜尋",
+                placeholder="搜尋員編、姓名、車次或關鍵字...",
+                key="log_search_kw",
+            ).strip()
+
+        with f_col2:
+            all_users = ["全部操作者"] + sorted(list(df_logs["操作者/員編 (User)"].unique())) if not df_logs.empty else ["全部操作者"]
+            sel_user = st.selectbox("操作者 / 員編過濾", all_users, key="log_user_filter")
+
+        with f_col3:
+            all_categories = ["全部分類", "換班快篩", "換假快篩", "月班表繪製", "管理員操作", "帳號登入", "問題回報", "一般操作"]
+            sel_cat = st.selectbox("操作類別過濾", all_categories, key="log_cat_filter")
+
+        with f_col4:
+            all_units = ["全部單位"] + list(UNITS.keys())
+            sel_unit = st.selectbox("營運單位過濾", all_units, key="log_unit_filter")
+
+        # 套用過濾條件
+        df_filtered_logs = df_logs.copy()
+
+        if not df_filtered_logs.empty:
+            if log_kw:
+                kw_l = log_kw.lower()
+                df_filtered_logs = df_filtered_logs[
+                    df_filtered_logs["時間 (Timestamp)"].astype(str).str.lower().str.contains(kw_l)
+                    | df_filtered_logs["操作者/員編 (User)"].astype(str).str.lower().str.contains(kw_l)
+                    | df_filtered_logs["詳細日誌紀錄 (Log Detail)"].astype(str).str.lower().str.contains(kw_l)
+                ]
+
+            if sel_user != "全部操作者":
+                df_filtered_logs = df_filtered_logs[df_filtered_logs["操作者/員編 (User)"] == sel_user]
+
+            if sel_cat != "全部分類":
+                df_filtered_logs = df_filtered_logs[df_filtered_logs["操作類別 (Category)"] == sel_cat]
+
+            if sel_unit != "全部單位":
+                df_filtered_logs = df_filtered_logs[df_filtered_logs["營運單位 (Unit)"] == sel_unit]
+
+        col_log_header, col_log_actions = st.columns([3, 1])
+
+        with col_log_header:
+            st.caption(f"目前顯示符合條件的日誌紀錄：共 **{len(df_filtered_logs)}** 筆")
+
+        with col_log_actions:
+            if st.button("🗑️ 清空全站日誌", key="btn_clear_activity_logs", type="secondary", use_container_width=True):
                 clear_logs()
                 st.success("已成功清空所有系統操作日誌！")
                 st.rerun()
 
-        if logs:
-            df_logs = pd.DataFrame(logs)
-            st.dataframe(df_logs, use_container_width=True, height=350)
+        # 高質感日誌 Dataframe 呈現
+        if not df_filtered_logs.empty:
+            st.dataframe(
+                df_filtered_logs,
+                use_container_width=True,
+                height=400,
+                column_config={
+                    "時間 (Timestamp)": st.column_config.TextColumn("時間", width="medium"),
+                    "操作者/員編 (User)": st.column_config.TextColumn("操作者 / 員編", width="small"),
+                    "營運單位 (Unit)": st.column_config.TextColumn("單位", width="small"),
+                    "操作類別 (Category)": st.column_config.TextColumn("類別", width="small"),
+                    "詳細日誌紀錄 (Log Detail)": st.column_config.TextColumn("詳細日誌與動作內容", width="large"),
+                },
+            )
+
+            # 匯出 CSV 按鈕
+            csv_data = df_filtered_logs.to_csv(index=False).encode("utf-8-sig")
+            st.download_button(
+                "📥 下載篩選出的日誌檔 (.CSV)",
+                data=csv_data,
+                file_name=f"audit_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                key="btn_download_logs_csv",
+            )
         else:
-            st.info("目前尚無任何系統操作日誌紀錄。")
+            st.info("目前尚無符合過濾條件的系統操作日誌紀錄。")
 
         st.markdown("---")
-        st.markdown("#### 一鍵備份全站數據與設定")
+
+        # 數據一鍵打包備份區塊
+        st.markdown("#### 📦 一鍵備份全站數據與設定檔")
+        st.caption("備份內容包含：`data/` 底下所有 Excel 大表、日誌檔 `activity.log`、白名單 `whitelist.json` 與系統設定檔。")
 
         zip_buf = create_backup_zip()
         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         st.download_button(
-            "打包下載全站備份檔 (.zip)",
+            "💾 打包下載全站備份檔 (.ZIP)",
             data=zip_buf,
             file_name=f"system_backup_{now_str}.zip",
             mime="application/zip",
@@ -738,8 +1019,9 @@ def render_admin_panel() -> None:
             key="btn_download_backup",
         )
 
+    # ==================== Tab 6: 工單與問題回報管理 ====================
     with tab6:
-        st.markdown("### 工單與問題回報管理")
+        st.markdown("### 🎫 工單與問題回報管理")
 
         all_tickets = load_all_feedback_tickets()
 
@@ -753,17 +1035,17 @@ def render_admin_panel() -> None:
             st.markdown(
                 f"""
                 <div style="display: flex; gap: 10px; margin-bottom: 16px;">
-                    <div style="flex: 1; background: rgba(244, 63, 94, 0.15); border: 1px solid #F43F5E; border-radius: 8px; padding: 10px; text-align: center;">
-                        <div style="font-size: 11px; color: #FDA4AF;">待處理工單</div>
-                        <div style="font-size: 20px; font-weight: 900; color: #F43F5E;">{cnt_pending} <span style="font-size: 12px;">筆</span></div>
+                    <div class="admin-stat-card" style="flex: 1; border-color: rgba(244, 63, 94, 0.5);">
+                        <div class="stat-val" style="color: #F43F5E;">{cnt_pending} <span style="font-size: 11px;">筆</span></div>
+                        <div class="stat-lbl">待處理工單</div>
                     </div>
-                    <div style="flex: 1; background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px; text-align: center;">
-                        <div style="font-size: 11px; color: #FDE68A;">處理中工單</div>
-                        <div style="font-size: 20px; font-weight: 900; color: #FBBF24;">{cnt_processing} <span style="font-size: 12px;">筆</span></div>
+                    <div class="admin-stat-card" style="flex: 1; border-color: rgba(245, 158, 11, 0.5);">
+                        <div class="stat-val" style="color: #FBBF24;">{cnt_processing} <span style="font-size: 11px;">筆</span></div>
+                        <div class="stat-lbl">處理中工單</div>
                     </div>
-                    <div style="flex: 1; background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10B981; border-radius: 8px; padding: 10px; text-align: center;">
-                        <div style="font-size: 11px; color: #A7F3D0;">已完成工單</div>
-                        <div style="font-size: 20px; font-weight: 900; color: #34D399;">{cnt_done} <span style="font-size: 12px;">筆</span></div>
+                    <div class="admin-stat-card" style="flex: 1; border-color: rgba(52, 211, 153, 0.5);">
+                        <div class="stat-val" style="color: #34D399;">{cnt_done} <span style="font-size: 11px;">筆</span></div>
+                        <div class="stat-lbl">已完成工單</div>
                     </div>
                 </div>
                 """,
@@ -782,7 +1064,7 @@ def render_admin_panel() -> None:
                 if filter_status == "全部" or t.get("狀態") == filter_status
             ]
 
-            st.caption(f"列表顯示共 {len(filtered_tickets)} 筆工單：")
+            st.caption(f"列表顯示共 **{len(filtered_tickets)}** 筆工單：")
 
             for idx, t in enumerate(filtered_tickets):
                 ticket_id = str(t.get("處理編號", "未知單號"))
