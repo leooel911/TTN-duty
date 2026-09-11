@@ -10,10 +10,10 @@ from config import DATA_DIR, SYSTEM_CONFIG_FILE, UNITS, WHITELIST_FILE
 from modules.utils import get_employee_name, safe_read_excel
 
 DEFAULT_CONFIG: Dict[str, Any] = {
-    "vip_pass_code": "0900",
-    "crew_pass_code": "0096",
-    "vip_password": "0900",
-    "user_password": "0096",
+    "vip_pass_code": "0",
+    "crew_pass_code": "09000",
+    "vip_password": "0",
+    "user_password": "09000",
     "admin_password": "Lf090000",
     "empty_shift_label": "--",
     "default_emp_id": "A",
