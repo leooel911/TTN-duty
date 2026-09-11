@@ -86,41 +86,52 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
 
 
 def is_user_allowed(selected_unit: str, emp_id: Any, pass_code: str = "") -> Tuple[bool, Optional[Dict[str, Any]]]:
-    """檢查員編是否在指定單位的白名單內或具有全域通行權限（具備空員編攔截）"""
+    """
+    嚴格權限驗證：
+    1. 未輸入員編或密碼 -> 拒絕放行
+    2. 員編 'A' -> 只能搭配 VIP 密碼 (0) 或管理員密碼 (Lf090000)
+    3. 一般員編 -> 必須在白名單或大表內，且密碼正確
+    """
     emp_id_str = str(emp_id).strip().upper()
     code_str = str(pass_code).strip()
 
-    # 🛑 1. 空員編強行攔截：未輸入員編一律拒絕通行
+    # 🛑 1. 防呆：員編或密碼未輸入，直接拒絕放行
     if not emp_id_str or emp_id_str in ["NONE", "NAN", ""]:
         return False, None
 
-    # 🛑 2. 若有傳入密碼，檢查密碼是否符合系統預設
-    if pass_code != "":
-        sys_cfg = load_system_config()
-        admin_pwd = str(sys_cfg.get("admin_password", "Lf090000")).strip()
-        vip_pwd = str(sys_cfg.get("vip_password", sys_cfg.get("vip_pass_code", "0"))).strip()
-        user_pwd = str(sys_cfg.get("user_password", sys_cfg.get("crew_pass_code", "09000"))).strip()
+    if not code_str:
+        return False, None
 
-        if code_str not in [admin_pwd, vip_pwd, user_pwd]:
-            return False, None
+    sys_cfg = load_system_config()
+    admin_pwd = str(sys_cfg.get("admin_password", "Lf090000")).strip()
+    vip_pwd = str(sys_cfg.get("vip_password", sys_cfg.get("vip_pass_code", "0"))).strip()
+    user_pwd = str(sys_cfg.get("user_password", sys_cfg.get("crew_pass_code", "09000"))).strip()
 
-    # 3. 全域通行帳號 "A" 驗證
+    # 🛑 2. 全域帳號 "A" 嚴格綁定：只對應 VIP 密碼 (0) 或管理員密碼
     if emp_id_str == "A":
-        return True, {
-            "emp_id": "A",
-            "name": "全域通行",
-            "role": "VIP_USER",
-            "status": "啟用",
-        }
+        if code_str == vip_pwd or code_str == admin_pwd:
+            return True, {
+                "emp_id": "A",
+                "name": "全域通行",
+                "role": "VIP_USER",
+                "status": "啟用",
+            }
+        else:
+            return False, None  # 輸入 09000 或其他密碼會在這裡直接被擋掉
+
+    # 🛑 3. 一般員編密碼合法性預檢
+    if code_str not in [admin_pwd, vip_pwd, user_pwd]:
+        return False, None
 
     # 4. 指定單位白名單驗證
     unit_whitelist = load_whitelist(selected_unit)
     if emp_id_str in unit_whitelist:
         u_info = unit_whitelist[emp_id_str]
+        role_type = "VIP_USER" if code_str in [vip_pwd, admin_pwd] else u_info.get("role", "TESTER")
         return True, {
             "emp_id": emp_id_str,
             "name": u_info.get("name", u_info.get("姓名", "組員")),
-            "role": u_info.get("role", u_info.get("身份", "TESTER")),
+            "role": role_type,
             "status": "啟用",
         }
 
@@ -135,16 +146,17 @@ def is_user_allowed(selected_unit: str, emp_id: Any, pass_code: str = "") -> Tup
                     return True, {
                         "emp_id": emp_id_str,
                         "name": other_info.get("name", "全域通行"),
-                        "role": other_info.get("role", "VIP_USER"),
+                        "role": "VIP_USER",
                         "status": "啟用",
                     }
 
     # 6. 大表組員驗證
     if verify_crew_membership(selected_unit, emp_id_str):
+        role_type = "VIP_USER" if code_str in [vip_pwd, admin_pwd] else "USER"
         return True, {
             "emp_id": emp_id_str,
             "name": get_employee_name(selected_unit, emp_id_str) or "大表組員",
-            "role": "USER",
+            "role": role_type,
             "status": "啟用",
         }
 
