@@ -14,7 +14,7 @@ from modules.utils import log_activity, safe_read_excel
 
 
 def render_zoomable_image(image_bytes: Any) -> None:
-    """渲染支援完整顯示、雙指捏合縮放、拖曳與按鈕控制的圖片元件 (HTML5 / Panzoom)"""
+    """渲染支援無空白貼合、雙指捏合縮放、拖曳與按鈕控制的圖片元件 (HTML5 / Panzoom)"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
@@ -32,13 +32,15 @@ def render_zoomable_image(image_bytes: Any) -> None:
     <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <style>
       * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-      body {{
+      html, body {{
+        width: 100%;
+        margin: 0;
+        padding: 0;
         background-color: transparent;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         overflow: hidden;
       }}
       .zoom-wrapper {{
-        position: relative;
         width: 100%;
         background: #0B101D;
         border-radius: 10px;
@@ -48,15 +50,11 @@ def render_zoomable_image(image_bytes: Any) -> None:
       }}
       .zoom-container {{
         width: 100%;
-        min-height: 220px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: hidden;
-        cursor: grab;
-        touch-action: none;
+        position: relative;
         background: #020617;
-        padding: 6px;
+        touch-action: none;
+        cursor: grab;
+        overflow: hidden;
       }}
       .zoom-container:active {{
         cursor: grabbing;
@@ -65,7 +63,6 @@ def render_zoomable_image(image_bytes: Any) -> None:
         width: 100%;
         height: auto;
         display: block;
-        border-radius: 4px;
         user-select: none;
         -webkit-user-drag: none;
       }}
@@ -73,7 +70,7 @@ def render_zoomable_image(image_bytes: Any) -> None:
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 8px 12px;
+        padding: 6px 10px;
         background: rgba(15, 23, 42, 0.95);
         border-top: 1px solid rgba(255,255,255,0.1);
       }}
@@ -86,15 +83,15 @@ def render_zoomable_image(image_bytes: Any) -> None:
       }}
       .btn-group {{
         display: flex;
-        gap: 6px;
+        gap: 5px;
       }}
       .zoom-btn {{
         background: rgba(56, 189, 248, 0.15);
         color: #38BDF8;
         border: 1px solid rgba(56, 189, 248, 0.4);
         border-radius: 6px;
-        padding: 4px 10px;
-        font-size: 12px;
+        padding: 3px 8px;
+        font-size: 11.5px;
         font-weight: 800;
         cursor: pointer;
         transition: all 0.2s ease;
@@ -122,25 +119,36 @@ def render_zoomable_image(image_bytes: Any) -> None:
     </div>
 
     <script>
+      let panzoom = null;
       const elem = document.getElementById('scheduleImg');
-      const panzoom = Panzoom(elem, {{
-        maxScale: 6,
-        minScale: 1,
-        startScale: 1,
-        contain: 'outside'
-      }});
-      
-      const parent = document.getElementById('panzoomArea');
-      parent.addEventListener('wheel', panzoom.zoomWithWheel);
 
-      function zoomIn() {{ panzoom.zoomIn(); }}
-      function zoomOut() {{ panzoom.zoomOut(); }}
-      function resetZoom() {{ panzoom.reset(); }}
+      function initPanzoom() {{
+        if (!panzoom) {{
+          panzoom = Panzoom(elem, {{
+            maxScale: 6,
+            minScale: 1,
+            startScale: 1,
+            contain: 'outside'
+          }});
+          const parent = document.getElementById('panzoomArea');
+          parent.addEventListener('wheel', panzoom.zoomWithWheel);
+        }}
+      }}
+
+      if (elem.complete) {{
+        initPanzoom();
+      }} else {{
+        elem.onload = initPanzoom;
+      }}
+
+      function zoomIn() {{ if(panzoom) panzoom.zoomIn(); }}
+      function zoomOut() {{ if(panzoom) panzoom.zoomOut(); }}
+      function resetZoom() {{ if(panzoom) panzoom.reset(); }}
     </script>
     </body>
     </html>
     """
-    st.components.v1.html(html_code, height=330, scrolling=False)
+    st.components.v1.html(html_code, height=255, scrolling=False)
 
 
 def show_holiday_notice(holidays: List[str], week_range_str: str = "") -> None:
