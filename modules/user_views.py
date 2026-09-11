@@ -516,6 +516,55 @@ def render_user_home() -> None:
 
     active_files = get_current_role_files()
     current_unit_label = st.session_state.get("current_unit", "TTN")
+    
+    # ==================== 關鍵功能：大表/完整班表檢視模式 (INSPECTION MODE) ====================
+    inspect_emp_id = st.session_state.get("inspect_emp_target")
+    if inspect_emp_id:
+        st.markdown(
+            f"""
+            <div class="section-header-box" style="border-left-color: #38BDF8; padding: 10px 14px !important; margin-bottom: 12px !important;">
+                <div style="font-size: 15px; font-weight: 900; color: #38BDF8; font-family: monospace;">
+                    [{current_unit_label}] 組員完整班表檢視：{inspect_emp_id}
+                </div>
+                <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">INSPECTION MODE // FULL SCHEDULE VIEW</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # ⚠️ 關鍵：此「上一頁」按鈕只清空 inspect_emp_target，完全不觸發 reset_win_search()，保留所有 120 筆結果名單！
+        if st.button("上一頁 (返回快篩結果)", key="btn_back_to_filter", use_container_width=True):
+            st.session_state["inspect_emp_target"] = None
+            st.rerun()
+
+        try:
+            start_dt, dates, emp_id, emp_name, cells = process_file_data(inspect_emp_id)
+            with st.spinner(f"正在讀取【{emp_name}】完整班表，請稍候..."):
+                buf = render_schedule_figure(
+                    start_dt,
+                    dates,
+                    emp_id,
+                    emp_name,
+                    cells,
+                    current_unit_label,
+                    badge_title="Producer | C.L.F",
+                )
+            st.success(f"【{emp_name} ({emp_id})】完整班表載入完成！")
+            
+            comp.render_zoomable_image(buf)
+
+            st.download_button(
+                "點此下載班表影像檔",
+                data=buf,
+                file_name=f"{current_unit_label}_班表_{emp_name}.png",
+                mime="image/png",
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.error(f"繪製組員班表時發生錯誤：{e}")
+            
+        st.stop()  # 阻斷後續畫面渲染，獨佔呈現個人大表
+
     missing_files = [
         role
         for role in ["駕駛", "列車長", "服勤員"]
@@ -1526,7 +1575,7 @@ def render_user_home() -> None:
                                             card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else f"crew-card-integrated card-theme-{theme_idx}"
 
                                             card_html = f"""<div class="{card_class}">
-<div style="display: flex; justify-content: space-between; align- items: center; width: 100%;">
+<div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
     <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_cand_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_cand_id})</span>
     </div>
