@@ -228,44 +228,71 @@ def render_user_home() -> None:
             margin-bottom: 6px !important;
         }
 
-        /* 高質感發光膠囊切換列 (Segmented Light-Up Control) */
+        /* 高質感發光膠囊切換列：未選分離／相鄰選中智慧密合 (Segmented Control) */
         div[data-testid="stSegmentedControl"] {
-            background: #0B101D !important;
-            border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
-            border-radius: 20px !important;
-            padding: 4px !important;
-            display: flex !important;
-            gap: 4px !important;
-            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            box-shadow: none !important;
             width: 100% !important;
-            margin-bottom: 8px !important;
+            margin-bottom: 10px !important;
         }
 
+        div[data-testid="stSegmentedControl"] > div {
+            display: flex !important;
+            gap: 6px !important;
+            width: 100% !important;
+            background: transparent !important;
+        }
+
+        /* 預設狀態：獨立分離膠囊 */
         div[data-testid="stSegmentedControl"] button {
             flex: 1 !important;
-            border-radius: 15px !important;
-            border: none !important;
-            background: transparent !important;
+            border-radius: 12px !important;
+            border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+            background: #0B101D !important;
             color: #94A3B8 !important;
             font-size: 14px !important;
             font-weight: 700 !important;
             padding: 8px 12px !important;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5) !important;
+            margin: 0 !important;
         }
 
         div[data-testid="stSegmentedControl"] button:hover {
             color: #F1F5F9 !important;
-            background: rgba(255, 255, 255, 0.06) !important;
+            background: rgba(255, 255, 255, 0.08) !important;
+            border-color: rgba(0, 163, 255, 0.4) !important;
         }
 
-        /* 選中亮燈態 (Light-Up Active State) */
+        /* 單選亮燈態 (Light-Up Active State) */
         div[data-testid="stSegmentedControl"] button[aria-selected="true"],
         div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"] {
             background: #00A3FF !important;
             color: #000000 !important;
             font-weight: 900 !important;
+            border: 1.5px solid #38BDF8 !important;
             box-shadow: 0 0 16px rgba(0, 163, 255, 0.8), 0 2px 10px rgba(0, 163, 255, 0.5) !important;
-            transform: scale(1.02) !important;
+            z-index: 2 !important;
+        }
+
+        /* 相鄰選中時的密合融合效果 (Adjacent Selected Seamless Fusion) */
+        /* 右側緊鄰另一個選中按鈕：右側消除圓角 */
+        div[data-testid="stSegmentedControl"] button[aria-selected="true"]:has(+ button[aria-selected="true"]),
+        div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"]:has(+ button[data-baseweb="button"][aria-checked="true"]) {
+            border-top-right-radius: 0px !important;
+            border-bottom-right-radius: 0px !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.3) !important;
+        }
+
+        /* 左側緊鄰另一個選中按鈕：左側消除圓角 + 負邊界無縫扣合 */
+        div[data-testid="stSegmentedControl"] button[aria-selected="true"] + button[aria-selected="true"],
+        div[data-testid="stSegmentedControl"] button[data-baseweb="button"][aria-checked="true"] + button[data-baseweb="button"][aria-checked="true"] {
+            border-top-left-radius: 0px !important;
+            border-bottom-left-radius: 0px !important;
+            margin-left: -7px !important;
+            border-left: 1px solid rgba(255, 255, 255, 0.3) !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
@@ -675,7 +702,7 @@ def render_user_home() -> None:
         st.markdown(
             """
             <div class="section-field-label">
-                點擊選擇查詢職位：
+                點擊選擇查詢職位
             </div>
             """,
             unsafe_allow_html=True,
@@ -705,7 +732,7 @@ def render_user_home() -> None:
         roles_to_query = list(selected_roles) if selected_roles else []
 
         if not roles_to_query:
-            st.warning("請至少選擇一個職位 以進行查詢！")
+            st.warning("⚠️ 請至少點亮一個職位膠囊以進行查詢！")
         else:
             # 1. 動態計算起點刻度（選取駕駛時起點為 03:00，否則為 05:00）
             has_driver = "駕駛" in roles_to_query
@@ -1493,7 +1520,7 @@ def render_user_home() -> None:
                                             card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else f"crew-card-integrated card-theme-{theme_idx}"
 
                                             card_html = f"""<div class="{card_class}">
-<div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+<div style="display: flex; justify-content: space-between; align- its: center; width: 100%;">
     <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_cand_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_cand_id})</span>
     </div>
