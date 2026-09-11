@@ -418,8 +418,11 @@ def render_user_home() -> None:
             color: #FDA4AF !important;
         }
 
+        /* 統一包含一般主按鈕 (st.button) 與 表單提交按鈕 (st.form_submit_button) 的藍色漸層風格 */
         button[data-testid="stBaseButton-primary"],
-        button[kind="primary"] {
+        button[kind="primary"],
+        div[data-testid="stFormSubmitButton"] button,
+        button[data-testid="stFormSubmitButton"] {
             background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%) !important;
             color: #FFFFFF !important;
             border: 1.5px solid #38BDF8 !important;
@@ -432,14 +435,18 @@ def render_user_home() -> None:
         }
 
         button[data-testid="stBaseButton-primary"]:hover,
-        button[kind="primary"]:hover {
+        button[kind="primary"]:hover,
+        div[data-testid="stFormSubmitButton"] button:hover,
+        button[data-testid="stFormSubmitButton"]:hover {
             background: linear-gradient(135deg, #0369A1 0%, #1E40AF 100%) !important;
             box-shadow: 0 6px 24px rgba(56, 189, 248, 0.8) !important;
             transform: translateY(-1px) !important;
         }
 
         button[data-testid="stBaseButton-primary"] p,
-        button[kind="primary"] p {
+        button[kind="primary"] p,
+        div[data-testid="stFormSubmitButton"] button p,
+        button[data-testid="stFormSubmitButton"] p {
             font-size: 15px !important;
             font-weight: 800 !important;
             color: #FFFFFF !important;
@@ -596,7 +603,9 @@ def render_user_home() -> None:
                 "輸入 員編 或 姓名 (例如: A023300 or 波莉)",
                 key="draw_input_key",
             )
-            submit_btn = st.form_submit_button("開始繪製月班表", use_container_width=True)
+            submit_btn = st.form_submit_button(
+                "開始繪製月班表", type="primary", use_container_width=True
+            )
 
         if submit_btn:
             current_input = st.session_state.get("draw_input_key", "").strip()
@@ -625,10 +634,8 @@ def render_user_home() -> None:
                         )
                     st.success(f"【{emp_name}】個人班表圖片生成成功！")
                     
-                    # 渲染圖片 (已內含縮放按鈕與「💡 提示：手機使用者可長按圖片儲存至相簿」)
                     comp.render_zoomable_image(buf)
 
-                    # 下方直接呈現滿版下載按鈕
                     st.download_button(
                         "點此下載班表影像檔",
                         data=buf,
