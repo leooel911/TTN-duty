@@ -123,7 +123,7 @@ def render_zoomable_image(image_bytes: Any, height: int = 460) -> None:
                 <img id="target-schedule-img" src="{img_data_url}" alt="班表圖片">
             </div>
             <button class="zoom-trigger-btn" id="btn-open-viewer">
-                🔍 點擊開啟全螢幕高畫質燈箱（支援手機雙指無損縮放）
+                點擊可縮放此班表
             </button>
         </div>
 
