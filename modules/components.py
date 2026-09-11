@@ -1,9 +1,8 @@
 import base64
-import io
 import os
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 import pandas as pd
 import streamlit as st
@@ -14,7 +13,7 @@ from modules.utils import log_activity, safe_read_excel
 
 
 def render_zoomable_modal_image(image_bytes: Any) -> None:
-    """彈窗專用：無按鈕、支援手機雙指捏合放大與單指拖曳的圖片元件"""
+    """彈窗專用：無按鈕、支援手機雙指捏合放大與單指拖曳的純手勢圖片元件"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
@@ -40,9 +39,9 @@ def render_zoomable_modal_image(image_bytes: Any) -> None:
         background-color: transparent;
         overflow: hidden;
       }}
-      .modal-zoom-container {{
+      .modal-viewport {{
         width: 100%;
-        height: 60vh;
+        height: 65vh;
         background: #020617;
         border-radius: 8px;
         overflow: hidden;
@@ -54,10 +53,10 @@ def render_zoomable_modal_image(image_bytes: Any) -> None:
         align-items: center;
         border: 1px solid rgba(56, 189, 248, 0.3);
       }}
-      .modal-zoom-container:active {{
+      .modal-viewport:active {{
         cursor: grabbing;
       }}
-      .modal-zoom-img {{
+      .modal-img {{
         width: 100%;
         height: auto;
         display: block;
@@ -68,8 +67,8 @@ def render_zoomable_modal_image(image_bytes: Any) -> None:
     </head>
     <body>
 
-    <div class="modal-zoom-container" id="panzoomArea">
-      <img id="scheduleImg" src="data:image/png;base64,{encoded}" alt="Personal Schedule" class="modal-zoom-img" />
+    <div class="modal-viewport" id="panzoomArea">
+      <img id="scheduleImg" src="data:image/png;base64,{encoded}" alt="Schedule Preview" class="modal-img" />
     </div>
 
     <script>
@@ -98,18 +97,19 @@ def render_zoomable_modal_image(image_bytes: Any) -> None:
     </body>
     </html>
     """
-    st.components.v1.html(html_code, height=430, scrolling=False)
+    # 使用固定 key，避免 Streamlit 重新渲染時頻繁重建 iframe 導致畫面閃爍
+    st.components.v1.html(html_code, height=450, scrolling=False, key="schedule_panzoom_canvas")
 
 
-@st.dialog("個人班表全螢幕放大檢視", width="large")
+@st.dialog("班表全螢幕放大檢視", width="large")
 def show_zoom_schedule_modal(image_bytes: Any) -> None:
-    """跳出對話框：顯示可雙指放大的完整月班表"""
-    st.caption("支援雙指捏合放大與單指滑動拖曳（可按右上角 ✕ 關閉視窗）")
+    """彈窗視窗：呈現純手勢縮放班表"""
+    st.caption("提示：手機端支援雙指捏合放大與單指滑動拖曳（點擊右上角 ✕ 可關閉）")
     render_zoomable_modal_image(image_bytes)
 
 
 def render_zoomable_image(image_bytes: Any) -> None:
-    """主頁面預覽：完整呈現圖片，並提供彈窗放大檢視按鈕"""
+    """主頁面預覽：完整展示原圖，並精簡點擊放大觸發器"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
@@ -117,11 +117,11 @@ def render_zoomable_image(image_bytes: Any) -> None:
     else:
         raw_bytes = b""
 
-    # 1. 主頁面先 100% 完整顯示圖檔 (無任何壓迫與裁切)
+    # 1. 完整無裁切呈現預覽圖
     st.image(raw_bytes, use_container_width=True)
 
-    # 2. 提供全螢幕放大檢視彈窗按鈕
-    if st.button("點擊開啟全螢幕放大檢視視窗", type="primary", use_container_width=True):
+    # 2. 輕量點擊提示列（替代突兀的大按鈕）
+    if st.button("放大點擊檢視全螢幕班表", type="secondary", use_container_width=True, key="trigger_zoom_modal"):
         show_zoom_schedule_modal(raw_bytes)
 
 
