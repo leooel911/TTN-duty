@@ -14,7 +14,7 @@ from modules.utils import log_activity, safe_read_excel
 
 
 def render_zoomable_image(image_bytes: Any) -> None:
-    """渲染支援手機雙指捏合縮放、拖曳與快捷按鈕控制的圖片元件 (HTML5 / Panzoom)"""
+    """渲染支援手機雙指縮放、拖曳與快捷按鈕控制的完整圖片元件 (HTML5 / Panzoom)"""
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
     elif isinstance(image_bytes, bytes):
@@ -40,28 +40,31 @@ def render_zoomable_image(image_bytes: Any) -> None:
       .zoom-wrapper {{
         position: relative;
         width: 100%;
-        background: #0F172A;
+        background: #0B101D;
         border-radius: 10px;
-        border: 1.5px solid rgba(56, 189, 248, 0.4);
+        border: 1.5px solid rgba(56, 189, 248, 0.35);
         box-shadow: 0 4px 18px rgba(0,0,0,0.4);
         overflow: hidden;
       }}
       .zoom-container {{
         width: 100%;
-        height: 380px;
+        height: 250px;
         display: flex;
         justify-content: center;
         align-items: center;
         overflow: hidden;
         cursor: grab;
         touch-action: none;
+        background: #020617;
+        padding: 4px;
       }}
       .zoom-container:active {{
         cursor: grabbing;
       }}
       .zoom-img {{
-        max-width: 100%;
-        max-height: 100%;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
         display: block;
         border-radius: 4px;
         user-select: none;
@@ -81,7 +84,6 @@ def render_zoomable_image(image_bytes: Any) -> None:
         font-weight: 700;
         display: flex;
         align-items: center;
-        gap: 4px;
       }}
       .btn-group {{
         display: flex;
@@ -111,7 +113,7 @@ def render_zoomable_image(image_bytes: Any) -> None:
         <img id="scheduleImg" src="data:image/png;base64,{encoded}" alt="Personal Schedule" class="zoom-img" />
       </div>
       <div class="toolbar">
-        <div class="hint-badge">🔍 支援雙指縮放 / 滑動拖曳</div>
+        <div class="hint-badge">支援雙指縮放 / 滑動拖曳</div>
         <div class="btn-group">
           <button class="zoom-btn" onclick="zoomIn()">＋ 放大</button>
           <button class="zoom-btn" onclick="zoomOut()">－ 縮小</button>
@@ -124,8 +126,8 @@ def render_zoomable_image(image_bytes: Any) -> None:
       const elem = document.getElementById('scheduleImg');
       const panzoom = Panzoom(elem, {{
         maxScale: 6,
-        minScale: 0.8,
-        contain: 'outside',
+        minScale: 1,
+        contain: 'inside',
         startScale: 1
       }});
       
@@ -139,7 +141,7 @@ def render_zoomable_image(image_bytes: Any) -> None:
     </body>
     </html>
     """
-    st.components.v1.html(html_code, height=440, scrolling=False)
+    st.components.v1.html(html_code, height=310, scrolling=False)
 
 
 def show_holiday_notice(holidays: List[str], week_range_str: str = "") -> None:
@@ -149,7 +151,7 @@ def show_holiday_notice(holidays: List[str], week_range_str: str = "") -> None:
         st.markdown(
             f"""
             <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: #FDE68A;">
-                <strong>⚠️ 當週包含國定假日：</strong>{holiday_list_str}<br/>
+                <strong>當週包含國定假日：</strong>{holiday_list_str}<br/>
                 <span style="font-size: 11px; color: #CBD5E1;">請注意：換班 / 換假時，若涉及國定假日或雙倍薪當週，請務必遵循公司規定辦理！</span>
             </div>
             """,
