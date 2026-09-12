@@ -9,8 +9,10 @@ import modules.components as comp
 from config import LEAVE_CODES, NATIONAL_HOLIDAYS
 from modules.drawing import render_schedule_figure
 from modules.services import (
+    authenticate_user,
     get_current_role_files,
     get_schedule_range,
+    load_system_config,
     process_file_data,
 )
 from modules.utils import (
@@ -29,6 +31,125 @@ from modules.utils import (
     translate_train_code,
 )
 
+
+# =============================================================================
+# 1. 安全會話與身份授權輔助函式
+# =============================================================================
+
+AUTH_SESSION_KEY = "CURRENT_AUTH_SESSION"
+
+
+def get_auth_session() -> dict:
+    """取得集中管理的登入 Session 狀態"""
+    if AUTH_SESSION_KEY not in st.session_state:
+        st.session_state[AUTH_SESSION_KEY] = {
+            "authenticated": False,
+            "emp_id": "",
+            "emp_name": "",
+            "role": "GUEST",
+            "unit": "TTN",
+        }
+    return st.session_state[AUTH_SESSION_KEY]
+
+
+def get_login_user_id() -> str:
+    """自動從登入 Session 狀態抓取員編"""
+    auth = get_auth_session()
+    if auth.get("authenticated"):
+        return auth.get("emp_id", "")
+    return ""
+
+
+def clean_role_label(role: str) -> str:
+    """轉換權限標籤文字"""
+    mapping = {
+        "ADMIN": "系統管理員",
+        "VIP_USER": "VIP 特權組員",
+        "TESTER": "測試員",
+        "USER": "一般組員",
+    }
+    return mapping.get(role, role)
+
+
+@st.dialog("📋 申請第一階段測試授權")
+def show_apply_dialog(unit_code: str, default_emp_id: str):
+    """彈窗：帶入當前輸入的單位與員編，讓組員提交授權申請"""
+    st.markdown("目前系統處於第一階段封閉測試，請填寫資訊送出申請，管理員將於核實後為您開通。")
+    
+    clean_id = default_emp_id.strip().upper()
+    if clean_id.isdigit() and len(clean_id) == 6:
+        clean_id = f"A{clean_id}"
+
+    with st.form(key="dialog_apply_form", border=False):
+        st.text_input("申請單位", value=unit_code, disabled=True, key="dlg_unit")
+        emp_id = st.text_input("使用者員編", value=clean_id, placeholder="例如: A023300", key="dlg_emp_id")
+        emp_name = st.text_input("組員姓名", placeholder="請輸入真實姓名", key="dlg_emp_name")
+        role_type = st.selectbox("職務類別", ["駕駛", "列車長", "服勤員", "其他"], key="dlg_role_type")
+        note = st.text_area("備註說明", placeholder="請說明測試用途或班別需求", key="dlg_note")
+
+        submit_btn = st.form_submit_button("送出授權申請", type="primary", use_container_width=True)
+
+    if submit_btn:
+        if not emp_id or not emp_name:
+            st.warning("⚠️ 請務必完整填寫「員編」與「姓名」！")
+        else:
+            log_activity(
+                "線上測試權限申請",
+                f"單位:{unit_code} | 員編:{emp_id} | 姓名:{emp_name} | 職務:{role_type} | 備註:{note}"
+            )
+            st.success(f"✅ 【{emp_name}】的授權申請已送出！管理員審核通過後即可正常登入。")
+            st.rerun()
+
+
+def render_login_view() -> None:
+    """渲染登入介面」"""
+    st.markdown(
+        """
+        <div style="text-align: center; margin-bottom: 24px;">
+            <h2 style="color: #F8FAFC; font-weight: 800; letter-spacing: 1px;">CREW DUTY ENGINE</h2>
+            <p style="color: #64748B; font-size: 13px;">BUSY DOING NOTHING PRODUCTIVE — C.L.F EDITION</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.expander("▸ 登入前系統說明與試用須知（點擊展開）"):
+        st.write("1. 本系統提供個人班表解析、換班/換假檢索與排班影像繪製服務。")
+        st.write("2. 一般組員登入後僅能檢視與生成個人班表。")
+        st.write("3. 第一次使用如顯示未授權，請點擊【申請使用權限】填寫資料。")
+
+    with st.form(key="login_form", border=True):
+        selected_unit = st.selectbox("選擇所屬單位", ["TTN", "KSH", "TCH"], key="login_unit_select")
+        input_emp_id = st.text_input("使用者員編（範例：023300）", key="login_emp_id_input")
+        input_passcode = st.text_input("系統授權碼", type="password", key="login_passcode_input")
+
+        st.write("")
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            btn_login = st.form_submit_button("進入系統", type="primary", use_container_width=True)
+        with col2:
+            btn_apply = st.form_submit_button("申請使用權限", use_container_width=True)
+
+    if btn_login:
+        success, message, info_or_session = authenticate_user(selected_unit, input_emp_id, input_passcode)
+        if success:
+            st.session_state[AUTH_SESSION_KEY] = info_or_session
+            st.session_state["current_unit"] = selected_unit
+            st.session_state["admin_logged_in"] = (info_or_session.get("role") == "ADMIN")
+            st.success(message)
+            st.rerun()
+        else:
+            st.error(f"❌ {message}")
+            if info_or_session.get("reason") == "UNAUTHORIZED":
+                st.info("💡 您尚未成為第一階段測試授權組員，請點選下方【申請使用權限】按鈕提交申請！")
+
+    if btn_apply:
+        show_apply_dialog(selected_unit, input_emp_id)
+
+
+# =============================================================================
+# 2. 資料處理與工具函式
+# =============================================================================
 
 def get_shift_group_key(code_str: str) -> str:
     """提取車次/班別的核心標識 (例: ND0007/NM0007/NF0007 均歸為 '0007', DTT -> 'DTT')"""
@@ -58,60 +179,6 @@ def find_date_column_index(columns: Any, target_date: str) -> int:
         if normalize_date_str(col) == target_norm:
             return idx
     return -1
-
-
-def get_login_user_id() -> str:
-    """自動掃描登入頁面輸入框 Key 與 Session State 抓取員編"""
-    login_widget_keys = [
-        "login_emp_id", "login_user", "login_id", "login_account", "login_username",
-        "emp_id", "user_id", "username", "account", "user_code", "emp_no",
-        "input_emp_id", "user_input", "login_user_id", "logged_in_user", "current_user"
-    ]
-    for key in login_widget_keys:
-        val = st.session_state.get(key)
-        if val and isinstance(val, str) and val.strip() and val.strip().upper() != "A":
-            clean_val = val.strip().upper()
-            if clean_val.isdigit() and len(clean_val) == 6:
-                return f"A{clean_val}"
-            return clean_val
-
-    for key in ["user", "user_info", "auth_user", "login_info", "auth", "login_data"]:
-        val = st.session_state.get(key)
-        if isinstance(val, dict):
-            for sub_k in ["emp_id", "user_id", "id", "username", "account", "emp_no", "name", "user_name"]:
-                res = val.get(sub_k)
-                if res and isinstance(res, str) and res.strip() and res.strip().upper() != "A":
-                    clean_res = res.strip().upper()
-                    if clean_res.isdigit() and len(clean_res) == 6:
-                        return f"A{clean_res}"
-                    return clean_res
-        elif isinstance(val, str) and val.strip() and val.strip().upper() != "A":
-            return val.strip().upper()
-
-    try:
-        for k, v in st.session_state.items():
-            if k in ["user_input_field", "stored_user_input", "last_app_mode", "should_reset_input_to_A", "draw_input_key"]:
-                continue
-            if isinstance(v, str) and v.strip() and v.strip().upper() != "A":
-                m1 = re.search(r"[A-Za-z]\d{6}", v)
-                if m1:
-                    return m1.group(0).upper()
-                m2 = re.search(r"\b\d{6}\b", v)
-                if m2:
-                    return f"A{m2.group(0)}"
-            elif isinstance(v, dict):
-                for sub_v in v.values():
-                    if isinstance(sub_v, str) and sub_v.strip() and sub_v.strip().upper() != "A":
-                        m1 = re.search(r"[A-Za-z]\d{6}", sub_v)
-                        if m1:
-                            return m1.group(0).upper()
-                        m2 = re.search(r"\b\d{6}\b", sub_v)
-                        if m2:
-                            return f"A{m2.group(0)}"
-    except Exception:
-        pass
-
-    return ""
 
 
 def get_date_label(d_str: str, columns: Optional[Any] = None) -> str:
@@ -189,8 +256,27 @@ def reset_ex_search() -> None:
     st.session_state.pop("ex_raw_candidates", None)
 
 
+# =============================================================================
+# 3. 前台主入口邏輯 (整合會話與權限控制)
+# =============================================================================
+
 def render_user_home() -> None:
     """繪製使用者首頁主要介面與功能模組"""
+
+    # ── [權限檢核 A] 未登入狀態：渲染登入頁面 ──
+    auth = get_auth_session()
+    if not auth.get("authenticated"):
+        render_login_view()
+        return
+
+    # ── [權限檢核 B] 已登入狀態：讀取會話資訊與角色全域變數 ──
+    current_user_id = auth["emp_id"]
+    current_user_name = auth["emp_name"]
+    user_role = auth["role"]
+    is_privileged = user_role in ["ADMIN", "VIP_USER"]
+    is_admin_user = (user_role == "ADMIN") or st.session_state.get("admin_logged_in", False)
+    current_unit_label = st.session_state.get("current_unit", auth.get("unit", "TTN"))
+
     st.markdown(
         """
         <style>
@@ -574,8 +660,20 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
+    # 頂部登入身分資訊條
+    st.markdown(
+        f"""
+        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.85); border: 1.5px solid rgba(56, 189, 248, 0.35); padding: 8px 14px; border-radius: 10px; margin-bottom: 12px;">
+            <div style="font-size: 13px; color: #F8FAFC; font-weight: 700;">
+                👤 登入身份：<span style="color: #38BDF8;">{current_user_name} ({current_user_id})</span> 
+                <span style="font-size: 10px; background: rgba(56,189,248,0.2); color: #38BDF8; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">{clean_role_label(user_role)}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     active_files = get_current_role_files()
-    current_unit_label = st.session_state.get("current_unit", "TTN")
 
     # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
     inspect_emp_id = st.session_state.get("inspect_emp_target")
@@ -712,8 +810,6 @@ def render_user_home() -> None:
 
     st.markdown("---")
 
-    is_admin_user = st.session_state.get("admin_logged_in", False)
-
     # ==================== 模式一：繪製個人月班表圖檔 ====================
     if app_mode == "繪製個人月班表圖檔":
         if is_module_maintenance(current_unit_label, "producer"):
@@ -753,13 +849,19 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        if "draw_input_key" not in st.session_state:
-            login_id = get_login_user_id()
-            st.session_state["draw_input_key"] = login_id if (login_id and login_id.upper() != "A") else ""
-
         with st.form(key="draw_schedule_form", border=False):
+            # 橫向越權防護：非特權身份 (USER/TESTER) 輸入框鎖定為本人員編，僅 VIP/ADMIN 可自主調整
+            draw_default_val = current_user_id if not is_privileged else st.session_state.get("draw_input_key", current_user_id)
+            draw_field_label = (
+                f"員編或姓名 (已鎖定個人帳號：{current_user_name})"
+                if not is_privileged
+                else "員編或姓名 (特權/管理員模式：可查詢全體組員)"
+            )
+
             st.text_input(
-                "輸入 員編 或 姓名 (例如: A023300 or 波莉)",
+                draw_field_label,
+                value=draw_default_val,
+                disabled=not is_privileged,
                 key="draw_input_key",
             )
             submit_btn = st.form_submit_button(
@@ -767,7 +869,8 @@ def render_user_home() -> None:
             )
 
         if submit_btn:
-            current_input = st.session_state.get("draw_input_key", "").strip()
+            # 後端二次鎖定：一般組員一律強制繪製本人
+            current_input = current_user_id if not is_privileged else st.session_state.get("draw_input_key", "").strip()
 
             if not current_input or current_input.upper() == "A":
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
@@ -778,7 +881,7 @@ def render_user_home() -> None:
                     )
                     log_activity(
                         "個人班表繪製",
-                        f"單位:{current_unit_label} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
+                        f"操作者:{current_user_id} | 單位:{current_unit_label} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
                     )
 
                     with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
@@ -969,9 +1072,6 @@ def render_user_home() -> None:
                     btn_noon_label = "中班 (10:00~13:00)"
                     btn_night_label = "晚班 (13:00~18:00)"
 
-                    # -----------------------------------------------------------------------------
-                    # 修復重點：按鈕觸發時強制更新 win_time_slider widget 的 session_state
-                    # -----------------------------------------------------------------------------
                     if st.button(btn_all_label, key="btn_win_all", use_container_width=True):
                         target_range = (morn_start_time, "18:00")
                         st.session_state["saved_win_time_slider"] = target_range
