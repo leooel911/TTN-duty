@@ -254,7 +254,6 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
 
     # 2. 檢查是否為白名單中的 VIP / TESTER 身分
     if clean_id in whitelist and wl_role in ["VIP_USER", "TESTER"]:
-        # 若該員編設定了獨立專屬密碼
         if custom_pass:
             if passcode == custom_pass:
                 return True, f"歡迎 VIP 組員【{wl_name}】！", {
@@ -267,7 +266,6 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
             else:
                 return False, "授權碼錯誤！", {"reason": "WRONG_VIP_PASSCODE"}
         
-        # 若使用系統預設 VIP 密碼 (0)
         if passcode == default_vip_pwd or passcode == "0":
             return True, f"歡迎 VIP 組員【{wl_name}】！", {
                 "authenticated": True,
