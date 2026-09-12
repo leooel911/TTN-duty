@@ -79,16 +79,21 @@ def parse_transport_periods(
 
 
 def build_weeks(
-    start_dt: datetime, dates: List[str], cells: List[str]
-) -> List[List[Optional[Tuple[str, Dict[str, str], str]]]]:
-    """根據起訖日期與儲存格建立 7 天制之月曆週陣列"""
+    start_dt: datetime, dates: List[str], cells: List[Any]
+) -> List[List[Optional[Tuple[str, Dict[str, Any], str]]]]:
+    """根據起訖日期與儲存格建立 7 天制之月曆週陣列（安全相容字典與原始字串）"""
     first_wd = (start_dt.weekday() + 1) % 7
-    weeks: List[List[Optional[Tuple[str, Dict[str, str], str]]]] = []
-    week: List[Optional[Tuple[str, Dict[str, str], str]]] = [None] * first_wd
+    weeks: List[List[Optional[Tuple[str, Dict[str, Any], str]]]] = []
+    week: List[Optional[Tuple[str, Dict[str, Any], str]]] = [None] * first_wd
 
     for dt, raw in zip(dates, cells):
-        raw_str = str(raw) if str(raw) != "nan" else ""
-        parsed = parse_cell(raw)
+        if isinstance(raw, dict):
+            parsed = raw
+            raw_str = f"{parsed.get('train', '')} {parsed.get('note', '')}"
+        else:
+            raw_str = str(raw) if str(raw) != "nan" else ""
+            parsed = parse_cell(raw)
+
         week.append((dt, parsed, raw_str))
         if len(week) == 7:
             weeks.append(week)
@@ -105,7 +110,7 @@ def render_schedule_figure(
     dates: List[str],
     emp_id: str,
     emp_name: str,
-    cells: List[str],
+    cells: List[Any],
     unit_label: str,
     badge_title: str = "Producer | C.L.F",
 ) -> io.BytesIO:
@@ -244,10 +249,8 @@ def render_schedule_figure(
         for item in week:
             if item is not None:
                 dt, d, raw_cell_str = item
-                tr, note, hours = d["train"], d.get("note", ""), d.get("hours", "")
-                is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d[
-                    "start"
-                ]
+                tr, note, hours = d.get("train", "無"), d.get("note", ""), d.get("hours", "")
+                is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d.get("start")
                 if is_pure_hol or tr.startswith("DO"):
                     has_emp_do = True
                 elif (
@@ -279,11 +282,9 @@ def render_schedule_figure(
                 )
                 continue
             dt, d, raw_cell_str = item
-            tr, note = d["train"], d.get("note", "")
+            tr, note = d.get("train", "無"), d.get("note", "")
 
-            is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d[
-                "start"
-            ]
+            is_pure_hol = ("DO" in raw_cell_str or "D2W" in raw_cell_str) and not d.get("start")
             is_pay_shift = (
                 (tr in ["PAY", "FAC"])
                 or ("PAY" in raw_cell_str)
@@ -407,7 +408,7 @@ def render_schedule_figure(
                     color=C_DO_TXT,
                     fontproperties=fp(18),
                 )
-            elif is_pay_shift and not d["start"]:
+            elif is_pay_shift and not d.get("start"):
                 draw_bold_text(
                     ax,
                     cx,
@@ -425,7 +426,7 @@ def render_schedule_figure(
                     ax,
                     cx,
                     ry + RH * 0.65,
-                    d["start"],
+                    d.get("start", "") or "",
                     ha="center",
                     va="center",
                     color="#000000",
@@ -435,7 +436,7 @@ def render_schedule_figure(
                     ax,
                     cx,
                     ry + RH * 0.40,
-                    d["end"],
+                    d.get("end", "") or "",
                     ha="center",
                     va="center",
                     color="#000000",
