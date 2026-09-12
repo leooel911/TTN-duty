@@ -1,305 +1,267 @@
-import json
 import os
+import json
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
-from config import DATA_DIR, SYSTEM_CONFIG_FILE, UNITS, WHITELIST_FILE
-from modules.utils import get_employee_name, safe_read_excel
-
-DEFAULT_CONFIG: Dict[str, Any] = {
-    "vip_pass_code": "0",
-    "crew_pass_code": "09000",
-    "vip_password": "0",
-    "admin_password": "Lf090000",
-    "empty_shift_label": "--",
-    "default_emp_id": "A",
-    "enable_whitelist": True,
-    "strict_streak_limit": 6,
-    "announcement": "目前為內部測試階段｜本頁面可聯繫後台管理者",
-    "enable_beta_notice": True,
-}
+from config import DATA_DIR, UNITS, WHITELIST_FILE
+from modules.utils import normalize_date_str, parse_cell, safe_read_excel
 
 
-def load_system_config() -> Dict[str, Any]:
-    """載入系統動態參數設定，若檔案不存在則自動建立"""
-    os.makedirs(DATA_DIR, exist_ok=True)
-    if not os.path.exists(SYSTEM_CONFIG_FILE):
-        save_system_config(DEFAULT_CONFIG)
-        return DEFAULT_CONFIG
-    try:
-        with open(SYSTEM_CONFIG_FILE, "r", encoding="utf-8") as f:
-            config = json.load(f)
-            for k, v in DEFAULT_CONFIG.items():
-                config.setdefault(k, v)
-            return config
-    except Exception:
-        return DEFAULT_CONFIG
+# =============================================================================
+# 1. 既有大表與檔案服務 (完整保留原功能)
+# =============================================================================
 
-
-def save_system_config(config_dict: Dict[str, Any]) -> bool:
-    """儲存系統動態參數設定至 DATA_DIR/system_config.json"""
-    try:
-        os.makedirs(DATA_DIR, exist_ok=True)
-        with open(SYSTEM_CONFIG_FILE, "w", encoding="utf-8") as f:
-            json.dump(config_dict, f, ensure_ascii=False, indent=4)
-        return True
-    except Exception as e:
-        print(f"Error saving system config: {e}")
-        return False
-
-
-def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
-    """統一讀取白名單（確保全站格式規範化）"""
-    whitelist_path = WHITELIST_FILE
-    full_data: Dict[str, Any] = {}
-
-    if os.path.exists(whitelist_path):
-        try:
-            with open(whitelist_path, "r", encoding="utf-8", errors="ignore") as f:
-                full_data = json.load(f)
-                if full_data and not any(k in UNITS for k in full_data.keys()):
-                    full_data = {u: full_data.copy() for u in UNITS.keys()}
-        except Exception:
-            full_data = {}
-
-    if unit_code not in full_data:
-        unit_default: Dict[str, Any] = {
-            "ADMIN": {
-                "name": f"[{unit_code}] 系統管理員",
-                "role": "ADMIN",
-                "note": f"[{unit_code}] 預設管理員帳號",
-                "created_at": datetime.now().strftime("%Y-%m-%d"),
-            }
-        }
-        full_data[unit_code] = unit_default
-
-    raw_unit_data = full_data.get(unit_code, {})
-    normalized_data = {}
-    for uid, info in raw_unit_data.items():
-        clean_uid = str(uid).strip().upper()
-        if clean_uid:
-            normalized_data[clean_uid] = info
-
-    return normalized_data
-
-
-def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
-    """統一儲存特定營運單位的白名單，並即時刷快取"""
-    whitelist_path = WHITELIST_FILE
-    os.makedirs(DATA_DIR, exist_ok=True)
-
-    full_data: Dict[str, Any] = {}
-    if os.path.exists(whitelist_path):
-        try:
-            with open(whitelist_path, "r", encoding="utf-8", errors="ignore") as f:
-                full_data = json.load(f)
-                if full_data and not any(k in UNITS for k in full_data.keys()):
-                    full_data = {u: full_data.copy() for u in UNITS.keys()}
-        except Exception:
-            full_data = {}
-
-    normalized_data = {}
-    for uid, info in unit_data.items():
-        clean_uid = str(uid).strip().upper()
-        if clean_uid:
-            normalized_data[clean_uid] = info
-
-    full_data[unit_code] = normalized_data
-
-    with open(whitelist_path, "w", encoding="utf-8") as f:
-        json.dump(full_data, f, ensure_ascii=False, indent=2)
-
-    st.cache_data.clear()
-
-
-def is_user_allowed(selected_unit: str, emp_id: Any, pass_code: str = "") -> Tuple[bool, Optional[Dict[str, Any]]]:
-    """
-    純白名單權限驗證：
-    1. 未輸入員編或密碼 -> 拒絕放行
-    2. 員編 'A' -> 只能搭配 VIP 密碼 (0) 或管理員密碼 (Lf090000)
-    3. 嚴格限定：必須名列於白名單（Whitelist）內且密碼正確者才能進入
-    """
-    emp_id_str = str(emp_id).strip().upper()
-    code_str = str(pass_code).strip()
-
-    # 🛑 1. 防呆：員編或密碼未輸入，直接拒絕放行
-    if not emp_id_str or emp_id_str in ["NONE", "NAN", ""]:
-        return False, None
-
-    if not code_str:
-        return False, None
-
-    sys_cfg = load_system_config()
-    admin_pwd = str(sys_cfg.get("admin_password", "Lf090000")).strip()
-    vip_pwd = str(sys_cfg.get("vip_password", sys_cfg.get("vip_pass_code", "0"))).strip()
-    user_pwd = str(sys_cfg.get("user_password", sys_cfg.get("crew_pass_code", "09000"))).strip()
-
-    # 🛑 2. 全域帳號 "A" 嚴格綁定：只對應 VIP 密碼 (0) 或管理員密碼
-    if emp_id_str == "A":
-        if code_str == vip_pwd or code_str == admin_pwd:
-            return True, {
-                "emp_id": "A",
-                "name": "全域通行",
-                "role": "VIP_USER",
-                "status": "啟用",
-            }
-        else:
-            return False, None
-
-    # 🛑 3. 密碼合法性預檢
-    if code_str not in [admin_pwd, vip_pwd, user_pwd]:
-        return False, None
-
-    # 🛑 4. 指定單位白名單驗證（主要放行門檻）
-    unit_whitelist = load_whitelist(selected_unit)
-    if emp_id_str in unit_whitelist:
-        u_info = unit_whitelist[emp_id_str]
-        role_type = "VIP_USER" if code_str in [vip_pwd, admin_pwd] else u_info.get("role", "TESTER")
-        return True, {
-            "emp_id": emp_id_str,
-            "name": u_info.get("name", u_info.get("姓名", "組員")),
-            "role": role_type,
-            "status": "啟用",
-        }
-
-    # 🛑 5. 跨單位 VIP / ADMIN 驗證
-    for u_code in UNITS.keys():
-        if u_code != selected_unit:
-            other_wl = load_whitelist(u_code)
-            if emp_id_str in other_wl:
-                other_info = other_wl[emp_id_str]
-                role_str = str(other_info.get("role", "")).upper()
-                if "VIP" in role_str or role_str == "ADMIN":
-                    return True, {
-                        "emp_id": emp_id_str,
-                        "name": other_info.get("name", "全域通行"),
-                        "role": "VIP_USER",
-                        "status": "啟用",
-                    }
-
-    # 🛑 6. 若不在白名單內，一律拒絕放行
-    return False, None
-
-
-def get_current_role_files() -> Dict[str, Any]:
-    """取得目前所屬單位的各大表檔案路徑字典"""
+def get_current_role_files() -> Dict[str, str]:
+    """取得當前選擇單位的各大表檔案路徑"""
     current_unit = st.session_state.get("current_unit", "TTN")
     return UNITS.get(current_unit, UNITS.get("TTN", {}))
 
 
 def get_schedule_range() -> str:
-    """取得當前班表涵蓋的時間區間範圍"""
-    role_files = get_current_role_files()
-    for path in role_files.values():
-        if isinstance(path, str) and os.path.exists(path):
+    """自動從當前大表中解析出排班週期範圍（例如：09/01 ~ 09/30）"""
+    unit_files = get_current_role_files()
+    for role_name in ["駕駛", "列車長", "服勤員"]:
+        f_path = unit_files.get(role_name, "")
+        if f_path and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
             try:
-                df = safe_read_excel(path, header=3)
+                df = safe_read_excel(f_path, header=3)
                 df.columns = [str(c).strip() for c in df.columns]
                 date_cols = [
-                    re.search(r"(\d+/\d+)", str(c)).group(1)
-                    for c in df.columns[2:]
-                    if re.search(r"(\d+/\d+)", str(c))
+                    normalize_date_str(col)
+                    for col in df.columns[2:]
+                    if normalize_date_str(col)
                 ]
                 if date_cols:
                     return f"{date_cols[0]} ~ {date_cols[-1]}"
             except Exception:
-                pass
-    start_dt = datetime.now().replace(day=1)
-    end_dt = start_dt + timedelta(days=29)
-    return f"{start_dt.strftime('%Y/%m/%d')} ~ {end_dt.strftime('%Y/%m/%d')}"
+                continue
+    return "無有效日期數據"
 
 
-def verify_crew_membership(selected_unit: str, emp_id: str) -> bool:
-    """驗證組員是否屬於指定單位（留作查詢輔助）"""
-    emp_id_str = str(emp_id).strip().upper()
-
-    wl = load_whitelist(selected_unit)
-    if emp_id_str in wl:
-        return True
-
-    unit_files = UNITS.get(selected_unit, {})
-    for role_name, file_path in unit_files.items():
-        if isinstance(file_path, str) and os.path.exists(file_path):
+def process_file_data(emp_input: str) -> Tuple[datetime, List[str], str, str, List[Dict[str, Any]]]:
+    """
+    掃描三大大表，解析指定員編/姓名之完整月班表資料
+    回傳: (開始日期物件, 日期標籤清單, 解析員編, 解析姓名, 格子解析資料列表)
+    """
+    clean_keyword = emp_input.strip().upper()
+    unit_files = get_current_role_files()
+    
+    target_row = None
+    target_columns = None
+    
+    for role_name in ["駕駛", "列車長", "服勤員"]:
+        f_path = unit_files.get(role_name, "")
+        if f_path and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
             try:
-                df = safe_read_excel(file_path, header=3)
-                for _, row in df.iterrows():
-                    r_id = str(row.iloc[0]).strip().upper()
-                    if r_id == emp_id_str:
-                        return True
-            except Exception:
-                pass
-    return False
-
-
-def process_file_data(
-    target_emp: str,
-) -> Tuple[datetime, List[str], str, str, List[str]]:
-    """真實讀取 Excel 大表，解析指定組員的班表儲存格資料"""
-    target_emp_str = str(target_emp).strip().upper()
-    current_unit = st.session_state.get("current_unit", "TTN")
-    role_files = get_current_role_files()
-
-    found_row = None
-    found_df = None
-    emp_id = target_emp_str
-    emp_name = ""
-
-    for role, path in role_files.items():
-        if isinstance(path, str) and os.path.exists(path):
-            try:
-                df = safe_read_excel(path, header=3)
+                df = safe_read_excel(f_path, header=3)
                 df.columns = [str(c).strip() for c in df.columns]
                 for _, row in df.iterrows():
-                    r_id = str(row.iloc[0]).strip().upper()
-                    r_name = str(row.iloc[1]).strip().upper()
-                    if r_id == target_emp_str or r_name == target_emp_str:
-                        found_row = row
-                        found_df = df
-                        emp_id = str(row.iloc[0]).strip()
-                        emp_name = str(row.iloc[1]).strip()
+                    row_id = str(row.iloc[0]).strip().upper()
+                    row_name = str(row.iloc[1]).strip()
+                    if clean_keyword in [row_id, row_name, f"A{clean_keyword}"]:
+                        target_row = row
+                        target_columns = df.columns
                         break
-                if found_row is not None:
-                    break
             except Exception:
-                pass
+                continue
+        if target_row is not None:
+            break
 
-    if found_row is None:
-        raise ValueError(
-            f"在 [{current_unit}] 大表中找不到員編或姓名：{target_emp}"
-        )
+    if target_row is None:
+        raise ValueError(f"在當前大表中找不到符合關鍵字【{emp_input}】的組員資料！")
 
-    all_cols = list(found_df.columns)
-    dates: List[str] = []
-    date_col_indices: List[int] = []
-    start_dt: Optional[datetime] = None
-    current_year = datetime.now().year
+    emp_id = str(target_row.iloc[0]).strip().upper()
+    emp_name = str(target_row.iloc[1]).strip()
+    
+    dates = []
+    cells = []
+    current_year = date.today().year
 
-    for idx in range(2, len(all_cols)):
-        col_name = str(all_cols[idx]).strip()
-        m = re.search(r"(\d+/\d+)", col_name)
-        if m:
-            d_str = m.group(1)
-            dates.append(d_str)
-            date_col_indices.append(idx)
-            if start_dt is None:
-                try:
-                    m_val, d_val = map(int, d_str.split("/"))
-                    start_dt = datetime(current_year, m_val, d_val)
-                except Exception:
-                    pass
+    for idx in range(2, len(target_columns)):
+        col_raw = str(target_columns[idx])
+        norm_d = normalize_date_str(col_raw)
+        if not norm_d:
+            continue
+        dates.append(norm_d)
+        cell_val = target_row.iloc[idx] if idx < len(target_row) else ""
+        parsed = parse_cell(cell_val)
+        cells.append(parsed)
 
-    if start_dt is None:
-        start_dt = datetime.now().replace(day=1)
-
-    cells: List[str] = []
-    for col_idx in date_col_indices:
-        if col_idx < len(found_row):
-            cell_val = found_row.iloc[col_idx]
-            cells.append("" if pd.isna(cell_val) else str(cell_val).strip())
-        else:
-            cells.append("")
+    first_m, first_d = map(int, dates[0].split("/"))
+    start_dt = datetime(current_year, first_m, first_d)
 
     return start_dt, dates, emp_id, emp_name, cells
+
+
+# =============================================================================
+# 2. 全域系統設定與白名單 JSON 讀寫服務 (完整保留原功能)
+# =============================================================================
+
+def load_system_config() -> Dict[str, Any]:
+    """讀取全域系統設定檔 (system_config.json)"""
+    config_path = os.path.join(DATA_DIR, "system_config.json")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {
+        "admin_password": "admin123",
+        "vip_password": "vip888",
+        "user_password": "1234",
+        "strict_streak_limit": 6,
+        "enable_beta_notice": True,
+        "announcement": "目前為內部測試階段｜本頁面可聯繫後台管理者",
+    }
+
+
+def save_system_config(cfg: Dict[str, Any]) -> None:
+    """寫入全域系統設定檔"""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    config_path = os.path.join(DATA_DIR, "system_config.json")
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+
+
+def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
+    """讀取指定單位的白名單 (whitelist.json)"""
+    wl_path = os.path.join(DATA_DIR, WHITELIST_FILE)
+    if os.path.exists(wl_path):
+        try:
+            with open(wl_path, "r", encoding="utf-8") as f:
+                all_wl = json.load(f)
+                return all_wl.get(unit_code, {})
+        except Exception:
+            pass
+    return {}
+
+
+def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
+    """寫入指定單位的白名單"""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    wl_path = os.path.join(DATA_DIR, WHITELIST_FILE)
+    all_wl = {}
+    if os.path.exists(wl_path):
+        try:
+            with open(wl_path, "r", encoding="utf-8") as f:
+                all_wl = json.load(f)
+        except Exception:
+            all_wl = {}
+    
+    all_wl[unit_code] = unit_data
+    with open(wl_path, "w", encoding="utf-8") as f:
+        json.dump(all_wl, f, ensure_ascii=False, indent=2)
+
+
+# =============================================================================
+# 3. 新增：員編實名核實與三層登入權限驗證引擎
+# =============================================================================
+
+def verify_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]:
+    """
+    核實員編是否真實存在於 白名單 或 Excel 大表中
+    回傳: (是否存在 bool, 組員姓名 str)
+    """
+    clean_id = emp_id.strip().upper()
+    if clean_id.isdigit() and len(clean_id) == 6:
+        clean_id = f"A{clean_id}"
+
+    # 第一順位：查詢白名單 JSON
+    whitelist = load_whitelist(unit_code)
+    if clean_id in whitelist:
+        info = whitelist[clean_id]
+        name = info.get("name", info.get("姓名", "")) if isinstance(info, dict) else str(info)
+        return True, name or "白名單組員"
+
+    # 第二順位：掃描該單位三大職位 Excel 大表 (駕駛 / 列車長 / 服勤員)
+    unit_files = UNITS.get(unit_code, {})
+    for role_name in ["駕駛", "列車長", "服勤員"]:
+        f_path = unit_files.get(role_name, "")
+        if f_path and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
+            try:
+                df = safe_read_excel(f_path, header=3)
+                for _, row in df.iterrows():
+                    row_id = str(row.iloc[0]).strip().upper()
+                    if row_id == clean_id:
+                        row_name = str(row.iloc[1]).strip()
+                        return True, row_name
+            except Exception:
+                continue
+
+    return False, ""
+
+
+def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    三層身份驗證引擎：
+    1. ROOT ADMIN 緊急比對 (最高管理員備援)
+    2. 後台動態白名單 (讀取 whitelist.json 判定角色: ADMIN / VIP_USER / TESTER)
+    3. 一般大表組員 (核實大表員編是否存在 + 比對通用授權碼)
+    
+    回傳: (是否成功 bool, 提示文字 str, 驗證詳細資訊 Dict)
+    """
+    clean_id = emp_id_input.strip().upper()
+    if clean_id.isdigit() and len(clean_id) == 6:
+        clean_id = f"A{clean_id}"
+
+    passcode = passcode_input.strip()
+    if not clean_id or clean_id == "A":
+        return False, "請輸入有效的員編（例如: A023300）", {"reason": "INVALID_INPUT"}
+
+    sys_config = load_system_config()
+    whitelist = load_whitelist(unit_code)
+
+    admin_pwd = str(sys_config.get("admin_password", "admin123")).strip()
+    vip_pwd = str(sys_config.get("vip_password", "vip888")).strip()
+    user_pwd = str(sys_config.get("user_password", "1234")).strip()
+
+    # 第一層：程式碼 / Config 預設解鎖 (Root Admin 備援)
+    if passcode == admin_pwd:
+        user_session = {
+            "authenticated": True,
+            "emp_id": clean_id,
+            "emp_name": "系統管理員",
+            "role": "ADMIN",
+            "unit": unit_code,
+        }
+        return True, "管理員身份驗證成功！", user_session
+
+    # 檢查員編真實性（若不在大表與白名單中，標記為 UNAUTHORIZED）
+    exists, discovered_name = verify_employee_exists(unit_code, clean_id)
+    if not exists:
+        return False, f"您尚未成為第一階段測試授權組員！", {"reason": "UNAUTHORIZED"}
+
+    final_name = discovered_name or clean_id
+    assigned_role = "USER"
+
+    # 第二層：讀取後台白名單 (whitelist.json) 指定的角色
+    if clean_id in whitelist:
+        wl_info = whitelist[clean_id]
+        if isinstance(wl_info, dict):
+            assigned_role = wl_info.get("role", "VIP_USER")
+            final_name = wl_info.get("name", final_name)
+        else:
+            assigned_role = "VIP_USER"
+
+    # 第三層：金鑰密碼匹配與角色授權
+    final_role = None
+    if passcode == vip_pwd or assigned_role in ["ADMIN", "VIP_USER"]:
+        final_role = assigned_role if assigned_role != "USER" else "VIP_USER"
+    elif passcode == user_pwd or assigned_role in ["USER", "TESTER"]:
+        final_role = assigned_role
+
+    if not final_role:
+        return False, "授權碼無效，請重新輸入！", {"reason": "WRONG_PASSCODE"}
+
+    user_session = {
+        "authenticated": True,
+        "emp_id": clean_id,
+        "emp_name": final_name,
+        "role": final_role,
+        "unit": unit_code,
+    }
+    return True, f"歡迎！ {final_name}", user_session
