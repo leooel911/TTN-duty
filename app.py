@@ -112,7 +112,7 @@ if "current_unit" not in st.session_state:
 
 
 # ---------------------------------------------------------
-# 🛡️ 前置授權碼門戶檢查 (獨立區塊，絕對不與主畫面上下疊加)
+# 🛡️ 前置授權碼門戶檢查 (無 Form 化設計，徹底杜絕重複渲染)
 # ---------------------------------------------------------
 is_authed = st.session_state.get("authenticated", False)
 is_admin_authed = st.session_state.get("admin_logged_in", False)
@@ -149,25 +149,25 @@ if not is_authed and not is_admin_authed:
 
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         
-        with st.form("auth_form"):
-            selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
-            entered_emp = st.text_input(
-                "使用者員編 (範例：023300)",
-                value=DEFAULT_EMP_ID,
-                placeholder="例如: 023300",
-                max_chars=10,
-            )
-            entered_key = st.text_input(
-                "系統授權碼", type="password", placeholder="請輸入系統授權碼..."
-            )
+        # 💡 完全不使用 st.form，改用獨立互動元件與按鈕
+        selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"], key="login_unit_box")
+        entered_emp = st.text_input(
+            "使用者員編 (範例：023300)",
+            value=DEFAULT_EMP_ID,
+            placeholder="例如: 023300",
+            max_chars=10,
+            key="login_emp_box",
+        )
+        entered_key = st.text_input(
+            "系統授權碼", type="password", placeholder="請輸入系統授權碼...", key="login_key_box"
+        )
 
-            col_b1, col_b2 = st.columns([1, 1])
-            with col_b1:
-                btn_auth = st.form_submit_button("進入系統", type="primary", use_container_width=True)
-            with col_b2:
-                btn_apply = st.form_submit_button("申請使用權限", use_container_width=True)
+        col_b1, col_b2 = st.columns([1, 1])
+        with col_b1:
+            btn_auth = st.button("進入系統", type="primary", use_container_width=True)
+        with col_b2:
+            btn_apply = st.button("申請使用權限", use_container_width=True)
 
-        # 表單送出後的動作處理（完全脫離表單區塊，避免狀態衝突）
         if btn_apply:
             st.session_state["show_apply_dialog"] = True
             st.rerun()
@@ -190,7 +190,6 @@ if not is_authed and not is_admin_authed:
                 if role_str == "ADMIN":
                     st.session_state["current_user_id"] = f"ADMIN ({emp_id})"
                 else:
-                    # 統一格式：顯示為 姓名 (員編)
                     st.session_state["current_user_id"] = f"{emp_name} ({emp_id})" if emp_name else emp_id
 
                 log_activity(
