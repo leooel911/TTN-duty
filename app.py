@@ -38,7 +38,7 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 def show_apply_permission_dialog():
     # 檢查是否剛才已經成功送出過，顯示成功提示與關閉按鈕
     if st.session_state.get("apply_success_sent", False):
-        st.success("🎉 您的申請已成功送出！請靜候管理者審核開通。")
+        st.success(" 您的申請已成功送出！請靜候管理者審核開通。")
         if st.button("我知道了", type="primary", use_container_width=True):
             st.session_state["apply_success_sent"] = False
             st.session_state["show_apply_dialog"] = False
