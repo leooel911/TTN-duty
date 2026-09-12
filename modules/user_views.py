@@ -1005,8 +1005,10 @@ def render_user_home() -> None:
                     )
                     st.session_state["saved_win_time_slider"] = slider_val
 
-                    if isinstance(slider_val, (tuple, list)) and len(slider_val) == 2:
-                        min_time, max_time_sel = slider_val
+                    # 確保優先抓取當前 Session State 最新的區間範圍
+                    active_slider_val = st.session_state.get("saved_win_time_slider", slider_val)
+                    if isinstance(active_slider_val, (tuple, list)) and len(active_slider_val) == 2:
+                        min_time, max_time_sel = active_slider_val
                     else:
                         min_time, max_time_sel = TIME_OPTIONS[0], TIME_OPTIONS[-1]
 
@@ -1035,6 +1037,13 @@ def render_user_home() -> None:
 
                     if st.button("搜尋可換班組員名單", key="btn_window_search", type="primary", use_container_width=True):
                         raw_candidates = []
+
+                        # 確保搜尋按鈕觸發時也抓取最新範圍
+                        current_slider = st.session_state.get("saved_win_time_slider", (morn_start_time, "18:00"))
+                        if isinstance(current_slider, (tuple, list)) and len(current_slider) == 2:
+                            search_min_time, search_max_time = current_slider
+                        else:
+                            search_min_time, search_max_time = morn_start_time, "18:00"
 
                         for r_name, p_path in valid_paths.items():
                             df_search = safe_read_excel(p_path, header=3)
@@ -1089,7 +1098,8 @@ def render_user_home() -> None:
                                             if s_time_str == "--:--":
                                                 pass
                                             else:
-                                                if not (min_time <= s_time_str <= max_time_sel):
+                                                # 嚴格時段區間比對過濾
+                                                if not (search_min_time <= s_time_str <= search_max_time):
                                                     continue
 
                                             if only_main_line and (is_non_line or is_leave):
