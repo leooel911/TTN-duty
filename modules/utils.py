@@ -119,7 +119,7 @@ def clean_time_str(time_str: Optional[str]) -> Optional[str]:
 
 
 def parse_cell(cell_value: Any) -> Dict[str, Any]:
-    """解析乘務大表個別儲存格 (強健處理隱藏字元、全角冒號，並強制時間補零為 HH:MM)"""
+    """解析乘務大表個別儲存格 (強健處理隱藏字元、全角冒號，並精準過濾起訖時間)"""
     if pd.isna(cell_value) or cell_value is None:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
@@ -137,14 +137,21 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     if not lines:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
-    raw_times = re.findall(r"\b\d{1,2}:\d{2}\b", val_str)
-    all_times = [f"{int(tm.split(':')[0]):02d}:{tm.split(':')[1]}" for tm in raw_times]
+    # 針對每一行獨立檢查是否為時間格式，避免整格亂抓
+    time_lines = []
+    non_time_lines = []
+    
+    for l in lines:
+        time_match = re.search(r"\b(\d{1,2}):(\d{2})\b", l)
+        if time_match:
+            h, m = int(time_match.group(1)), time_match.group(2)
+            time_lines.append(f"{h:02d}:{m}")
+        else:
+            non_time_lines.append(l)
 
-    non_time_lines = [l for l in lines if not re.search(r"\b\d{1,2}:\d{2}\b", l)]
-
-    if not all_times:
+    if not time_lines:
         first_line = lines[0]
-        note_lines = [l for l in lines[1:] if not re.search(r"\b\d{1,2}:\d{2}\b", l)]
+        note_lines = [l for l in lines[1:]]
         return {
             "train": first_line,
             "start": None,
@@ -153,14 +160,18 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
             "note": " ".join(note_lines),
         }
 
-    start_time = all_times[0] if len(all_times) >= 1 else None
-    end_time = all_times[1] if len(all_times) >= 2 else None
-    hours_raw = all_times[2] if len(all_times) >= 3 else None
+    # 通常排班表第一組時間是 Start，第二組是 End，第三組（若有）是工時
+    start_time = time_lines[0] if len(time_lines) >= 1 else None
+    end_time = time_lines[1] if len(time_lines) >= 2 else None
+    hours_raw = time_lines[2] if len(time_lines) >= 3 else None
 
     hours_str = ""
     if hours_raw:
-        h, m = map(int, hours_raw.split(":"))
-        hours_str = f"{h}h{m:02d}m"
+        try:
+            h, m = map(int, hours_raw.split(":"))
+            hours_str = f"{h}h{m:02d}m"
+        except Exception:
+            pass
 
     train_code = "無"
     if non_time_lines:
