@@ -1039,17 +1039,6 @@ def render_user_home() -> None:
                         unsafe_allow_html=True,
                     )
 
-                    # 【醒目大字體即時顯示盒】
-                    st.markdown(
-                        f"""
-                        <div class="time-range-display-box">
-                            <span class="time-range-label">⏱️ 已選擇 Sign-In 時段</span>
-                            <span class="time-range-value">{min_time} ～ {max_time_sel}</span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-
                     st.markdown('<div class="section-field-label">進階篩選條件</div>', unsafe_allow_html=True)
 
                     if "saved_win_main_line" not in st.session_state:
