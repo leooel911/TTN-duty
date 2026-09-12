@@ -176,9 +176,11 @@ if not is_authed and not is_admin_authed:
             
             if success:
                 role = user_session.get("role", "USER")
-                st.session_state["authenticated"] = True
                 is_adm = (role == "ADMIN")
+                
+                st.session_state["authenticated"] = True
                 st.session_state["admin_logged_in"] = is_adm
+                st.session_state["show_admin_login"] = False  # 強制關閉管理員登入彈窗，防止 VIP 發生跳兩次
                 st.session_state["nav_mode"] = "admin_panel" if is_adm else "home"
                 st.session_state["page"] = "admin" if is_adm else "user"
                 st.session_state["current_unit"] = user_session.get("unit", selected_unit)
