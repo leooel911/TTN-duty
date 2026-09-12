@@ -141,7 +141,7 @@ def render_login_view() -> None:
             st.rerun()
         else:
             st.error(f"❌ {message}")
-            if isinstance(info_or_session, dict) and info_or_session.get("reason") == "UNAUTHORIZED":
+            if isinstance(info_or_session, dict) and info_or_session.get("reason") in ["NOT_IN_WHITELIST", "UNAUTHORIZED"]:
                 st.info("💡 您尚未成為第一階段測試授權組員，請點選下方【申請使用權限】按鈕提交申請！")
 
     if btn_apply:
