@@ -752,17 +752,14 @@ def render_user_home() -> None:
         )
 
         with st.form(key="draw_schedule_form", border=False):
-            draw_default_val = current_user_id if not is_privileged else st.session_state.get("draw_input_key", current_user_id)
-            draw_field_label = (
-                f"員編或姓名 (已鎖定個人帳號：{current_user_name})"
-                if not is_privileged
-                else "員編或姓名 (特權/管理員模式：可查詢全體組員)"
-            )
+            # 如果 current_user_id 是空的，就預設給一個空的或提示
+            draw_default_val = current_user_id if current_user_id else st.session_state.get("draw_input_key", "")
+            draw_field_label = "請輸入您的員編或姓名 (例如: A023300)"
 
             st.text_input(
                 draw_field_label,
                 value=draw_default_val,
-                disabled=not is_privileged,
+                disabled=False,  # <--- 解除鎖定，讓任何人都能手動輸入
                 key="draw_input_key",
             )
             submit_btn = st.form_submit_button(
