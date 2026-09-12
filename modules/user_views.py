@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
+
 import modules.components as comp
 from config import LEAVE_CODES, NATIONAL_HOLIDAYS
 from modules.drawing import render_schedule_figure
@@ -102,7 +103,7 @@ def show_apply_dialog(unit_code: str, default_emp_id: str):
 
 
 def render_login_view() -> None:
-    """渲染登入介面」"""
+    """渲染登入介面"""
     st.markdown(
         """
         <div style="text-align: center; margin-bottom: 24px;">
@@ -140,7 +141,7 @@ def render_login_view() -> None:
             st.rerun()
         else:
             st.error(f"❌ {message}")
-            if info_or_session.get("reason") == "UNAUTHORIZED":
+            if isinstance(info_or_session, dict) and info_or_session.get("reason") == "UNAUTHORIZED":
                 st.info("💡 您尚未成為第一階段測試授權組員，請點選下方【申請使用權限】按鈕提交申請！")
 
     if btn_apply:
@@ -271,7 +272,7 @@ def render_user_home() -> None:
 
     # ── [權限檢核 B] 已登入狀態：讀取會話資訊與角色全域變數 ──
     current_user_id = auth["emp_id"]
-    current_user_name = auth["emp_name"]
+    current_user_name = auth.get("emp_name", current_user_id)
     user_role = auth["role"]
     is_privileged = user_role in ["ADMIN", "VIP_USER"]
     is_admin_user = (user_role == "ADMIN") or st.session_state.get("admin_logged_in", False)
@@ -660,6 +661,20 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
+    # 頂部 WELCOME 橫幅標語 (動態帶入管理員編輯之姓名與員編)
+    display_header_name = f"{current_user_name} ({current_user_id})" if current_user_name != current_user_id else current_user_id
+    st.markdown(
+        f"""
+        <div style="text-align: center; margin-bottom: 16px;">
+            <h2 style="color: #F8FAFC; font-weight: 800; letter-spacing: 1px; margin-bottom: 4px;">CREW DUTY ENGINE</h2>
+            <p style="color: #38BDF8; font-size: 13.5px; font-weight: 700; letter-spacing: 0.5px; margin: 0;">
+                ● WELCOME: {current_unit_label} | {display_header_name} ●
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # 頂部登入身分資訊條
     st.markdown(
         f"""
@@ -850,7 +865,6 @@ def render_user_home() -> None:
         )
 
         with st.form(key="draw_schedule_form", border=False):
-            # 橫向越權防護：非特權身份 (USER/TESTER) 輸入框鎖定為本人員編，僅 VIP/ADMIN 可自主調整
             draw_default_val = current_user_id if not is_privileged else st.session_state.get("draw_input_key", current_user_id)
             draw_field_label = (
                 f"員編或姓名 (已鎖定個人帳號：{current_user_name})"
@@ -869,7 +883,6 @@ def render_user_home() -> None:
             )
 
         if submit_btn:
-            # 後端二次鎖定：一般組員一律強制繪製本人
             current_input = current_user_id if not is_privileged else st.session_state.get("draw_input_key", "").strip()
 
             if not current_input or current_input.upper() == "A":
