@@ -265,3 +265,11 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
         "unit": unit_code,
     }
     return True, f"歡迎！ {final_name}", user_session
+# =============================================================================
+# 4. 舊版相容性匯入包裝層 (防止舊版 app.py 報錯)
+# =============================================================================
+
+def is_user_allowed(emp_id: str, unit_code: str = "TTN") -> bool:
+    """舊版相容函式：核實員編是否具備使用權限"""
+    exists, _ = verify_employee_exists(unit_code, emp_id)
+    return exists
