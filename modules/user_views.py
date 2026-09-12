@@ -952,23 +952,23 @@ def render_user_home() -> None:
                     comp.show_holiday_notice(win_week_holidays, win_week_str)
 
                     # -----------------------------------------------------------------
-                    # 獨立時段滑塊（無快捷按鈕）
+                    # 獨立時段滑塊（更新 Key 為 win_time_slider_v2 強制粉碎舊快取）
                     # -----------------------------------------------------------------
                     st.markdown('<div class="section-field-label">Sign-In 時段區間 (拖曳調整)</div>', unsafe_allow_html=True)
 
-                    current_slider_val = st.session_state.get("win_time_slider")
+                    current_slider_val = st.session_state.get("win_time_slider_v2")
                     if (
                         not isinstance(current_slider_val, (tuple, list))
                         or len(current_slider_val) != 2
                         or current_slider_val[0] not in TIME_OPTIONS
                         or current_slider_val[1] not in TIME_OPTIONS
                     ):
-                        st.session_state["win_time_slider"] = (TIME_OPTIONS[0], TIME_OPTIONS[-1])
+                        st.session_state["win_time_slider_v2"] = (TIME_OPTIONS[0], TIME_OPTIONS[-1])
 
                     slider_val = st.select_slider(
                         "Sign-In 時段區間 (拖曳調整)",
                         options=TIME_OPTIONS,
-                        key="win_time_slider",
+                        key="win_time_slider_v2",
                         on_change=reset_win_search,
                         label_visibility="collapsed",
                     )
