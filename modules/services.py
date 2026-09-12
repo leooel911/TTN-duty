@@ -110,12 +110,12 @@ def load_system_config() -> Dict[str, Any]:
         except Exception:
             pass
     return {
-        "admin_password": "admin123",
+        "admin_password": "Lf090000",
         "vip_password": "0",       # 高級 VIP 快捷授權碼：0
         "user_password": "09000",   # 一般組員預設授權碼：09000
         "strict_streak_limit": 6,
         "enable_beta_notice": True,
-        "announcement": "目前為內部測試階段｜本頁面可聯繫後台管理者",
+        "announcement": "目前為內部測試階段｜本頁面末端可聯繫管理者",
     }
 
 
@@ -216,7 +216,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     passcode = passcode_input.strip()
 
     sys_config = load_system_config()
-    admin_pwd = sys_config.get("admin_password", "admin123")
+    admin_pwd = sys_config.get("admin_password", "Lf090000")
     default_vip_pwd = sys_config.get("vip_password", "0")
     user_pwd = sys_config.get("user_password", "09000")
 
@@ -257,7 +257,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
         # 若該員編設定了獨立專屬密碼
         if custom_pass:
             if passcode == custom_pass:
-                return True, f"歡迎 VIP 特權組員【{wl_name}】！", {
+                return True, f"歡迎 VIP 組員【{wl_name}】！", {
                     "authenticated": True,
                     "emp_id": clean_id,
                     "emp_name": wl_name,
@@ -265,7 +265,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
                     "unit": unit_code,
                 }
             else:
-                return False, "VIP 專屬授權碼錯誤！", {"reason": "WRONG_VIP_PASSCODE"}
+                return False, "授權碼錯誤！", {"reason": "WRONG_VIP_PASSCODE"}
         
         # 若使用系統預設 VIP 密碼 (0)
         if passcode == default_vip_pwd or passcode == "0":
@@ -277,7 +277,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
                 "unit": unit_code,
             }
         else:
-            return False, "授權碼無效！此 VIP 帳號需使用專屬授權碼或預設 VIP 碼 (0)", {"reason": "WRONG_PASSCODE"}
+            return False, "授權碼無效！需使用專屬授權碼", {"reason": "WRONG_PASSCODE"}
 
     # 3. 通用測試員 (員編填 A 且密碼為 0)
     if clean_id == "A" and (passcode == default_vip_pwd or passcode == "0"):
@@ -304,7 +304,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
         return False, f"員編【{clean_id}】未在【{unit_code}】班表大表中找到，請核對所屬單位！", {"reason": "NOT_IN_EXCEL"}
 
     if passcode != user_pwd and passcode != "09000":
-        return False, "授權碼無效！一般組員授權碼為 09000", {"reason": "WRONG_PASSCODE"}
+        return False, "授權碼無效！請再次確認", {"reason": "WRONG_PASSCODE"}
 
     final_name = wl_name if wl_name else excel_name
 
