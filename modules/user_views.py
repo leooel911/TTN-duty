@@ -970,7 +970,6 @@ def render_user_home() -> None:
                     btn_noon_label = "中班 (10:00~13:00)"
                     btn_night_label = "晚班 (13:00~18:00)"
 
-                    # 點擊快捷按鈕時，直接更新 state 並觸發 rerun 讓滑桿及時生效
                     if st.button(btn_all_label, key="btn_win_all", use_container_width=True):
                         st.session_state["saved_win_time_slider"] = (morn_start_time, "18:00")
                         st.session_state["win_time_slider"] = (morn_start_time, "18:00")
@@ -1086,12 +1085,26 @@ def render_user_home() -> None:
                                                     )
                                                 )
 
+                                            # 在搜集階段即加入 Sign-In 時段判定，確保過濾精準
+                                            s_time_str = start_t if start_t else "--:--"
+                                            if s_time_str == "--:--":
+                                                # 如果沒有標準 Sign-In 時間但屬於出勤，視為全時段
+                                                pass
+                                            else:
+                                                if not (min_time <= s_time_str <= max_time_sel):
+                                                    continue
+
+                                            if only_main_line and (is_non_line or is_leave):
+                                                continue
+                                            if only_long_shift and not is_long:
+                                                continue
+
                                             raw_candidates.append({
                                                 "日期": target_date,
                                                 "職位": r_name,
                                                 "員編": emp_id,
                                                 "姓名": emp_name,
-                                                "Sign-In": start_t if start_t else "--:--",
+                                                "Sign-In": s_time_str,
                                                 "Sign-Out": parsed["end"] if parsed["end"] else "--:--",
                                                 "工時": parsed.get("hours", ""),
                                                 "車次": translate_train_code(parsed["train"]),
@@ -1106,23 +1119,7 @@ def render_user_home() -> None:
                         st.rerun()
 
                     if st.session_state.get("win_raw_candidates") is not None:
-                        raw_list = st.session_state["win_raw_candidates"]
-                        filtered_results = []
-
-                        for r in raw_list:
-                            # 嚴格依照所選時段範圍進行過濾
-                            if r["Sign-In"] == "--:--":
-                                if not (min_time <= morn_start_time and max_time_sel >= "18:00"):
-                                    continue
-                            else:
-                                if not (min_time <= r["Sign-In"] <= max_time_sel):
-                                    continue
-
-                            if only_main_line and (r["非正線"] or r["請假"]):
-                                continue
-                            if only_long_shift and not r["長班"]:
-                                continue
-                            filtered_results.append(r)
+                        filtered_results = st.session_state["win_raw_candidates"]
 
                         ROLE_ORDER = {"服勤員": 1, "列車長": 2, "駕駛": 3}
                         filtered_results = sorted(
