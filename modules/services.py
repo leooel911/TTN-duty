@@ -111,8 +111,8 @@ def load_system_config() -> Dict[str, Any]:
             pass
     return {
         "admin_password": "admin123",
-        "vip_password": "vip888",
-        "user_password": "09000",  # 👈 預設一般組員密碼設為 09000
+        "vip_password": "0",       # 高級 VIP 快捷授權碼：0
+        "user_password": "09000",   # 一般組員預設授權碼：09000
         "strict_streak_limit": 6,
         "enable_beta_notice": True,
         "announcement": "目前為內部測試階段｜本頁面可聯繫後台管理者",
@@ -158,23 +158,15 @@ def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
 
 
 # =============================================================================
-# 3. 員編實名核實與三層登入權限驗證引擎
+# 3. 員編實名核實與雙軌驗證引擎
 # =============================================================================
 
-def verify_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]:
-    """核實員編是否真實存在於 白名單 或 Excel 大表中"""
+def check_excel_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]:
+    """專門檢查員編是否真實存在於 Excel 班表大表中"""
     clean_id = emp_id.strip().upper()
     if clean_id.isdigit() and len(clean_id) == 6:
         clean_id = f"A{clean_id}"
 
-    # 第一順位：查詢白名單 JSON
-    whitelist = load_whitelist(unit_code)
-    if clean_id in whitelist:
-        info = whitelist[clean_id]
-        name = info.get("name", info.get("姓名", "")) if isinstance(info, dict) else str(info)
-        return True, name or "白名單組員"
-
-    # 第二順位：掃描該單位三大職位 Excel 大表 (駕駛 / 列車長 / 服勤員)
     unit_files = UNITS.get(unit_code, {})
     for role_name in ["駕駛", "列車長", "服勤員"]:
         f_path = unit_files.get(role_name, "")
@@ -188,8 +180,25 @@ def verify_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]:
                         return True, row_name
             except Exception:
                 continue
-
     return False, ""
+
+
+def verify_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]:
+    """核實員編是否真實存在（白名單或 Excel）"""
+    clean_id = emp_id.strip().upper()
+    if not clean_id or clean_id == "A":
+        return False, ""
+
+    if clean_id.isdigit() and len(clean_id) == 6:
+        clean_id = f"A{clean_id}"
+
+    whitelist = load_whitelist(unit_code)
+    if clean_id in whitelist:
+        info = whitelist[clean_id]
+        name = info.get("name", info.get("姓名", "")) if isinstance(info, dict) else str(info)
+        return True, name or "白名單組員"
+
+    return check_excel_employee_exists(unit_code, clean_id)
 
 
 def get_employee_name(unit_code: str, emp_id: str) -> str:
@@ -199,58 +208,91 @@ def get_employee_name(unit_code: str, emp_id: str) -> str:
 
 
 def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) -> Tuple[bool, str, Dict[str, Any]]:
-    """三層式使用者登入身分驗證（嚴格密碼比對版）"""
+    """新版雙軌登入驗證引擎"""
     clean_id = emp_id_input.strip().upper()
+    passcode = passcode_input.strip()
+
+    sys_config = load_system_config()
+    admin_pwd = sys_config.get("admin_password", "admin123")
+    default_vip_pwd = sys_config.get("vip_password", "0")
+    user_pwd = sys_config.get("user_password", "09000")
+
+    # -------------------------------------------------------------------------
+    # 軌道一：高級 VIP / 特權測試員驗證 (免員編快捷登入)
+    # -------------------------------------------------------------------------
+
+    # 1. 最高系統管理員 (ADMIN)
+    if passcode == admin_pwd:
+        return True, "歡迎系統管理員！", {
+            "authenticated": True,
+            "emp_id": clean_id if clean_id and clean_id != "A" else "ADMIN",
+            "emp_name": "系統管理員",
+            "role": "ADMIN",
+            "unit": unit_code,
+        }
+
+    # 2. 通用高級 VIP 測試員 (輸入授權碼 0 取得全域 VIP 權限)
+    if passcode == default_vip_pwd or passcode == "0":
+        return True, "歡迎高級 VIP 測試員！", {
+            "authenticated": True,
+            "emp_id": clean_id if clean_id and clean_id != "A" else "VIP001",
+            "emp_name": "VIP 測試員",
+            "role": "VIP_USER",
+            "unit": unit_code,
+        }
+
+    # 3. 比對白名單中的「客製化獨立 VIP 登入碼」
+    whitelist = load_whitelist(unit_code)
+    for w_id, w_info in whitelist.items():
+        if isinstance(w_info, dict):
+            custom_pass = str(w_info.get("passcode", "")).strip()
+            w_role = w_info.get("role", "VIP_USER")
+            if custom_pass and custom_pass == passcode and w_role in ["ADMIN", "VIP_USER"]:
+                v_name = w_info.get("name") or w_info.get("姓名") or w_id
+                return True, f"歡迎 VIP 特權組員【{v_name}】！", {
+                    "authenticated": True,
+                    "emp_id": w_id,
+                    "emp_name": v_name,
+                    "role": w_role,
+                    "unit": unit_code,
+                }
+
+    # -------------------------------------------------------------------------
+    # 軌道二：一般組員實名驗證 (必須為真實員編 + 大表存在 + 白名單存在 + 授權碼 09000)
+    # -------------------------------------------------------------------------
+
+    # 1. 員編不可為 A 或空白
+    if not clean_id or clean_id == "A":
+        return False, "一般組員請輸入正確員編（例如: A023300 或 023300）！", {"reason": "INVALID_EMP_ID"}
+
     if clean_id.isdigit() and len(clean_id) == 6:
         clean_id = f"A{clean_id}"
 
-    # 1. 檢查員編真實性（若不在大表與白名單中，拒絕登入）
-    exists, discovered_name = verify_employee_exists(unit_code, clean_id)
-    if not exists:
-        return False, "您尚未成為第一階段測試授權組員！", {"reason": "UNAUTHORIZED"}
+    # 2. 條件一：必須存在於「白名單」中
+    if clean_id not in whitelist:
+        return False, f"員編【{clean_id}】尚未加入【{unit_code}】白名單，無法登入！", {"reason": "NOT_IN_WHITELIST"}
 
-    final_name = discovered_name or clean_id
-    assigned_role = "USER"
+    # 3. 條件二：必須真實存在於「Excel 排班大表」中
+    exists_in_excel, excel_name = check_excel_employee_exists(unit_code, clean_id)
+    if not exists_in_excel:
+        return False, f"員編【{clean_id}】未在【{unit_code}】班表大表中找到，請核對所屬單位！", {"reason": "NOT_IN_EXCEL"}
 
-    # 2. 讀取白名單設定檔（若有設定客製化姓名或指定角色，進行覆蓋）
-    whitelist = load_whitelist(unit_code)
-    if clean_id in whitelist:
-        wl_info = whitelist[clean_id]
-        if isinstance(wl_info, dict):
-            custom_name = wl_info.get("name") or wl_info.get("姓名")
-            if custom_name and custom_name.strip():
-                final_name = custom_name.strip()
-            assigned_role = wl_info.get("role", "VIP_USER")
-        elif isinstance(wl_info, str) and wl_info.strip():
-            final_name = wl_info.strip()
-            assigned_role = "VIP_USER"
+    # 4. 條件三：授權碼必須為 09000
+    if passcode != user_pwd and passcode != "09000":
+        return False, "授權碼無效！一般組員授權碼為 09000", {"reason": "WRONG_PASSCODE"}
 
-    # 3. 全域系統金鑰嚴格比對
-    sys_config = load_system_config()
-    admin_pwd = sys_config.get("admin_password", "admin123")
-    vip_pwd = sys_config.get("vip_password", "vip888")
-    user_pwd = sys_config.get("user_password", "09000")  # 預設一般組員密碼
+    # 解析最終姓名 (優先採用白名單設定之姓名，次之採用大表姓名)
+    wl_entry = whitelist[clean_id]
+    custom_name = wl_entry.get("name") or wl_entry.get("姓名") if isinstance(wl_entry, dict) else str(wl_entry)
+    final_name = custom_name.strip() if (custom_name and str(custom_name).strip()) else excel_name
 
-    final_role = None
-    if passcode_input == admin_pwd:
-        final_role = "ADMIN"
-    elif passcode_input == vip_pwd:
-        final_role = assigned_role if assigned_role != "USER" else "VIP_USER"
-    elif passcode_input == user_pwd:
-        final_role = assigned_role
-
-    if not final_role:
-        return False, "授權碼無效，請重新輸入！", {"reason": "WRONG_PASSCODE"}
-
-    user_session = {
+    return True, f"歡迎！{final_name}", {
         "authenticated": True,
         "emp_id": clean_id,
         "emp_name": final_name,
-        "role": final_role,
+        "role": "USER",
         "unit": unit_code,
     }
-
-    return True, f"歡迎！{final_name}", user_session
 
 
 # =============================================================================
@@ -258,7 +300,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
 # =============================================================================
 
 def is_user_allowed(first_arg: str, second_arg: str = "TTN") -> Tuple[bool, Any]:
-    """舊版相容函式：支援 (allowed, user_info) 雙傳回值與彈性參數順序"""
+    """舊版相容函式"""
     if first_arg in ["TTN", "KSH", "TCH"]:
         unit_code, emp_id = first_arg, second_arg
     else:
@@ -269,7 +311,7 @@ def is_user_allowed(first_arg: str, second_arg: str = "TTN") -> Tuple[bool, Any]
 
 
 def verify_crew_membership(first_arg: str, second_arg: str = "TTN") -> Tuple[bool, Any]:
-    """舊版相容函式：核實組員資格"""
+    """舊版相容函式"""
     if first_arg in ["TTN", "KSH", "TCH"]:
         unit_code, emp_id = first_arg, second_arg
     else:
