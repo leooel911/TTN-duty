@@ -767,7 +767,9 @@ def render_user_home() -> None:
             )
 
         if submit_btn:
-            current_input = current_user_id if not is_privileged else st.session_state.get("draw_input_key", "").strip()
+            # 優先讀取輸入框內的值，如果輸入框是空的才使用當前登入者的員編
+            input_val = st.session_state.get("draw_input_key", "").strip()
+            current_input = input_val if input_val else current_user_id
 
             if not current_input or current_input.upper() == "A":
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
