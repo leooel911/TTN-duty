@@ -36,9 +36,8 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 # ---------------------------------------------------------
 @st.dialog("申請系統使用權限")
 def show_apply_permission_dialog():
-    # 檢查是否剛才已經成功送出過，顯示成功提示與關閉按鈕
     if st.session_state.get("apply_success_sent", False):
-        st.success(" 您的申請已成功送出！請靜候管理者審核開通。")
+        st.success("🎉 您的申請已成功送出！請靜候管理者審核開通。")
         if st.button("我知道了", type="primary", use_container_width=True):
             st.session_state["apply_success_sent"] = False
             st.session_state["show_apply_dialog"] = False
@@ -83,7 +82,6 @@ def show_apply_permission_dialog():
                 )
                 success, msg = send_admin_email(req_unit, clean_emp, clean_name, req_reason)
 
-            # 標記送出成功，不直接關閉對話框，讓使用者看到成功提示
             st.session_state["apply_success_sent"] = True
             st.rerun()
 
@@ -213,8 +211,12 @@ if not is_authed and not is_admin_authed:
             else:
                 st.error(f"❌ 登入失敗，請再次確認{message}")
 
+        # 🛡️ 嚴格限制：只有當狀態明確為 True 且點過按鈕時才呼叫 dialog
         if st.session_state.get("show_apply_dialog", False):
             show_apply_permission_dialog()
+        else:
+            # 強制清除殘留，防止右上角 X 關閉造成的幽靈觸發
+            st.session_state["show_apply_dialog"] = False
 
     st.stop()
 
@@ -408,7 +410,7 @@ with col_f2:
                 st.session_state["page"] = "admin"
         else:
             st.session_state["show_admin_login"] = True
-        st.rerin()
+        st.rerun()
 
 if st.session_state.get("show_feedback_dialog", False):
     show_feedback_modal()
