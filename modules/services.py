@@ -273,3 +273,8 @@ def is_user_allowed(emp_id: str, unit_code: str = "TTN") -> bool:
     """舊版相容函式：核實員編是否具備使用權限"""
     exists, _ = verify_employee_exists(unit_code, emp_id)
     return exists
+def verify_crew_membership(emp_id_or_unit: str, second_arg: str = "TTN") -> Tuple[bool, str]:
+    """舊版相容函式：核實組員資格 (自動匹配參數順序)"""
+    if emp_id_or_unit in ["TTN", "KSH", "TCH"]:
+        return verify_employee_exists(emp_id_or_unit, second_arg)
+    return verify_employee_exists(second_arg, emp_id_or_unit)
