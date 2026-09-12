@@ -1031,8 +1031,8 @@ def render_user_home() -> None:
                                     align-items: center; 
                                     margin-top: 4px; 
                                     margin-bottom: 8px;">
-                            <span style="font-size: 12px; font-weight: 700; color: #94A3B8;">目前選擇區間</span>
-                            <span style="font-size: 15px; font-weight: 800; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px;">
+                            <span style="font-size: 16px; font-weight: 700; color: #94A3B8;">目前選擇區間</span>
+                            <span style="font-size: 16px; font-weight: 800; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px;">
                                  {min_time} ～ {max_time_sel}
                             </span>
                         </div>
