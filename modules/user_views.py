@@ -952,31 +952,34 @@ def render_user_home() -> None:
                     comp.show_holiday_notice(win_week_holidays, win_week_str)
 
                     # -----------------------------------------------------------------
-                    # 獨立時段滑塊（更新 Key 為 win_time_slider_v2 強制粉碎舊快取）
+                    # 獨立時段滑塊（綁定獨立記憶變數，確保搜尋後絕不彈回全時段）
                     # -----------------------------------------------------------------
                     st.markdown('<div class="section-field-label">Sign-In 時段區間 (拖曳調整)</div>', unsafe_allow_html=True)
 
-                    current_slider_val = st.session_state.get("win_time_slider_v2")
+                    if "saved_win_time_range" not in st.session_state:
+                        st.session_state["saved_win_time_range"] = (TIME_OPTIONS[0], TIME_OPTIONS[-1])
+
+                    curr_saved = st.session_state["saved_win_time_range"]
                     if (
-                        not isinstance(current_slider_val, (tuple, list))
-                        or len(current_slider_val) != 2
-                        or current_slider_val[0] not in TIME_OPTIONS
-                        or current_slider_val[1] not in TIME_OPTIONS
+                        not isinstance(curr_saved, (tuple, list))
+                        or len(curr_saved) != 2
+                        or curr_saved[0] not in TIME_OPTIONS
+                        or curr_saved[1] not in TIME_OPTIONS
                     ):
-                        st.session_state["win_time_slider_v2"] = (TIME_OPTIONS[0], TIME_OPTIONS[-1])
+                        curr_saved = (TIME_OPTIONS[0], TIME_OPTIONS[-1])
+                        st.session_state["saved_win_time_range"] = curr_saved
 
                     slider_val = st.select_slider(
                         "Sign-In 時段區間 (拖曳調整)",
                         options=TIME_OPTIONS,
-                        key="win_time_slider_v2",
+                        value=curr_saved,
+                        key="win_time_slider_widget",
                         on_change=reset_win_search,
                         label_visibility="collapsed",
                     )
 
-                    if isinstance(slider_val, (tuple, list)) and len(slider_val) == 2:
-                        min_time, max_time_sel = slider_val
-                    else:
-                        min_time, max_time_sel = TIME_OPTIONS[0], TIME_OPTIONS[-1]
+                    st.session_state["saved_win_time_range"] = slider_val
+                    min_time, max_time_sel = slider_val
 
                     st.markdown('<div class="section-field-label">進階篩選條件</div>', unsafe_allow_html=True)
 
@@ -1002,7 +1005,7 @@ def render_user_home() -> None:
                         st.session_state["saved_win_long_shift"] = only_long_shift
 
                     # -----------------------------------------------------------------
-                    # 搜尋執行邏輯 (直接讀取 slider_val)
+                    # 搜尋執行邏輯
                     # -----------------------------------------------------------------
                     if st.button("搜尋可換班組員名單", key="btn_window_search", type="primary", use_container_width=True):
                         raw_candidates = []
