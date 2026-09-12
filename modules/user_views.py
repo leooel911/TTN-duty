@@ -1019,6 +1019,25 @@ def render_user_home() -> None:
 
                     st.session_state["saved_win_time_range"] = slider_val
                     min_time, max_time_sel = slider_val
+                    # 【極致顯眼的時間顯示】用 Streamlit 原生容器與大字體呈現
+                    st.markdown(
+                        f"""
+                        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
+                                    border: 2px solid #38BDF8; 
+                                    border-radius: 12px; 
+                                    padding: 10px 16px; 
+                                    text-align: center; 
+                                    margin-top: 4px; 
+                                    margin-bottom: 12px; 
+                                    box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);">
+                            <span style="font-size: 13px; font-weight: 700; color: #94A3B8; letter-spacing: 1px;">目前選擇查詢時段</span>
+                            <div style="font-size: 24px; font-weight: 900; color: #38BDF8; font-family: monospace; margin-top: 2px; text-shadow: 0 0 8px rgba(56, 189, 248, 0.5);">
+                                 {min_time} ～ {max_time_sel}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
                     # 【醒目大字體即時顯示盒】
                     st.markdown(
