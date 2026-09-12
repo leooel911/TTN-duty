@@ -25,101 +25,8 @@ TW_TZ = timezone(timedelta(hours=8))
 MAINLINE_PATTERN = re.compile(r"^[NCS][DMFGH]\d+", re.IGNORECASE)
 
 
-def parse_user_agent(ua_string: str) -> str:
-    """簡易解析 User-Agent 為易讀的設備與瀏覽器標籤"""
-    if not ua_string:
-        return "未知設備"
-
-    if "iPhone" in ua_string:
-        device = "iPhone"
-    elif "iPad" in ua_string:
-        device = "iPad"
-    elif "Android" in ua_string:
-        device = "Android"
-    elif "Macintosh" in ua_string:
-        device = "Mac"
-    elif "Windows" in ua_string:
-        device = "Windows"
-    else:
-        device = "其他裝置"
-
-    if "Edg" in ua_string:
-        browser = "Edge"
-    elif "Chrome" in ua_string:
-        browser = "Chrome"
-    elif "Safari" in ua_string:
-        browser = "Safari"
-    elif "Firefox" in ua_string:
-        browser = "Firefox"
-    else:
-        browser = "其他瀏覽器"
-
-    return f"{device} / {browser}"
-
-
-def get_client_info() -> Tuple[str, str]:
-    """擷取使用者的 IP 位址與裝置資訊 (User-Agent)"""
-    try:
-        headers = getattr(st.context, "headers", {})
-        ip = headers.get("X-Forwarded-For", headers.get("Remote-Addr", "未知 IP"))
-        if "," in ip:
-            ip = ip.split(",")[0].strip()
-
-        ua = headers.get("User-Agent", "")
-        device = parse_user_agent(ua)
-        return ip, device
-    except Exception:
-        return "未知 IP", "未知設備"
-
-
-def normalize_date_str(val: Any) -> str:
-    """將各種日期格式 (如 "2026/09/06", "09/06", "9/6", "09/06(日)") 統一轉換為標準 "M/D" 格式"""
-    if pd.isna(val) or val is None:
-        return ""
-    s = str(val).strip()
-    m = re.search(r"(?:\d{4}/)?(\d{1,2})/(\d{1,2})", s)
-    if m:
-        return f"{int(m.group(1))}/{int(m.group(2))}"
-    return ""
-
-
-def get_file_mtime_str(file_path: str) -> str:
-    """取得檔案最後修改時間字串 (強制轉為台灣時間)"""
-    if isinstance(file_path, str) and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-        try:
-            mtime = os.path.getmtime(file_path)
-            tz = TAIWAN_TZ if TAIWAN_TZ else TW_TZ
-            dt = datetime.fromtimestamp(mtime, tz=tz)
-            return dt.strftime("%Y-%m-%d %H:%M")
-        except Exception:
-            return "時間讀取失敗"
-    return "尚無檔案"
-
-
-def safe_read_excel(file_path: str, header: int = 3) -> pd.DataFrame:
-    """安全讀取 Excel 檔案，處理例外狀況"""
-    if not (isinstance(file_path, str) and os.path.exists(file_path) and os.path.getsize(file_path) > 0):
-        return pd.DataFrame()
-    try:
-        return pd.read_excel(file_path, header=header)
-    except Exception:
-        return pd.DataFrame()
-
-
-def clean_time_str(time_str: Optional[str]) -> Optional[str]:
-    """將時間字串統一轉換為兩位數小時格式 HH:MM (例如 5:26 -> 05:26)"""
-    if not time_str:
-        return None
-    time_str = str(time_str).strip().replace("：", ":")
-    m = re.search(r"\b(\d{1,2}):(\d{2})\b", time_str)
-    if m:
-        h, mins = int(m.group(1)), m.group(2)
-        return f"{h:02d}:{mins}"
-    return None
-
-
 def parse_cell(cell_value: Any) -> Dict[str, Any]:
-    """解析乘務大表個別儲存格 (強健處理隱藏字元、全角冒號，並精準過濾起訖時間)"""
+    """解析乘務大表個別儲存格 (強制嚴格過濾報到時間，排除備註時間干擾)"""
     if pd.isna(cell_value) or cell_value is None:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
@@ -137,28 +44,62 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     if not lines:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
-    # 針對每一行獨立檢查是否為時間格式，避免整格亂抓
+    # 提取所有時間行
     time_lines = []
     non_time_lines = []
     
     for l in lines:
-        time_match = re.search(r"\b(\d{1,2}):(\d{2})\b", l)
+        # 只捕捉獨立的時間格式 (例如 05:26, 13:00)
+        time_match = re.search(r"^(\d{1,2}):(\d{2})$", l)
         if time_match:
             h, m = int(time_match.group(1)), time_match.group(2)
             time_lines.append(f"{h:02d}:{m}")
         else:
-            non_time_lines.append(l)
+            # 兼容行內夾帶時間的狀況，但優先抓獨立行
+            inline_match = re.search(r"\b(\d{1,2}):(\d{2})\b", l)
+            if inline_match and len(l) <= 8:  # 確保是短時間字串
+                h, m = int(inline_match.group(1)), inline_match.group(2)
+                time_lines.append(f"{h:02d}:{m}")
+            else:
+                non_time_lines.append(l)
 
-    if not time_lines:
-        first_line = lines[0]
-        note_lines = [l for l in lines[1:]]
-        return {
-            "train": first_line,
-            "start": None,
-            "end": None,
-            "hours": None,
-            "note": " ".join(note_lines),
-        }
+    # 嚴格界定：排班表通常第一組時間是 Start，第二組是 End
+    start_time = time_lines[0] if len(time_lines) >= 1 else None
+    end_time = time_lines[1] if len(time_lines) >= 2 else None
+    hours_raw = time_lines[2] if len(time_lines) >= 3 else None
+
+    hours_str = ""
+    if hours_raw:
+        try:
+            h, m = map(int, hours_raw.split(":"))
+            hours_str = f"{h}h{m:02d}m"
+        except Exception:
+            pass
+
+    train_code = "無"
+    if non_time_lines:
+        real_trains = [
+            l for l in non_time_lines
+            if not any(k in l.upper() for k in ["DO", "D2W", "D1", "D2", "OGC", "PAY", "FAC", "LEV", "MLP", "MTR"])
+        ]
+        if real_trains:
+            train_code = real_trains[0]
+        else:
+            train_code = non_time_lines[0]
+
+    note_lines = [
+        l for l in lines
+        if l != train_code and not re.search(r"\b\d{1,2}:\d{2}\b", l)
+    ]
+    note_str = " ".join(note_lines)
+
+    return {
+        "train": train_code,
+        "start": start_time,
+        "end": end_time,
+        "hours": hours_str,
+        "note": note_str,
+    }
 
     # 通常排班表第一組時間是 Start，第二組是 End，第三組（若有）是工時
     start_time = time_lines[0] if len(time_lines) >= 1 else None
