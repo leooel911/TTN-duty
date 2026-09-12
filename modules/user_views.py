@@ -888,9 +888,6 @@ def render_user_home() -> None:
                 if not (h == 18 and m == 30)
             ]
 
-            if "win_time_slider" not in st.session_state:
-                st.session_state["win_time_slider"] = (morn_start_time, "18:00")
-
             valid_paths = {}
             for r_name in roles_to_query:
                 p = active_files.get(r_name, "")
@@ -954,39 +951,26 @@ def render_user_home() -> None:
 
                     comp.show_holiday_notice(win_week_holidays, win_week_str)
 
-                    st.markdown('<div class="section-field-label">快捷選擇時段：</div>', unsafe_allow_html=True)
+                    # -----------------------------------------------------------------
+                    # 獨立時段滑塊（無快捷按鈕）
+                    # -----------------------------------------------------------------
+                    st.markdown('<div class="section-field-label">Sign-In 時段區間 (拖曳調整)</div>', unsafe_allow_html=True)
 
-                    btn_all_label = f"全時段 ({morn_start_time}~18:00)"
-                    btn_morn_label = f"早班 ({morn_start_time}~10:00)"
-                    btn_noon_label = "中班 (10:00~13:00)"
-                    btn_night_label = "晚班 (13:00~18:00)"
+                    current_slider_val = st.session_state.get("win_time_slider")
+                    if (
+                        not isinstance(current_slider_val, (tuple, list))
+                        or len(current_slider_val) != 2
+                        or current_slider_val[0] not in TIME_OPTIONS
+                        or current_slider_val[1] not in TIME_OPTIONS
+                    ):
+                        st.session_state["win_time_slider"] = (TIME_OPTIONS[0], TIME_OPTIONS[-1])
 
-                    if st.button(btn_all_label, key="btn_win_all", use_container_width=True):
-                        st.session_state["win_time_slider"] = (morn_start_time, "18:00")
-                        reset_win_search()
-                        st.rerun()
-
-                    if st.button(btn_morn_label, key="btn_win_morn", use_container_width=True):
-                        st.session_state["win_time_slider"] = (morn_start_time, "10:00")
-                        reset_win_search()
-                        st.rerun()
-
-                    if st.button(btn_noon_label, key="btn_win_noon", use_container_width=True):
-                        st.session_state["win_time_slider"] = ("10:00", "13:00")
-                        reset_win_search()
-                        st.rerun()
-
-                    if st.button(btn_night_label, key="btn_win_night", use_container_width=True):
-                        st.session_state["win_time_slider"] = ("13:00", "18:00")
-                        reset_win_search()
-                        st.rerun()
-
-                    # 這裡直接使用 select_slider，其數值會直接存在 st.session_state["win_time_slider"]
                     slider_val = st.select_slider(
                         "Sign-In 時段區間 (拖曳調整)",
                         options=TIME_OPTIONS,
                         key="win_time_slider",
                         on_change=reset_win_search,
+                        label_visibility="collapsed",
                     )
 
                     if isinstance(slider_val, (tuple, list)) and len(slider_val) == 2:
@@ -1017,15 +1001,13 @@ def render_user_home() -> None:
                         )
                         st.session_state["saved_win_long_shift"] = only_long_shift
 
+                    # -----------------------------------------------------------------
+                    # 搜尋執行邏輯 (直接讀取 slider_val)
+                    # -----------------------------------------------------------------
                     if st.button("搜尋可換班組員名單", key="btn_window_search", type="primary", use_container_width=True):
                         raw_candidates = []
 
-                        # 【修正點】每次點擊搜尋時，直接讀取當前滑桿的 tuple 範圍作為過濾條件
-                        current_slider = st.session_state.get("win_time_slider", (morn_start_time, "18:00"))
-                        if isinstance(current_slider, (tuple, list)) and len(current_slider) == 2:
-                            search_min_time, search_max_time = current_slider
-                        else:
-                            search_min_time, search_max_time = morn_start_time, "18:00"
+                        search_min_time, search_max_time = slider_val
 
                         for r_name, p_path in valid_paths.items():
                             df_search = safe_read_excel(p_path, header=3)
@@ -1047,6 +1029,12 @@ def render_user_home() -> None:
                                         is_off = is_cell_off_day(cell_raw)
 
                                         if not is_off or start_t:
+                                            s_time_str = str(start_t).strip() if start_t else "--:--"
+
+                                            # 【核心過濾】嚴格檢查是否在滑塊設定的時間區間內
+                                            if s_time_str == "--:--" or not (search_min_time <= s_time_str <= search_max_time):
+                                                continue
+
                                             tr_upper = str(parsed["train"]).strip().upper()
                                             raw_cell_upper = str(cell_raw).upper()
                                             is_leave = (
@@ -1057,6 +1045,11 @@ def render_user_home() -> None:
                                             is_long = is_overtime(
                                                 parsed["hours"], parsed["train"], parsed["note"]
                                             )
+
+                                            if only_main_line and (is_non_line or is_leave):
+                                                continue
+                                            if only_long_shift and not is_long:
+                                                continue
 
                                             do_match = re.search(
                                                 r"(DO\d*W?|D\d+W|OGC)", str(cell_raw), re.IGNORECASE
@@ -1075,17 +1068,6 @@ def render_user_home() -> None:
                                                         else "無"
                                                     )
                                                 )
-
-                                            s_time_str = start_t if start_t else "--:--"
-                                            
-                                            # 【核心過濾】嚴格檢查是否在滑桿設定的時間區間內
-                                            if s_time_str == "--:--" or not (search_min_time <= s_time_str <= search_max_time):
-                                                continue
-
-                                            if only_main_line and (is_non_line or is_leave):
-                                                continue
-                                            if only_long_shift and not is_long:
-                                                continue
 
                                             raw_candidates.append({
                                                 "日期": target_date,
