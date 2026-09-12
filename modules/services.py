@@ -265,7 +265,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
         display_name = wl_name if wl_name else ("VIP 測試員" if clean_id == "A" else clean_id)
         return True, f"歡迎 VIP 組員【{display_name}】！", {
             "authenticated": True,
-            "emp_id": clean_id if clean_id else "VIP001",
+            "emp_id": clean_id if clean_id and clean_id != "A" else "VIP",
             "emp_name": display_name,
             "role": "VIP_USER",
             "unit": unit_code,
