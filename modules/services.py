@@ -276,10 +276,10 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     # -------------------------------------------------------------------------
 
     if not clean_id or clean_id == "A":
-        return False, "一般組員請輸入正確員編（例如: A023300 或 023300）！", {"reason": "INVALID_EMP_ID"}
+        return False, "一般組員請輸入正確員編（例如:A023300）！", {"reason": "INVALID_EMP_ID"}
 
     if clean_id not in whitelist:
-        return False, f"員編【{clean_id}】尚未加入【{unit_code}】白名單，無法登入！", {"reason": "NOT_IN_WHITELIST"}
+        return False, f"員編【{clean_id}】尚未加入【{unit_code}】受測試人員，請點選申請權限！", {"reason": "NOT_IN_WHITELIST"}
 
     exists_in_excel, excel_name = check_excel_employee_exists(unit_code, clean_id)
     if not exists_in_excel:
