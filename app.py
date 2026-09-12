@@ -32,60 +32,96 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
-# 權限申請彈出視窗對話框 (Dialog - 恢復精緻原生外觀)
+# 完美置中全螢幕遮罩式彈窗 (無 X 鍵、不破壞排版、絕不反彈)
 # ---------------------------------------------------------
-@st.dialog("申請系統使用權限")
-def show_apply_permission_dialog():
-    # 如果已經成功送出，在對話框內顯示漂亮的大成功提示與關閉鈕
-    if st.session_state.get("apply_success_sent", False):
-        st.success("🎉 您的申請已成功送出！請靜候管理者審核開通。")
-        if st.button("關閉視窗", type="primary", use_container_width=True):
-            st.session_state["apply_success_sent"] = False
-            st.session_state["show_apply_dialog"] = False
-            st.rerurn()
-        return
-
+def render_custom_modal_dialog():
+    # 注入全螢幕暗色半透明遮罩與完美置中對話框 CSS
     st.markdown(
         """
-        <div style="font-size: 13px; color: #94A3B8; margin-bottom: 12px;">
-            請填寫基本資料，送出後系統將自動發送通知信給管理員進行審核與開通。
-        </div>
+        <style>
+        /* 全螢幕背景遮罩 */
+        .custom-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 99999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        </style>
+        <div class="custom-modal-overlay"></div>
         """,
         unsafe_allow_html=True,
     )
 
-    req_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS", "其他單位"], key="dlg_req_unit")
-    req_emp_id = st.text_input("使用者員編 (例如: A023300)", key="dlg_req_emp_id")
-    req_name = st.text_input("真實姓名 (例如: 波莉)", key="dlg_req_name")
-    req_reason = st.text_area("備註 (選填)", key="dlg_req_reason", help="說明用途可加速審核")
+    # 用置中欄位將彈窗內容完美鎖在畫面正中央
+    _, modal_col, _ = st.columns([0.15, 0.7, 0.15])
+    with modal_col:
+        st.markdown(
+            """
+            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%); 
+                        border: 2px solid #38BDF8; 
+                        border-radius: 16px; 
+                        padding: 24px; 
+                        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8);
+                        position: relative;
+                        z-index: 100000;
+                        margin-top: 15vh;">
+                <div style="font-size: 20px; font-weight: 900; color: #38BDF8; margin-bottom: 6px; letter-spacing: 0.5px;">申請系統使用權限</div>
+                <div style="font-size: 13px; color: #94A3B8; margin-bottom: 16px; line-height: 1.4;">
+                    請填寫基本資料，送出後系統將自動發送通知信給管理員進行審核與開通。
+                </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    col_sub1, col_sub2 = st.columns([1, 1])
-    with col_sub1:
-        submit_clicked = st.button("確認送出申請", type="primary", use_container_width=True)
-    with col_sub2:
-        if st.button("關閉視窗", use_container_width=True):
-            st.session_state["show_apply_dialog"] = False
-            st.rerun()
+        if st.session_state.get("apply_success_sent", False):
+            st.success("🎉 您的申請已成功送出！請靜候管理者審核開通。")
+            if st.button("關閉視窗", type="primary", use_container_width=True, key="btn_close_success_modal"):
+                st.session_state["apply_success_sent"] = False
+                st.session_state["show_apply_dialog"] = False
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+            return
 
-    if submit_clicked:
-        clean_emp = req_emp_id.strip().upper()
-        clean_name = req_name.strip()
+        req_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS", "其他單位"], key="dlg_req_unit")
+        req_emp_id = st.text_input("使用者員編 (例如: A023300)", key="dlg_req_emp_id")
+        req_name = st.text_input("真實姓名 (例如: 波莉)", key="dlg_req_name")
+        req_reason = st.text_area("備註 (選填)", key="dlg_req_reason", help="說明用途可加速審核")
 
-        if not clean_emp or not clean_name:
-            st.warning("請完整填寫「員編」與「姓名」！")
-        else:
-            with st.spinner("正在記錄申請並通知管理者..."):
-                log_activity(
-                    action="權限申請",
-                    detail=f"單位:{req_unit} | 員編:{clean_emp} | 姓名:{clean_name} | 備註:{req_reason}",
-                    user=clean_emp,
-                    unit=req_unit,
-                )
-                success, msg = send_admin_email(req_unit, clean_emp, clean_name, req_reason)
+        col_sub1, col_sub2 = st.columns([1, 1])
+        with col_sub1:
+            submit_clicked = st.button("確認送出申請", type="primary", use_container_width=True, key="btn_submit_custom_apply")
+        with col_sub2:
+            if st.button("關閉視窗", use_container_width=True, key="btn_close_custom_apply"):
+                st.session_state["show_apply_dialog"] = False
+                st.rerun()
 
-            # 標記送出成功，對話框會原地重新整理並顯示成功提示
-            st.session_state["apply_success_sent"] = True
-            st.rerun()
+        if submit_clicked:
+            clean_emp = req_emp_id.strip().upper()
+            clean_name = req_name.strip()
+
+            if not clean_emp or not clean_name:
+                st.warning("請完整填寫「員編」與「姓名」！")
+            else:
+                with st.spinner("正在記錄申請並通知管理者..."):
+                    log_activity(
+                        action="權限申請",
+                        detail=f"單位:{req_unit} | 員編:{clean_emp} | 姓名:{clean_name} | 備註:{req_reason}",
+                        user=clean_emp,
+                        unit=req_unit,
+                    )
+                    success, msg = send_admin_email(req_unit, clean_emp, clean_name, req_reason)
+
+                st.session_state["apply_success_sent"] = True
+                st.rerun()
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
@@ -213,11 +249,9 @@ if not is_authed and not is_admin_authed:
             else:
                 st.error(f"❌ 登入失敗，請再次確認{message}")
 
-        # 🎯 恢復原本漂亮的官方 Dialog 彈窗，並加上狀態防護
+        # 🎯 呼叫自訂全螢幕遮罩置中彈窗（完美解決 X 鍵反彈與外觀問題）
         if st.session_state.get("show_apply_dialog", False):
-            show_apply_permission_dialog()
-        else:
-            st.session_state["apply_success_sent"] = False
+            render_custom_modal_dialog()
 
     st.stop()
 
@@ -387,7 +421,7 @@ col_f1, col_f2 = st.columns(2)
 with col_f1:
     if st.button(
         "問題回報與建議",
-        key="btn_footer_feedback_left",
+        key="btn_feedback_left_footer",
         use_container_width=True,
     ):
         st.session_state["show_feedback_dialog"] = True
@@ -400,7 +434,7 @@ with col_f2:
         else "ADMIN PANEL [C.L.F]"
     )
     if st.button(
-        admin_btn_label, key="btn_footer_admin_right", use_container_width=True
+        admin_btn_label, key="btn_admin_right_footer", use_container_width=True
     ):
         if st.session_state.get("admin_logged_in", False):
             if is_admin_active:
