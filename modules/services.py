@@ -266,15 +266,25 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     }
     return True, f"歡迎！ {final_name}", user_session
 # =============================================================================
-# 4. 舊版相容性匯入包裝層 (防止舊版 app.py 報錯)
+# 4. 舊版相容性匯入包裝層 (支援舊版 app.py 雙傳回值與參數解包)
 # =============================================================================
 
-def is_user_allowed(emp_id: str, unit_code: str = "TTN") -> bool:
-    """舊版相容函式：核實員編是否具備使用權限"""
-    exists, _ = verify_employee_exists(unit_code, emp_id)
-    return exists
-def verify_crew_membership(emp_id_or_unit: str, second_arg: str = "TTN") -> Tuple[bool, str]:
-    """舊版相容函式：核實組員資格 (自動匹配參數順序)"""
-    if emp_id_or_unit in ["TTN", "KSH", "TCH"]:
-        return verify_employee_exists(emp_id_or_unit, second_arg)
-    return verify_employee_exists(second_arg, emp_id_or_unit)
+def is_user_allowed(first_arg: str, second_arg: str = "TTN") -> Tuple[bool, Any]:
+    """舊版相容函式：支援 (allowed, user_info) 雙傳回值與彈性參數順序"""
+    if first_arg in ["TTN", "KSH", "TCH"]:
+        unit_code, emp_id = first_arg, second_arg
+    else:
+        emp_id, unit_code = first_arg, second_arg
+        
+    exists, info = verify_employee_exists(unit_code, emp_id)
+    return exists, info
+
+
+def verify_crew_membership(first_arg: str, second_arg: str = "TTN") -> Tuple[bool, Any]:
+    """舊版相容函式：核實組員資格"""
+    if first_arg in ["TTN", "KSH", "TCH"]:
+        unit_code, emp_id = first_arg, second_arg
+    else:
+        emp_id, unit_code = first_arg, second_arg
+        
+    return verify_employee_exists(unit_code, emp_id)
