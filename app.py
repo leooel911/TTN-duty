@@ -111,9 +111,9 @@ if "current_unit" not in st.session_state:
     st.session_state["current_unit"] = "TTN"
 
 
-# ---------------------------------------------------------
-# 🛡️ 前置授權碼門戶檢查 (無 Form 化設計，徹底杜絕重複渲染)
-# ---------------------------------------------------------
+# =========================================================
+# 🛡️ 前置授權碼門戶檢查（嚴格互斥：未登入就直接攔截）
+# =========================================================
 is_authed = st.session_state.get("authenticated", False)
 is_admin_authed = st.session_state.get("admin_logged_in", False)
 
@@ -180,7 +180,7 @@ if not is_authed and not is_admin_authed:
                 
                 st.session_state["authenticated"] = True
                 st.session_state["admin_logged_in"] = is_adm
-                st.session_state["show_admin_login"] = False  # 強制關閉管理員登入彈窗，防止 VIP 發生跳兩次
+                st.session_state["show_admin_login"] = False
                 st.session_state["nav_mode"] = "admin_panel" if is_adm else "home"
                 st.session_state["page"] = "admin" if is_adm else "user"
                 st.session_state["current_unit"] = user_session.get("unit", selected_unit)
@@ -207,8 +207,13 @@ if not is_authed and not is_admin_authed:
         if st.session_state.get("show_apply_dialog", False):
             show_apply_permission_dialog()
 
+    # 🛑 關鍵：未登入狀態下執行到這裡直接停止，絕對不往下執行主畫面邏輯
     st.stop()
 
+
+# =========================================================
+# 以下為「已登入」狀態專屬的操作區塊
+# =========================================================
 
 # ---------------------------------------------------------
 # 組員完整班表檢視模式 (Inspector Mode)
@@ -233,7 +238,7 @@ if st.session_state.get("inspect_emp_target") is not None:
 
     try:
         start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
-        with st.spinner(f"正在繪製【{emp_name}】的完整月班表，請稍候..."):
+        with st.spinner(f"正在繪製【{emp_name}】的完整月班表資料，請稍候..."):
             buf = render_schedule_figure(
                 start_dt,
                 dates,
