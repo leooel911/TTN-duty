@@ -568,7 +568,7 @@ def render_admin_panel() -> None:
     # ==================== Tab 3 ====================
     with tab3:
         st.markdown(f"### 👥 白名單與組員權限管理 [{current_unit}]")
-        st.caption("透過後台直接新增或調整白名單人員，異動後全站將自動寫入 JSON 檔並即時生效。")
+        st.caption("透過後台直接新增或調整白名單人員與獨立授權碼，異動後全站將自動寫入 JSON 檔並即時生效。")
         whitelist_data = load_whitelist(current_unit)
 
         cnt_total = len(whitelist_data)
@@ -611,6 +611,7 @@ def render_admin_panel() -> None:
                         "員編/帳號": uid,
                         "姓名": info.get("name", info.get("姓名", "未設定")),
                         "身份權限": info.get("role", info.get("身份", "VIP_USER")),
+                        "獨立授權碼": info.get("passcode", info.get("密碼", "-")),
                         "備註": info.get("note", info.get("備註", "-")),
                     })
                 else:
@@ -618,10 +619,11 @@ def render_admin_panel() -> None:
                         "員編/帳號": uid,
                         "姓名": str(info),
                         "身份權限": "VIP_USER",
+                        "獨立授權碼": "-",
                         "備註": "-",
                     })
 
-        df_wl = pd.DataFrame(wl_rows) if wl_rows else pd.DataFrame(columns=["員編/帳號", "姓名", "身份權限", "備註"])
+        df_wl = pd.DataFrame(wl_rows) if wl_rows else pd.DataFrame(columns=["員編/帳號", "姓名", "身份權限", "獨立授權碼", "備註"])
 
         selected_row_data: Optional[Dict[str, Any]] = None
         with col_wl_left:
@@ -698,13 +700,14 @@ def render_admin_panel() -> None:
 
             default_uid = str(selected_row_data["員編/帳號"]).upper() if selected_row_data else ""
             default_uname = str(selected_row_data["姓名"]) if selected_row_data else ""
-            default_role = str(selected_row_data["身份權限"]) if selected_row_data else "TESTER"
+            default_role = str(selected_row_data["身份權限"]) if selected_row_data else "VIP_USER"
+            default_passcode = str(selected_row_data["獨立授權碼"]) if selected_row_data else ""
             default_note = str(selected_row_data["備註"]) if selected_row_data else ""
 
             edit_uid = st.text_input(
                 "員編 / 帳號 ID",
                 value=default_uid,
-                placeholder="例: A023300",
+                placeholder="例: A023300 或 R",
                 key=f"input_wl_uid_{current_unit}",
                 disabled=True if selected_row_data else False,
             )
@@ -712,17 +715,26 @@ def render_admin_panel() -> None:
             edit_uname = st.text_input(
                 "姓名",
                 value=default_uname,
-                placeholder="例: 張小明",
+                placeholder="例: 張小明 或 Rigina",
                 key=f"input_wl_uname_{current_unit}",
             )
 
-            role_options = ["TESTER", "VIP_USER", "ADMIN"]
-            role_idx = role_options.index(default_role) if default_role in role_options else 0
+            role_options = ["USER", "VIP_USER", "TESTER", "ADMIN"]
+            role_idx = role_options.index(default_role) if default_role in role_options else 1
             edit_role = st.selectbox(
                 "設定使用者權限身份",
                 role_options,
                 index=role_idx,
                 key=f"input_wl_role_{current_unit}",
+            )
+
+            # 💡 新增：獨立 VIP 授權碼 / 密碼編輯欄位
+            edit_passcode = st.text_input(
+                "獨立授權碼 / VIP 密碼 (選填)",
+                value="" if default_passcode == "-" else default_passcode,
+                placeholder="例: 8888 (留空則使用系統預設碼)",
+                key=f"input_wl_passcode_{current_unit}",
+                help="輸入專屬密碼後，組員登入時輸入該密碼即可自動套用此 VIP 身分與姓名",
             )
 
             edit_note = st.text_input(
@@ -747,17 +759,18 @@ def render_admin_panel() -> None:
                         whitelist_data[target_uid] = {
                             "name": edit_uname.strip() or "未命名",
                             "role": edit_role,
+                            "passcode": edit_passcode.strip(),  # 👈 成功將專屬授權碼寫入 JSON
                             "note": edit_note.strip(),
                             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
                         }
                         save_whitelist(current_unit, whitelist_data)
                         log_activity(
                             "權限與白名單變更",
-                            f"管理員更新 [{current_unit}] 組員權限：{target_uid} -> {edit_role}"
+                            f"管理員更新 [{current_unit}] 組員權限：{target_uid} -> {edit_role} (密碼: {edit_passcode.strip() or '預設'})"
                         )
                         st.cache_data.clear()
                         st.session_state[ver_key] += 1
-                        st.success(f"已成功儲存/更新【{current_unit}】權限：{target_uid}")
+                        st.success(f"已成功儲存/更新【{current_unit}】權限與密碼：{target_uid}")
                         st.rerun()
                     else:
                         st.warning("請填寫員編 / 帳號 ID")
