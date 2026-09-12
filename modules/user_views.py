@@ -1005,7 +1005,6 @@ def render_user_home() -> None:
                     )
                     st.session_state["saved_win_time_slider"] = slider_val
 
-                    # 確保優先抓取當前 Session State 最新的區間範圍
                     active_slider_val = st.session_state.get("saved_win_time_slider", slider_val)
                     if isinstance(active_slider_val, (tuple, list)) and len(active_slider_val) == 2:
                         min_time, max_time_sel = active_slider_val
@@ -1038,7 +1037,6 @@ def render_user_home() -> None:
                     if st.button("搜尋可換班組員名單", key="btn_window_search", type="primary", use_container_width=True):
                         raw_candidates = []
 
-                        # 確保搜尋按鈕觸發時也抓取最新範圍
                         current_slider = st.session_state.get("saved_win_time_slider", (morn_start_time, "18:00"))
                         if isinstance(current_slider, (tuple, list)) and len(current_slider) == 2:
                             search_min_time, search_max_time = current_slider
@@ -1095,12 +1093,9 @@ def render_user_home() -> None:
                                                 )
 
                                             s_time_str = start_t if start_t else "--:--"
-                                            if s_time_str == "--:--":
-                                                pass
-                                            else:
-                                                # 嚴格時段區間比對過濾
-                                                if not (search_min_time <= s_time_str <= search_max_time):
-                                                    continue
+                                            # 【修正處】透過直接判斷：如果沒有有效報到時間或不在區間內，一律 continue 略過
+                                            if s_time_str == "--:--" or not (search_min_time <= s_time_str <= search_max_time):
+                                                continue
 
                                             if only_main_line and (is_non_line or is_leave):
                                                 continue
