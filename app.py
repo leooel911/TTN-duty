@@ -4,6 +4,7 @@ from modules.admin_views import render_admin_panel
 from modules.components import render_zoomable_image, show_feedback_modal
 from modules.drawing import render_schedule_figure
 from modules.services import (
+    authenticate_user,
     is_user_allowed,
     load_system_config,
     process_file_data,
@@ -21,8 +22,6 @@ from modules.utils import (
 # 載入全域動態設定 (每次 Rerun 時重新載入最新設定)
 # ---------------------------------------------------------
 sys_cfg = load_system_config()
-VIP_PASS_CODE = sys_cfg.get("vip_password") or sys_cfg.get("vip_pass_code") or "0900"
-CREW_PASS_CODE = sys_cfg.get("user_password") or sys_cfg.get("crew_pass_code") or CREW_ACCESS_PASSWORD
 ADMIN_PASS_CODE = sys_cfg.get("admin_password") or ADMIN_PASSWORD
 DEFAULT_EMP_ID = sys_cfg.get("default_emp_id", "A")
 
@@ -232,126 +231,41 @@ if not st.session_state["authenticated"] and not st.session_state.get(
                 st.session_state["show_apply_dialog"] = True
                 st.rerun()
 
+            # ---------------------------------------------------------
+            # 💡 核心修正：統一呼叫 services.py 的 authenticate_user 進行驗證
+            # ---------------------------------------------------------
             if btn_auth:
-                clean_emp = entered_emp.strip().upper()
-                st.session_state["user_input_field"] = clean_emp if clean_emp else "A"
-
-                if entered_key == VIP_PASS_CODE:
-                    target_emp_id = clean_emp if clean_emp else DEFAULT_EMP_ID
+                success, message, user_session = authenticate_user(selected_unit, entered_emp, entered_key)
+                
+                if success:
                     st.session_state["authenticated"] = True
-                    st.session_state["admin_logged_in"] = False
-                    st.session_state["nav_mode"] = "home"
-                    st.session_state["page"] = "user"
-                    st.session_state["current_unit"] = selected_unit
-                    st.session_state["login_user_id"] = target_emp_id
-
-                    emp_real_name = get_employee_name(selected_unit, target_emp_id)
-                    disp_name = format_display_name(emp_real_name)
-                    name_suffix = f" {disp_name}" if disp_name else ""
-
-                    if target_emp_id == "A":
-                        st.session_state["current_user_id"] = "VIP_USER (A 全域通行)"
+                    st.session_state["admin_logged_in"] = (user_session.get("role") == "ADMIN")
+                    st.session_state["nav_mode"] = "admin_panel" if user_session.get("role") == "ADMIN" else "home"
+                    st.session_state["page"] = "admin" if user_session.get("role") == "ADMIN" else "user"
+                    st.session_state["current_unit"] = user_session.get("unit", selected_unit)
+                    st.session_state["login_user_id"] = user_session.get("emp_id", "")
+                    
+                    # 顯示於畫面上方的 Welcome 使用者標籤
+                    role_str = user_session.get("role", "USER")
+                    emp_name = user_session.get("emp_name", "")
+                    emp_id = user_session.get("emp_id", "")
+                    
+                    if role_str == "ADMIN":
+                        st.session_state["current_user_id"] = f"ADMIN ({emp_id})"
+                    elif role_str in ["VIP_USER", "TESTER"]:
+                        st.session_state["current_user_id"] = f"VIP_USER ({emp_name})" if emp_name else f"VIP_USER ({emp_id})"
                     else:
-                        st.session_state["current_user_id"] = (
-                            f"VIP_USER ({target_emp_id}{name_suffix})"
-                        )
+                        st.session_state["current_user_id"] = f"{emp_name} ({emp_id})" if emp_name else emp_id
 
                     log_activity(
                         action="帳號登入",
-                        detail=f"VIP 身分登入系統: {target_emp_id}",
-                        user=target_emp_id,
+                        detail=f"登入成功: {emp_name} ({emp_id}) | 角色: {role_str}",
+                        user=emp_id,
                         unit=selected_unit,
                     )
                     st.rerun()
-
-                elif not clean_emp:
-                    st.error("請輸入有效的員編")
-
-                elif entered_key == ADMIN_PASS_CODE:
-                    admin_id = f"ADMIN_{clean_emp}" if clean_emp else "ADMIN"
-                    st.session_state["admin_logged_in"] = True
-                    st.session_state["current_unit"] = selected_unit
-                    st.session_state["current_user_id"] = admin_id
-                    st.session_state["login_user_id"] = admin_id
-                    st.session_state["nav_mode"] = "admin_panel"
-                    st.session_state["page"] = "admin"
-                    log_activity(
-                        action="管理員操作",
-                        detail=f"管理員登入後台 ({clean_emp})",
-                        user=admin_id,
-                        unit=selected_unit,
-                    )
-                    st.rerun()
-
-                elif entered_key == CREW_PASS_CODE:
-                    if clean_emp == "A":
-                        st.session_state["authenticated"] = True
-                        st.session_state["admin_logged_in"] = False
-                        st.session_state["nav_mode"] = "home"
-                        st.session_state["page"] = "user"
-                        st.session_state["current_unit"] = selected_unit
-                        st.session_state["current_user_id"] = "VIP_USER (A 全域通行)"
-                        st.session_state["login_user_id"] = "A"
-                        log_activity(
-                            action="帳號登入",
-                            detail="測試員 A 登入系統",
-                            user="A",
-                            unit=selected_unit,
-                        )
-                        st.rerun()
-
-                    allowed, user_info = is_user_allowed(selected_unit, clean_emp)
-                    u_role = (
-                        str(user_info.get("role", "")).upper() if isinstance(user_info, dict) else ""
-                    )
-                    u_name_from_info = (
-                        user_info.get("name", "") if isinstance(user_info, dict) else ""
-                    )
-
-                    if not allowed:
-                        st.error(
-                            "您的員編尚未開放使用權限，請洽管理員於後台開通。"
-                        )
-                    elif (
-                        verify_crew_membership(selected_unit, clean_emp)
-                        or "VIP" in u_role
-                        or u_role in ["TESTER", "ADMIN"]
-                    ):
-                        st.session_state["authenticated"] = True
-                        st.session_state["admin_logged_in"] = False
-                        st.session_state["nav_mode"] = "home"
-                        st.session_state["page"] = "user"
-                        st.session_state["current_unit"] = selected_unit
-                        st.session_state["login_user_id"] = clean_emp
-
-                        emp_real_name = get_employee_name(selected_unit, clean_emp)
-                        disp_name = format_display_name(emp_real_name)
-                        u_name = u_name_from_info if u_name_from_info else disp_name
-
-                        if "VIP" in u_role or u_role == "TESTER":
-                            name_str = f" {u_name}" if u_name else ""
-                            role_tag = "TESTER" if u_role == "TESTER" else "VIP_USER"
-                            st.session_state["current_user_id"] = (
-                                f"{role_tag} ({clean_emp}{name_str})".strip()
-                            )
-                        else:
-                            st.session_state["current_user_id"] = (
-                                f"{clean_emp} {u_name}".strip()
-                            )
-
-                        log_activity(
-                            action="帳號登入",
-                            detail=f"使用者登入系統: {clean_emp} (單位: {selected_unit}, 角色: {u_role})",
-                            user=clean_emp,
-                            unit=selected_unit,
-                        )
-                        st.rerun()
-                    else:
-                        st.error(
-                            "非所屬單位組員，或輸入不存在的編號，請確認員編。"
-                        )
                 else:
-                    st.error("授權碼或密碼錯誤，請重新輸入")
+                    st.error(f"❌ {message}")
 
         if st.session_state.get("show_apply_dialog", False):
             show_apply_permission_dialog()
