@@ -151,9 +151,9 @@ if not is_authed and not is_admin_authed:
         
         selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"], key="login_unit_box")
         entered_emp = st.text_input(
-            "使用者員編 (範例：023300)",
+            "使用者員編 (範例：A023300)",
             value=DEFAULT_EMP_ID,
-            placeholder="例如: 023300",
+            placeholder="例如: A023300",
             max_chars=10,
             key="login_emp_box",
         )
@@ -322,7 +322,7 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
             adm_pwd_input = st.text_input(
                 "管理員密碼",
                 type="password",
-                placeholder="請輸入管理員解鎖密碼...",
+                placeholder="請輸入管理員密碼...",
                 key="badge_admin_pwd_box",
             )
             col_btn1, col_btn2 = st.columns(2)
