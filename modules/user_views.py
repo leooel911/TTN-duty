@@ -222,6 +222,45 @@ def render_user_home() -> None:
             line-height: 1.3 !important;
         }
 
+        /* 放大原生的 Slider 時間標籤字體 */
+        div[data-testid="stSliderTickBarMin"],
+        div[data-testid="stSliderTickBarMax"],
+        div[data-testid="stWidgetLabel"] + div [data-testid="stMarkdownContainer"] p,
+        div[data-baseweb="slider"] div[role="slider"] + div {
+            font-size: 16px !important;
+            font-weight: 800 !important;
+            color: #38BDF8 !important;
+        }
+
+        /* 顯眼的時間區間提示盒 */
+        .time-range-display-box {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+            border: 1.5px solid rgba(56, 189, 248, 0.5);
+            border-radius: 10px;
+            padding: 8px 14px;
+            margin-top: 6px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .time-range-label {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #94A3B8;
+        }
+
+        .time-range-value {
+            font-size: 20px;
+            font-weight: 900;
+            color: #38BDF8;
+            font-family: monospace;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+        }
+
         div[data-testid="stWidgetLabel"] p,
         div[data-testid="stWidgetLabel"] label,
         label[data-testid="stWidgetLabel"] p {
@@ -952,7 +991,7 @@ def render_user_home() -> None:
                     comp.show_holiday_notice(win_week_holidays, win_week_str)
 
                     # -----------------------------------------------------------------
-                    # 獨立時段滑塊（綁定獨立記憶變數，確保搜尋後絕不彈回全時段）
+                    # 獨立時段滑塊（綁定獨立記憶變數 + 大字體醒目顯示盒）
                     # -----------------------------------------------------------------
                     st.markdown('<div class="section-field-label">Sign-In 時段區間 (拖曳調整)</div>', unsafe_allow_html=True)
 
@@ -980,6 +1019,17 @@ def render_user_home() -> None:
 
                     st.session_state["saved_win_time_range"] = slider_val
                     min_time, max_time_sel = slider_val
+
+                    # 【醒目大字體即時顯示盒】
+                    st.markdown(
+                        f"""
+                        <div class="time-range-display-box">
+                            <span class="time-range-label">⏱️ 已選擇 Sign-In 時段</span>
+                            <span class="time-range-value">{min_time} ～ {max_time_sel}</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
 
                     st.markdown('<div class="section-field-label">進階篩選條件</div>', unsafe_allow_html=True)
 
@@ -1034,7 +1084,6 @@ def render_user_home() -> None:
                                         if not is_off or start_t:
                                             s_time_str = str(start_t).strip() if start_t else "--:--"
 
-                                            # 【核心過濾】嚴格檢查是否在滑塊設定的時間區間內
                                             if s_time_str == "--:--" or not (search_min_time <= s_time_str <= search_max_time):
                                                 continue
 
