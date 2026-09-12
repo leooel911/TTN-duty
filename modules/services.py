@@ -208,8 +208,11 @@ def get_employee_name(unit_code: str, emp_id: str) -> str:
 
 
 def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) -> Tuple[bool, str, Dict[str, Any]]:
-    """新版雙軌登入驗證引擎"""
+    """雙軌登入驗證引擎（優先套用白名單「姓名」欄位）"""
     clean_id = emp_id_input.strip().upper()
+    if clean_id.isdigit() and len(clean_id) == 6:
+        clean_id = f"A{clean_id}"
+
     passcode = passcode_input.strip()
 
     sys_config = load_system_config()
@@ -217,8 +220,19 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     default_vip_pwd = sys_config.get("vip_password", "0")
     user_pwd = sys_config.get("user_password", "09000")
 
+    whitelist = load_whitelist(unit_code)
+
+    # 先嘗試抓取白名單中對應員編的「姓名」
+    wl_name = ""
+    if clean_id in whitelist:
+        w_info = whitelist[clean_id]
+        if isinstance(w_info, dict):
+            wl_name = w_info.get("name") or w_info.get("姓名") or ""
+        elif isinstance(w_info, str):
+            wl_name = w_info.strip()
+
     # -------------------------------------------------------------------------
-    # 軌道一：高級 VIP / 特權測試員驗證 (免員編快捷登入)
+    # 軌道一：高級 VIP / 特權測試員驗證
     # -------------------------------------------------------------------------
 
     # 1. 最高系統管理員 (ADMIN)
@@ -226,23 +240,12 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
         return True, "歡迎系統管理員！", {
             "authenticated": True,
             "emp_id": clean_id if clean_id and clean_id != "A" else "ADMIN",
-            "emp_name": "系統管理員",
+            "emp_name": wl_name or "系統管理員",
             "role": "ADMIN",
             "unit": unit_code,
         }
 
-    # 2. 通用高級 VIP 測試員 (輸入授權碼 0 取得全域 VIP 權限)
-    if passcode == default_vip_pwd or passcode == "0":
-        return True, "歡迎高級 VIP 測試員！", {
-            "authenticated": True,
-            "emp_id": clean_id if clean_id and clean_id != "A" else "VIP001",
-            "emp_name": "VIP 測試員",
-            "role": "VIP_USER",
-            "unit": unit_code,
-        }
-
-    # 3. 比對白名單中的「客製化獨立 VIP 登入碼」
-    whitelist = load_whitelist(unit_code)
+    # 2. 比對白名單中的「客製化獨立 VIP 登入碼」
     for w_id, w_info in whitelist.items():
         if isinstance(w_info, dict):
             custom_pass = str(w_info.get("passcode", "")).strip()
@@ -257,34 +260,35 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
                     "unit": unit_code,
                 }
 
+    # 3. 通用高級 VIP 測試員 (輸入授權碼 0 登入)
+    if passcode == default_vip_pwd or passcode == "0":
+        display_name = wl_name if wl_name else ("VIP 測試員" if clean_id == "A" else clean_id)
+        return True, f"歡迎 VIP 組員【{display_name}】！", {
+            "authenticated": True,
+            "emp_id": clean_id if clean_id else "VIP001",
+            "emp_name": display_name,
+            "role": "VIP_USER",
+            "unit": unit_code,
+        }
+
     # -------------------------------------------------------------------------
     # 軌道二：一般組員實名驗證 (必須為真實員編 + 大表存在 + 白名單存在 + 授權碼 09000)
     # -------------------------------------------------------------------------
 
-    # 1. 員編不可為 A 或空白
     if not clean_id or clean_id == "A":
         return False, "一般組員請輸入正確員編（例如: A023300 或 023300）！", {"reason": "INVALID_EMP_ID"}
 
-    if clean_id.isdigit() and len(clean_id) == 6:
-        clean_id = f"A{clean_id}"
-
-    # 2. 條件一：必須存在於「白名單」中
     if clean_id not in whitelist:
         return False, f"員編【{clean_id}】尚未加入【{unit_code}】白名單，無法登入！", {"reason": "NOT_IN_WHITELIST"}
 
-    # 3. 條件二：必須真實存在於「Excel 排班大表」中
     exists_in_excel, excel_name = check_excel_employee_exists(unit_code, clean_id)
     if not exists_in_excel:
         return False, f"員編【{clean_id}】未在【{unit_code}】班表大表中找到，請核對所屬單位！", {"reason": "NOT_IN_EXCEL"}
 
-    # 4. 條件三：授權碼必須為 09000
     if passcode != user_pwd and passcode != "09000":
         return False, "授權碼無效！一般組員授權碼為 09000", {"reason": "WRONG_PASSCODE"}
 
-    # 解析最終姓名 (優先採用白名單設定之姓名，次之採用大表姓名)
-    wl_entry = whitelist[clean_id]
-    custom_name = wl_entry.get("name") or wl_entry.get("姓名") if isinstance(wl_entry, dict) else str(wl_entry)
-    final_name = custom_name.strip() if (custom_name and str(custom_name).strip()) else excel_name
+    final_name = wl_name if wl_name else excel_name
 
     return True, f"歡迎！{final_name}", {
         "authenticated": True,
