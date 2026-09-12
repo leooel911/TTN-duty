@@ -32,28 +32,27 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
-# 權限申請安全彈出面板 (手動控制，徹底根治 X 鍵反彈)
+# 權限申請彈出視窗對話框 (Dialog - 恢復精緻原生外觀)
 # ---------------------------------------------------------
-def render_apply_permission_panel():
+@st.dialog("申請系統使用權限")
+def show_apply_permission_dialog():
+    # 如果已經成功送出，在對話框內顯示漂亮的大成功提示與關閉鈕
+    if st.session_state.get("apply_success_sent", False):
+        st.success("🎉 您的申請已成功送出！請靜候管理者審核開通。")
+        if st.button("關閉視窗", type="primary", use_container_width=True):
+            st.session_state["apply_success_sent"] = False
+            st.session_state["show_apply_dialog"] = False
+            st.rerurn()
+        return
+
     st.markdown(
         """
-        <div style="background: rgba(15, 23, 42, 0.98); border: 2px solid #38BDF8; border-radius: 12px; padding: 20px; margin-top: 15px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);">
-            <div style="font-size: 18px; font-weight: 900; color: #38BDF8; margin-bottom: 8px;">申請系統使用權限</div>
-            <div style="font-size: 13px; color: #94A3B8; margin-bottom: 16px;">
-                請填寫基本資料，送出後系統將自動發送通知信給管理員進行審核與開通。
-            </div>
+        <div style="font-size: 13px; color: #94A3B8; margin-bottom: 12px;">
+            請填寫基本資料，送出後系統將自動發送通知信給管理員進行審核與開通。
+        </div>
         """,
         unsafe_allow_html=True,
     )
-
-    if st.session_state.get("apply_success_sent", False):
-        st.success(" 您的申請已成功送出！請靜候管理者審核開通。")
-        if st.button("我知道了 (關閉)", type="primary", use_container_width=True, key="btn_close_success_panel"):
-            st.session_state["apply_success_sent"] = False
-            st.session_state["show_apply_dialog"] = False
-            st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-        return
 
     req_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS", "其他單位"], key="dlg_req_unit")
     req_emp_id = st.text_input("使用者員編 (例如: A023300)", key="dlg_req_emp_id")
@@ -62,9 +61,9 @@ def render_apply_permission_panel():
 
     col_sub1, col_sub2 = st.columns([1, 1])
     with col_sub1:
-        submit_clicked = st.button("確認送出申請", type="primary", use_container_width=True, key="btn_submit_panel_apply")
+        submit_clicked = st.button("確認送出申請", type="primary", use_container_width=True)
     with col_sub2:
-        if st.button("關閉視窗", use_container_width=True, key="btn_close_panel_apply"):
+        if st.button("關閉視窗", use_container_width=True):
             st.session_state["show_apply_dialog"] = False
             st.rerun()
 
@@ -84,10 +83,9 @@ def render_apply_permission_panel():
                 )
                 success, msg = send_admin_email(req_unit, clean_emp, clean_name, req_reason)
 
+            # 標記送出成功，對話框會原地重新整理並顯示成功提示
             st.session_state["apply_success_sent"] = True
             st.rerun()
-
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
@@ -213,11 +211,13 @@ if not is_authed and not is_admin_authed:
                 )
                 st.rerun()
             else:
-                st.error(f"登入失敗，請再次確認{message}")
+                st.error(f"❌ 登入失敗，請再次確認{message}")
 
-        # 🛡️ 改用安全面板渲染，徹底擺脫內建 X 鍵幽靈迴圈
+        # 🎯 恢復原本漂亮的官方 Dialog 彈窗，並加上狀態防護
         if st.session_state.get("show_apply_dialog", False):
-            render_apply_permission_panel()
+            show_apply_permission_dialog()
+        else:
+            st.session_state["apply_success_sent"] = False
 
     st.stop()
 
