@@ -264,13 +264,13 @@ def reset_ex_search() -> None:
 def render_user_home() -> None:
     """繪製使用者首頁主要介面與功能模組"""
 
-    # ── [權限檢核 A] 未登入狀態：渲染登入頁面 ──
+    # ── [權限檢核] 嚴格分流：未登入直接顯示登入頁並終止執行 ──
     auth = get_auth_session()
     if not auth.get("authenticated"):
         render_login_view()
         return
 
-    # ── [權限檢核 B] 已登入狀態：讀取會話資訊與角色全域變數 ──
+    # ── [已登入狀態] 以下為正式功能主頁面 ──
     current_user_id = auth["emp_id"]
     current_user_name = auth.get("emp_name", current_user_id)
     user_role = auth["role"]
