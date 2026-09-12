@@ -149,7 +149,6 @@ if not is_authed and not is_admin_authed:
 
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         
-        # 💡 完全不使用 st.form，改用獨立互動元件與按鈕
         selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"], key="login_unit_box")
         entered_emp = st.text_input(
             "使用者員編 (範例：023300)",
@@ -176,25 +175,26 @@ if not is_authed and not is_admin_authed:
             success, message, user_session = authenticate_user(selected_unit, entered_emp, entered_key)
             
             if success:
+                role = user_session.get("role", "USER")
                 st.session_state["authenticated"] = True
-                st.session_state["admin_logged_in"] = (user_session.get("role") == "ADMIN")
-                st.session_state["nav_mode"] = "admin_panel" if user_session.get("role") == "ADMIN" else "home"
-                st.session_state["page"] = "admin" if user_session.get("role") == "ADMIN" else "user"
+                is_adm = (role == "ADMIN")
+                st.session_state["admin_logged_in"] = is_adm
+                st.session_state["nav_mode"] = "admin_panel" if is_adm else "home"
+                st.session_state["page"] = "admin" if is_adm else "user"
                 st.session_state["current_unit"] = user_session.get("unit", selected_unit)
                 st.session_state["login_user_id"] = user_session.get("emp_id", "")
                 
-                role_str = user_session.get("role", "USER")
                 emp_name = user_session.get("emp_name", "")
                 emp_id = user_session.get("emp_id", "")
                 
-                if role_str == "ADMIN":
+                if is_adm:
                     st.session_state["current_user_id"] = f"ADMIN ({emp_id})"
                 else:
                     st.session_state["current_user_id"] = f"{emp_name} ({emp_id})" if emp_name else emp_id
 
                 log_activity(
                     action="帳號登入",
-                    detail=f"登入成功: {emp_name} ({emp_id}) | 角色: {role_str}",
+                    detail=f"登入成功: {emp_name} ({emp_id}) | 角色: {role}",
                     user=emp_id,
                     unit=selected_unit,
                 )
@@ -205,7 +205,6 @@ if not is_authed and not is_admin_authed:
         if st.session_state.get("show_apply_dialog", False):
             show_apply_permission_dialog()
 
-    # 🛑 核心防護：未登入時程式在此強制中止，絕不繼續往下渲染主畫面！
     st.stop()
 
 
