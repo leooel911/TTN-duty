@@ -72,82 +72,6 @@ def clean_role_label(role: str) -> str:
     return mapping.get(role, role)
 
 
-@st.dialog("📋 申請第一階段測試授權")
-def show_apply_dialog(unit_code: str, default_emp_id: str):
-    """彈窗：帶入當前輸入的單位與員編，讓組員提交授權申請"""
-    st.markdown("目前系統處於第一階段封閉測試，請填寫資訊送出申請，管理員將於核實後為您開通。")
-    
-    clean_id = default_emp_id.strip().upper()
-    if clean_id.isdigit() and len(clean_id) == 6:
-        clean_id = f"A{clean_id}"
-
-    with st.form(key="dialog_apply_form", border=False):
-        st.text_input("申請單位", value=unit_code, disabled=True, key="dlg_unit")
-        emp_id = st.text_input("使用者員編", value=clean_id, placeholder="例如: A023300", key="dlg_emp_id")
-        emp_name = st.text_input("組員姓名", placeholder="請輸入真實姓名", key="dlg_emp_name")
-        role_type = st.selectbox("職務類別", ["駕駛", "列車長", "服勤員", "其他"], key="dlg_role_type")
-        note = st.text_area("備註說明", placeholder="請說明測試用途或班別需求", key="dlg_note")
-
-        submit_btn = st.form_submit_button("送出授權申請", type="primary", use_container_width=True)
-
-    if submit_btn:
-        if not emp_id or not emp_name:
-            st.warning("⚠️ 請務必完整填寫「員編」與「姓名」！")
-        else:
-            log_activity(
-                "線上測試權限申請",
-                f"單位:{unit_code} | 員編:{emp_id} | 姓名:{emp_name} | 職務:{role_type} | 備註:{note}"
-            )
-            st.success(f"✅ 【{emp_name}】的授權申請已送出！管理員審核通過後即可正常登入。")
-            st.rerun()
-
-
-def render_login_view() -> None:
-    """渲染登入介面"""
-    st.markdown(
-        """
-        <div style="text-align: center; margin-bottom: 24px;">
-            <h2 style="color: #F8FAFC; font-weight: 800; letter-spacing: 1px;">CREW DUTY ENGINE</h2>
-            <p style="color: #64748B; font-size: 13px;">BUSY DOING NOTHING PRODUCTIVE — C.L.F EDITION</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    with st.expander("▸ 登入前系統說明與試用須知（點擊展開）"):
-        st.write("1. 本系統提供個人班表解析、換班/換假檢索與排班影像繪製服務。")
-        st.write("2. 一般組員登入後僅能檢視與生成個人班表。")
-        st.write("3. 第一次使用如顯示未授權，請點擊【申請使用權限】填寫資料。")
-
-    with st.form(key="login_form", border=True):
-        selected_unit = st.selectbox("選擇所屬單位", ["TTN", "KSH", "TCH"], key="login_unit_select")
-        input_emp_id = st.text_input("使用者員編（範例：023300）", key="login_emp_id_input")
-        input_passcode = st.text_input("系統授權碼", type="password", key="login_passcode_input")
-
-        st.write("")
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            btn_login = st.form_submit_button("進入系統", type="primary", use_container_width=True)
-        with col2:
-            btn_apply = st.form_submit_button("申請使用權限", use_container_width=True)
-
-    if btn_login:
-        success, message, info_or_session = authenticate_user(selected_unit, input_emp_id, input_passcode)
-        if success:
-            st.session_state[AUTH_SESSION_KEY] = info_or_session
-            st.session_state["current_unit"] = selected_unit
-            st.session_state["admin_logged_in"] = (info_or_session.get("role") == "ADMIN")
-            st.success(message)
-            st.rerun()
-        else:
-            st.error(f"❌ {message}")
-            if isinstance(info_or_session, dict) and info_or_session.get("reason") in ["NOT_IN_WHITELIST", "UNAUTHORIZED"]:
-                st.info("💡 您尚未成為第一階段測試授權組員，請點選下方【申請使用權限】按鈕提交申請！")
-
-    if btn_apply:
-        show_apply_dialog(selected_unit, input_emp_id)
-
-
 # =============================================================================
 # 2. 資料處理與工具函式
 # =============================================================================
@@ -258,19 +182,13 @@ def reset_ex_search() -> None:
 
 
 # =============================================================================
-# 3. 前台主入口邏輯 (整合會話與權限控制)
+# 3. 前台主入口邏輯 (純已登入主畫面)
 # =============================================================================
 
 def render_user_home() -> None:
     """繪製使用者首頁主要介面與功能模組"""
 
-    # ── [權限檢核] 嚴格分流：未登入直接顯示登入頁並終止執行 ──
     auth = get_auth_session()
-    if not auth.get("authenticated"):
-        render_login_view()
-        return
-
-    # ── [已登入狀態] 以下為正式功能主頁面 ──
     current_user_id = auth["emp_id"]
     current_user_name = auth.get("emp_name", current_user_id)
     user_role = auth["role"]
