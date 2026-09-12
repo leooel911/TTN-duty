@@ -239,9 +239,9 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     # 軌道一：高級 VIP / 特權 / 管理員驗證
     # -------------------------------------------------------------------------
 
-    # 1. 最高系統管理員 (ADMIN)
+    # 1. 最高系統管理員 (ADMIN) - 必須明確比對管理員密碼
     if passcode == admin_pwd or wl_role == "ADMIN":
-        if passcode != admin_pwd and wl_role == "ADMIN":
+        if passcode != admin_pwd:
             return False, "管理員密碼錯誤！", {"reason": "WRONG_ADMIN_PASSWORD"}
         
         return True, "歡迎系統管理員！", {
@@ -254,6 +254,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
 
     # 2. 檢查是否為白名單中的 VIP / TESTER 身分
     if clean_id in whitelist and wl_role in ["VIP_USER", "TESTER"]:
+        # 若該員編設定了獨立專屬密碼
         if custom_pass:
             if passcode == custom_pass:
                 return True, f"歡迎 VIP 特權組員【{wl_name}】！", {
@@ -266,6 +267,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
             else:
                 return False, "VIP 專屬授權碼錯誤！", {"reason": "WRONG_VIP_PASSCODE"}
         
+        # 若使用系統預設 VIP 密碼 (0)
         if passcode == default_vip_pwd or passcode == "0":
             return True, f"歡迎 VIP 組員【{wl_name}】！", {
                 "authenticated": True,
@@ -332,7 +334,7 @@ def is_user_allowed(first_arg: str, second_arg: str = "TTN") -> Tuple[bool, Any]
 
 def verify_crew_membership(first_arg: str, second_arg: str = "TTN") -> Tuple[bool, Any]:
     """舊版相容函式"""
-    if first_arg in ["TTN", "KSH", "TCH"]:
+    if first_arg in ["TTN", "TTC", "TTS"]:
         unit_code, emp_id = first_arg, second_arg
     else:
         emp_id, unit_code = first_arg, second_arg
