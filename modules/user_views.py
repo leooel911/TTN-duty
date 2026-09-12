@@ -661,20 +661,6 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 頂部 WELCOME 橫幅標語 (動態帶入管理員編輯之姓名與員編)
-    display_header_name = f"{current_user_name} ({current_user_id})" if current_user_name != current_user_id else current_user_id
-    st.markdown(
-        f"""
-        <div style="text-align: center; margin-bottom: 16px;">
-            <h2 style="color: #F8FAFC; font-weight: 800; letter-spacing: 1px; margin-bottom: 4px;">CREW DUTY ENGINE</h2>
-            <p style="color: #38BDF8; font-size: 13.5px; font-weight: 700; letter-spacing: 0.5px; margin: 0;">
-                ● WELCOME: {current_unit_label} | {display_header_name} ●
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     active_files = get_current_role_files()
 
     # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
