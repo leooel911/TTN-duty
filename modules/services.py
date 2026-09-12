@@ -254,7 +254,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
 
     # 2. 檢查是否為白名單中的 VIP / TESTER 身分
     if clean_id in whitelist and wl_role in ["VIP_USER", "TESTER"]:
-        if custom_pass:
+        if custom_pass and custom_pass != "-":
             if passcode == custom_pass:
                 return True, f"歡迎 VIP 組員【{wl_name}】！", {
                     "authenticated": True,
@@ -266,7 +266,8 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
             else:
                 return False, "授權碼錯誤！", {"reason": "WRONG_VIP_PASSCODE"}
         
-        if passcode == default_vip_pwd or passcode == "0":
+        # 允許使用預設 VIP 密碼、0、或是一般組員的 09000
+        if passcode == default_vip_pwd or passcode == "0" or passcode == user_pwd or passcode == "09000":
             return True, f"歡迎 VIP 組員【{wl_name}】！", {
                 "authenticated": True,
                 "emp_id": clean_id,
@@ -278,7 +279,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
             return False, "授權碼無效！需使用專屬授權碼", {"reason": "WRONG_PASSCODE"}
 
     # 3. 通用測試員 (員編填 A 且密碼為 0)
-    if clean_id == "A" and (passcode == default_vip_pwd or passcode == "0"):
+    if clean_id == "A" and (passcode == default_vip_pwd or passcode == "0" or passcode == user_pwd or passcode == "09000"):
         return True, "歡迎 VIP 測試員！", {
             "authenticated": True,
             "emp_id": "VIP001",
