@@ -196,39 +196,55 @@ def verify_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]:
 
 
 def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) -> Tuple[bool, str, Dict[str, Any]]:
-    """
-    三層身份驗證引擎：
-    1. ROOT ADMIN 緊急比對 (最高管理員備援)
-    2. 後台動態白名單 (讀取 whitelist.json 判定角色: ADMIN / VIP_USER / TESTER)
-    3. 一般大表組員 (核實大表員編是否存在 + 比對通用授權碼)
-    
-    回傳: (是否成功 bool, 提示文字 str, 驗證詳細資訊 Dict)
-    """
+    """三層式使用者登入身分驗證（支援白名單客製化姓名與權限覆蓋）"""
     clean_id = emp_id_input.strip().upper()
     if clean_id.isdigit() and len(clean_id) == 6:
         clean_id = f"A{clean_id}"
 
-    passcode = passcode_input.strip()
-    if not clean_id or clean_id == "A":
-        return False, "請輸入有效的員編（例如: A023300）", {"reason": "INVALID_INPUT"}
+    # 1. 先從 Excel 大表獲取預設姓名
+    final_name = get_employee_name(unit_code, clean_id) or clean_id
 
-    sys_config = load_system_config()
+    # 2. 讀取白名單設定檔
     whitelist = load_whitelist(unit_code)
+    assigned_role = "USER"
 
-    admin_pwd = str(sys_config.get("admin_password", "admin123")).strip()
-    vip_pwd = str(sys_config.get("vip_password", "vip888")).strip()
-    user_pwd = str(sys_config.get("user_password", "1234")).strip()
+    # 💡 關鍵修正：若員編存在於白名單，優先採用管理員手動編輯的「姓名」與「權限」
+    if clean_id in whitelist:
+        wl_info = whitelist[clean_id]
+        if isinstance(wl_info, dict):
+            custom_name = wl_info.get("name") or wl_info.get("姓名")
+            if custom_name and custom_name.strip():
+                final_name = custom_name.strip()
+            assigned_role = wl_info.get("role", "VIP_USER")
+        elif isinstance(wl_info, str) and wl_info.strip():
+            final_name = wl_info.strip()
 
-    # 第一層：程式碼 / Config 預設解鎖 (Root Admin 備援)
-    if passcode == admin_pwd:
-        user_session = {
-            "authenticated": True,
-            "emp_id": clean_id,
-            "emp_name": "系統管理員",
-            "role": "ADMIN",
-            "unit": unit_code,
-        }
-        return True, "管理員身份驗證成功！", user_session
+    # 3. 全域系統金鑰比對
+    sys_config = load_system_config()
+    admin_pwd = sys_config.get("admin_password", "admin123")
+    vip_pwd = sys_config.get("vip_password", "vip888")
+    user_pwd = sys_config.get("user_password", "1234")
+
+    final_role = None
+    if passcode_input == admin_pwd:
+        final_role = "ADMIN"
+    elif passcode_input == vip_pwd or assigned_role in ["ADMIN", "VIP_USER"]:
+        final_role = assigned_role if assigned_role != "USER" else "VIP_USER"
+    elif passcode_input == user_pwd or assigned_role in ["USER", "TESTER"]:
+        final_role = assigned_role
+
+    if not final_role:
+        return False, "授權碼無效，請重新輸入！", {"reason": "WRONG_PASSCODE"}
+
+    user_session = {
+        "authenticated": True,
+        "emp_id": clean_id,
+        "emp_name": final_name,  # 👈 成功將客製化姓名寫入 Session
+        "role": final_role,
+        "unit": unit_code,
+    }
+
+    return True, f"歡迎！{final_name}", user_session
 
     # 檢查員編真實性（若不在大表與白名單中，標記為 UNAUTHORIZED）
     exists, discovered_name = verify_employee_exists(unit_code, clean_id)
