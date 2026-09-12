@@ -264,7 +264,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
                     "unit": unit_code,
                 }
             else:
-                return False, "授權碼無效！請再次確認", {"reason": "WRONG_VIP_PASSCODE"}
+                return False, "授權碼無效！請再次確認:", {"reason": "WRONG_VIP_PASSCODE"}
         
         # 允許使用預設 VIP 密碼、0、或是一般組員的 09000
         if passcode == default_vip_pwd or passcode == "0" or passcode == user_pwd or passcode == "09000":
@@ -276,7 +276,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
                 "unit": unit_code,
             }
         else:
-            return False, "授權碼無效！請再次確認", {"reason": "WRONG_PASSCODE"}
+            return False, "授權碼無效！請再次確認:", {"reason": "WRONG_PASSCODE"}
 
     # 3. 通用測試員 (員編填 A 且密碼為 0)
     if clean_id == "A" and (passcode == default_vip_pwd or passcode == "0" or passcode == user_pwd or passcode == "09000"):
@@ -303,7 +303,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
         return False, f"員編【{clean_id}】未在【{unit_code}】班表大表中找到，請核對所屬單位！", {"reason": "NOT_IN_EXCEL"}
 
     if passcode != user_pwd and passcode != "09000":
-        return False, "授權碼無效！請再次確認", {"reason": "WRONG_PASSCODE"}
+        return False, "授權碼無效！請再次確認:", {"reason": "WRONG_PASSCODE"}
 
     final_name = wl_name if wl_name else excel_name
 
