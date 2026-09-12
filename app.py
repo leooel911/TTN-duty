@@ -36,6 +36,15 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 # ---------------------------------------------------------
 @st.dialog("申請系統使用權限")
 def show_apply_permission_dialog():
+    # 檢查是否剛才已經成功送出過，顯示成功提示與關閉按鈕
+    if st.session_state.get("apply_success_sent", False):
+        st.success("🎉 您的申請已成功送出！請靜候管理者審核開通。")
+        if st.button("我知道了", type="primary", use_container_width=True):
+            st.session_state["apply_success_sent"] = False
+            st.session_state["show_apply_dialog"] = False
+            st.rerun()
+        return
+
     st.markdown(
         """
         <div style="font-size: 13px; color: #94A3B8; margin-bottom: 12px;">
@@ -74,12 +83,8 @@ def show_apply_permission_dialog():
                 )
                 success, msg = send_admin_email(req_unit, clean_emp, clean_name, req_reason)
 
-            if success:
-                st.success("申請已成功送出！請靜候開通")
-            else:
-                st.success("申請已成功登錄！(已登記於系統，可聯繫管理員)")
-
-            st.session_state["show_apply_dialog"] = False
+            # 標記送出成功，不直接關閉對話框，讓使用者看到成功提示
+            st.session_state["apply_success_sent"] = True
             st.rerun()
 
 
@@ -98,6 +103,8 @@ if "show_feedback_dialog" not in st.session_state:
     st.session_state["show_feedback_dialog"] = False
 if "show_apply_dialog" not in st.session_state:
     st.session_state["show_apply_dialog"] = False
+if "apply_success_sent" not in st.session_state:
+    st.session_state["apply_success_sent"] = False
 if "inspect_emp_target" not in st.session_state:
     st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state:
@@ -170,6 +177,7 @@ if not is_authed and not is_admin_authed:
 
         if btn_apply:
             st.session_state["show_apply_dialog"] = True
+            st.session_state["apply_success_sent"] = False
             st.rerun()
 
         if btn_auth:
@@ -400,7 +408,7 @@ with col_f2:
                 st.session_state["page"] = "admin"
         else:
             st.session_state["show_admin_login"] = True
-        st.rerun()
+        st.rerin()
 
 if st.session_state.get("show_feedback_dialog", False):
     show_feedback_modal()
