@@ -203,7 +203,7 @@ if not is_authed and not is_admin_authed:
                 )
                 st.rerun()
             else:
-                st.error(f"❌ 登入失敗，請再次確認{message}")
+                st.error(f" 登入失敗，請再次確認({message})")
 
         if st.session_state.get("show_apply_dialog", False):
             show_apply_permission_dialog()
