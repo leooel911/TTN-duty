@@ -1085,10 +1085,8 @@ def render_user_home() -> None:
                                                     )
                                                 )
 
-                                            # 在搜集階段即加入 Sign-In 時段判定，確保過濾精準
                                             s_time_str = start_t if start_t else "--:--"
                                             if s_time_str == "--:--":
-                                                # 如果沒有標準 Sign-In 時間但屬於出勤，視為全時段
                                                 pass
                                             else:
                                                 if not (min_time <= s_time_str <= max_time_sel):
