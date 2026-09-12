@@ -227,45 +227,42 @@ if not st.session_state["authenticated"] and not st.session_state.get(
             with col_b2:
                 btn_apply = st.form_submit_button("申請使用權限", use_container_width=True)
 
-            if btn_apply:
-                st.session_state["show_apply_dialog"] = True
-                st.rerun()
+        # 💡 將驗證與動作拉出 form 外部，避免表單重新整理週期衝突
+        if btn_apply:
+            st.session_state["show_apply_dialog"] = True
+            st.rerun()
 
-            # ---------------------------------------------------------
-            # 💡 核心修正：統一呼叫 services.py 的 authenticate_user 進行驗證
-            # ---------------------------------------------------------
-            if btn_auth:
-                success, message, user_session = authenticate_user(selected_unit, entered_emp, entered_key)
+        if btn_auth:
+            success, message, user_session = authenticate_user(selected_unit, entered_emp, entered_key)
+            
+            if success:
+                st.session_state["authenticated"] = True
+                st.session_state["admin_logged_in"] = (user_session.get("role") == "ADMIN")
+                st.session_state["nav_mode"] = "admin_panel" if user_session.get("role") == "ADMIN" else "home"
+                st.session_state["page"] = "admin" if user_session.get("role") == "ADMIN" else "user"
+                st.session_state["current_unit"] = user_session.get("unit", selected_unit)
+                st.session_state["login_user_id"] = user_session.get("emp_id", "")
                 
-                if success:
-                    st.session_state["authenticated"] = True
-                    st.session_state["admin_logged_in"] = (user_session.get("role") == "ADMIN")
-                    st.session_state["nav_mode"] = "admin_panel" if user_session.get("role") == "ADMIN" else "home"
-                    st.session_state["page"] = "admin" if user_session.get("role") == "ADMIN" else "user"
-                    st.session_state["current_unit"] = user_session.get("unit", selected_unit)
-                    st.session_state["login_user_id"] = user_session.get("emp_id", "")
-                    
-                    # 顯示於畫面上方的 Welcome 使用者標籤
-                    role_str = user_session.get("role", "USER")
-                    emp_name = user_session.get("emp_name", "")
-                    emp_id = user_session.get("emp_id", "")
-                    
-                    if role_str == "ADMIN":
-                        st.session_state["current_user_id"] = f"ADMIN ({emp_id})"
-                    elif role_str in ["VIP_USER", "TESTER"]:
-                        st.session_state["current_user_id"] = f"VIP_USER ({emp_name})" if emp_name else f"VIP_USER ({emp_id})"
-                    else:
-                        st.session_state["current_user_id"] = f"{emp_name} ({emp_id})" if emp_name else emp_id
-
-                    log_activity(
-                        action="帳號登入",
-                        detail=f"登入成功: {emp_name} ({emp_id}) | 角色: {role_str}",
-                        user=emp_id,
-                        unit=selected_unit,
-                    )
-                    st.rerun()
+                role_str = user_session.get("role", "USER")
+                emp_name = user_session.get("emp_name", "")
+                emp_id = user_session.get("emp_id", "")
+                
+                if role_str == "ADMIN":
+                    st.session_state["current_user_id"] = f"ADMIN ({emp_id})"
+                elif role_str in ["VIP_USER", "TESTER"]:
+                    st.session_state["current_user_id"] = f"VIP_USER ({emp_name})" if emp_name else f"VIP_USER ({emp_id})"
                 else:
-                    st.error(f"❌ {message}")
+                    st.session_state["current_user_id"] = f"{emp_name} ({emp_id})" if emp_name else emp_id
+
+                log_activity(
+                    action="帳號登入",
+                    detail=f"登入成功: {emp_name} ({emp_id}) | 角色: {role_str}",
+                    user=emp_id,
+                    unit=selected_unit,
+                )
+                st.rerun()
+            else:
+                st.error(f"❌ {message}")
 
         if st.session_state.get("show_apply_dialog", False):
             show_apply_permission_dialog()
