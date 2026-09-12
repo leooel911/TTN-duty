@@ -232,7 +232,6 @@ def render_user_home() -> None:
             margin-bottom: 6px !important;
         }
 
-        /* 升級科技感 Checkbox Filter Chip */
         div[data-testid="stCheckbox"] {
             background: rgba(15, 23, 42, 0.6) !important;
             border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
@@ -271,7 +270,6 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* ===== Segmented Control 滿版 100% 均分 ===== */
         div[data-testid="stSegmentedControl"] {
             width: 100% !important;
             max-width: 100% !important;
@@ -1715,7 +1713,6 @@ def render_user_home() -> None:
                                             badges_html += "</div>"
 
                                             streak_cnt = cand.get("連續上班天數", 0)
-                                            streak_color = "#FB7185" if streak_cnt >= 6 else "#CBD5E1"
 
                                             clean_cand_name = str(cand.get("姓名", "")).replace("\n", " ").strip()
                                             clean_cand_id = str(cand.get("員編", "")).replace("\n", " ").strip()
@@ -1736,7 +1733,7 @@ def render_user_home() -> None:
 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); width: 100%;">
     <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
         <div class="train-code-text" style="font-size: 13.5px; font-weight: 900; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_return_train}</div>
-        <div style="font-size: 9.5px; color: #94A3B8; font-family: monospace; white-space: nowrap;">還休:{clean_cand_return_date} ｜ <strong style="color:{streak_color};">連:{streak_cnt}天</strong></div>
+        <div style="font-size: 9.5px; color: #94A3B8; font-family: monospace; white-space: nowrap;">還休:{clean_cand_return_date} ｜ <strong style="color:{"#FB7185" if streak_cnt >= 6 else "#CBD5E1"};">連:{streak_cnt}天</strong></div>
     </div>
     <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
         <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_cand_signin}</div>
