@@ -46,9 +46,9 @@ def show_apply_permission_dialog():
     )
 
     req_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS", "其他單位"], key="dlg_req_unit")
-    req_emp_id = st.text_input("使用者員編 (例如: 023300)", key="dlg_req_emp_id")
+    req_emp_id = st.text_input("使用者員編 (例如: A023300)", key="dlg_req_emp_id")
     req_name = st.text_input("真實姓名 (例如: 波莉)", key="dlg_req_name")
-    req_reason = st.text_area("申請原因 / 備註 (選填)", key="dlg_req_reason", help="說明用途可加速審核")
+    req_reason = st.text_area("備註 (選填)", key="dlg_req_reason", help="說明用途可加速審核")
 
     col_sub1, col_sub2 = st.columns([1, 1])
     with col_sub1:
@@ -65,21 +65,22 @@ def show_apply_permission_dialog():
         if not clean_emp or not clean_name:
             st.warning("請完整填寫「員編」與「姓名」！")
         else:
-            with st.spinner("正在記錄申請並發送通知信..."):
+            with st.spinner("正在記錄申請並通知管理者..."):
                 log_activity(
                     action="權限申請",
-                    detail=f"單位:{req_unit} | 員編:{clean_emp} | 姓名:{clean_name} | 原因:{req_reason}",
+                    detail=f"單位:{req_unit} | 員編:{clean_emp} | 姓名:{clean_name} | 備註:{req_reason}",
                     user=clean_emp,
                     unit=req_unit,
                 )
                 success, msg = send_admin_email(req_unit, clean_emp, clean_name, req_reason)
 
             if success:
-                st.success("申請已成功送出！管理員已收到信件通知，請靜候開通。")
+                st.success("申請已成功送出！請靜候開通")
             else:
-                st.success("申請已成功記錄！(已登記於系統，可聯繫管理員)")
+                st.success("申請已成功登錄！(已登記於系統，可聯繫管理員)")
 
             st.session_state["show_apply_dialog"] = False
+            st.rerun()
 
 
 # ---------------------------------------------------------
@@ -202,7 +203,7 @@ if not is_authed and not is_admin_authed:
                 )
                 st.rerun()
             else:
-                st.error(f"❌ {message}")
+                st.error(f"❌ 登入失敗，請再次確認{message}")
 
         if st.session_state.get("show_apply_dialog", False):
             show_apply_permission_dialog()
