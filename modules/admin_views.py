@@ -18,14 +18,14 @@ except Exception:
     DATA_DIR = "data"
     FEEDBACK_IMG_DIR = "feedback"
     LOG_FILE = "activity.log"
-    UNITS = {"TTN": {}}
+    UNITS = {"TTN": {}, "KSH": {}, "TCH": {}}
     WHITELIST_FILE = "whitelist.json"
 
 try:
     from modules.services import (
         load_system_config,
-        save_system_config,
         load_whitelist,
+        save_system_config,
         save_whitelist,
     )
 except Exception:
@@ -59,7 +59,7 @@ except Exception:
         pass
     def load_activity_logs() -> List[Any]:
         return []
-    def log_activity(msg: str) -> None:
+    def log_activity(msg: str, detail: str = "") -> None:
         pass
     def safe_read_excel(path: str, header: int = 0) -> pd.DataFrame:
         return pd.DataFrame()
@@ -412,7 +412,7 @@ def render_admin_panel() -> None:
         )
 
     with col_head_unit:
-        unit_options = list(UNITS.keys()) if isinstance(UNITS, dict) and UNITS else ["TTN"]
+        unit_options = list(UNITS.keys()) if isinstance(UNITS, dict) and UNITS else ["TTN", "KSH", "TCH"]
         selected_u = st.selectbox(
             "切換營運單位",
             options=unit_options,
@@ -422,7 +422,7 @@ def render_admin_panel() -> None:
         if selected_u != current_unit:
             st.session_state["current_unit"] = selected_u
             st.cache_data.clear()
-            log_activity(f"管理員切換單位至：{selected_u}")
+            log_activity("切換管理單位", f"管理員切換單位至：{selected_u}")
             st.rerun()
 
     with col_head_btn:
@@ -507,7 +507,7 @@ def render_admin_panel() -> None:
                             with open(target_path, "wb") as f:
                                 f.write(uploaded_file.getbuffer())
                             st.success(f"[{current_unit}] {role_name} 班表大表已成功更新！")
-                            log_activity(f"管理員上傳 {current_unit} - {role_name} 大表")
+                            log_activity("班表大表上傳", f"單位:{current_unit} | 職位:{role_name}")
                             st.cache_data.clear()
                             st.rerun()
                         except Exception as e:
@@ -560,6 +560,7 @@ def render_admin_panel() -> None:
                     set_module_maintenance(current_unit, m_key, new_state)
                     state_str = "開啟" if new_state else "關閉"
                     log_activity(
+                        "維護模式開關",
                         f"管理員 {state_str} {current_unit} - {m_title} 維護模式"
                     )
                     st.rerun()
@@ -567,6 +568,7 @@ def render_admin_panel() -> None:
     # ==================== Tab 3 ====================
     with tab3:
         st.markdown(f"### 👥 白名單與組員權限管理 [{current_unit}]")
+        st.caption("透過後台直接新增或調整白名單人員，異動後全站將自動寫入 JSON 檔並即時生效。")
         whitelist_data = load_whitelist(current_unit)
 
         cnt_total = len(whitelist_data)
@@ -608,14 +610,14 @@ def render_admin_panel() -> None:
                     wl_rows.append({
                         "員編/帳號": uid,
                         "姓名": info.get("name", info.get("姓名", "未設定")),
-                        "身份權限": info.get("role", info.get("身份", "VIP")),
+                        "身份權限": info.get("role", info.get("身份", "VIP_USER")),
                         "備註": info.get("note", info.get("備註", "-")),
                     })
                 else:
                     wl_rows.append({
                         "員編/帳號": uid,
                         "姓名": str(info),
-                        "身份權限": "VIP",
+                        "身份權限": "VIP_USER",
                         "備註": "-",
                     })
 
@@ -702,7 +704,7 @@ def render_admin_panel() -> None:
             edit_uid = st.text_input(
                 "員編 / 帳號 ID",
                 value=default_uid,
-                placeholder="例: A026048",
+                placeholder="例: A023300",
                 key=f"input_wl_uid_{current_unit}",
                 disabled=True if selected_row_data else False,
             )
@@ -714,7 +716,7 @@ def render_admin_panel() -> None:
                 key=f"input_wl_uname_{current_unit}",
             )
 
-            role_options = ["TESTER", "VIP_USER (全域通行)", "ADMIN"]
+            role_options = ["TESTER", "VIP_USER", "ADMIN"]
             role_idx = role_options.index(default_role) if default_role in role_options else 0
             edit_role = st.selectbox(
                 "設定使用者權限身份",
@@ -750,8 +752,10 @@ def render_admin_panel() -> None:
                         }
                         save_whitelist(current_unit, whitelist_data)
                         log_activity(
+                            "權限與白名單變更",
                             f"管理員更新 [{current_unit}] 組員權限：{target_uid} -> {edit_role}"
                         )
+                        st.cache_data.clear()
                         st.session_state[ver_key] += 1
                         st.success(f"已成功儲存/更新【{current_unit}】權限：{target_uid}")
                         st.rerun()
@@ -770,7 +774,11 @@ def render_admin_panel() -> None:
                         if target_uid in whitelist_data:
                             del whitelist_data[target_uid]
                             save_whitelist(current_unit, whitelist_data)
-                            log_activity(f"管理員移除 [{current_unit}] 組員權限：{target_uid}")
+                            log_activity(
+                                "權限與白名單刪除",
+                                f"管理員移除 [{current_unit}] 組員權限：{target_uid}"
+                            )
+                            st.cache_data.clear()
                             st.session_state[ver_key] += 1
                             st.success(f"已成功移除【{current_unit}】權限：{target_uid}")
                             st.rerun()
@@ -780,6 +788,7 @@ def render_admin_panel() -> None:
     # ==================== Tab 4 ====================
     with tab4:
         st.markdown("### ⚙️ 全域系統參數與授權碼設定")
+        st.caption("線上修改全站通行碼（留空則保持原密碼不變），點擊儲存後立即寫入 `system_config.json` 並生效。")
 
         if "cfg_toast" in st.session_state:
             t_type, t_msg = st.session_state["cfg_toast"]
@@ -913,8 +922,9 @@ def render_admin_panel() -> None:
                     sys_config["strict_streak_limit"] = streak_threshold
                     sys_config["enable_beta_notice"] = enable_notice
                     save_system_config(sys_config)
-                    log_activity("管理員更新全域系統設定與通行授權碼")
+                    log_activity("系統授權碼變更", f"管理員更新全域系統設定與通行授權碼: {', '.join(pwd_updates) if pwd_updates else '無變更密碼'}")
 
+                    st.cache_data.clear()
                     msg_prefix = "與".join(pwd_updates) + "及" if pwd_updates else ""
                     st.session_state["cfg_toast"] = (
                         "success",
@@ -987,7 +997,7 @@ def render_admin_panel() -> None:
                 sel_unit = st.selectbox("依單位過濾", all_units, key="log_unit_filter")
 
             with f_col2:
-                all_cats = ["全部分類", "換班快篩", "換假快篩", "月班表繪製", "管理員操作", "帳號登入", "問題與申請", "一般操作"]
+                all_cats = ["全部分類", "換班快篩", "換假快篩", "月班表繪製", "管理員操作", "帳號登入", "權限與白名單變更", "系統授權碼變更", "問題與申請", "一般操作"]
                 sel_cat = st.selectbox("依操作類別過濾", all_cats, key="log_cat_filter")
 
             with f_col3:
@@ -1191,7 +1201,7 @@ def render_admin_panel() -> None:
                             t["狀態"] = new_status
                             t["管理員回覆"] = new_reply
                             save_feedback_ticket(t)
-                            log_activity(f"管理員更新工單 [{ticket_id}] 狀態為：{new_status}")
+                            log_activity("問題工單維護", f"管理員更新工單 [{ticket_id}] 狀態為：{new_status}")
                             st.success(f"工單 `{ticket_id}` 狀態已成功更新！")
                             st.rerun()
 
@@ -1203,7 +1213,7 @@ def render_admin_panel() -> None:
                             img_p = t.get("_img_path")
                             if img_p and os.path.exists(img_p):
                                 os.remove(img_p)
-                            log_activity(f"管理員刪除工單 [{ticket_id}]")
+                            log_activity("問題工單刪除", f"管理員刪除工單 [{ticket_id}]")
                             st.success(f"已成功刪除工單 `{ticket_id}`！")
                             st.rerun()
 
