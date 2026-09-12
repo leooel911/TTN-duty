@@ -643,15 +643,13 @@ def render_user_home() -> None:
     ta_time = get_file_mtime_str(active_files.get("服勤員", ""))
     sched_range = get_schedule_range()
 
-    st.markdown(
-        f"""
+    period_html = f"""
     <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 !important;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span class="section-title" style="font-size: 13px !important;">[{current_unit_label}] 排班週期</span>
             <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
                 {sched_range if len(missing_files) < 3 else "資料庫異常"}
             </span>
-
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
@@ -665,9 +663,8 @@ def render_user_home() -> None:
             </div>
         </details>
     </div>
-    """,
-        unsafe_allow_html=True,
-    )
+    """
+    st.html(period_html)
 
     st.markdown(
         """
