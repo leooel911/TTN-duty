@@ -751,61 +751,7 @@ def render_user_home() -> None:
             unsafe_allow_html=True,
         )
 
-        with st.form(key="draw_schedule_form", border=False):
-            # 如果 current_user_id 是空的，就預設給一個空的或提示
-            draw_default_val = current_user_id if current_user_id else st.session_state.get("draw_input_key", "")
-            draw_field_label = "請輸入您的員編或姓名 (例如: A023300)"
-
-            st.text_input(
-                draw_field_label,
-                value=draw_default_val,
-                disabled=False,  # <--- 解除鎖定，讓任何人都能手動輸入
-                key="draw_input_key",
-            )
-            submit_btn = st.form_submit_button(
-                "開始繪製月班表", type="primary", use_container_width=True
-            )
-
-        if submit_btn:
-            # 優先讀取輸入框內的值，如果輸入框是空的才使用當前登入者的員編
-            input_val = st.session_state.get("draw_input_key", "").strip()
-            current_input = input_val if input_val else current_user_id
-
-            if not current_input or current_input.upper() == "A":
-                st.warning("請輸入有效的員編或姓名（例如: A023300）")
-            else:
-                try:
-                    start_dt, dates, emp_id, emp_name, cells = process_file_data(
-                        current_input
-                    )
-                    log_activity(
-                        "個人班表繪製",
-                        f"操作者:{current_user_id} | 單位:{current_unit_label} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
-                    )
-
-                    with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
-                        buf = render_schedule_figure(
-                            start_dt,
-                            dates,
-                            emp_id,
-                            emp_name,
-                            cells,
-                            current_unit_label,
-                            badge_title="Producer | C.L.F",
-                        )
-                    st.success(f"【{emp_name}】個人班表圖片生成成功！")
-
-                    comp.render_zoomable_image(buf)
-
-                    st.download_button(
-                        "點此下載班表影像檔",
-                        data=buf,
-                        file_name=f"{current_unit_label}_班表_{emp_name}.png",
-                        mime="image/png",
-                        use_container_width=True,
-                    )
-                except Exception as e:
-                    st.error(f"繪製班表時發生錯誤：{e}")
+        with st.form
 
     # ==================== 模式二：換班｜選擇換班日期 ====================
     elif app_mode == "換班｜選擇換班日期":
