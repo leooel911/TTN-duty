@@ -1019,21 +1019,22 @@ def render_user_home() -> None:
 
                     st.session_state["saved_win_time_range"] = slider_val
                     min_time, max_time_sel = slider_val
-                    # 【極致顯眼的時間顯示】用 Streamlit 原生容器與大字體呈現
+                    # 【精巧橫向時段顯示】不佔空間、精美俐落
                     st.markdown(
                         f"""
-                        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
-                                    border: 2px solid #38BDF8; 
-                                    border-radius: 12px; 
-                                    padding: 10px 16px; 
-                                    text-align: center; 
+                        <div style="background: rgba(15, 23, 42, 0.85); 
+                                    border: 1px solid rgba(56, 189, 248, 0.4); 
+                                    border-radius: 8px; 
+                                    padding: 6px 12px; 
+                                    display: flex; 
+                                    justify-content: space-between; 
+                                    align-items: center; 
                                     margin-top: 4px; 
-                                    margin-bottom: 12px; 
-                                    box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);">
-                            <span style="font-size: 13px; font-weight: 700; color: #94A3B8; letter-spacing: 1px;">目前選擇查詢時段</span>
-                            <div style="font-size: 24px; font-weight: 900; color: #38BDF8; font-family: monospace; margin-top: 2px; text-shadow: 0 0 8px rgba(56, 189, 248, 0.5);">
+                                    margin-bottom: 8px;">
+                            <span style="font-size: 12px; font-weight: 700; color: #94A3B8;">目前選擇區間</span>
+                            <span style="font-size: 15px; font-weight: 800; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px;">
                                  {min_time} ～ {max_time_sel}
-                            </div>
+                            </span>
                         </div>
                         """,
                         unsafe_allow_html=True,
