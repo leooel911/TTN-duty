@@ -650,6 +650,7 @@ def render_user_home() -> None:
             <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
                 {sched_range if len(missing_files) < 3 else "資料庫異常"}
             </span>
+
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
@@ -888,7 +889,7 @@ def render_user_home() -> None:
             ]
 
             if "saved_win_time_slider" not in st.session_state:
-                st.session_state["saved_win_time_slider"] = (morn_start_time, "10:00")
+                st.session_state["saved_win_time_slider"] = (morn_start_time, "18:00")
 
             slider_default = st.session_state["saved_win_time_slider"]
             if (
@@ -897,7 +898,7 @@ def render_user_home() -> None:
                 or slider_default[0] not in TIME_OPTIONS
                 or slider_default[1] not in TIME_OPTIONS
             ):
-                slider_default = (morn_start_time, "10:00")
+                slider_default = (morn_start_time, "18:00")
 
             valid_paths = {}
             for r_name in roles_to_query:
@@ -969,31 +970,28 @@ def render_user_home() -> None:
                     btn_noon_label = "中班 (10:00~13:00)"
                     btn_night_label = "晚班 (13:00~18:00)"
 
+                    # 點擊快捷按鈕時，直接更新 state 並觸發 rerun 讓滑桿及時生效
                     if st.button(btn_all_label, key="btn_win_all", use_container_width=True):
-                        target_range = (morn_start_time, "18:00")
-                        st.session_state["saved_win_time_slider"] = target_range
-                        st.session_state["win_time_slider"] = target_range
+                        st.session_state["saved_win_time_slider"] = (morn_start_time, "18:00")
+                        st.session_state["win_time_slider"] = (morn_start_time, "18:00")
                         reset_win_search()
                         st.rerun()
 
                     if st.button(btn_morn_label, key="btn_win_morn", use_container_width=True):
-                        target_range = (morn_start_time, "10:00")
-                        st.session_state["saved_win_time_slider"] = target_range
-                        st.session_state["win_time_slider"] = target_range
+                        st.session_state["saved_win_time_slider"] = (morn_start_time, "10:00")
+                        st.session_state["win_time_slider"] = (morn_start_time, "10:00")
                         reset_win_search()
                         st.rerun()
 
                     if st.button(btn_noon_label, key="btn_win_noon", use_container_width=True):
-                        target_range = ("10:00", "13:00")
-                        st.session_state["saved_win_time_slider"] = target_range
-                        st.session_state["win_time_slider"] = target_range
+                        st.session_state["saved_win_time_slider"] = ("10:00", "13:00")
+                        st.session_state["win_time_slider"] = ("10:00", "13:00")
                         reset_win_search()
                         st.rerun()
 
                     if st.button(btn_night_label, key="btn_win_night", use_container_width=True):
-                        target_range = ("13:00", "18:00")
-                        st.session_state["saved_win_time_slider"] = target_range
-                        st.session_state["win_time_slider"] = target_range
+                        st.session_state["saved_win_time_slider"] = ("13:00", "18:00")
+                        st.session_state["win_time_slider"] = ("13:00", "18:00")
                         reset_win_search()
                         st.rerun()
 
@@ -1112,6 +1110,7 @@ def render_user_home() -> None:
                         filtered_results = []
 
                         for r in raw_list:
+                            # 嚴格依照所選時段範圍進行過濾
                             if r["Sign-In"] == "--:--":
                                 if not (min_time <= morn_start_time and max_time_sel >= "18:00"):
                                     continue
