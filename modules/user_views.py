@@ -675,19 +675,6 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 頂部登入身分資訊條
-    st.markdown(
-        f"""
-        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.85); border: 1.5px solid rgba(56, 189, 248, 0.35); padding: 8px 14px; border-radius: 10px; margin-bottom: 12px;">
-            <div style="font-size: 13px; color: #F8FAFC; font-weight: 700;">
-                👤 登入身份：<span style="color: #38BDF8;">{current_user_name} ({current_user_id})</span> 
-                <span style="font-size: 10px; background: rgba(56,189,248,0.2); color: #38BDF8; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">{clean_role_label(user_role)}</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     active_files = get_current_role_files()
 
     # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
@@ -762,6 +749,7 @@ def render_user_home() -> None:
             <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
                 {sched_range if len(missing_files) < 3 else "資料庫異常"}
             </span>
+
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
