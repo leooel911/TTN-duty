@@ -269,7 +269,114 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
             "emp_name": display_name,
             "role": "VIP_USER",
             "unit": unit_code,
+        }def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) -> Tuple[bool, str, Dict[str, Any]]:
+    """雙軌登入驗證引擎（含白名單身分嚴格鎖定）"""
+    clean_id = emp_id_input.strip().upper()
+    if clean_id.isdigit() and len(clean_id) == 6:
+        clean_id = f"A{clean_id}"
+
+    passcode = passcode_input.strip()
+
+    sys_config = load_system_config()
+    admin_pwd = sys_config.get("admin_password", "admin123")
+    default_vip_pwd = sys_config.get("vip_password", "0")
+    user_pwd = sys_config.get("user_password", "09000")
+
+    whitelist = load_whitelist(unit_code)
+
+    # 1. 取得白名單內該員編的詳細資料
+    wl_info = whitelist.get(clean_id, {})
+    wl_name = ""
+    wl_role = "USER"
+    custom_pass = ""
+
+    if isinstance(wl_info, dict):
+        wl_name = wl_info.get("name") or wl_info.get("姓名") or ""
+        wl_role = wl_info.get("role", "VIP_USER")
+        custom_pass = str(wl_info.get("passcode", "")).strip()
+    elif isinstance(wl_info, str):
+        wl_name = wl_info.strip()
+
+    # -------------------------------------------------------------------------
+    # 軌道一：高級 VIP / 特權 / 管理員驗證
+    # -------------------------------------------------------------------------
+
+    # 1. 最高系統管理員 (ADMIN)
+    if passcode == admin_pwd or wl_role == "ADMIN":
+        if passcode != admin_pwd and wl_role == "ADMIN":
+            return False, "管理員密碼錯誤！", {"reason": "WRONG_ADMIN_PASSWORD"}
+        
+        return True, "歡迎系統管理員！", {
+            "authenticated": True,
+            "emp_id": clean_id if clean_id and clean_id != "A" else "ADMIN",
+            "emp_name": wl_name or "系統管理員",
+            "role": "ADMIN",
+            "unit": unit_code,
         }
+
+    # 2. 檢查是否為白名單中的 VIP / TESTER 身分
+    if clean_id in whitelist and wl_role in ["VIP_USER", "TESTER"]:
+        # 如果有設定專屬密碼，必須相符
+        if custom_pass:
+            if passcode == custom_pass:
+                return True, f"歡迎 VIP 特權組員【{wl_name}】！", {
+                    "authenticated": True,
+                    "emp_id": clean_id,
+                    "emp_name": wl_name,
+                    "role": wl_role,
+                    "unit": unit_code,
+                }
+            else:
+                return False, "VIP 專屬授權碼錯誤！", {"reason": "WRONG_VIP_PASSCODE"}
+        
+        # 若沒設定專屬密碼，則允許使用通用 VIP 碼 '0'
+        if passcode == default_vip_pwd or passcode == "0":
+            return True, f"歡迎 VIP 組員【{wl_name}】！", {
+                "authenticated": True,
+                "emp_id": clean_id,
+                "emp_name": wl_name,
+                "role": wl_role,
+                "unit": unit_code,
+            }
+        else:
+            return False, "授權碼無效！此 VIP 帳號需使用專屬授權碼或預設 VIP 碼 (0)", {"reason": "WRONG_PASSCODE"}
+
+    # 3. 通用測試員 (員編填 A 且密碼為 0)
+    if clean_id == "A" and (passcode == default_vip_pwd or passcode == "0"):
+        return True, "歡迎 VIP 測試員！", {
+            "authenticated": True,
+            "emp_id": "VIP001",
+            "emp_name": "VIP 測試員",
+            "role": "VIP_USER",
+            "unit": unit_code,
+        }
+
+    # -------------------------------------------------------------------------
+    # 軌道二：一般組員實名驗證 (身分為 USER)
+    # -------------------------------------------------------------------------
+
+    if not clean_id or clean_id == "A":
+        return False, "一般組員請輸入正確員編（例如:A023300）！", {"reason": "INVALID_EMP_ID"}
+
+    if clean_id not in whitelist:
+        return False, f"員編【{clean_id}】尚未加入【{unit_code}】受測試人員，請點選申請權限！", {"reason": "NOT_IN_WHITELIST"}
+
+    exists_in_excel, excel_name = check_excel_employee_exists(unit_code, clean_id)
+    if not exists_in_excel:
+        return False, f"員編【{clean_id}】未在【{unit_code}】班表大表中找到，請核對所屬單位！", {"reason": "NOT_IN_EXCEL"}
+
+    if passcode != user_pwd and passcode != "09000":
+        return False, "授權碼無效！一般組員授權碼為 09000", {"reason": "WRONG_PASSCODE"}
+
+    final_name = wl_name if wl_name else excel_name
+
+    return True, f"歡迎！{final_name}", {
+        "authenticated": True,
+        "emp_id": clean_id,
+        "emp_name": final_name,
+        "role": "USER",
+        "unit": unit_code,
+    }
 
     # -------------------------------------------------------------------------
     # 軌道二：一般組員實名驗證 (必須為真實員編 + 大表存在 + 白名單存在 + 授權碼 09000)
