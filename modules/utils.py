@@ -25,6 +25,99 @@ TW_TZ = timezone(timedelta(hours=8))
 MAINLINE_PATTERN = re.compile(r"^[NCS][DMFGH]\d+", re.IGNORECASE)
 
 
+def parse_user_agent(ua_string: str) -> str:
+    """簡易解析 User-Agent 為易讀的設備與瀏覽器標籤"""
+    if not ua_string:
+        return "未知設備"
+
+    if "iPhone" in ua_string:
+        device = "iPhone"
+    elif "iPad" in ua_string:
+        device = "iPad"
+    elif "Android" in ua_string:
+        device = "Android"
+    elif "Macintosh" in ua_string:
+        device = "Mac"
+    elif "Windows" in ua_string:
+        device = "Windows"
+    else:
+        device = "其他裝置"
+
+    if "Edg" in ua_string:
+        browser = "Edge"
+    elif "Chrome" in ua_string:
+        browser = "Chrome"
+    elif "Safari" in ua_string:
+        browser = "Safari"
+    elif "Firefox" in ua_string:
+        browser = "Firefox"
+    else:
+        browser = "其他瀏覽器"
+
+    return f"{device} / {browser}"
+
+
+def get_client_info() -> Tuple[str, str]:
+    """擷取使用者的 IP 位址與裝置資訊 (User-Agent)"""
+    try:
+        headers = getattr(st.context, "headers", {})
+        ip = headers.get("X-Forwarded-For", headers.get("Remote-Addr", "未知 IP"))
+        if "," in ip:
+            ip = ip.split(",")[0].strip()
+
+        ua = headers.get("User-Agent", "")
+        device = parse_user_agent(ua)
+        return ip, device
+    except Exception:
+        return "未知 IP", "未知設備"
+
+
+def normalize_date_str(val: Any) -> str:
+    """將各種日期格式 (如 "2026/09/06", "09/06", "9/6", "09/06(日)") 統一轉換為標準 "M/D" 格式"""
+    if pd.isna(val) or val is None:
+        return ""
+    s = str(val).strip()
+    m = re.search(r"(?:\d{4}/)?(\d{1,2})/(\d{1,2})", s)
+    if m:
+        return f"{int(m.group(1))}/{int(m.group(2))}"
+    return ""
+
+
+def get_file_mtime_str(file_path: str) -> str:
+    """取得檔案最後修改時間字串 (強制轉為台灣時間)"""
+    if isinstance(file_path, str) and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+        try:
+            mtime = os.path.getmtime(file_path)
+            tz = TAIWAN_TZ if TAIWAN_TZ else TW_TZ
+            dt = datetime.fromtimestamp(mtime, tz=tz)
+            return dt.strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            return "時間讀取失敗"
+    return "尚無檔案"
+
+
+def safe_read_excel(file_path: str, header: int = 3) -> pd.DataFrame:
+    """安全讀取 Excel 檔案，處理例外狀況"""
+    if not (isinstance(file_path, str) and os.path.exists(file_path) and os.path.getsize(file_path) > 0):
+        return pd.DataFrame()
+    try:
+        return pd.read_excel(file_path, header=header)
+    except Exception:
+        return pd.DataFrame()
+
+
+def clean_time_str(time_str: Optional[str]) -> Optional[str]:
+    """將時間字串統一轉換為兩位數小時格式 HH:MM (例如 5:26 -> 05:26)"""
+    if not time_str:
+        return None
+    time_str = str(time_str).strip().replace("：", ":")
+    m = re.search(r"\b(\d{1,2}):(\d{2})\b", time_str)
+    if m:
+        h, mins = int(m.group(1)), m.group(2)
+        return f"{h:02d}:{mins}"
+    return None
+
+
 def parse_cell(cell_value: Any) -> Dict[str, Any]:
     """解析乘務大表個別儲存格 (強制嚴格過濾報到時間，排除備註時間干擾)"""
     if pd.isna(cell_value) or cell_value is None:
@@ -44,64 +137,22 @@ def parse_cell(cell_value: Any) -> Dict[str, Any]:
     if not lines:
         return {"train": "無", "start": None, "end": None, "hours": None, "note": ""}
 
-    # 提取所有時間行
     time_lines = []
     non_time_lines = []
     
     for l in lines:
-        # 只捕捉獨立的時間格式 (例如 05:26, 13:00)
         time_match = re.search(r"^(\d{1,2}):(\d{2})$", l)
         if time_match:
             h, m = int(time_match.group(1)), time_match.group(2)
             time_lines.append(f"{h:02d}:{m}")
         else:
-            # 兼容行內夾帶時間的狀況，但優先抓獨立行
             inline_match = re.search(r"\b(\d{1,2}):(\d{2})\b", l)
-            if inline_match and len(l) <= 8:  # 確保是短時間字串
+            if inline_match and len(l) <= 8:
                 h, m = int(inline_match.group(1)), inline_match.group(2)
                 time_lines.append(f"{h:02d}:{m}")
             else:
                 non_time_lines.append(l)
 
-    # 嚴格界定：排班表通常第一組時間是 Start，第二組是 End
-    start_time = time_lines[0] if len(time_lines) >= 1 else None
-    end_time = time_lines[1] if len(time_lines) >= 2 else None
-    hours_raw = time_lines[2] if len(time_lines) >= 3 else None
-
-    hours_str = ""
-    if hours_raw:
-        try:
-            h, m = map(int, hours_raw.split(":"))
-            hours_str = f"{h}h{m:02d}m"
-        except Exception:
-            pass
-
-    train_code = "無"
-    if non_time_lines:
-        real_trains = [
-            l for l in non_time_lines
-            if not any(k in l.upper() for k in ["DO", "D2W", "D1", "D2", "OGC", "PAY", "FAC", "LEV", "MLP", "MTR"])
-        ]
-        if real_trains:
-            train_code = real_trains[0]
-        else:
-            train_code = non_time_lines[0]
-
-    note_lines = [
-        l for l in lines
-        if l != train_code and not re.search(r"\b\d{1,2}:\d{2}\b", l)
-    ]
-    note_str = " ".join(note_lines)
-
-    return {
-        "train": train_code,
-        "start": start_time,
-        "end": end_time,
-        "hours": hours_str,
-        "note": note_str,
-    }
-
-    # 通常排班表第一組時間是 Start，第二組是 End，第三組（若有）是工時
     start_time = time_lines[0] if len(time_lines) >= 1 else None
     end_time = time_lines[1] if len(time_lines) >= 2 else None
     hours_raw = time_lines[2] if len(time_lines) >= 3 else None
@@ -192,7 +243,6 @@ def is_town_shift(train_code: str, note: str = "") -> bool:
     """
     判斷是否為「非正線」勤務
     邏輯：只要包含有效車次代碼且「不符合正線規則」(N/C/S + D/M/F/G/H + 數字)，即判定為非正線 (True)
-    如 E008G, I308a, DTT, OGC, WRSL 等均會被正確判為非正線
     """
     tr = str(train_code).strip().upper()
 
@@ -296,7 +346,7 @@ def log_activity(
     detail: Optional[str] = None,
     **kwargs: Any,
 ) -> None:
-    """寫入全站系統操作日誌 (自動記錄台灣時間 UTC+8、IP 與設備資訊，並雙向相容 user/operator 與 Session 自動補齊)"""
+    """寫入全站系統操作日誌"""
     os.makedirs(DATA_DIR, exist_ok=True)
 
     tz = TAIWAN_TZ if TAIWAN_TZ else TW_TZ
@@ -304,13 +354,11 @@ def log_activity(
 
     client_ip, client_device = get_client_info()
 
-    # 1. 優先使用傳入的 user / detail 參數，若無則降級使用 operator / details
     effective_operator = str(user if user is not None else operator).strip()
     effective_details = str(detail if detail is not None else details).strip()
     effective_unit = str(unit).strip()
 
-    # 2. 自動保底機制：若 operator/user 為無效詞彙，從 Session State 自動擷取當前登入者員編
-    invalid_users = ["系統/訪客", "訪客", "", "NONE", "NAN", "NONE", "NONE"]
+    invalid_users = ["系統/訪客", "訪客", "", "NONE", "NAN"]
     if not effective_operator or effective_operator.upper() in invalid_users:
         effective_operator = (
             st.session_state.get("login_user_id")
@@ -319,14 +367,12 @@ def log_activity(
             or "系統/訪客"
         )
 
-    # 3. 自動保底機制：若 unit 為空或全站預設，從 Session State 自動補齊
     if not effective_unit or effective_unit in ["全站", "", "NONE", "NAN"]:
         effective_unit = st.session_state.get("current_unit", "全站")
 
     effective_operator = str(effective_operator).strip().upper()
     effective_unit = str(effective_unit).strip().upper()
 
-    # 4. 寫入基本 LOG_FILE (純文字檔備份)
     log_entry = f"[{now_str}] [{effective_operator}] [{effective_unit}] [{action}] IP:{client_ip} | Dev:{client_device} | {effective_details}\n"
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
@@ -334,7 +380,6 @@ def log_activity(
     except Exception:
         pass
 
-    # 5. 寫入 CSV 結構化日誌 (供管理員後台表格繪製與欄位篩選)
     csv_file = os.path.join(DATA_DIR, "system_logs.csv")
     new_log = {
         "時間": now_str,
@@ -360,7 +405,7 @@ def log_activity(
 
 
 def load_activity_logs() -> List[Dict[str, str]]:
-    """讀取系統歷史操作日誌（優先讀取 CSV 結構化資料，備用 TXT）"""
+    """讀取系統歷史操作日誌"""
     csv_file = os.path.join(DATA_DIR, "system_logs.csv")
     if os.path.exists(csv_file):
         try:
@@ -453,7 +498,7 @@ def format_display_name(name: str) -> str:
 
 
 def send_admin_email(req_unit: str, clean_emp: str, clean_name: str, req_reason: str) -> Tuple[bool, str]:
-    """發送管理員通知郵件 (紀錄於系統日誌)"""
+    """發送管理員通知郵件"""
     log_activity(
         action="權限申請郵件通知",
         details=f"原因:{req_reason}",
