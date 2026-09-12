@@ -66,15 +66,12 @@ def show_apply_permission_dialog():
             st.warning("請完整填寫「員編」與「姓名」！")
         else:
             with st.spinner("正在記錄申請並發送通知信..."):
-                # 1. 寫入系統活動紀錄 (備份留底)
                 log_activity(
                     action="權限申請",
                     detail=f"單位:{req_unit} | 員編:{clean_emp} | 姓名:{clean_name} | 原因:{req_reason}",
                     user=clean_emp,
                     unit=req_unit,
                 )
-
-                # 2. 自動發送通知信給管理員
                 success, msg = send_admin_email(req_unit, clean_emp, clean_name, req_reason)
 
             if success:
@@ -112,6 +109,106 @@ if "login_user_id" not in st.session_state:
     st.session_state["login_user_id"] = DEFAULT_EMP_ID
 if "current_unit" not in st.session_state:
     st.session_state["current_unit"] = "TTN"
+
+
+# ---------------------------------------------------------
+# 🛡️ 前置授權碼門戶檢查 (獨立區塊，絕對不與主畫面上下疊加)
+# ---------------------------------------------------------
+is_authed = st.session_state.get("authenticated", False)
+is_admin_authed = st.session_state.get("admin_logged_in", False)
+
+if not is_authed and not is_admin_authed:
+    st.markdown(
+        """
+    <div style="text-align: center; margin-top: 1.5rem; margin-bottom: 1.2rem;">
+        <div style="font-size: 26px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
+        <div style="color: #94A3B8; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace;">
+            BUSY DOING NOTHING PRODUCTIVE<br>C.L.F EDITION
+        </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    col1, col2, col3 = st.columns([1, 2.4, 1])
+    with col2:
+        with st.expander("登入前系統說明與試用須知（點擊展開）", expanded=False):
+            st.markdown(
+                """
+            <div style="font-size: 12.5px; color: #CBD5E1; line-height: 1.7; font-family: monospace;">
+                <div style="color: #38BDF8; font-weight: 800; margin-bottom: 6px;">系統開放試用公告</div>
+                本系統目前為正式環境第一階段特定人員內部測試。<br><br>
+                <div style="color: #FBBF24; font-weight: 800; margin-bottom: 4px;">重要提醒與注意事項：</div>
+                1. <b>排班依據</b>：本系統班表僅供個人調假與換班快篩參考，<b>即時班表務必以公司官方公告為準</b>。<br>
+                2. <b>資訊安全</b>：班表相關資料屬內部營運資訊，<b>請勿外流授權碼與班表截圖</b>。<br>
+                3. <b>權限與回報</b>：尚無權限者請點選下方<b>「申請使用權限」</b>；登入後若發現資料有誤，請善用頁尾<b>「問題回報」</b>。
+            </div>
+            """,
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+        
+        with st.form("auth_form"):
+            selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
+            entered_emp = st.text_input(
+                "使用者員編 (範例：023300)",
+                value=DEFAULT_EMP_ID,
+                placeholder="例如: 023300",
+                max_chars=10,
+            )
+            entered_key = st.text_input(
+                "系統授權碼", type="password", placeholder="請輸入系統授權碼..."
+            )
+
+            col_b1, col_b2 = st.columns([1, 1])
+            with col_b1:
+                btn_auth = st.form_submit_button("進入系統", type="primary", use_container_width=True)
+            with col_b2:
+                btn_apply = st.form_submit_button("申請使用權限", use_container_width=True)
+
+        # 表單送出後的動作處理（完全脫離表單區塊，避免狀態衝突）
+        if btn_apply:
+            st.session_state["show_apply_dialog"] = True
+            st.rerun()
+
+        if btn_auth:
+            success, message, user_session = authenticate_user(selected_unit, entered_emp, entered_key)
+            
+            if success:
+                st.session_state["authenticated"] = True
+                st.session_state["admin_logged_in"] = (user_session.get("role") == "ADMIN")
+                st.session_state["nav_mode"] = "admin_panel" if user_session.get("role") == "ADMIN" else "home"
+                st.session_state["page"] = "admin" if user_session.get("role") == "ADMIN" else "user"
+                st.session_state["current_unit"] = user_session.get("unit", selected_unit)
+                st.session_state["login_user_id"] = user_session.get("emp_id", "")
+                
+                role_str = user_session.get("role", "USER")
+                emp_name = user_session.get("emp_name", "")
+                emp_id = user_session.get("emp_id", "")
+                
+                if role_str == "ADMIN":
+                    st.session_state["current_user_id"] = f"ADMIN ({emp_id})"
+                else:
+                    # 統一格式：顯示為 姓名 (員編)
+                    st.session_state["current_user_id"] = f"{emp_name} ({emp_id})" if emp_name else emp_id
+
+                log_activity(
+                    action="帳號登入",
+                    detail=f"登入成功: {emp_name} ({emp_id}) | 角色: {role_str}",
+                    user=emp_id,
+                    unit=selected_unit,
+                )
+                st.rerun()
+            else:
+                st.error(f"❌ {message}")
+
+        if st.session_state.get("show_apply_dialog", False):
+            show_apply_permission_dialog()
+
+    # 🛑 核心防護：未登入時程式在此強制中止，絕不繼續往下渲染主畫面！
+    st.stop()
+
 
 # ---------------------------------------------------------
 # 組員完整班表檢視模式 (Inspector Mode)
@@ -172,102 +269,6 @@ if st.session_state.get("inspect_emp_target") is not None:
 
     st.stop()
 
-# ---------------------------------------------------------
-# 前置授權碼門戶檢查 (登入驗證頁面)
-# ---------------------------------------------------------
-if not st.session_state["authenticated"] and not st.session_state.get(
-    "admin_logged_in", False
-):
-    st.markdown(
-        """
-    <div style="text-align: center; margin-top: 1.5rem; margin-bottom: 1.2rem;">
-        <div style="font-size: 26px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
-        <div style="color: #94A3B8; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace;">
-            BUSY DOING NOTHING PRODUCTIVE<br>C.L.F EDITION
-        </div>
-    </div>
-    """,
-        unsafe_allow_html=True,
-    )
-
-    col1, col2, col3 = st.columns([1, 2.4, 1])
-    with col2:
-        with st.expander("登入前系統說明與試用須知（點擊展開）", expanded=False):
-            st.markdown(
-                """
-            <div style="font-size: 12.5px; color: #CBD5E1; line-height: 1.7; font-family: monospace;">
-                <div style="color: #38BDF8; font-weight: 800; margin-bottom: 6px;">系統開放試用公告</div>
-                本系統目前為正式環境第一階段特定人員內部測試。<br><br>
-                <div style="color: #FBBF24; font-weight: 800; margin-bottom: 4px;">重要提醒與注意事項：</div>
-                1. <b>排班依據</b>：本系統班表僅供個人調假與換班快篩參考，<b>即時班表務必以公司官方公告為準</b>。<br>
-                2. <b>資訊安全</b>：班表相關資料屬內部營運資訊，<b>請勿外流授權碼與班表截圖</b>。<br>
-                3. <b>權限與回報</b>：尚無權限者請點選下方<b>「申請使用權限」</b>；登入後若發現資料有誤，請善用頁尾<b>「問題回報」</b>。
-            </div>
-            """,
-                unsafe_allow_html=True,
-            )
-
-        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-        with st.form("auth_form"):
-            selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"])
-
-            entered_emp = st.text_input(
-                "使用者員編 (範例：023300)",
-                value=DEFAULT_EMP_ID,
-                placeholder="例如: 023300",
-                max_chars=10,
-            )
-            entered_key = st.text_input(
-                "系統授權碼", type="password", placeholder="請輸入系統授權碼..."
-            )
-
-            col_b1, col_b2 = st.columns([1, 1])
-            with col_b1:
-                btn_auth = st.form_submit_button("進入系統", type="primary", use_container_width=True)
-            with col_b2:
-                btn_apply = st.form_submit_button("申請使用權限", use_container_width=True)
-
-        # 💡 將驗證與動作拉出 form 外部，避免表單重新整理週期衝突
-        if btn_apply:
-            st.session_state["show_apply_dialog"] = True
-            st.rerun()
-
-        if btn_auth:
-            success, message, user_session = authenticate_user(selected_unit, entered_emp, entered_key)
-            
-            if success:
-                st.session_state["authenticated"] = True
-                st.session_state["admin_logged_in"] = (user_session.get("role") == "ADMIN")
-                st.session_state["nav_mode"] = "admin_panel" if user_session.get("role") == "ADMIN" else "home"
-                st.session_state["page"] = "admin" if user_session.get("role") == "ADMIN" else "user"
-                st.session_state["current_unit"] = user_session.get("unit", selected_unit)
-                st.session_state["login_user_id"] = user_session.get("emp_id", "")
-                
-                role_str = user_session.get("role", "USER")
-                emp_name = user_session.get("emp_name", "")
-                emp_id = user_session.get("emp_id", "")
-                
-                if role_str == "ADMIN":
-                    st.session_state["current_user_id"] = f"ADMIN ({emp_id})"
-                elif role_str in ["VIP_USER", "TESTER"]:
-                    st.session_state["current_user_id"] = f"VIP_USER ({emp_name})" if emp_name else f"VIP_USER ({emp_id})"
-                else:
-                    st.session_state["current_user_id"] = f"{emp_name} ({emp_id})" if emp_name else emp_id
-
-                log_activity(
-                    action="帳號登入",
-                    detail=f"登入成功: {emp_name} ({emp_id}) | 角色: {role_str}",
-                    user=emp_id,
-                    unit=selected_unit,
-                )
-                st.rerun()
-            else:
-                st.error(f"❌ {message}")
-
-        if st.session_state.get("show_apply_dialog", False):
-            show_apply_permission_dialog()
-
-    st.stop()
 
 # ---------------------------------------------------------
 # 主頁面 Header 資訊區
