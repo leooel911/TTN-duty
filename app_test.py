@@ -818,7 +818,7 @@ def show_migration_modal():
     
     st.link_button(
         "點此立即前往全新正式版系統",
-        "https://ttn-duty-67oojxou2eeubgzyp5do2q.streamlit.app/#77159391",
+        "https://dutyengine.streamlit.app/",
         use_container_width=True
     )
     
