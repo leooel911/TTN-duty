@@ -130,7 +130,7 @@ C_OT_TXT: str = "#EF4444"
 C_NOTE_TXT: str = "#4C1D95"
 C_TOWN_TXT: str = "#000000"
 
-# 全站專業級 CSS 美化樣式 (已移除多餘的 Radio 樣式卡片，恢復乾淨俐落的原生介面)
+# 全站專業級 CSS 美化樣式 (已包含高質感現代化 Radio 膠囊按鈕覆寫)
 CUSTOM_CSS: str = """
 <style>
     header[data-testid="stHeader"] { background: transparent !important; }
@@ -221,6 +221,62 @@ CUSTOM_CSS: str = """
     div[data-baseweb="popover"] div {
         background-color: #1E293B !important;
         color: #F8FAFC !important;
+    }
+
+    /* ========================================================= */
+    /* 專業化 UI：將傳統 Radio 按鈕改造為高質感現代膠囊分頁選單    */
+    /* ========================================================= */
+    div[data-testid="stRadio"] {
+        background: rgba(15, 23, 42, 0.75) !important;
+        backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(56, 189, 248, 0.25) !important;
+        border-radius: 12px !important;
+        padding: 10px 14px !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    /* 隱藏原生醜陋的圓形單選點 */
+    div[data-testid="stRadio"] input[type="radio"] {
+        display: none !important;
+    }
+    
+    /* 將每一個選項變成獨立的高質感膠囊按鈕 */
+    div[data-testid="stRadio"] label {
+        background: rgba(30, 41, 59, 0.6) !important;
+        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        border-radius: 8px !important;
+        padding: 10px 14px !important;
+        margin: 6px 0 !important;
+        cursor: pointer !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    
+    div[data-testid="stRadio"] label:hover {
+        background: rgba(56, 189, 248, 0.15) !important;
+        border-color: rgba(56, 189, 248, 0.4) !important;
+    }
+    
+    div[data-testid="stRadio"] label p {
+        color: #94A3B8 !important;
+        font-weight: 700 !important;
+        font-family: monospace !important;
+        font-size: 13.5px !important;
+        margin: 0 !important;
+        transition: color 0.2s ease !important;
+    }
+    
+    /* 當選項被選中時：發出霓光藍外框與高亮白色文字 */
+    div[data-testid="stRadio"] label:has(input:checked) {
+        background: linear-gradient(135deg, rgba(30, 58, 138, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
+        border-color: #38BDF8 !important;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.25) !important;
+    }
+    
+    div[data-testid="stRadio"] label:has(input:checked) p {
+        color: #FFFFFF !important;
+        font-weight: 800 !important;
     }
 
     div[data-baseweb="tab-list"] {
