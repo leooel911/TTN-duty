@@ -130,7 +130,7 @@ C_OT_TXT: str = "#EF4444"
 C_NOTE_TXT: str = "#4C1D95"
 C_TOWN_TXT: str = "#000000"
 
-# 全站專業級 CSS 美化樣式 (已包含高質感現代化 Radio 膠囊按鈕覆寫)
+# 全站專業級 CSS 美化樣式 (已將 Radio 調整為極簡、輕量、不佔空間的專業清單膠囊風格)
 CUSTOM_CSS: str = """
 <style>
     header[data-testid="stHeader"] { background: transparent !important; }
@@ -224,33 +224,27 @@ CUSTOM_CSS: str = """
     }
 
     /* ========================================================= */
-    /* 專業化 UI：將傳統 Radio 按鈕改造為高質感現代膠囊分頁選單    */
+    /* 專業化 UI：極簡、輕量、不佔空間的輕膠囊 Radio 按鈕        */
     /* ========================================================= */
     div[data-testid="stRadio"] {
-        background: rgba(15, 23, 42, 0.75) !important;
-        backdrop-filter: blur(12px) !important;
-        border: 1px solid rgba(56, 189, 248, 0.25) !important;
-        border-radius: 12px !important;
-        padding: 10px 14px !important;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+        background: transparent !important;
+        border: none !important;
+        padding: 0px !important;
+        box-shadow: none !important;
     }
     
-    /* 隱藏原生醜陋的圓形單選點 */
-    div[data-testid="stRadio"] input[type="radio"] {
-        display: none !important;
+    div[data-testid="stRadio"] > div[role="radiogroup"] {
+        gap: 6px !important;
     }
     
-    /* 將每一個選項變成獨立的高質感膠囊按鈕 */
     div[data-testid="stRadio"] label {
-        background: rgba(30, 41, 59, 0.6) !important;
-        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        background: rgba(30, 41, 59, 0.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
         border-radius: 8px !important;
-        padding: 10px 14px !important;
-        margin: 6px 0 !important;
+        padding: 8px 12px !important;
+        margin: 0 !important;
         cursor: pointer !important;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        display: flex !important;
-        align-items: center !important;
+        transition: all 0.2s ease !important;
     }
     
     div[data-testid="stRadio"] label:hover {
@@ -260,23 +254,21 @@ CUSTOM_CSS: str = """
     
     div[data-testid="stRadio"] label p {
         color: #94A3B8 !important;
-        font-weight: 700 !important;
+        font-weight: 600 !important;
         font-family: monospace !important;
-        font-size: 13.5px !important;
+        font-size: 13px !important;
         margin: 0 !important;
-        transition: color 0.2s ease !important;
     }
     
-    /* 當選項被選中時：發出霓光藍外框與高亮白色文字 */
     div[data-testid="stRadio"] label:has(input:checked) {
-        background: linear-gradient(135deg, rgba(30, 58, 138, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%) !important;
+        background: rgba(30, 58, 138, 0.5) !important;
         border-color: #38BDF8 !important;
-        box-shadow: 0 0 12px rgba(56, 189, 248, 0.25) !important;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.2) !important;
     }
     
     div[data-testid="stRadio"] label:has(input:checked) p {
         color: #FFFFFF !important;
-        font-weight: 800 !important;
+        font-weight: 700 !important;
     }
 
     div[data-baseweb="tab-list"] {
