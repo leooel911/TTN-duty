@@ -3,11 +3,28 @@ import os
 import re
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Tuple
+import subprocess
 
 import pandas as pd
 import streamlit as st
 from config import DATA_DIR, UNITS, WHITELIST_FILE
 from modules.utils import normalize_date_str, parse_cell, safe_read_excel
+
+
+def auto_git_push_data(commit_msg="Auto update data via admin panel"):
+    """自動將 data/ 變更推送至雙重 GitHub 專案，防止雲端重置清空"""
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        if "modules" in script_dir:
+            script_dir = os.path.dirname(script_dir)
+        os.chdir(script_dir)
+        
+        subprocess.run(["git", "add", "data/"], check=True)
+        subprocess.run(["git", "commit", "-m", commit_msg], check=False)
+        subprocess.run(["git", "push", "origin", "main"], check=True)
+        subprocess.run(["git", "push", "ttn", "main"], check=True)
+    except Exception as e:
+        print(f"Git auto-sync error: {e}")
 
 
 def get_current_role_files() -> Dict[str, str]:
@@ -109,6 +126,8 @@ def save_system_config(cfg: Dict[str, Any]) -> None:
     config_path = os.path.join(DATA_DIR, "system_config.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
+    # 自動同步至雙重 GitHub 雲端
+    auto_git_push_data("Auto-update system config")
 
 
 def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
@@ -137,6 +156,9 @@ def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
     all_wl[unit_code] = unit_data
     with open(wl_path, "w", encoding="utf-8") as f:
         json.dump(all_wl, f, ensure_ascii=False, indent=2)
+    
+    # 自動同步至雙重 GitHub 雲端，防止重啟清空
+    auto_git_push_data(f"Auto-update whitelist for {unit_code}")
 
 
 def check_excel_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]:
