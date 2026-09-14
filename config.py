@@ -130,7 +130,7 @@ C_OT_TXT: str = "#EF4444"
 C_NOTE_TXT: str = "#4C1D95"
 C_TOWN_TXT: str = "#000000"
 
-# 全站專業級 CSS 美化樣式 (已修復 Radio 跑版與輸入框樣式)
+# 全站專業級 CSS 美化樣式 (已升級為玻璃擬態高質感選單面板)
 CUSTOM_CSS: str = """
 <style>
     header[data-testid="stHeader"] { background: transparent !important; }
@@ -223,20 +223,36 @@ CUSTOM_CSS: str = """
         color: #F8FAFC !important;
     }
 
-    /* 恢復標準、整齊且不跑版的 Radio 按鈕樣式 */
+    /* ========================================================= */
+    /* 玻璃擬態高質感選單面板 (Radio Button 美化升級)          */
+    /* ========================================================= */
     div[data-testid="stRadio"] {
-        background: rgba(15, 23, 42, 0.6) !important;
-        border: 1px solid rgba(56, 189, 248, 0.2) !important;
-        border-radius: 10px !important;
-        padding: 12px 16px !important;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(56, 189, 248, 0.3) !important;
+        border-radius: 12px !important;
+        padding: 16px 20px !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
     }
+    
     div[data-testid="stRadio"] label {
         cursor: pointer !important;
+        padding: 6px 8px !important;
+        border-radius: 6px !important;
+        transition: background 0.2s ease !important;
+        margin: 2px 0 !important;
     }
+    
+    div[data-testid="stRadio"] label:hover {
+        background: rgba(56, 189, 248, 0.1) !important;
+    }
+    
     div[data-testid="stRadio"] label p {
         color: #F8FAFC !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
         font-family: monospace !important;
+        letter-spacing: 0.5px !important;
     }
 
     div[data-baseweb="tab-list"] {
@@ -316,7 +332,7 @@ CUSTOM_CSS: str = """
     .long-badge {
         background: rgba(239, 68, 68, 0.2) !important;
         color: #F87171 !important;
-        border: 1px solid rgba(239, 68, 68, s0.5) !important;
+        border: 1px solid rgba(239, 68, 68, 0.5) !important;
         border-radius: 6px !important;
         padding: 2px 6px !important;
         font-size: 10.5px !important;
