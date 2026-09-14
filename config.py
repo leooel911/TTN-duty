@@ -130,7 +130,7 @@ C_OT_TXT: str = "#EF4444"
 C_NOTE_TXT: str = "#4C1D95"
 C_TOWN_TXT: str = "#000000"
 
-# 全站專業級 CSS 美化樣式 (已精準針對輸入框與下拉選單背景進行深色化)
+# 全站專業級 CSS 美化樣式 (已修復 Radio 跑版與輸入框樣式)
 CUSTOM_CSS: str = """
 <style>
     header[data-testid="stHeader"] { background: transparent !important; }
@@ -182,9 +182,7 @@ CUSTOM_CSS: str = """
         font-family: monospace !important;
     }
 
-    /* ========================================================= */
-    /* 精準鎖定：徹底消除輸入框與下拉選單的白色背景底框 */
-    /* ========================================================= */
+    /* 輸入框與下拉選單深色化 */
     .stTextInput > div > div > div {
         background-color: #1E293B !important;
         border: 1px solid #475569 !important;
@@ -220,10 +218,25 @@ CUSTOM_CSS: str = """
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.3) !important;
     }
 
-    /* 下拉選單展開後的彈出清單背景 */
     div[data-baseweb="popover"] div {
         background-color: #1E293B !important;
         color: #F8FAFC !important;
+    }
+
+    /* 恢復標準、整齊且不跑版的 Radio 按鈕樣式 */
+    div[data-testid="stRadio"] {
+        background: rgba(15, 23, 42, 0.6) !important;
+        border: 1px solid rgba(56, 189, 248, 0.2) !important;
+        border-radius: 10px !important;
+        padding: 12px 16px !important;
+    }
+    div[data-testid="stRadio"] label {
+        cursor: pointer !important;
+    }
+    div[data-testid="stRadio"] label p {
+        color: #F8FAFC !important;
+        font-weight: 600 !important;
+        font-family: monospace !important;
     }
 
     div[data-baseweb="tab-list"] {
@@ -303,7 +316,7 @@ CUSTOM_CSS: str = """
     .long-badge {
         background: rgba(239, 68, 68, 0.2) !important;
         color: #F87171 !important;
-        border: 1px solid rgba(239, 68, 68, 0.5) !important;
+        border: 1px solid rgba(239, 68, 68, s0.5) !important;
         border-radius: 6px !important;
         padding: 2px 6px !important;
         font-size: 10.5px !important;
