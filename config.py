@@ -399,5 +399,5 @@ CUSTOM_CSS: str = """
 SMTP_SERVER: str = "smtp.gmail.com"        # 例如使用 Gmail 伺服器
 SMTP_PORT: int = 587                       # TLS 連接埠
 SENDER_EMAIL: str = "leooel911@gmail.com"     # 填入你的 Google 帳號
-SENDER_PASSWORD: str = "aois luiq atzs mlec"        # 填入 Gmail 的「應用程式密碼」(16碼)
+SENDER_PASSWORD: str = "aoisluiqatzsmlec"        # 填入 Gmail 的「應用程式密碼」(16碼)
 ADMIN_RECEIVE_EMAIL: str = "leooel911@gmail.com" # 收件人信箱
