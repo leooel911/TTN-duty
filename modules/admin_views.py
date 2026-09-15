@@ -69,7 +69,7 @@ except Exception:
 # 2. 系統輔助函式
 # -----------------------------------------------------------------------------
 def clear_logs() -> None:
-    """徹底清空全站系統操作日誌檔與記憶體快取（安全保留登入 Session）"""
+    """徹底刪除並清空所有全站系統操作日誌檔與記憶體快取"""
     possible_paths = [
         LOG_FILE,
         "activity.log",
@@ -82,10 +82,13 @@ def clear_logs() -> None:
     for p in set(possible_paths):
         if p and os.path.exists(p):
             try:
-                with open(p, "w", encoding="utf-8") as f:
-                    f.write("")
+                os.remove(p) # 直接實體刪除日誌檔，避免殘留
             except Exception:
-                pass
+                try:
+                    with open(p, "w", encoding="utf-8") as f:
+                        f.write("")
+                except Exception:
+                    pass
 
     st.cache_data.clear()
 
@@ -951,7 +954,6 @@ def render_admin_panel() -> None:
                     sys_config["enable_strict_test_mode"] = enable_strict_test
                     sys_config["strict_allowed_employees_str"] = strict_allowed_str.strip()
                     
-                    # 自動將字串解析為乾淨的大寫員編清單，方便後端檢查
                     clean_allowed_list = [
                         e.strip().upper() 
                         for e in re.split(r'[,，\n\s]+', strict_allowed_str) 
