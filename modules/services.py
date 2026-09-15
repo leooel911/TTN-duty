@@ -118,6 +118,8 @@ def load_system_config() -> Dict[str, Any]:
         "strict_streak_limit": 6,
         "enable_beta_notice": True,
         "announcement": "目前為內部測試階段｜本頁面末端可聯繫管理者",
+        "enable_strict_test_mode": False,
+        "strict_allowed_employees": [],
     }
 
 
@@ -126,7 +128,6 @@ def save_system_config(cfg: Dict[str, Any]) -> None:
     config_path = os.path.join(DATA_DIR, "system_config.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
-    # 自動同步至雙重 GitHub 雲端
     auto_git_push_data("Auto-update system config")
 
 
@@ -157,7 +158,6 @@ def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
     with open(wl_path, "w", encoding="utf-8") as f:
         json.dump(all_wl, f, ensure_ascii=False, indent=2)
     
-    # 自動同步至雙重 GitHub 雲端，防止重啟清空
     auto_git_push_data(f"Auto-update whitelist for {unit_code}")
 
 
@@ -190,6 +190,15 @@ def verify_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]:
     if clean_id.isdigit() and len(clean_id) == 6:
         clean_id = f"A{clean_id}"
 
+    sys_config = load_system_config()
+    strict_mode = sys_config.get("enable_strict_test_mode", False)
+    allowed_list = sys_config.get("strict_allowed_employees", [])
+
+    # 如果開啟嚴格管制模式：非特許清單內的人直接判定不存在
+    if strict_mode:
+        if clean_id not in allowed_list and clean_id != "ADMIN":
+            return False, ""
+
     whitelist = load_whitelist(unit_code)
     if clean_id in whitelist:
         info = whitelist[clean_id]
@@ -216,6 +225,10 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     default_vip_pwd = sys_config.get("vip_password", "0")
     user_pwd = sys_config.get("user_password", "09000")
 
+    # 取得後台設定的嚴格管制模式狀態與特許名單
+    strict_mode = sys_config.get("enable_strict_test_mode", False)
+    allowed_list = sys_config.get("strict_allowed_employees", [])
+
     whitelist = load_whitelist(unit_code)
     wl_info = whitelist.get(clean_id, {})
     wl_name = ""
@@ -229,6 +242,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     elif isinstance(wl_info, str):
         wl_name = wl_info.strip()
 
+    # 管理員驗證
     if passcode == admin_pwd or wl_role == "ADMIN":
         if passcode != admin_pwd:
             return False, "管理員密碼錯誤！", {"reason": "WRONG_ADMIN_PASSWORD"}
@@ -239,6 +253,11 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
             "role": "ADMIN",
             "unit": unit_code,
         }
+
+    # 🔒 如果開啟了「測試嚴格管制模式」，檢查是否在特許名單內
+    if strict_mode:
+        if clean_id not in allowed_list and clean_id != "ADMIN":
+            return False, "目前系統處於測試管制期間，您的員編尚未開放測試權限！", {"reason": "STRICT_MODE_BLOCKED"}
 
     if clean_id in whitelist and wl_role in ["VIP_USER", "TESTER"]:
         if custom_pass and custom_pass != "-":
@@ -264,11 +283,9 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     if not clean_id or clean_id == "A":
         return False, "一般組員請輸入正確員編（例如:A023300）！", {"reason": "INVALID_EMP_ID"}
 
-    if clean_id not in whitelist:
-        return False, f"員編【{clean_id}】尚未加入【{unit_code}】受測試人員，請點選申請權限！", {"reason": "NOT_IN_WHITELIST"}
-
+    # 💡 檢查 Excel 班表大表（預設全面開放：只要大表裡面有的員工，就是合法授權使用者！）
     exists_in_excel, excel_name = check_excel_employee_exists(unit_code, clean_id)
-    if not exists_in_excel:
+    if not exists_in_excel and clean_id not in whitelist:
         return False, f"員編【{clean_id}】未在【{unit_code}】班表大表中找到，請核對所屬單位！", {"reason": "NOT_IN_EXCEL"}
 
     if passcode != user_pwd and passcode != "09000":
