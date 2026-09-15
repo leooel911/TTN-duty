@@ -10,7 +10,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from config import FEEDBACK_IMG_DIR, LEAVE_CODES, UNITS
 from modules.drawing import render_schedule_figure
-from modules.utils import log_activity, safe_read_excel
+from modules.utils import log_activity, safe_read_excel, send_admin_email
 
 
 def _convert_to_b64_url(image_bytes: Any) -> str:
@@ -179,7 +179,17 @@ def show_feedback_modal(unit_label: str = "TTN", user_id: str = "") -> None:
                 )
                 with open(os.path.join(FEEDBACK_IMG_DIR, f"{ticket_id}.txt"), "w", encoding="utf-8") as f:
                     f.write(content)
+                
                 log_activity("提交問題回報工單", f"單位:{unit_label} | 單號:{ticket_id}")
+
+                # 🚨 自動發送 Email 通知管理員
+                try:
+                    email_subject = f"🚨 【新工單與問題回報】單號: {ticket_id}"
+                    email_content = f"系統收到來自營運單位【{unit_label}】的新問題回報：\n\n----------------------------------------\n{content}\n----------------------------------------\n\n請管理員盡快登入後台處理！"
+                    send_admin_email(email_subject, email_content)
+                except Exception as mail_err:
+                    print(f"工單通知信發送失敗: {mail_err}")
+
                 st.success(f"回報成功！工單編號：`{ticket_id}`")
                 st.rerun()
             except Exception as e:
