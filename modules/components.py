@@ -183,14 +183,22 @@ def show_feedback_modal(unit_label: str = "TTN", user_id: str = "") -> None:
                 log_activity("提交問題回報工單", f"單位:{unit_label} | 單號:{ticket_id}")
 
                 # 🚨 自動發送 Email 通知管理員
+                email_success = True
                 try:
                     email_subject = f"🚨 【新工單與問題回報】單號: {ticket_id}"
                     email_content = f"系統收到來自營運單位【{unit_label}】的新問題回報：\n\n----------------------------------------\n{content}\n----------------------------------------\n\n請管理員盡快登入後台處理！"
                     send_admin_email(email_subject, email_content)
                 except Exception as mail_err:
+                    email_success = False
                     print(f"工單通知信發送失敗: {mail_err}")
 
-                st.success(f"回報成功！工單編號：`{ticket_id}`")
+                # 使用 st.toast 確保彈出提示能順利顯示在右下角
+                st.toast(f"✅ 回報成功！工單編號：{ticket_id}", icon="🎉")
+                if not email_success:
+                    st.toast("⚠️ 管理員郵件通知發送失敗（請檢查 SMTP 伺服器設定）", icon="⚠️")
+
+                # 關閉對話框並重新整理
+                st.session_state["show_feedback_dialog"] = False
                 st.rerun()
             except Exception as e:
                 st.error(f"提交失敗：{e}")
