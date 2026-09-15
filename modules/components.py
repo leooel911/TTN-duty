@@ -149,130 +149,137 @@ def view_feedback_img_modal(img_path: str, ticket_id: str, reporter: str) -> Non
         st.error("找不到該截圖檔案，可能已被移除。")
 
 
-@st.dialog("系統問題與建議回報", width="large")
-def show_feedback_modal(unit_label: str = "TTN", user_id: str = "") -> None:
-    st.markdown(f"### 系統問題與建議回報 [{unit_label}]")
-    with st.form(key="feedback_form_modal", clear_on_submit=True):
-        fb_category = st.selectbox("問題 / 建議類型", ["系統 Bug 回報", "排班資料疑義", "功能改善建議", "其他"], key="fb_modal_category")
-        fb_reporter = st.text_input("回報者員編 / 姓名", value=user_id if user_id else "", key="fb_modal_reporter")
-        fb_desc = st.text_area("詳細說明內容", height=120, key="fb_modal_desc")
-        uploaded_img = st.file_uploader("上傳問題畫面截圖 (選填)", type=["png", "jpg", "jpeg"], key="fb_modal_img")
-        submit_fb = st.form_submit_button("確認提交回報", type="primary", use_container_width=True)
+@st.dialog("系統問題回報與進度查詢中心", width="large")
+def show_feedback_hub_modal(unit_label: str = "TTN", user_id: str = "", is_admin: bool = False) -> None:
+    tab_submit, tab_query = st.tabs(["📝 提交新回報", "🔍 查詢我的回報進度"])
+    
+    with tab_submit:
+        st.markdown(f"### 系統問題與建議回報 [{unit_label}]")
+        with st.form(key="feedback_form_modal_hub", clear_on_submit=True):
+            fb_category = st.selectbox("問題 / 建議類型", ["系統 Bug 回報", "排班資料疑義", "功能改善建議", "其他"], key="fb_modal_cat_hub")
+            fb_reporter = st.text_input("回報者員編 / 姓名", value=user_id if user_id else "", key="fb_modal_rep_hub")
+            fb_desc = st.text_area("詳細說明內容", height=120, key="fb_modal_desc_hub")
+            uploaded_img = st.file_uploader("上傳問題畫面截圖 (選填)", type=["png", "jpg", "jpeg"], key="fb_modal_img_hub")
+            submit_fb = st.form_submit_button("確認提交回報", type="primary", use_container_width=True)
 
-    if submit_fb:
-        if not fb_desc.strip():
-            st.warning("請填寫詳細說明內容！")
-        else:
-            try:
-                os.makedirs(FEEDBACK_IMG_DIR, exist_ok=True)
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                ticket_id = f"FB-{timestamp}"
-                if uploaded_img is not None:
-                    ext = os.path.splitext(uploaded_img.name)[1]
-                    with open(os.path.join(FEEDBACK_IMG_DIR, f"{ticket_id}{ext}"), "wb") as f:
-                        f.write(uploaded_img.getbuffer())
-
-                content = (
-                    f"處理編號: {ticket_id}\n狀態: 待處理\n類別: {fb_category}\n單位: {unit_label}\n"
-                    f"回報者: {fb_reporter.strip() or '未提供'}\n時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-                    f"管理員回覆: 尚無回覆\n詳細說明:\n{fb_desc.strip()}"
-                )
-                with open(os.path.join(FEEDBACK_IMG_DIR, f"{ticket_id}.txt"), "w", encoding="utf-8") as f:
-                    f.write(content)
-                
-                log_activity("提交問題回報工單", f"單位:{unit_label} | 單號:{ticket_id}")
-
-                # 自動發送 Email 通知管理員
-                email_success = True
+        if submit_fb:
+            if not fb_desc.strip():
+                st.warning("請填寫詳細說明內容！")
+            else:
                 try:
-                    email_subject = f"【新工單與問題回報】單號: {ticket_id}"
-                    email_content = f"系統收到來自營運單位【{unit_label}】的新問題回報：\n\n----------------------------------------\n{content}\n----------------------------------------\n\n請管理員盡快登入後台處理！"
-                    send_admin_email(email_subject, email_content)
-                except Exception as mail_err:
-                    email_success = False
-                    print(f"工單通知信發送失敗: {mail_err}")
+                    os.makedirs(FEEDBACK_IMG_DIR, exist_ok=True)
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    ticket_id = f"FB-{timestamp}"
+                    if uploaded_img is not None:
+                        ext = os.path.splitext(uploaded_img.name)[1]
+                        with open(os.path.join(FEEDBACK_IMG_DIR, f"{ticket_id}{ext}"), "wb") as f:
+                            f.write(uploaded_img.getbuffer())
 
-                st.toast(f"回報成功！工單編號：{ticket_id}")
-                if not email_success:
-                    st.toast("管理員通知發送失敗")
+                    content = (
+                        f"處理編號: {ticket_id}\n狀態: 待處理\n類別: {fb_category}\n單位: {unit_label}\n"
+                        f"回報者: {fb_reporter.strip() or '未提供'}\n時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                        f"管理員回覆: 尚無回覆\n詳細說明:\n{fb_desc.strip()}"
+                    )
+                    with open(os.path.join(FEEDBACK_IMG_DIR, f"{ticket_id}.txt"), "w", encoding="utf-8") as f:
+                        f.write(content)
+                    
+                    log_activity("提交問題回報工單", f"單位:{unit_label} | 單號:{ticket_id}")
 
-                st.session_state["show_feedback_dialog"] = False
-                st.rerun()
-            except Exception as e:
-                st.error(f"提交失敗：{e}")
+                    email_success = True
+                    try:
+                        email_subject = f"【新工單與問題回報】單號: {ticket_id}"
+                        email_content = f"系統收到來自營運單位【{unit_label}】的新問題回報：\n\n----------------------------------------\n{content}\n----------------------------------------\n\n請管理員盡快登入後台處理！"
+                        send_admin_email(email_subject, email_content)
+                    except Exception as mail_err:
+                        email_success = False
+                        print(f"工單通知信發送失敗: {mail_err}")
 
+                    st.toast(f"回報成功！工單編號：{ticket_id}")
+                    if not email_success:
+                        st.toast("管理員通知發送失敗")
 
-@st.dialog("查詢回報工單處理進度", width="large")
-def show_ticket_query_modal(user_id: str = "") -> None:
-    st.markdown("### 回報工單進度查詢")
-    st.markdown("您可以輸入您的員編、姓名或工單單號，查詢歷史回報紀錄與管理員回覆。")
-    
-    search_query = st.text_input("輸入員編、姓名或單號進行查詢", value=user_id, key="ticket_query_input")
-    
-    if not os.path.exists(FEEDBACK_IMG_DIR):
-        st.info("目前尚無任何回報紀錄。")
-        return
+                    st.session_state["show_feedback_hub_dialog"] = False
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"提交失敗：{e}")
+
+    with tab_query:
+        st.markdown("### 歷史回報與處理進度查詢")
+        if not is_admin:
+            st.markdown(f"目前登入身分：`{user_id}`（僅顯示與您相關的回報紀錄）")
+        else:
+            st.markdown("管理員檢視模式：可檢視全體回報紀錄")
+
+        if not os.path.exists(FEEDBACK_IMG_DIR):
+            st.info("目前尚無任何回報紀錄。")
+            return
+            
+        txt_files = [f for f in os.listdir(FEEDBACK_IMG_DIR) if f.endswith(".txt")]
+        if not txt_files:
+            st.info("目前尚無任何回報紀錄。")
+            return
+            
+        tickets = []
+        for file_name in sorted(txt_files, reverse=True):
+            file_path = os.path.join(FEEDBACK_IMG_DIR, file_name)
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    
+                ticket_info = {"raw_content": content, "filename": file_name}
+                for line in content.split("\n"):
+                    if ":" in line:
+                        k, v = line.split(":", 1)
+                        ticket_info[k.strip()] = v.strip()
+                tickets.append(ticket_info)
+            except Exception:
+                continue
         
-    txt_files = [f for f in os.listdir(FEEDBACK_IMG_DIR) if f.endswith(".txt")]
-    if not txt_files:
-        st.info("目前尚無任何回報紀錄。")
-        return
+        # 隱私安全過濾：若非管理員，自動依據當前登入者帳號過濾
+        if not is_admin:
+            u_clean = user_id.strip().upper()
+            filtered_tickets = [
+                t for t in tickets 
+                if u_clean in t.get("回報者", "").upper()
+            ]
+        else:
+            search_query = st.text_input("管理員檢索 (輸入員編或單號)", key="admin_ticket_search_input")
+            if search_query.strip():
+                q = search_query.strip().upper()
+                filtered_tickets = [
+                    t for t in tickets 
+                    if q in t.get("處理編號", "").upper() or q in t.get("回報者", "").upper()
+                ]
+            else:
+                filtered_tickets = tickets
+
+        if not filtered_tickets:
+            st.warning("找不到符合條件的工單紀錄。")
+            return
+            
+        st.markdown(f"共找到 **{len(filtered_tickets)}** 筆紀錄：")
         
-    tickets = []
-    for file_name in sorted(txt_files, reverse=True):
-        file_path = os.path.join(FEEDBACK_IMG_DIR, file_name)
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
+        for t in filtered_tickets:
+            ticket_id = t.get("處理編號", "未知單號")
+            status = t.get("狀態", "待處理")
+            category = t.get("類別", "一般")
+            reporter = t.get("回報者", "未提供")
+            time_str = t.get("時間", "未知時間")
+            admin_reply = t.get("管理員回覆", "尚無回覆")
+            
+            with st.expander(f"單號: {ticket_id} | 狀態: {status} | 類別: {category} ({time_str})"):
+                st.markdown(f"**回報者**：{reporter}")
+                st.markdown(f"**提交時間**：{time_str}")
+                st.markdown(f"**目前狀態**：{status}")
+                st.markdown(f"**管理員回覆**：\n> {admin_reply}")
                 
-            ticket_info = {"raw_content": content, "filename": file_name}
-            for line in content.split("\n"):
-                if ":" in line:
-                    k, v = line.split(":", 1)
-                    ticket_info[k.strip()] = v.strip()
-            tickets.append(ticket_info)
-        except Exception:
-            continue
-            
-    if search_query.strip():
-        q = search_query.strip().upper()
-        filtered_tickets = [
-            t for t in tickets 
-            if q in t.get("處理編號", "").upper() or 
-               q in t.get("回報者", "").upper() or 
-               q in t.get("單位", "").upper() or
-               q in t.get("類別", "").upper()
-        ]
-    else:
-        filtered_tickets = tickets
-        
-    if not filtered_tickets:
-        st.warning("找不到符合條件的工單紀錄。")
-        return
-        
-    st.markdown(f"共找到 **{len(filtered_tickets)}** 筆工單紀錄：")
-    
-    for t in filtered_tickets:
-        ticket_id = t.get("處理編號", "未知單號")
-        status = t.get("狀態", "待處理")
-        category = t.get("類別", "一般")
-        reporter = t.get("回報者", "未提供")
-        time_str = t.get("時間", "未知時間")
-        admin_reply = t.get("管理員回覆", "尚無回覆")
-        
-        with st.expander(f"單號: {ticket_id} | 狀態: {status} | 類別: {category} ({time_str})"):
-            st.markdown(f"**回報者**：{reporter}")
-            st.markdown(f"**提交時間**：{time_str}")
-            st.markdown(f"**目前狀態**：{status}")
-            st.markdown(f"**管理員回覆**：\n> {admin_reply}")
-            
-            base_id = ticket_id.split()[0]
-            img_path_found = None
-            for ext in [".png", ".jpg", ".jpeg"]:
-                p = os.path.join(FEEDBACK_IMG_DIR, f"{base_id}{ext}")
-                if os.path.exists(p):
-                    img_path_found = p
-                    break
-            if img_path_found:
-                if st.button("檢視上傳截圖附件", key=f"btn_view_img_{ticket_id}"):
-                    view_feedback_img_modal(img_path_found, ticket_id, reporter)
+                base_id = ticket_id.split()[0]
+                img_path_found = None
+                for ext in [".png", ".jpg", ".jpeg"]:
+                    p = os.path.join(FEEDBACK_IMG_DIR, f"{base_id}{ext}")
+                    if os.path.exists(p):
+                        img_path_found = p
+                        break
+                if img_path_found:
+                    if st.button("檢視上傳截圖附件", key=f"btn_view_img_hub_{ticket_id}"):
+                        view_feedback_img_modal(img_path_found, ticket_id, reporter)
