@@ -193,9 +193,9 @@ def show_feedback_modal(unit_label: str = "TTN", user_id: str = "") -> None:
                     print(f"工單通知信發送失敗: {mail_err}")
 
                 # 使用 st.toast 確保彈出提示能順利顯示在右下角
-                st.toast(f"✅ 回報成功！工單編號：{ticket_id}", icon="🎉")
+                st.toast(f"✅ 回報成功！工單編號：{ticket_id}", icon="🚧")
                 if not email_success:
-                    st.toast("⚠️ 管理員郵件通知發送失敗（請檢查 SMTP 伺服器設定）", icon="⚠️")
+                    st.toast("⚠️ 管理員通知發送失敗", icon="⚠️")
 
                 # 關閉對話框並重新整理
                 st.session_state["show_feedback_dialog"] = False
