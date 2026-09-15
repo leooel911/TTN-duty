@@ -54,7 +54,7 @@ def render_zoomable_image(image_bytes: Any, height: int = 380) -> None:
     )
 
     if not img_data_url:
-        st.warning("⚠️ 班表影像載入失敗，無法生成預覽。")
+        st.warning("班表影像載入失敗，無法生成預覽。")
         return
 
     html_code = f"""
@@ -95,7 +95,7 @@ def render_zoomable_image(image_bytes: Any, height: int = 380) -> None:
                 <img id="target-schedule-img" src="{img_data_url}" alt="班表圖片">
             </div>
             <button class="zoom-trigger-btn" id="btn-open-viewer">點擊可縮放此班表</button>
-            <div class="hint-text">💡 提示：手機使用者可長按圖片儲存至相簿</div>
+            <div class="hint-text">提示：手機使用者可長按圖片儲存至相簿</div>
         </div>
         <script>
             function sendHeight() {{
@@ -182,23 +182,97 @@ def show_feedback_modal(unit_label: str = "TTN", user_id: str = "") -> None:
                 
                 log_activity("提交問題回報工單", f"單位:{unit_label} | 單號:{ticket_id}")
 
-                # 🚨 自動發送 Email 通知管理員
+                # 自動發送 Email 通知管理員
                 email_success = True
                 try:
-                    email_subject = f"🚨 【新工單與問題回報】單號: {ticket_id}"
+                    email_subject = f"【新工單與問題回報】單號: {ticket_id}"
                     email_content = f"系統收到來自營運單位【{unit_label}】的新問題回報：\n\n----------------------------------------\n{content}\n----------------------------------------\n\n請管理員盡快登入後台處理！"
                     send_admin_email(email_subject, email_content)
                 except Exception as mail_err:
                     email_success = False
                     print(f"工單通知信發送失敗: {mail_err}")
 
-                # 使用 st.toast 確保彈出提示能順利顯示在右下角
-                st.toast(f"✅ 回報成功！工單編號：{ticket_id}", icon="🚧")
+                st.toast(f"回報成功！工單編號：{ticket_id}")
                 if not email_success:
-                    st.toast("⚠️ 管理員通知發送失敗", icon="⚠️")
+                    st.toast("管理員通知發送失敗")
 
-                # 關閉對話框並重新整理
                 st.session_state["show_feedback_dialog"] = False
                 st.rerun()
             except Exception as e:
                 st.error(f"提交失敗：{e}")
+
+
+@st.dialog("查詢回報工單處理進度", width="large")
+def show_ticket_query_modal(user_id: str = "") -> None:
+    st.markdown("### 回報工單進度查詢")
+    st.markdown("您可以輸入您的員編、姓名或工單單號，查詢歷史回報紀錄與管理員回覆。")
+    
+    search_query = st.text_input("輸入員編、姓名或單號進行查詢", value=user_id, key="ticket_query_input")
+    
+    if not os.path.exists(FEEDBACK_IMG_DIR):
+        st.info("目前尚無任何回報紀錄。")
+        return
+        
+    txt_files = [f for f in os.listdir(FEEDBACK_IMG_DIR) if f.endswith(".txt")]
+    if not txt_files:
+        st.info("目前尚無任何回報紀錄。")
+        return
+        
+    tickets = []
+    for file_name in sorted(txt_files, reverse=True):
+        file_path = os.path.join(FEEDBACK_IMG_DIR, file_name)
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                
+            ticket_info = {"raw_content": content, "filename": file_name}
+            for line in content.split("\n"):
+                if ":" in line:
+                    k, v = line.split(":", 1)
+                    ticket_info[k.strip()] = v.strip()
+            tickets.append(ticket_info)
+        except Exception:
+            continue
+            
+    if search_query.strip():
+        q = search_query.strip().upper()
+        filtered_tickets = [
+            t for t in tickets 
+            if q in t.get("處理編號", "").upper() or 
+               q in t.get("回報者", "").upper() or 
+               q in t.get("單位", "").upper() or
+               q in t.get("類別", "").upper()
+        ]
+    else:
+        filtered_tickets = tickets
+        
+    if not filtered_tickets:
+        st.warning("找不到符合條件的工單紀錄。")
+        return
+        
+    st.markdown(f"共找到 **{len(filtered_tickets)}** 筆工單紀錄：")
+    
+    for t in filtered_tickets:
+        ticket_id = t.get("處理編號", "未知單號")
+        status = t.get("狀態", "待處理")
+        category = t.get("類別", "一般")
+        reporter = t.get("回報者", "未提供")
+        time_str = t.get("時間", "未知時間")
+        admin_reply = t.get("管理員回覆", "尚無回覆")
+        
+        with st.expander(f"單號: {ticket_id} | 狀態: {status} | 類別: {category} ({time_str})"):
+            st.markdown(f"**回報者**：{reporter}")
+            st.markdown(f"**提交時間**：{time_str}")
+            st.markdown(f"**目前狀態**：{status}")
+            st.markdown(f"**管理員回覆**：\n> {admin_reply}")
+            
+            base_id = ticket_id.split()[0]
+            img_path_found = None
+            for ext in [".png", ".jpg", ".jpeg"]:
+                p = os.path.join(FEEDBACK_IMG_DIR, f"{base_id}{ext}")
+                if os.path.exists(p):
+                    img_path_found = p
+                    break
+            if img_path_found:
+                if st.button("檢視上傳截圖附件", key=f"btn_view_img_{ticket_id}"):
+                    view_feedback_img_modal(img_path_found, ticket_id, reporter)
