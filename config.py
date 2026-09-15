@@ -131,6 +131,7 @@ C_NOTE_TXT: str = "#4C1D95"
 C_TOWN_TXT: str = "#000000"
 
 # 全站專業級 CSS 美化樣式 (已將 Radio 調整為極簡、輕量、不佔空間的專業清單膠囊風格)
+# 全站專業級 CSS 美化樣式 (已加入彈出對話框內輸入框的深色防白化修正)
 CUSTOM_CSS: str = """
 <style>
     header[data-testid="stHeader"] { background: transparent !important; }
@@ -182,21 +183,29 @@ CUSTOM_CSS: str = """
         font-family: monospace !important;
     }
 
-    /* 輸入框與下拉選單深色化 */
-    .stTextInput > div > div > div {
+    /* ========================================================= */
+    /* 強化版：全面覆蓋一般頁面與對話框 (Dialog) 內的輸入框與下拉選單 */
+    /* ========================================================= */
+    .stTextInput > div > div > div,
+    .stSelectbox > div > div > div,
+    div[data-baseweb="input"],
+    div[data-baseweb="base-input"],
+    div[data-baseweb="select"] {
         background-color: #1E293B !important;
         border: 1px solid #475569 !important;
         border-radius: 8px !important;
+        color: #F8FAFC !important;
     }
     
-    .stSelectbox > div > div > div {
+    div[data-baseweb="textarea"] {
         background-color: #1E293B !important;
         border: 1px solid #475569 !important;
         border-radius: 8px !important;
     }
 
     div[data-testid="stTextInput"] input,
-    div[data-testid="stTextArea"] textarea {
+    div[data-testid="stTextArea"] textarea,
+    input, textarea {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
@@ -213,7 +222,8 @@ CUSTOM_CSS: str = """
     }
     
     .stTextInput > div > div > div:focus-within,
-    .stSelectbox > div > div > div:focus-within {
+    .stSelectbox > div > div > div:focus-within,
+    div[data-baseweb="input"]:focus-within {
         border-color: #38BDF8 !important;
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.3) !important;
     }
@@ -224,7 +234,7 @@ CUSTOM_CSS: str = """
     }
 
     /* ========================================================= */
-    /* 專業化 UI：極簡、輕量、不佔空間的輕膠囊 Radio 按鈕        */
+    /* 專業化 UI：極簡、輕量、不佔空間的輕膠囊 Radio 按鈕         */
     /* ========================================================= */
     div[data-testid="stRadio"] {
         background: transparent !important;
@@ -383,3 +393,11 @@ CUSTOM_CSS: str = """
     }
 </style>
 """
+# ==========================================
+# 📧 系統管理員郵件通知與 SMTP 參數設定
+# ==========================================
+SMTP_SERVER: str = "smtp.gmail.com"        # 例如使用 Gmail 伺服器
+SMTP_PORT: int = 587                       # TLS 連接埠
+SENDER_EMAIL: str = "leooel911@gmail.com"     # 填入你的 Google 帳號
+SENDER_PASSWORD: str = "aois luiq atzs mlec"        # 填入 Gmail 的「應用程式密碼」(16碼)
+ADMIN_RECEIVE_EMAIL: str = "leooel911@gmail.com" # 收件人信箱
