@@ -1,7 +1,18 @@
+import sys
+import os
 import streamlit as st
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 from config import ADMIN_PASSWORD, CREW_ACCESS_PASSWORD, CUSTOM_CSS
 from modules.admin_views import render_admin_panel
-from modules.components import render_zoomable_image, show_feedback_modal
+from modules.components import (
+    render_zoomable_image,
+    show_feedback_modal,
+    show_ticket_query_modal,
+)
 from modules.drawing import render_schedule_figure
 from modules.services import (
     authenticate_user,
@@ -44,6 +55,8 @@ if "show_admin_login" not in st.session_state:
     st.session_state["show_admin_login"] = False
 if "show_feedback_dialog" not in st.session_state:
     st.session_state["show_feedback_dialog"] = False
+if "show_ticket_query_dialog" not in st.session_state:
+    st.session_state["show_ticket_query_dialog"] = False
 if "inspect_emp_target" not in st.session_state:
     st.session_state["inspect_emp_target"] = None
 if "nav_mode" not in st.session_state:
@@ -307,7 +320,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-col_f1, col_f2 = st.columns(2)
+# 頁尾調整為 3 個欄位：問題回報、查詢進度、ADMIN PANEL
+col_f1, col_f2, col_f3 = st.columns(3)
 
 with col_f1:
     if st.button(
@@ -319,6 +333,15 @@ with col_f1:
         st.rerun()
 
 with col_f2:
+    if st.button(
+        "查詢回報進度",
+        key="btn_query_mid_footer",
+        use_container_width=True,
+    ):
+        st.session_state["show_ticket_query_dialog"] = True
+        st.rerun()
+
+with col_f3:
     admin_btn_label = (
         "ADMIN PANEL [Leo]"
         if st.session_state.get("admin_logged_in", False)
@@ -339,4 +362,12 @@ with col_f2:
         st.rerun()
 
 if st.session_state.get("show_feedback_dialog", False):
-    show_feedback_modal()
+    show_feedback_modal(
+        unit_label=st.session_state.get("current_unit", "TTN"),
+        user_id=st.session_state.get("login_user_id", "")
+    )
+
+if st.session_state.get("show_ticket_query_dialog", False):
+    show_ticket_query_modal(
+        user_id=st.session_state.get("login_user_id", "")
+    )
