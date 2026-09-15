@@ -2,6 +2,9 @@ import json
 import os
 import re
 import sys
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -465,11 +468,46 @@ def format_display_name(name: str) -> str:
     return s if s else ""
 
 
-def send_admin_email(req_unit: str, clean_emp: str, clean_name: str, req_reason: str) -> Tuple[bool, str]:
-    log_activity(
-        action="權限申請郵件通知",
-        details=f"原因:{req_reason}",
-        operator=f"{clean_name}({clean_emp})",
-        unit=req_unit,
-    )
-    return True, "已成功送出權限申請紀錄"
+def send_admin_email(arg1: str, arg2: str = "", arg3: str = "", arg4: str = "") -> Tuple[bool, str]:
+    """相容性發信函式：支援 (subject, content) 或 (req_unit, clean_emp, clean_name, req_reason)"""
+    if arg3 == "" and arg4 == "":
+        subject = arg1
+        content = arg2
+    else:
+        req_unit, clean_emp, clean_name, req_reason = arg1, arg2, arg3, arg4
+        subject = f"🚨 【權限申請通知】單位: {req_unit} - 員編: {clean_emp}"
+        content = f"收到來自營運單位【{req_unit}】的權限申請：\n\n員編：{clean_emp}\n姓名：{clean_name}\n申請原因/備註：{req_reason}\n\n請管理員盡快至後台審核！"
+        
+        log_activity(
+            action="權限申請郵件通知",
+            details=f"原因:{req_reason}",
+            operator=f"{clean_name}({clean_emp})",
+            unit=req_unit,
+        )
+
+    try:
+        server_addr = st.secrets.get("SMTP_SERVER", "smtp.gmail.com")
+        port = int(st.secrets.get("SMTP_PORT", 587))
+        sender = st.secrets.get("SMTP_EMAIL", "")
+        password = st.secrets.get("SMTP_PASSWORD", "").replace(" ", "")
+        receiver = st.secrets.get("ADMIN_EMAIL", sender)
+
+        if not sender or not password:
+            print("發信失敗：未在 st.secrets 中設定 SMTP_EMAIL 或 SMTP_PASSWORD")
+            return False, "未設定 SMTP 帳號密碼"
+
+        msg = MIMEMultipart()
+        msg["From"] = sender
+        msg["To"] = receiver
+        msg["Subject"] = subject
+        msg.attach(MIMEText(content, "plain", "utf-8"))
+
+        with smtplib.SMTP(server_addr, port) as server:
+            server.starttls()
+            server.login(sender, password)
+            server.sendmail(sender, [receiver], msg.as_string())
+        
+        return True, "郵件發送成功"
+    except Exception as e:
+        print(f"SMTP 發信異常錯誤: {e}")
+        return False, str(e)
