@@ -728,7 +728,6 @@ def render_admin_panel() -> None:
                 key=f"input_wl_role_{current_unit}",
             )
 
-            # 💡 新增：獨立 VIP 授權碼 / 密碼編輯欄位
             edit_passcode = st.text_input(
                 "獨立授權碼 / VIP 密碼 (選填)",
                 value="" if default_passcode == "-" else default_passcode,
@@ -759,7 +758,7 @@ def render_admin_panel() -> None:
                         whitelist_data[target_uid] = {
                             "name": edit_uname.strip() or "未命名",
                             "role": edit_role,
-                            "passcode": edit_passcode.strip(),  # 👈 成功將專屬授權碼寫入 JSON
+                            "passcode": edit_passcode.strip(),
                             "note": edit_note.strip(),
                             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
                         }
@@ -801,7 +800,7 @@ def render_admin_panel() -> None:
     # ==================== Tab 4 ====================
     with tab4:
         st.markdown("### ⚙️ 全域系統參數與授權碼設定")
-        st.caption("線上修改全站通行碼（留空則保持原密碼不變），點擊儲存後立即寫入 `system_config.json` 並生效。")
+        st.caption("線上修改全站通行碼與測試管制模式，點擊儲存後立即寫入 `system_config.json` 並生效。")
 
         if "cfg_toast" in st.session_state:
             t_type, t_msg = st.session_state["cfg_toast"]
@@ -873,6 +872,21 @@ def render_admin_panel() -> None:
                 )
 
                 st.markdown("---")
+                st.markdown("#### 🔒 測試期間嚴格管制開關")
+                enable_strict_test = st.checkbox(
+                    "啟用測試嚴格管制模式（暫停全面開放，僅限指定特許員編登入）",
+                    value=bool(sys_config.get("enable_strict_test_mode", False)),
+                    key="enable_strict_test_input",
+                )
+                strict_allowed_str = st.text_area(
+                    "嚴格管制特許員編清單（以逗號、空格或換行分隔）",
+                    value=str(sys_config.get("strict_allowed_employees_str", "A023300")),
+                    height=80,
+                    key="strict_allowed_str_input",
+                    help="當開啟此管制模式時，非此清單內的員編將無法登入（大表自動放行機制將暫停）。",
+                )
+
+                st.markdown("---")
                 st.markdown("#### 📢 前台公告與橫幅標語設定")
                 announce_text = st.text_area(
                     "前台頂部公告文字",
@@ -934,14 +948,28 @@ def render_admin_panel() -> None:
                     sys_config["announcement"] = announce_text.strip()
                     sys_config["strict_streak_limit"] = streak_threshold
                     sys_config["enable_beta_notice"] = enable_notice
+                    sys_config["enable_strict_test_mode"] = enable_strict_test
+                    sys_config["strict_allowed_employees_str"] = strict_allowed_str.strip()
+                    
+                    # 自動將字串解析為乾淨的大寫員編清單，方便後端檢查
+                    clean_allowed_list = [
+                        e.strip().upper() 
+                        for e in re.split(r'[,，\n\s]+', strict_allowed_str) 
+                        if e.strip()
+                    ]
+                    sys_config["strict_allowed_employees"] = clean_allowed_list
+
                     save_system_config(sys_config)
-                    log_activity("系統授權碼變更", f"管理員更新全域系統設定與通行授權碼: {', '.join(pwd_updates) if pwd_updates else '無變更密碼'}")
+                    log_activity(
+                        "系統授權碼變更", 
+                        f"管理員更新全域系統設定與通行授權碼: {', '.join(pwd_updates) if pwd_updates else '無變更密碼'} (嚴格管制模式: {enable_strict_test})"
+                    )
 
                     st.cache_data.clear()
                     msg_prefix = "與".join(pwd_updates) + "及" if pwd_updates else ""
                     st.session_state["cfg_toast"] = (
                         "success",
-                        f"{msg_prefix}全域系統設定已成功更新並即刻生效！",
+                        f"{msg_prefix}全域系統設定與管制模式已成功更新並即刻生效！",
                     )
                     st.rerun()
 
