@@ -149,12 +149,27 @@ def view_feedback_img_modal(img_path: str, ticket_id: str, reporter: str) -> Non
         st.error("找不到該截圖檔案，可能已被移除。")
 
 
-@st.dialog("系統問題回報與進度查詢中心", width="large")
-def show_feedback_hub_modal(unit_label: str = "TTN", user_id: str = "", is_admin: bool = False) -> None:
+def render_feedback_hub_section(unit_label: str = "TTN", user_id: str = "", is_admin: bool = False) -> None:
+    """以精美卡片容器呈現系統問題回報與進度查詢中心，解決對話框反覆彈出問題"""
+    st.markdown(
+        """
+        <div style="background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(16px); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 12px; padding: 20px; margin-bottom: 2rem; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+        """,
+        unsafe_allow_html=True
+    )
+    
+    col_title, col_close = st.columns([5, 1])
+    with col_title:
+        st.markdown("### 系統問題回報與進度查詢中心")
+    with col_close:
+        if st.button("✖ 關閉", key="close_feedback_hub_btn", use_container_width=True):
+            st.session_state["show_feedback_hub_dialog"] = False
+            st.rerun()
+    
     tab_submit, tab_query = st.tabs(["📝 提交新回報", "🔍 查詢我的回報進度"])
     
     with tab_submit:
-        st.markdown(f"### 系統問題與建議回報 [{unit_label}]")
+        st.markdown(f"#### 系統問題與建議回報 [{unit_label}]")
         with st.form(key="feedback_form_modal_hub", clear_on_submit=True):
             fb_category = st.selectbox("問題 / 建議類型", ["系統 Bug 回報", "排班資料疑義", "功能改善建議", "其他"], key="fb_modal_cat_hub")
             fb_reporter = st.text_input("回報者員編 / 姓名", value=user_id if user_id else "", key="fb_modal_rep_hub")
@@ -204,7 +219,7 @@ def show_feedback_hub_modal(unit_label: str = "TTN", user_id: str = "", is_admin
                     st.error(f"提交失敗：{e}")
 
     with tab_query:
-        st.markdown("### 歷史回報與處理進度查詢")
+        st.markdown("#### 歷史回報與處理進度查詢")
         if not is_admin:
             st.markdown(f"目前登入身分：`{user_id}`（僅顯示與您相關的回報紀錄）")
         else:
@@ -212,11 +227,13 @@ def show_feedback_hub_modal(unit_label: str = "TTN", user_id: str = "", is_admin
 
         if not os.path.exists(FEEDBACK_IMG_DIR):
             st.info("目前尚無任何回報紀錄。")
+            st.markdown("</div>", unsafe_allow_html=True)
             return
             
         txt_files = [f for f in os.listdir(FEEDBACK_IMG_DIR) if f.endswith(".txt")]
         if not txt_files:
             st.info("目前尚無任何回報紀錄。")
+            st.markdown("</div>", unsafe_allow_html=True)
             return
             
         tickets = []
@@ -235,7 +252,6 @@ def show_feedback_hub_modal(unit_label: str = "TTN", user_id: str = "", is_admin
             except Exception:
                 continue
         
-        # 隱私安全過濾：若非管理員，自動依據當前登入者帳號過濾
         if not is_admin:
             u_clean = user_id.strip().upper()
             filtered_tickets = [
@@ -255,31 +271,31 @@ def show_feedback_hub_modal(unit_label: str = "TTN", user_id: str = "", is_admin
 
         if not filtered_tickets:
             st.warning("找不到符合條件的工單紀錄。")
-            return
-            
-        st.markdown(f"共找到 **{len(filtered_tickets)}** 筆紀錄：")
-        
-        for t in filtered_tickets:
-            ticket_id = t.get("處理編號", "未知單號")
-            status = t.get("狀態", "待處理")
-            category = t.get("類別", "一般")
-            reporter = t.get("回報者", "未提供")
-            time_str = t.get("時間", "未知時間")
-            admin_reply = t.get("管理員回覆", "尚無回覆")
-            
-            with st.expander(f"單號: {ticket_id} | 狀態: {status} | 類別: {category} ({time_str})"):
-                st.markdown(f"**回報者**：{reporter}")
-                st.markdown(f"**提交時間**：{time_str}")
-                st.markdown(f"**目前狀態**：{status}")
-                st.markdown(f"**管理員回覆**：\n> {admin_reply}")
+        else:
+            st.markdown(f"共找到 **{len(filtered_tickets)}** 筆紀錄：")
+            for t in filtered_tickets:
+                ticket_id = t.get("處理編號", "未知單號")
+                status = t.get("狀態", "待處理")
+                category = t.get("類別", "一般")
+                reporter = t.get("回報者", "未提供")
+                time_str = t.get("時間", "未知時間")
+                admin_reply = t.get("管理員回覆", "尚無回覆")
                 
-                base_id = ticket_id.split()[0]
-                img_path_found = None
-                for ext in [".png", ".jpg", ".jpeg"]:
-                    p = os.path.join(FEEDBACK_IMG_DIR, f"{base_id}{ext}")
-                    if os.path.exists(p):
-                        img_path_found = p
-                        break
-                if img_path_found:
-                    if st.button("檢視上傳截圖附件", key=f"btn_view_img_hub_{ticket_id}"):
-                        view_feedback_img_modal(img_path_found, ticket_id, reporter)
+                with st.expander(f"單號: {ticket_id} | 狀態: {status} | 類別: {category} ({time_str})"):
+                    st.markdown(f"**回報者**：{reporter}")
+                    st.markdown(f"**提交時間**：{time_str}")
+                    st.markdown(f"**目前狀態**：{status}")
+                    st.markdown(f"**管理員回覆**：\n> {admin_reply}")
+                    
+                    base_id = ticket_id.split()[0]
+                    img_path_found = None
+                    for ext in [".png", ".jpg", ".jpeg"]:
+                        p = os.path.join(FEEDBACK_IMG_DIR, f"{base_id}{ext}")
+                        if os.path.exists(p):
+                            img_path_found = p
+                            break
+                    if img_path_found:
+                        if st.button("檢視上傳截圖附件", key=f"btn_view_img_hub_{ticket_id}"):
+                            view_feedback_img_modal(img_path_found, ticket_id, reporter)
+                            
+    st.markdown("</div>", unsafe_allow_html=True)
