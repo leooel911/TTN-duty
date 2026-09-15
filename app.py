@@ -10,7 +10,7 @@ from config import ADMIN_PASSWORD, CREW_ACCESS_PASSWORD, CUSTOM_CSS
 from modules.admin_views import render_admin_panel
 from modules.components import (
     render_zoomable_image,
-    show_feedback_hub_modal,
+    render_feedback_hub_section,
 )
 from modules.drawing import render_schedule_figure
 from modules.services import (
@@ -302,6 +302,16 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                 st.rerun()
     st.stop()
 
+# ---------------------------------------------------------
+# 回報與查詢中心卡片區塊（若觸發則顯示於頂部，點擊關閉即消失）
+# ---------------------------------------------------------
+if st.session_state.get("show_feedback_hub_dialog", False):
+    render_feedback_hub_section(
+        unit_label=st.session_state.get("current_unit", "TTN"),
+        user_id=st.session_state.get("login_user_id", ""),
+        is_admin=st.session_state.get("admin_logged_in", False)
+    )
+
 is_admin_active = (
     st.session_state.get("nav_mode") == "admin_panel"
     or st.session_state.get("page") == "admin"
@@ -348,11 +358,3 @@ with col_f2:
         else:
             st.session_state["show_admin_login"] = True
         st.rerun()
-
-# 彈出合併對話框（內含提交與查詢分頁）
-if st.session_state.get("show_feedback_hub_dialog", False):
-    show_feedback_hub_modal(
-        unit_label=st.session_state.get("current_unit", "TTN"),
-        user_id=st.session_state.get("login_user_id", ""),
-        is_admin=st.session_state.get("admin_logged_in", False)
-    )
