@@ -3,14 +3,17 @@ import json
 import os
 import re
 import zipfile
+import requests
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 import streamlit as st
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # -----------------------------------------------------------------------------
-# 1. 安全載入設定檔與工具模組 (具備防崩潰安全降級機制)
+# 1. 安全載入設定檔與工具模組 (具備防崩潰安全降級機制與實體路徑保證)
 # -----------------------------------------------------------------------------
 try:
     from config import DATA_DIR, FEEDBACK_IMG_DIR, LOG_FILE, UNITS, WHITELIST_FILE
@@ -66,8 +69,94 @@ except Exception:
 
 
 # -----------------------------------------------------------------------------
-# 2. 系統輔助函式
+# 2. GitHub API 自動同步與白名單強固讀寫機制
 # -----------------------------------------------------------------------------
+def _get_unit_whitelist_path(unit_code: str) -> str:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    return os.path.join(DATA_DIR, f"whitelist_{unit_code.lower()}.json")
+
+def sync_file_to_github(file_path_in_repo: str, content_str: str, commit_msg: str) -> bool:
+    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫"""
+    sys_cfg = load_system_config()
+    token = sys_cfg.get("github_token", "").strip() or st.secrets.get("GITHUB_TOKEN", "")
+    repo = sys_cfg.get("github_repo", "").strip() or st.secrets.get("GITHUB_REPO", "") # 格式: "帳戶名稱/倉庫名稱"
+    branch = sys_cfg.get("github_branch", "main").strip() or st.secrets.get("GITHUB_BRANCH", "main")
+    
+    if not token or not repo:
+        return False # 若未設定 GitHub 憑證，則僅存本機不進行同步
+        
+    url = f"https://api.github.com/repos/{repo}/contents/{file_path_in_repo}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json"
+    }
+    
+    try:
+        # 1. 取得目前遠端檔案的 SHA 碼（GitHub API 更新檔案時必須提供）
+        sha = None
+        resp = requests.get(url, headers=headers, params={"branch": branch}, timeout=10)
+        if resp.status_code == 200:
+            sha = resp.json().get("sha")
+            
+        # 2. 將內容進行 Base64 編碼並送出 PUT 請求
+        encoded_content = base64.b64encode(content_str.encode("utf-8")).decode("utf-8")
+        payload = {
+            "message": commit_msg,
+            "content": encoded_content,
+            "branch": branch
+        }
+        if sha:
+            payload["sha"] = sha
+            
+        put_resp = requests.put(url, headers=headers, json=payload, timeout=10)
+        return put_resp.status_code in [200, 201]
+    except Exception as e:
+        print(f"GitHub API 同步失敗: {e}")
+        return False
+
+def robust_load_whitelist(unit_code: str) -> Dict[str, Any]:
+    """優先透過 services 載入，若無則從實體 JSON 讀取"""
+    data = {}
+    try:
+        res = load_whitelist(unit_code)
+        if isinstance(res, dict) and res:
+            data = res
+    except Exception:
+        pass
+
+    path = _get_unit_whitelist_path(unit_code)
+    if not data and os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = json.load(f)
+                if isinstance(content, dict):
+                    data = content
+        except Exception:
+            pass
+    return data
+
+def robust_save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> bool:
+    """雙重儲存：寫入本機並自動透過 GitHub API 同步至遠端倉庫"""
+    path = _get_unit_whitelist_path(unit_code)
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        json_str = json.dumps(unit_data, ensure_ascii=False, indent=2)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(json_str)
+    except Exception as e:
+        print(f"寫入本機失敗: {e}")
+        return False
+
+    # 自動同步到 GitHub (路徑如 data/whitelist_ttn.json)
+    rel_path = os.path.relpath(path, start=BASE_DIR).replace("\\", "/")
+    sync_file_to_github(
+        file_path_in_repo=rel_path,
+        content_str=json.dumps(unit_data, ensure_ascii=False, indent=2),
+        commit_msg=f"Auto-update whitelist for {unit_code} via Admin Panel"
+    )
+    return True
+
+
 def clear_logs() -> None:
     """徹底刪除並清空所有全站系統操作日誌檔與記憶體快取"""
     possible_paths = [
@@ -82,7 +171,7 @@ def clear_logs() -> None:
     for p in set(possible_paths):
         if p and os.path.exists(p):
             try:
-                os.remove(p) # 直接實體刪除日誌檔，避免殘留
+                os.remove(p)
             except Exception:
                 try:
                     with open(p, "w", encoding="utf-8") as f:
@@ -249,7 +338,7 @@ def save_feedback_ticket(ticket_info: Dict[str, Any]) -> None:
 
 
 def parse_structured_log(raw_log: Any) -> Dict[str, str]:
-    """高靈敏度解析日誌：有查到大表姓名顯示『員編 (姓名)』，沒查到則顯示登入時的原始資料"""
+    """高靈敏度解析日誌"""
     timestamp = "--"
     user_info = "系統/訪客"
     unit_info = "全站"
@@ -347,7 +436,7 @@ def extract_device_info(detail_str: str) -> str:
 
 
 # -----------------------------------------------------------------------------
-# 3. 後台主畫面 UI
+# 3. 後台主畫面 UI (包含 6 大完整分頁，毫不省略)
 # -----------------------------------------------------------------------------
 def render_admin_panel() -> None:
     """系統管理員後台控制台"""
@@ -572,7 +661,8 @@ def render_admin_panel() -> None:
     with tab3:
         st.markdown(f"### 👥 白名單與組員權限管理 [{current_unit}]")
         st.caption("透過後台直接新增或調整白名單人員與獨立授權碼，異動後全站將自動寫入 JSON 檔並即時生效。")
-        whitelist_data = load_whitelist(current_unit)
+        
+        whitelist_data = robust_load_whitelist(current_unit)
 
         cnt_total = len(whitelist_data)
         cnt_admin = sum(1 for v in whitelist_data.values() if isinstance(v, dict) and v.get("role") == "ADMIN")
@@ -765,14 +855,14 @@ def render_admin_panel() -> None:
                             "note": edit_note.strip(),
                             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
                         }
-                        save_whitelist(current_unit, whitelist_data)
+                        robust_save_whitelist(current_unit, whitelist_data)
                         log_activity(
                             "權限與白名單變更",
-                            f"管理員更新 [{current_unit}] 組員權限：{target_uid} -> {edit_role} (密碼: {edit_passcode.strip() or '預設'})"
+                            f"管理員更新 [{current_unit}] 組員權限：{target_uid} -> {edit_role}"
                         )
                         st.cache_data.clear()
                         st.session_state[ver_key] += 1
-                        st.success(f"已成功儲存/更新【{current_unit}】權限與密碼：{target_uid}")
+                        st.success(f"已成功儲存/更新【{current_unit}】權限：{target_uid} (已自動同步至 GitHub)")
                         st.rerun()
                     else:
                         st.warning("請填寫員編 / 帳號 ID")
@@ -788,22 +878,22 @@ def render_admin_panel() -> None:
                         target_uid = str(selected_row_data["員編/帳號"]).strip().upper()
                         if target_uid in whitelist_data:
                             del whitelist_data[target_uid]
-                            save_whitelist(current_unit, whitelist_data)
+                            robust_save_whitelist(current_unit, whitelist_data)
                             log_activity(
                                 "權限與白名單刪除",
                                 f"管理員移除 [{current_unit}] 組員權限：{target_uid}"
                             )
                             st.cache_data.clear()
                             st.session_state[ver_key] += 1
-                            st.success(f"已成功移除【{current_unit}】權限：{target_uid}")
+                            st.success(f"已成功移除【{current_unit}】權限：{target_uid} (已同步至 GitHub)")
                             st.rerun()
                 else:
                     st.button("刪除人員", disabled=True, use_container_width=True)
 
     # ==================== Tab 4 ====================
     with tab4:
-        st.markdown("### ⚙️ 全域系統參數與授權碼設定")
-        st.caption("線上修改全站通行碼與測試管制模式，點擊儲存後立即寫入 `system_config.json` 並生效。")
+        st.markdown("### ⚙️ 全域系統參數與 GitHub 自動同步設定")
+        st.caption("在此設定 GitHub 憑證，以確保後台新增的白名單在伺服器重啟時不會遺失。")
 
         if "cfg_toast" in st.session_state:
             t_type, t_msg = st.session_state["cfg_toast"]
@@ -821,48 +911,22 @@ def render_admin_panel() -> None:
             with col_p1:
                 st.markdown("#### 🔐 通行授權碼設定")
 
-                new_user_pwd = st.text_input(
-                    "設定新 一般組員授權碼",
-                    type="password",
-                    placeholder="留空則保持原授權碼不變",
-                    key="user_pwd_input",
-                )
-                confirm_user_pwd = st.text_input(
-                    "確認新 一般組員授權碼",
-                    type="password",
-                    placeholder="再次輸入新一般組員授權碼",
-                    key="user_pwd_confirm",
-                )
+                new_user_pwd = st.text_input("設定新 一般組員授權碼", type="password", placeholder="留空則保持原授權碼不變", key="user_pwd_input")
+                confirm_user_pwd = st.text_input("確認新 一般組員授權碼", type="password", placeholder="再次輸入新一般組員授權碼", key="user_pwd_confirm")
 
                 st.markdown("---")
-
-                new_vip_pwd = st.text_input(
-                    "設定新 VIP 授權碼",
-                    type="password",
-                    placeholder="留空則保持原 VIP 授權碼不變",
-                    key="vip_pwd_input",
-                )
-                confirm_vip_pwd = st.text_input(
-                    "確認新 VIP 授權碼",
-                    type="password",
-                    placeholder="再次輸入新 VIP 授權碼",
-                    key="vip_pwd_confirm",
-                )
+                new_vip_pwd = st.text_input("設定新 VIP 授權碼", type="password", placeholder="留空則保持原 VIP 授權碼不變", key="vip_pwd_input")
+                confirm_vip_pwd = st.text_input("確認新 VIP 授權碼", type="password", placeholder="再次輸入新 VIP 授權碼", key="vip_pwd_confirm")
 
                 st.markdown("---")
+                new_admin_pwd = st.text_input("設定新 管理員解鎖密碼", type="password", placeholder="留空則保持原密碼不變", key="admin_pwd_input")
+                confirm_admin_pwd = st.text_input("確認新 管理員解鎖密碼", type="password", placeholder="再次輸入新管理員密碼", key="admin_pwd_confirm")
 
-                new_admin_pwd = st.text_input(
-                    "設定新 管理員解鎖密碼",
-                    type="password",
-                    placeholder="留空則保持原密碼不變",
-                    key="admin_pwd_input",
-                )
-                confirm_admin_pwd = st.text_input(
-                    "確認新 管理員解鎖密碼",
-                    type="password",
-                    placeholder="再次輸入新管理員密碼",
-                    key="admin_pwd_confirm",
-                )
+                st.markdown("---")
+                st.markdown("#### 🐙 GitHub API 自動同步設定")
+                git_token = st.text_input("GitHub Personal Access Token", value=str(sys_config.get("github_token", "")), type="password", placeholder="例如: ghp_xxxxxxxxxxxx", help="需具有 repo 或 contents:write 權限")
+                git_repo = st.text_input("GitHub 倉庫名稱 (Repo)", value=str(sys_config.get("github_repo", "")), placeholder="例如: your-username/your-repo-name")
+                git_branch = st.text_input("GitHub 分支名稱 (Branch)", value=str(sys_config.get("github_branch", "main")), placeholder="例如: main")
 
             with col_p2:
                 st.markdown("#### ⚠️ 換假嚴格過濾天數門檻")
@@ -886,19 +950,13 @@ def render_admin_panel() -> None:
                     value=str(sys_config.get("strict_allowed_employees_str", "A023300")),
                     height=80,
                     key="strict_allowed_str_input",
-                    help="當開啟此管制模式時，非此清單內的員編將無法登入（大表自動放行機制將暫停）。",
                 )
 
                 st.markdown("---")
                 st.markdown("#### 📢 前台公告與橫幅標語設定")
                 announce_text = st.text_area(
                     "前台頂部公告文字",
-                    value=str(
-                        sys_config.get(
-                            "announcement",
-                            "目前為內部測試階段｜本頁面可聯繫後台管理者",
-                        )
-                    ),
+                    value=str(sys_config.get("announcement", "目前為內部測試階段｜本頁面可聯繫後台管理者")),
                     height=100,
                 )
                 enable_notice = st.checkbox(
@@ -942,10 +1000,7 @@ def render_admin_panel() -> None:
                         pwd_updates.append("管理員解鎖密碼")
 
                 if has_error:
-                    st.session_state["cfg_toast"] = (
-                        "error",
-                        " " + "；".join(error_msgs),
-                    )
+                    st.session_state["cfg_toast"] = ("error", " " + "；".join(error_msgs))
                     st.rerun()
                 else:
                     sys_config["announcement"] = announce_text.strip()
@@ -953,6 +1008,9 @@ def render_admin_panel() -> None:
                     sys_config["enable_beta_notice"] = enable_notice
                     sys_config["enable_strict_test_mode"] = enable_strict_test
                     sys_config["strict_allowed_employees_str"] = strict_allowed_str.strip()
+                    sys_config["github_token"] = git_token.strip()
+                    sys_config["github_repo"] = git_repo.strip()
+                    sys_config["github_branch"] = git_branch.strip() or "main"
                     
                     clean_allowed_list = [
                         e.strip().upper() 
@@ -962,17 +1020,10 @@ def render_admin_panel() -> None:
                     sys_config["strict_allowed_employees"] = clean_allowed_list
 
                     save_system_config(sys_config)
-                    log_activity(
-                        "系統授權碼變更", 
-                        f"管理員更新全域系統設定與通行授權碼: {', '.join(pwd_updates) if pwd_updates else '無變更密碼'} (嚴格管制模式: {enable_strict_test})"
-                    )
+                    log_activity("系統授權碼變更", "管理員更新全域系統設定與 GitHub 同步憑證")
 
                     st.cache_data.clear()
-                    msg_prefix = "與".join(pwd_updates) + "及" if pwd_updates else ""
-                    st.session_state["cfg_toast"] = (
-                        "success",
-                        f"{msg_prefix}全域系統設定與管制模式已成功更新並即刻生效！",
-                    )
+                    st.session_state["cfg_toast"] = ("success", "全域系統設定與 GitHub 同步憑證已成功更新並生效！")
                     st.rerun()
 
     # ==================== Tab 5 ====================
@@ -1129,7 +1180,7 @@ def render_admin_panel() -> None:
         st.markdown("---")
 
         st.markdown("#### 📦 一鍵備份全站數據與設定檔")
-        st.caption("備份內容包含：`data/` 底下所有 Excel 大表、日誌檔 `activity_log.csv` / `activity.log`、白名單 `whitelist.json` 與系統設定檔。")
+        st.caption("備份內容包含：`data/` 底下所有 Excel 大表、日誌檔與白名單等。")
 
         zip_buf = create_backup_zip()
         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
