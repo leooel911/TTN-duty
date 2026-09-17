@@ -14,25 +14,28 @@ from modules.utils import log_activity, safe_read_excel, send_admin_email
 
 
 def inject_slider_animation() -> None:
-    """注入時間滑桿圓點與數值在拖動時的放大動畫特效"""
+    """注入時間滑桿圓點在懸停、聚焦與拖動時的高效能放大動畫特效"""
     st.markdown(
         """
         <style>
-        /* 精準鎖定 Streamlit 滑桿的圓點（Thumb） */
-        div[data-baseweb="slider"] div[role="slider"] {
-            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        /* 強制重設 BaseWeb 滑桿控制點的變形基準點與過渡動畫 */
+        div[data-baseweb="slider"] div[role="slider"],
+        .stSlider div[role="slider"] {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+            transform-origin: center center !important;
         }
         
-        /* 當按住、拖動或聚焦時放大 1.6 倍 */
-        div[data-baseweb="slider"] div[role="slider"]:active,
-        div[data-baseweb="slider"] div[role="slider"]:focus {
-            transform: scale(1.6) !important;
+        /* 當滑鼠懸停、取得焦點或按住拖動時，全面觸發放大 1.7 倍 */
+        div[data-baseweb="slider"] div[role="slider"]:hover,
+        div[data-baseweb="slider"] div[role="slider"]:focus,
+        div[data-baseweb="slider"] div[role="slider"]:active {
+            transform: scale(1.7) !important;
+            z-index: 999 !important;
         }
 
-        /* 讓滑桿上方顯示的時間文字在變動時也有平滑放大感 */
-        div[data-baseweb="slider"] ~ div span,
-        div[data-baseweb="slider"] span {
-            transition: font-size 0.2s ease !important;
+        /* 確保滑桿父容器不會裁切放大後的圓點 */
+        div[data-baseweb="slider"] {
+            overflow: visible !important;
         }
         </style>
         """,
