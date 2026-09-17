@@ -309,24 +309,40 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 仿造圖片中的模式切換器外框容器設定 */
+        /* 👑 【人體工學優化】：強制三欄模式切換器在手機上維持橫向並排、絕對不換行 */
         div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            max-width: 100% !important;
             background: rgba(15, 23, 42, 0.85) !important;
             border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
             border-radius: 14px !important;
-            padding: 6px !important;
+            padding: 5px !important;
             gap: 4px !important;
+            box-sizing: border-box !important;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45), inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
             margin-bottom: 8px !important;
         }
 
-        /* 未選中的分頁按鈕：融合於外框背景中，呈現內斂字體 */
+        div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) > div[data-testid="column"] {
+            flex: 1 1 0% !important;
+            width: calc(33.33% - 3px) !important;
+            max-width: calc(33.33% - 3px) !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+
+        /* 未選中的分頁按鈕 */
         div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) button[data-testid="stBaseButton-secondary"] {
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
-            padding: 10px 4px !important;
+            padding: 8px 2px !important;
             border-radius: 10px !important;
+            width: 100% !important;
             transition: all 0.2s ease !important;
         }
         div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) button[data-testid="stBaseButton-secondary"]:hover {
@@ -334,26 +350,31 @@ def render_user_home() -> None:
         }
         div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) button[data-testid="stBaseButton-secondary"] p {
             color: #64748B !important;
-            font-size: 13.5px !important;
+            font-size: 12px !important;
             font-weight: 700 !important;
             white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
             margin: 0 !important;
         }
 
-        /* 已選中的分頁按鈕：呈現帶有高質感發光外框與深藍底的內嵌卡片 */
+        /* 已選中的分頁按鈕：發光外框與深藍底 */
         div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) button[data-testid="stBaseButton-primary"],
         div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) button[kind="primary"] {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 132, 199, 0.25) 100%) !important;
             border: 1.5px solid #38BDF8 !important;
             border-radius: 10px !important;
-            padding: 10px 4px !important;
+            padding: 8px 2px !important;
+            width: 100% !important;
             box-shadow: 0 0 14px rgba(56, 189, 248, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25) !important;
         }
         div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) button[data-testid="stBaseButton-primary"] p {
             color: #38BDF8 !important;
-            font-size: 13.5px !important;
+            font-size: 12px !important;
             font-weight: 900 !important;
             white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
             margin: 0 !important;
             text-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
         }
@@ -681,7 +702,7 @@ def render_user_home() -> None:
     if "active_app_mode" not in st.session_state:
         st.session_state["active_app_mode"] = "個人月班表"
 
-    # 使用外框包覆的 3 欄按鈕，完美呈現圖片中的高質感配置
+    # 鎖定橫向並排的三欄按鈕外框
     col_tab1, col_tab2, col_tab3 = st.columns(3)
 
     with col_tab1:
