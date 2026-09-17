@@ -507,7 +507,7 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 完美雙排並排佈局鎖定 */
+        /* 完美雙排並排佈局鎖定 (防止手機端溢出) */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -515,17 +515,18 @@ def render_user_home() -> None:
             flex-wrap: nowrap !important;
             width: 100% !important;
             max-width: 100% !important;
-            gap: 6px !important;
+            gap: 4px !important;
             box-sizing: border-box !important;
             margin-bottom: 0px !important;
+            overflow: hidden !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
-            width: calc(50% - 3px) !important;
-            max-width: calc(50% - 3px) !important;
+            width: calc(50% - 2px) !important;
+            max-width: calc(50% - 2px) !important;
             min-width: 0 !important;
-            flex: 0 0 calc(50% - 3px) !important;
+            flex: 0 0 calc(50% - 2px) !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             padding: 0 !important;
