@@ -62,16 +62,19 @@ def get_login_user_id() -> str:
     return st.session_state.get("current_user_id", "")
 
 
-def clean_role_label(role: str) -> str:
-    """轉換權限標籤文字"""
-    mapping = {
-        "ADMIN": "系統管理員",
-        "VIP_USER": "VIP 特權組員",
-        "TESTER": "測試員",
-        "USER": "一般組員",
-        "GUEST": "訪客",
-    }
-    return mapping.get(role, role)
+def get_identity_display_str(user_role: str, user_name: str, user_id: str) -> str:
+    """依據權限組裝指定的身分顯示字串"""
+    name_id = f"{user_name} ({user_id})" if user_id and user_name != user_id else (user_name or user_id or "GUEST")
+    if user_role == "USER":
+        return f"組員 {name_id}"
+    elif user_role in ["VIP_USER", "VIP"]:
+        return f"VIP：{name_id}"
+    elif user_role == "ADMIN":
+        return f"系統管理員 {name_id}"
+    elif user_role == "TESTER":
+        return f"測試員 {name_id}"
+    else:
+        return f"訪客 {name_id}"
 
 
 # =============================================================================
@@ -796,7 +799,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 頂部戰情儀表板 (改回原生的 Streamlit 容器與元件，絕對安全穩定)
+    # 🚀 頂部戰情儀表板 (原生安全穩定架構)
     # =========================================================================
     sys_cfg = load_system_config()
     enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
@@ -808,8 +811,7 @@ def render_user_home() -> None:
         is_module_maintenance(current_unit_label, "exchange_filter")
     )
     
-    role_label_str = clean_role_label(user_role)
-    user_id_display = current_user_id if current_user_id else "GUEST"
+    identity_str = get_identity_display_str(user_role, current_user_name, current_user_id)
     sched_display_text = sched_range if len(missing_files) < 3 else "資料庫異常"
 
     with st.container(border=True):
@@ -820,7 +822,7 @@ def render_user_home() -> None:
                     CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
                 </div>
                 <div style="margin-top: 4px; font-size: 11px; color: #94A3B8; font-family: monospace;">
-                    <span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #FBBF24;">{role_label_str} ({user_id_display})</strong>
+                    <span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #FBBF24;">{identity_str}</strong>
                 </div>
             </div>
             """,
@@ -828,7 +830,10 @@ def render_user_home() -> None:
         )
 
         if enable_beta_banner and announcement_msg:
-            st.warning(f"⚠️ NOTICE: {announcement_msg}")
+            st.markdown(
+                f"<div style='font-size: 11.5px; color: #FDE68A; text-align: center; margin-top: 6px; font-family: monospace;'>{announcement_msg}</div>",
+                unsafe_allow_html=True,
+            )
 
         st.markdown("---")
 
