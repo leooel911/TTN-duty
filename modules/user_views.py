@@ -799,7 +799,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 頂部戰情儀表板 (視覺精緻化優化版)
+    # 🚀 頂部戰情儀表板 (視覺精緻化 + 置中對齊版)
     # =========================================================================
     sys_cfg = load_system_config()
     enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
@@ -816,16 +816,14 @@ def render_user_home() -> None:
 
     st.markdown(
         f"""
-        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 14px; padding: 12px 16px 10px 16px; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <div style="font-size: 15px; font-weight: 900; letter-spacing: 0.8px; color: #F8FAFC; font-family: monospace;">
-                    CREW DUTY ENGINE <span style="font-size: 10px; color: #38BDF8; font-weight: 600; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px; margin-left: 4px;">C.L.F EDITION</span>
-                </div>
-                <div style="display: flex; gap: 6px; align-items: center; font-size: 11px; font-family: monospace;">
-                    <span style="background: rgba(74, 222, 128, 0.15); color: #4ADE80; padding: 2px 8px; border-radius: 6px; font-weight: bold;">● ACTIVE</span>
-                    <span style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; padding: 2px 8px; border-radius: 6px; font-weight: bold;">{current_unit_label}</span>
-                    <span style="background: rgba(251, 191, 36, 0.15); color: #FBBF24; padding: 2px 8px; border-radius: 6px; font-weight: bold;">{identity_str}</span>
-                </div>
+        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 14px; padding: 14px 16px 12px 16px; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); text-align: center;">
+            <div style="font-size: 15px; font-weight: 900; letter-spacing: 0.8px; color: #F8FAFC; font-family: monospace;">
+                CREW DUTY ENGINE <span style="font-size: 10px; color: #38BDF8; font-weight: 600; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px; margin-left: 4px;">C.L.F EDITION</span>
+            </div>
+            <div style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: 11px; font-family: monospace;">
+                <span style="background: rgba(74, 222, 128, 0.15); color: #4ADE80; padding: 2px 8px; border-radius: 6px; font-weight: bold;">● ACTIVE</span>
+                <span style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; padding: 2px 8px; border-radius: 6px; font-weight: bold;">單位：{current_unit_label}</span>
+                <span style="background: rgba(251, 191, 36, 0.15); color: #FBBF24; padding: 2px 8px; border-radius: 6px; font-weight: bold;">身分：{identity_str}</span>
             </div>
             {'<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: #FDE68A; text-align: center; font-family: monospace;">' + announcement_msg + '</div>' if enable_beta_banner and announcement_msg else ''}
         </div>
