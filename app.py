@@ -164,16 +164,19 @@ if not is_authed and not is_admin_authed:
 
     col1, col2, col3 = st.columns([1, 2.4, 1])
     with col2:
-        # 標題與遙測列
+        # 標題
         st.markdown('<div class="login-title">CREW DUTY ENGINE</div>', unsafe_allow_html=True)
         st.markdown('<div class="login-subtitle">BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div>', unsafe_allow_html=True)
 
+        # 動態即時取得目前選擇的單位，實現遙測列即時連動
+        current_login_unit = st.session_state.get("login_unit_box", "TTN")
+
         st.markdown(
-            """
+            f"""
             <div class="telemetry-bar">
                 <div><span class="telemetry-dot"></span>SYS: ONLINE</div>
                 <div>SECURE: TLS 1.3</div>
-                <div>NODE: TTN-01</div>
+                <div>NODE: {current_login_unit}-01</div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -200,9 +203,10 @@ if not is_authed and not is_admin_authed:
         with st.container(border=True):
             st.markdown('<div class="login-card-marker"></div>', unsafe_allow_html=True)
             
+            # 【關鍵修改】將單位選擇移至 Form 外部，一切換立刻觸發 Rerun 並同步更新上方節點！
+            selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"], key="login_unit_box")
+            
             with st.form("login_main_form"):
-                selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"], key="login_unit_box")
-                
                 # 智慧輸入：自動轉大寫
                 raw_entered_emp = st.text_input(
                     "使用者員編 (範例：A023300)",
