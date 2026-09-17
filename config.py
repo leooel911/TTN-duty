@@ -83,34 +83,9 @@ CREW_ACCESS_PASSWORD: str = "0"
 
 # 完整通用請假代碼集
 LEAVE_CODES: List[str] = [
-    "PAY",
-    "CMP",
-    "FAC",
-    "FAC1",
-    "FPL",
-    "HPS",
-    "HPS1",
-    "LEV",
-    "LU",
-    "LUP",
-    "LUTS",
-    "MAT",
-    "ML",
-    "MLP",
-    "MTR",
-    "NHS",
-    "NHS1",
-    "NHS2",
-    "NTD",
-    "OPI",
-    "PAT",
-    "PAY1",
-    "RCL",
-    "TRN",
-    "UNP",
-    "UNP1",
-    "UNP2",
-    "WRSL",
+    "PAY", "CMP", "FAC", "FAC1", "FPL", "HPS", "HPS1", "LEV", "LU", "LUP", 
+    "LUTS", "MAT", "ML", "MLP", "MTR", "NHS", "NHS1", "NHS2", "NTD", "OPI", 
+    "PAT", "PAY1", "RCL", "TRN", "UNP", "UNP1", "UNP2", "WRSL",
 ]
 
 # 班表圖像渲染色調定義
@@ -130,11 +105,60 @@ C_OT_TXT: str = "#EF4444"
 C_NOTE_TXT: str = "#4C1D95"
 C_TOWN_TXT: str = "#000000"
 
-/* ========================================================= */
+CUSTOM_CSS: str = """
+<style>
+    header[data-testid="stHeader"] { background: transparent !important; }
+    div[data-testid="stToolbar"] { visibility: hidden !important; }
+    footer { visibility: hidden !important; }
+
+    .stApp { 
+        background: radial-gradient(circle at 50% 0%, #0f172a 0%, #090d16 55%, #020617 100%) !important; 
+        color: #F8FAFC !important; 
+        background-attachment: fixed !important;
+    }
+    
+    .hours-badge {
+        background: rgba(56, 189, 248, 0.15) !important;
+        color: #38BDF8 !important;
+        border: 1px solid rgba(56, 189, 248, 0.4) !important;
+        border-radius: 6px !important;
+        padding: 2px 6px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        font-family: monospace !important;
+        line-height: 1.2 !important;
+    }
+    
+    .do2w-badge {
+        background: rgba(245, 158, 11, 0.2) !important;
+        color: #FDE68A !important;
+        border: 1px solid #F59E0B !important;
+        border-radius: 6px !important;
+        padding: 2px 6px !important;
+        font-size: 10.5px !important;
+        font-weight: 800 !important;
+        font-family: monospace !important;
+        line-height: 1.2 !important;
+    }
+    
+    @media (min-width: 1024px) {
+        .block-container { padding: 2.5rem 1.5rem 2.5rem 1.5rem !important; max-width: 1080px !important; }
+    }
+    @media (max-width: 1023px) {
+        .block-container { padding: 1rem 0.75rem 2rem 0.75rem !important; max-width: 100% !important; }
+    }
+
+    div[data-testid="stButton"], div.stButton { width: 100% !important; }
+    div[data-testid="stButton"] > button, div.stButton > button {
+        width: 100% !important;
+        min-height: 44px !important;
+        border-radius: 8px !important;
+        font-family: monospace !important;
+    }
+
+    /* ========================================================= */
     /* 步驟一優化：鎖定表單輸入框與下拉選單底色與字體            */
     /* ========================================================= */
-    
-    /* 1. 外層容器：鎖定深色背景與邊框 */
     .stTextInput > div > div > div,
     .stSelectbox > div > div > div,
     div[data-baseweb="input"],
@@ -146,7 +170,12 @@ C_TOWN_TXT: str = "#000000"
         color: #F8FAFC !important;
     }
     
-    /* 2. 內部文字輸入與佔位符 (Placeholder) 顏色鎖定 */
+    div[data-baseweb="textarea"] {
+        background-color: #1E293B !important;
+        border: 1px solid #475569 !important;
+        border-radius: 8px !important;
+    }
+
     div[data-testid="stTextInput"] input,
     div[data-testid="stTextArea"] textarea,
     input, textarea {
@@ -165,7 +194,6 @@ C_TOWN_TXT: str = "#000000"
         -webkit-text-fill-color: #64748B !important;
     }
     
-    /* 3. 聚焦狀態 (Focus) 高亮發光邊框 */
     .stTextInput > div > div > div:focus-within,
     .stSelectbox > div > div > div:focus-within,
     div[data-baseweb="input"]:focus-within {
@@ -173,7 +201,6 @@ C_TOWN_TXT: str = "#000000"
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.3) !important;
     }
 
-    /* 4. 下拉選單展開後的彈出清單背景 */
     div[data-baseweb="popover"] div {
         background-color: #1E293B !important;
         color: #F8FAFC !important;
@@ -339,11 +366,12 @@ C_TOWN_TXT: str = "#000000"
     }
 </style>
 """
+
 # ==========================================
 # 📧 系統管理員郵件通知與 SMTP 參數設定
 # ==========================================
-SMTP_SERVER: str = "smtp.gmail.com"        # 例如使用 Gmail 伺服器
-SMTP_PORT: int = 587                       # TLS 連接埠
-SENDER_EMAIL: str = "leooel911@gmail.com"     # 填入你的 Google 帳號
-SENDER_PASSWORD: str = "aoisluiqatzsmlec"        # 填入 Gmail 的「應用程式密碼」(16碼)
-ADMIN_RECEIVE_EMAIL: str = "leooel911@gmail.com" # 收件人信箱
+SMTP_SERVER: str = "smtp.gmail.com"
+SMTP_PORT: int = 587
+SENDER_EMAIL: str = "leooel911@gmail.com"
+SENDER_PASSWORD: str = "aoisluiqatzsmlec"
+ADMIN_RECEIVE_EMAIL: str = "leooel911@gmail.com"
