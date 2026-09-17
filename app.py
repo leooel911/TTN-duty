@@ -73,24 +73,52 @@ is_authed = st.session_state.get("authenticated", False)
 is_admin_authed = st.session_state.get("admin_logged_in", False)
 
 if not is_authed and not is_admin_authed:
-    # 注入專屬登入頁面的高質感發光、背景網格與遙測列 CSS
+    # 注入專屬登入頁面的動態漂移網格、掃描光束與發光卡片 CSS
     st.markdown(
         """
         <style>
-        /* 全螢幕沉浸式深空漸層背景與微網格 */
+        /* 全螢幕沉浸式深空漸層背景 */
         .stApp {
             background: radial-gradient(circle at 50% 20%, #0f172a 0%, #070b14 100%) !important;
+            overflow-x: hidden;
         }
         
+        /* 動態網格緩慢漂移動畫 */
+        @keyframes gridDrift {
+            0% { background-position: 0 0; }
+            100% { background-position: 64px 64px; }
+        }
+
+        /* 科技雷達掃描光束動畫 */
+        @keyframes scanline {
+            0% { transform: translateY(-100px); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(900px); opacity: 0; }
+        }
+
+        /* 動態生動網格背景 */
         .stApp::before {
             content: "";
-            position: absolute;
+            position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background-image: linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
+            background-image: linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
             background-size: 32px 32px;
             z-index: 0;
             pointer-events: none;
+            animation: gridDrift 25s linear infinite;
+        }
+
+        /* 疊加動態掃描光束 */
+        .stApp::after {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.7), transparent);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.9);
+            z-index: 0;
+            pointer-events: none;
+            animation: scanline 8s ease-in-out infinite;
         }
 
         /* 終端機風格主標題與副標題 */
@@ -103,6 +131,8 @@ if not is_authed and not is_admin_authed:
             text-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
             margin-bottom: 2px;
             font-family: monospace;
+            position: relative;
+            z-index: 1;
         }
         
         .login-subtitle {
@@ -113,6 +143,8 @@ if not is_authed and not is_admin_authed:
             letter-spacing: 1.5px;
             text-align: center;
             margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
         }
 
         /* 系統動態遙測狀態列 (Live Telemetry Bar) */
@@ -129,6 +161,8 @@ if not is_authed and not is_admin_authed:
             font-size: 10.5px;
             color: #94A3B8;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+            position: relative;
+            z-index: 1;
         }
         
         .telemetry-dot {
@@ -156,6 +190,8 @@ if not is_authed and not is_admin_authed:
             border-radius: 16px !important;
             padding: 20px 20px 10px 20px !important;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), inset 0 1px 2px rgba(255, 255, 255, 0.15) !important;
+            position: relative;
+            z-index: 1;
         }
         </style>
         """,
