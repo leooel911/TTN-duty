@@ -247,9 +247,15 @@ def reset_ex_search() -> None:
 
 def render_rest_countdown_card(next_duty_time: datetime, duty_info_str: str):
     """
-    渲染具備前端 JavaScript 動態即時倒數的休息倒數計時器
+    渲染具備前端 JavaScript 動態即時倒數的休息倒數計時器（依瀏覽器本地時區基準）
     """
-    target_timestamp = int(next_duty_time.timestamp() * 1000)
+    y = next_duty_time.year
+    m = next_duty_time.month - 1  # JavaScript Date 的月份為 0-11
+    d = next_duty_time.day
+    h = next_duty_time.hour
+    mi = next_duty_time.minute
+    s = next_duty_time.second
+
     card_uid = f"cd-{int(datetime.now().timestamp() * 1000)}"
 
     html_card = f"""
@@ -292,7 +298,7 @@ def render_rest_countdown_card(next_duty_time: datetime, duty_info_str: str):
 
     <script>
     (function() {{
-        const targetTime = {target_timestamp};
+        const targetTime = new Date({y}, {m}, {d}, {h}, {mi}, {s}).getTime();
         const hoursEl = document.getElementById('hours-{card_uid}');
         const minsEl = document.getElementById('mins-{card_uid}');
         const secsEl = document.getElementById('secs-{card_uid}');
@@ -789,7 +795,7 @@ def render_user_home() -> None:
     st.markdown(period_html, unsafe_allow_html=True)
 
     # =========================================================================
-    # 🚀 真實抓取該登入組員的下次出勤倒數計時器（已加入模糊比對防護）
+    # 🚀 真實抓取該登入組員的下次出勤倒數計時器（支援模糊搜尋與本地時區）
     # =========================================================================
     real_next_dt, duty_info_text = get_real_next_duty(current_user_id, active_files)
     if real_next_dt:
