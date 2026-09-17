@@ -65,9 +65,10 @@ def clean_role_label(role: str) -> str:
     """轉換權限標籤文字"""
     mapping = {
         "ADMIN": "系統管理員",
-        "VIP_USER": "VIP 特權組員",
+        "VIP_USER": "VIP",
         "TESTER": "測試員",
         "USER": "一般組員",
+        "GUEST": "訪客",
     }
     return mapping.get(role, role)
 
@@ -587,6 +588,25 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
+    # =========================================================================
+    # 🚀 區塊 1：精簡優化後的頂部標題與狀態列
+    # =========================================================================
+    header_html = f"""
+    <div style="text-align: center; padding: 4px 0 8px 0; font-family: monospace;">
+        <div style="font-size: 18px; font-weight: 900; color: #F8FAFC; letter-spacing: 1px;">
+            CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
+        </div>
+        <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 4px; font-size: 11px;">
+            <span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span>
+            <span style="color: #64748B;">|</span>
+            <span style="color: #38BDF8; font-weight: bold;">單位：{current_unit_label}</span>
+            <span style="color: #64748B;">|</span>
+            <span style="color: #FBBF24;">身分：{clean_role_label(user_role)} ({current_user_id if current_user_id else "GUEST"})</span>
+        </div>
+    </div>
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
+
     comp.inject_slider_animation()
 
     active_files = get_current_role_files()
@@ -656,7 +676,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 單行化 HTML：徹底避開 Python 縮排與 Markdown 衝突
+    # 🚀 區塊 2：優化版排班週期卡片 (膠囊日期標籤與高質感內層)
     # =========================================================================
     maintenance_active = (
         is_module_maintenance(current_unit_label, "producer") or 
@@ -666,7 +686,7 @@ def render_user_home() -> None:
     
     maint_badge_html = '<span style="background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; color: #FCA5A5; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">系統維護中</span>' if maintenance_active else ''
     
-    period_html = f"""<div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid {"#EF4444" if maintenance_active else "rgba(56, 189, 248, 0.4)"}; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-family: monospace;"><div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 13px; font-weight: 900; color: #38BDF8;">[{current_unit_label}] 排班週期</span>{maint_badge_html}</div><span style="font-size: 13px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800;">{sched_range if len(missing_files) < 3 else "資料庫異常"}</span></div><details style="margin-top: 6px; font-size: 10px; color: #94A3B8; cursor: pointer;"><summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;"><span>檢視各大表更新時間與維護詳情</span><span style="font-size: 9px; color: #64748B;">▼</span></summary><div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1);"><div style="display: flex; justify-content: space-between;"><span>駕駛 (TD)</span><span>{td_time}</span></div><div style="display: flex; justify-content: space-between;"><span>列車長 (TM)</span><span>{tm_time}</span></div><div style="display: flex; justify-content: space-between;"><span>服勤員 (TA)</span><span>{ta_time}</span></div></div></details></div>"""
+    period_html = f"""<div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid {"#EF4444" if maintenance_active else "rgba(56, 189, 248, 0.4)"}; border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; font-family: monospace; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);"><div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 13px; font-weight: 900; color: #38BDF8; letter-spacing: 0.5px;">[{current_unit_label}] 排班週期</span>{maint_badge_html}</div><div style="background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); padding: 3px 10px; border-radius: 20px;"><span style="font-size: 12.5px; color: {"#EF4444" if missing_files else "#38BDF8"}; font-weight: 900; letter-spacing: 0.5px;">{sched_range if len(missing_files) < 3 else "資料庫異常"}</span></div></div><details style="margin-top: 8px; font-size: 10px; color: #94A3B8; cursor: pointer;"><summary style="outline: none; color: #94A3B8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.08);"><span style="color: #38BDF8;">檢視各大表更新時間與維護詳情</span><span style="font-size: 10px; color: #64748B;">▼</span></summary><div style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding: 8px 10px; background: rgba(7, 11, 20, 0.6); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);"><div style="display: flex; justify-content: space-between; color: #CBD5E1;"><span>駕駛 (TD)</span><span style="font-family: monospace; color: #94A3B8;">{td_time}</span></div><div style="display: flex; justify-content: space-between; color: #CBD5E1;"><span>列車長 (TM)</span><span style="font-family: monospace; color: #94A3B8;">{tm_time}</span></div><div style="display: flex; justify-content: space-between; color: #CBD5E1;"><span>服勤員 (TA)</span><span style="font-family: monospace; color: #94A3B8;">{ta_time}</span></div></div></details></div>"""
     
     st.markdown(period_html, unsafe_allow_html=True)
 
