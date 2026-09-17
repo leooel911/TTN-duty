@@ -75,116 +75,116 @@ is_admin_authed = st.session_state.get("admin_logged_in", False)
 if not is_authed and not is_admin_authed:
     st.markdown(
         """
-        <style>
-        .stApp {
-            background: radial-gradient(circle at 50% 20%, #0f172a 0%, #070b14 100%) !important;
-            overflow-x: hidden;
-        }
-        
-        @keyframes gridDrift {
-            0% { background-position: 0 0; }
-            100% { background-position: 64px 64px; }
-        }
+<style>
+.stApp {
+    background: radial-gradient(circle at 50% 20%, #0f172a 0%, #070b14 100%) !important;
+    overflow-x: hidden;
+}
 
-        @keyframes scanline {
-            0% { transform: translateY(-100px); opacity: 0; }
-            50% { opacity: 0.8; }
-            100% { transform: translateY(900px); opacity: 0; }
-        }
+@keyframes gridDrift {
+    0% { background-position: 0 0; }
+    100% { background-position: 64px 64px; }
+}
 
-        .stApp::before {
-            content: "";
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-image: linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
-            background-size: 32px 32px;
-            z-index: 0;
-            pointer-events: none;
-            animation: gridDrift 25s linear infinite;
-        }
+@keyframes scanline {
+    0% { transform: translateY(-100px); opacity: 0; }
+    50% { opacity: 0.8; }
+    100% { transform: translateY(900px); opacity: 0; }
+}
 
-        .stApp::after {
-            content: "";
-            position: fixed;
-            top: 0; left: 0; right: 0; height: 3px;
-            background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.7), transparent);
-            box-shadow: 0 0 20px rgba(56, 189, 248, 0.9);
-            z-index: 0;
-            pointer-events: none;
-            animation: scanline 8s ease-in-out infinite;
-        }
+.stApp::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+    z-index: 0;
+    pointer-events: none;
+    animation: gridDrift 25s linear infinite;
+}
 
-        .login-title {
-            font-size: 32px !important;
-            font-weight: 950 !important;
-            color: #F8FAFC !important;
-            letter-spacing: 2px !important;
-            text-align: center;
-            text-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
-            margin-bottom: 2px;
-            font-family: monospace;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .login-subtitle {
-            font-size: 11px !important;
-            font-weight: 650 !important;
-            color: #38BDF8 !important;
-            font-family: monospace;
-            letter-spacing: 1.5px;
-            text-align: center;
-            margin-bottom: 16px;
-            position: relative;
-            z-index: 1;
-        }
+.stApp::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.7), transparent);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.9);
+    z-index: 0;
+    pointer-events: none;
+    animation: scanline 8s ease-in-out infinite;
+}
 
-        .telemetry-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(15, 23, 42, 0.85);
-            border: 1px solid rgba(56, 189, 248, 0.3);
-            border-radius: 8px;
-            padding: 8px 14px;
-            margin-bottom: 16px;
-            font-family: monospace;
-            font-size: 10.5px;
-            color: #94A3B8;
-            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
-            position: relative;
-            z-index: 1;
-        }
-        
-        .telemetry-dot {
-            height: 7px;
-            width: 7px;
-            background-color: #34D399;
-            border-radius: 50%;
-            display: inline-block;
-            box-shadow: 0 0 10px #34D399;
-            margin-right: 6px;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.85); }
-            100% { opacity: 1; transform: scale(1); }
-        }
+.login-title {
+    font-size: 32px !important;
+    font-weight: 950 !important;
+    color: #F8FAFC !important;
+    letter-spacing: 2px !important;
+    text-align: center;
+    text-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
+    margin-bottom: 2px;
+    font-family: monospace;
+    position: relative;
+    z-index: 1;
+}
 
-        div[data-testid="stContainer"]:has(.login-card-marker) {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(30, 41, 59, 0.82) 100%) !important;
-            backdrop-filter: blur(16px);
-            border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
-            border-radius: 16px !important;
-            padding: 20px 20px 10px 20px !important;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), inset 0 1px 2px rgba(255, 255, 255, 0.15) !important;
-            position: relative;
-            z-index: 1;
-        }
-        </style>
+.login-subtitle {
+    font-size: 11px !important;
+    font-weight: 650 !important;
+    color: #38BDF8 !important;
+    font-family: monospace;
+    letter-spacing: 1.5px;
+    text-align: center;
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.telemetry-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 8px;
+    padding: 8px 14px;
+    margin-bottom: 16px;
+    font-family: monospace;
+    font-size: 10.5px;
+    color: #94A3B8;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+    position: relative;
+    z-index: 1;
+}
+
+.telemetry-dot {
+    height: 7px;
+    width: 7px;
+    background-color: #34D399;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 10px #34D399;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+div[data-testid="stContainer"]:has(.login-card-marker) {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(30, 41, 59, 0.82) 100%) !important;
+    backdrop-filter: blur(16px);
+    border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
+    border-radius: 16px !important;
+    padding: 20px 20px 10px 20px !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), inset 0 1px 2px rgba(255, 255, 255, 0.15) !important;
+    position: relative;
+    z-index: 1;
+}
+</style>
         """,
         unsafe_allow_html=True,
     )
@@ -198,11 +198,11 @@ if not is_authed and not is_admin_authed:
 
         st.markdown(
             f"""
-            <div class="telemetry-bar">
-                <div><span class="telemetry-dot"></span>SYS: ONLINE</div>
-                <div>SECURE: TLS 1.3</div>
-                <div>NODE: {current_login_unit}</div>
-            </div>
+<div class="telemetry-bar">
+    <div><span class="telemetry-dot"></span>SYS: ONLINE</div>
+    <div>SECURE: TLS 1.3</div>
+    <div>NODE: {current_login_unit}</div>
+</div>
             """,
             unsafe_allow_html=True,
         )
@@ -210,14 +210,14 @@ if not is_authed and not is_admin_authed:
         with st.expander("系統登入指引與試用須知", expanded=False):
             st.markdown(
                 """
-                <div style="font-size: 12.5px; color: #CBD5E1; line-height: 1.7; font-family: monospace;">
-                    <div style="color: #38BDF8; font-weight: 800; margin-bottom: 6px;">INTERNAL TEST NOTICE</div>
-                    本系統目前為正式環境第一階段特定人員內部測試。<br><br>
-                    <div style="color: #FBBF24; font-weight: 800; margin-bottom: 4px;">IMPORTANT GUIDELINES:</div>
-                    1. <b>排班依據</b>：本系統班表僅供個人調假與換班快篩參考，<b>即時班表務必以公司官方公告為準</b>。<br>
-                    2. <b>資訊安全</b>：班表相關資料屬內部營運資訊，<b>請勿外流授權碼與班表截圖</b>。<br>
-                    3. <b>權限與回報</b>：登入後若發現資料有誤，請透過頁尾功能提出。
-                </div>
+<div style="font-size: 12.5px; color: #CBD5E1; line-height: 1.7; font-family: monospace;">
+    <div style="color: #38BDF8; font-weight: 800; margin-bottom: 6px;">INTERNAL TEST NOTICE</div>
+    本系統目前為正式環境第一階段特定人員內部測試。<br><br>
+    <div style="color: #FBBF24; font-weight: 800; margin-bottom: 4px;">IMPORTANT GUIDELINES:</div>
+    1. <b>排班依據</b>：本系統班表僅供個人調假與換班快篩參考，<b>即時班表務必以公司官方公告為準</b>。<br>
+    2. <b>資訊安全</b>：班表相關資料屬內部營運資訊，<b>請勿外流授權碼與班表截圖</b>。<br>
+    3. <b>權限與回報</b>：登入後若發現資料有誤，請透過頁尾功能提出。
+</div>
                 """,
                 unsafe_allow_html=True,
             )
@@ -291,10 +291,10 @@ if st.session_state.get("inspect_emp_target") is not None:
 
     st.markdown(
         f"""
-    <div class="section-header-box">
-        <div class="section-title">[{current_unit}] 組員完整班表檢視: {target_emp}</div>
-        <div class="section-subtitle">INSPECTION MODE // FULL SCHEDULE VIEW</div>
-    </div>
+<div class="section-header-box">
+    <div class="section-title">[{current_unit}] 組員完整班表檢視: {target_emp}</div>
+    <div class="section-subtitle">INSPECTION MODE // FULL SCHEDULE VIEW</div>
+</div>
     """,
         unsafe_allow_html=True,
     )
@@ -330,9 +330,9 @@ if st.session_state.get("inspect_emp_target") is not None:
             with col_dl2:
                 st.markdown(
                     """
-                    <div style="display: flex; align-items: center; height: 100%; font-size: 12px; color: #94A3B8; font-weight: 500; font-family: monospace; padding-left: 6px;">
-                        提示：行動裝置使用者可長按圖片儲存至相簿
-                    </div>
+<div style="display: flex; align-items: center; height: 100%; font-size: 12px; color: #94A3B8; font-weight: 500; font-family: monospace; padding-left: 6px;">
+    提示：行動裝置使用者可長按圖片儲存至相簿
+</div>
                     """,
                     unsafe_allow_html=True,
                 )
@@ -346,30 +346,14 @@ current_unit_label = st.session_state.get("current_unit", "TTN")
 current_operator_id = st.session_state.get("current_user_id", DEFAULT_EMP_ID)
 
 # =========================================================
-# 🚀 優化整合後：精簡現代化頂部戰情與狀態面板 (取代原本佔空間的雙標題)
+# 🚀 優化整合後：精簡現代化頂部戰情與狀態面板（無縮排，確保 Markdown 正確解析 HTML）
 # =========================================================
 enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
 announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫管理者")
 
 integrated_notice_html = ""
 if enable_beta_banner:
-    integrated_notice_html = f"""
-    <div style="
-        margin-top: 8px;
-        padding: 6px 10px;
-        background: rgba(245, 158, 11, 0.12);
-        border: 1px solid rgba(245, 158, 11, 0.4);
-        border-radius: 6px;
-        font-size: 10.5px;
-        color: #FDE68A;
-        font-family: monospace;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    ">
-        <span style="color: #F59E0B; font-weight: bold;">⚠️ NOTICE:</span> {announcement_msg}
-    </div>
-    """
+    integrated_notice_html = f"""<div style="margin-top: 8px; padding: 6px 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; font-size: 10.5px; color: #FDE68A; font-family: monospace; display: flex; align-items: center; gap: 6px;"><span style="color: #F59E0B; font-weight: bold;">⚠️ NOTICE:</span> {announcement_msg}</div>"""
 
 st.markdown(
     f"""
@@ -393,11 +377,11 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
 ):
     st.markdown(
         """
-    <div class="section-header-box">
-        <div class="section-title">管理員身分驗證</div>
-        <div class="section-subtitle">ADMINISTRATOR SECURITY VERIFICATION</div>
-    </div>
-    """,
+<div class="section-header-box">
+    <div class="section-title">管理員身分驗證</div>
+    <div class="section-subtitle">ADMINISTRATOR SECURITY VERIFICATION</div>
+</div>
+""",
         unsafe_allow_html=True,
     )
 
