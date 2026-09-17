@@ -507,12 +507,12 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 響應式圖卡欄位排版：小螢幕自動堆疊，寬螢幕兩欄並排 */
+        /* 完美雙排明細卡片鎖定 (強制兩欄並排不變形) */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
             flex-direction: row !important;
-            flex-wrap: wrap !important;
+            flex-wrap: nowrap !important;
             width: 100% !important;
             max-width: 100% !important;
             gap: 6px !important;
@@ -521,24 +521,12 @@ def render_user_home() -> None:
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
-            width: 100% !important;
-            max-width: 100% !important;
-            flex: 0 0 100% !important;
+            width: calc(50% - 3px) !important;
+            max-width: calc(50% - 3px) !important;
+            min-width: 0 !important;
+            flex: 0 0 calc(50% - 3px) !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
-        }
-
-        @media (min-width: 640px) {
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
-                flex-wrap: nowrap !important;
-            }
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
-            div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
-                width: calc(50% - 3px) !important;
-                max-width: calc(50% - 3px) !important;
-                flex: 0 0 calc(50% - 3px) !important;
-            }
         }
 
         .crew-card-integrated, .crew-card-integrated-warn {
@@ -603,6 +591,7 @@ def render_user_home() -> None:
             box-sizing: border-box !important;
         }
 
+        /* 完美融合的卡片底部按鈕下緣 */
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button,
         div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
             width: 100% !important;
@@ -1246,13 +1235,15 @@ def render_user_home() -> None:
                 )
                 cnt_long = sum(1 for r in filtered_results if r.get("長班"))
 
-                col_s1, col_s2, col_s3 = st.columns(3)
-                with col_s1:
-                    st.metric("符合資格人數", f"{len(filtered_results)} 位")
-                with col_s2:
-                    st.metric("含 DO2W 標記", f"{cnt_do2w} 人")
-                with col_s3:
-                    st.metric("長班 (>8.5h)", f"{cnt_long} 人")
+                # 人數明細統計欄位：加上容器外框優化
+                with st.container(border=True):
+                    col_s1, col_s2, col_s3 = st.columns(3)
+                    with col_s1:
+                        st.metric("符合資格人數", f"{len(filtered_results)} 位")
+                    with col_s2:
+                        st.metric("含 DO2W 標記", f"{cnt_do2w} 人")
+                    with col_s3:
+                        st.metric("長班 (>8.5h)", f"{cnt_long} 人")
 
                 for i in range(0, len(filtered_results), 2):
                     batch = filtered_results[i : i + 2]
@@ -1718,13 +1709,15 @@ def render_user_home() -> None:
                                     if c.get("連續上班天數", 0) >= 6
                                 )
 
-                                col_es1, col_es2, col_es3 = st.columns(3)
-                                with col_es1:
-                                    st.metric("可換假總人數", f"{len(filtered_candidates)} 位")
-                                with col_es2:
-                                    st.metric("含 DO2W 標記", f"{cnt_do2w} 人")
-                                with col_es3:
-                                    st.metric("連班 6 天以上", f"{cnt_streak6} 人")
+                                # 人數明細統計欄位：加上容器外框優化
+                                with st.container(border=True):
+                                    col_es1, col_es2, col_es3 = st.columns(3)
+                                    with col_es1:
+                                        st.metric("可換假總人數", f"{len(filtered_candidates)} 位")
+                                    with col_es2:
+                                        st.metric("含 DO2W 標記", f"{cnt_do2w} 人")
+                                    with col_es3:
+                                        st.metric("連班 6 天以上", f"{cnt_streak6} 人")
 
                                 for i in range(0, len(filtered_candidates), 2):
                                     batch = filtered_candidates[i : i + 2]
