@@ -706,12 +706,7 @@ def render_user_home() -> None:
     """
     st.html(period_html)
 
-    st.markdown(
-        """
-    <div style='font-size: 13px; font-weight: 700; color: #94A3B8; margin-bottom: 8px;'>選擇系統操作模式</div>
-    """,
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
     MODE_OPTIONS = [
         "繪製個人月班表圖檔",
@@ -722,19 +717,30 @@ def render_user_home() -> None:
     if "active_app_mode" not in st.session_state:
         st.session_state["active_app_mode"] = "繪製個人月班表圖檔"
 
-    try:
-        current_mode_idx = MODE_OPTIONS.index(st.session_state["active_app_mode"])
-    except ValueError:
-        current_mode_idx = 0
+    if st.session_state["active_app_mode"] not in MODE_OPTIONS:
+        st.session_state["active_app_mode"] = MODE_OPTIONS[0]
 
-    app_mode = st.radio(
-        "系統操作模式選擇",
-        MODE_OPTIONS,
-        index=current_mode_idx,
-        horizontal=False,
-        label_visibility="collapsed",
-        key="user_app_mode",
-    )
+    # 使用 st.segmented_control 完美對應您在 CSS 寫好的膠囊分頁外框
+    if hasattr(st, "segmented_control"):
+        app_mode = st.segmented_control(
+            "系統操作模式選擇",
+            options=MODE_OPTIONS,
+            default=st.session_state["active_app_mode"],
+            selection_mode="single",
+            label_visibility="collapsed",
+            key="user_app_mode_seg",
+        )
+        if app_mode is None:
+            app_mode = st.session_state["active_app_mode"]
+    else:
+        app_mode = st.radio(
+            "系統操作模式選擇",
+            MODE_OPTIONS,
+            index=MODE_OPTIONS.index(st.session_state["active_app_mode"]),
+            horizontal=True,
+            label_visibility="collapsed",
+            key="user_app_mode_radio",
+        )
 
     if app_mode != st.session_state["active_app_mode"]:
         st.session_state["active_app_mode"] = app_mode
@@ -749,6 +755,7 @@ def render_user_home() -> None:
         for mk in modal_keys_to_clear:
             if mk in st.session_state:
                 st.session_state[mk] = False
+        st.rerun()
 
     st.markdown("---")
 
@@ -990,9 +997,6 @@ def render_user_home() -> None:
 
                     comp.show_holiday_notice(win_week_holidays, win_week_str)
 
-                    # -----------------------------------------------------------------
-                    # 獨立時段滑塊（綁定獨立記憶變數 + 大字體醒目顯示盒）
-                    # -----------------------------------------------------------------
                     st.markdown('<div class="section-field-label">Sign-In 時段區間 (拖曳調整)</div>', unsafe_allow_html=True)
 
                     if "saved_win_time_range" not in st.session_state:
@@ -1019,7 +1023,7 @@ def render_user_home() -> None:
 
                     st.session_state["saved_win_time_range"] = slider_val
                     min_time, max_time_sel = slider_val
-                    # 【精巧橫向時段顯示】不佔空間、精美俐落
+                    
                     st.markdown(
                         f"""
                         <div style="background: rgba(15, 23, 42, 0.85); 
@@ -1063,9 +1067,6 @@ def render_user_home() -> None:
                         )
                         st.session_state["saved_win_long_shift"] = only_long_shift
 
-                    # -----------------------------------------------------------------
-                    # 搜尋執行邏輯
-                    # -----------------------------------------------------------------
                     if st.button("搜尋可換班組員名單", key="btn_window_search", type="primary", use_container_width=True):
                         raw_candidates = []
 
