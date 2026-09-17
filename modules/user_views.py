@@ -309,7 +309,7 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 👑 【人體工學優化】：強制三欄模式切換器在手機上維持橫向並排、絕對不換行 */
+        /* 👑 【強制覆蓋手機版響應式堆疊】：讓上方三顆切換按鈕在手機上永遠維持橫向三欄並排 */
         div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) {
             display: flex !important;
             flex-direction: row !important;
@@ -327,12 +327,25 @@ def render_user_home() -> None:
         }
 
         div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) > div[data-testid="column"] {
-            flex: 1 1 0% !important;
-            width: calc(33.33% - 3px) !important;
-            max-width: calc(33.33% - 3px) !important;
+            flex: 1 1 33.33% !important;
+            width: 33.33% !important;
+            max-width: 33.33% !important;
             min-width: 0 !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
+        }
+
+        @media (max-width: 768px) {
+            div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) {
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) > div[data-testid="column"] {
+                flex: 1 1 33.33% !important;
+                width: 33.33% !important;
+                max-width: 33.33% !important;
+                min-width: 0 !important;
+            }
         }
 
         /* 未選中的分頁按鈕 */
