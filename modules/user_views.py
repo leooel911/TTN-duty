@@ -1,6 +1,5 @@
 import os
 import re
-import textwrap
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -657,7 +656,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 優化後：整併排班週期與系統維護狀態 (使用 textwrap.dedent 避免 HTML 變純文字)
+    # 🚀 單行化 HTML：徹底避開 Python 縮排與 Markdown 衝突
     # =========================================================================
     maintenance_active = (
         is_module_maintenance(current_unit_label, "producer") or 
@@ -665,41 +664,10 @@ def render_user_home() -> None:
         is_module_maintenance(current_unit_label, "exchange_filter")
     )
     
-    maint_badge_html = ""
-    if maintenance_active:
-        maint_badge_html = '<span style="background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; color: #FCA5A5; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">系統維護中</span>'
-
-    period_html = textwrap.dedent(f"""
-    <div style="
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
-        border: 1.5px solid {"#EF4444" if maintenance_active else "rgba(56, 189, 248, 0.4)"};
-        border-radius: 12px;
-        padding: 10px 14px;
-        margin-bottom: 12px;
-        font-family: monospace;
-    ">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 13px; font-weight: 900; color: #38BDF8;">[{current_unit_label}] 排班週期</span>
-                {maint_badge_html}
-            </div>
-            <span style="font-size: 13px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800;">
-                {sched_range if len(missing_files) < 3 else "資料庫異常"}
-            </span>
-        </div>
-        <details style="margin-top: 6px; font-size: 10px; color: #94A3B8; cursor: pointer;">
-            <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
-                <span>檢視各大表更新時間與維護詳情</span>
-                <span style="font-size: 9px; color: #64748B;">▼</span>
-            </summary>
-            <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1);">
-                <div style="display: flex; justify-content: space-between;"><span>駕駛 (TD)</span><span>{td_time}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>列車長 (TM)</span><span>{tm_time}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>服勤員 (TA)</span><span>{ta_time}</span></div>
-            </div>
-        </details>
-    </div>
-    """)
+    maint_badge_html = '<span style="background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; color: #FCA5A5; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">系統維護中</span>' if maintenance_active else ''
+    
+    period_html = f"""<div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid {"#EF4444" if maintenance_active else "rgba(56, 189, 248, 0.4)"}; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-family: monospace;"><div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 13px; font-weight: 900; color: #38BDF8;">[{current_unit_label}] 排班週期</span>{maint_badge_html}</div><span style="font-size: 13px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800;">{sched_range if len(missing_files) < 3 else "資料庫異常"}</span></div><details style="margin-top: 6px; font-size: 10px; color: #94A3B8; cursor: pointer;"><summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;"><span>檢視各大表更新時間與維護詳情</span><span style="font-size: 9px; color: #64748B;">▼</span></summary><div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1);"><div style="display: flex; justify-content: space-between;"><span>駕駛 (TD)</span><span>{td_time}</span></div><div style="display: flex; justify-content: space-between;"><span>列車長 (TM)</span><span>{tm_time}</span></div><div style="display: flex; justify-content: space-between;"><span>服勤員 (TA)</span><span>{ta_time}</span></div></div></details></div>"""
+    
     st.markdown(period_html, unsafe_allow_html=True)
 
     # =========================================================================
