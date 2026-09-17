@@ -688,6 +688,12 @@ def render_user_home() -> None:
     """
     st.html(period_html)
 
+    # =========================================================================
+    # 🚀 全域置頂區塊：休息倒數計時器（常駐於操作模式上方，任何分頁皆可見）
+    # =========================================================================
+    mock_next_shift = datetime.now() + timedelta(hours=9, minutes=15)
+    render_rest_countdown_card(mock_next_shift, "下次出勤預告：次日早班 08:30 (車次: NG1550)")
+
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
     if "active_app_mode" not in st.session_state:
@@ -731,10 +737,6 @@ def render_user_home() -> None:
 
     # ==================== 模式一：個人月班表 ====================
     if app_mode == "個人月班表":
-        # 🚀 插入休息倒數計時卡片（置於個人月班表的最上方，組員第一眼即可看見）
-        mock_next_shift = datetime.now() + timedelta(hours=9, minutes=15)
-        render_rest_countdown_card(mock_next_shift, "下次出勤預告：次日早班 08:30 (車次: NG1550)")
-
         if is_module_maintenance(current_unit_label, "producer"):
             if not is_admin_user:
                 st.markdown(
@@ -1415,7 +1417,7 @@ def render_user_home() -> None:
                         comp.show_holiday_notice(ex_week_holidays, target_week_str)
 
                         st.caption(
-                            f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）"
+                            f" **同一週規範換假區間：{target_week_str}**（還選單已自動設定於當週區間）"
                         )
 
                         if "saved_ex_time_filter" not in st.session_state:
