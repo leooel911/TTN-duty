@@ -345,7 +345,33 @@ if st.session_state.get("inspect_emp_target") is not None:
 current_unit_label = st.session_state.get("current_unit", "TTN")
 current_operator_id = st.session_state.get("current_user_id", DEFAULT_EMP_ID)
 
-# 🚀 (已在此處移除原本重複渲染的舊標題區塊，改由 user_views.py 統一處理精簡標題)
+# =========================================================
+# 🚀 頂部戰情面板：加上高質感外框與內層漸層
+# =========================================================
+enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
+announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫管理者")
+
+integrated_notice_html = ""
+if enable_beta_banner:
+    integrated_notice_html = f"""<div style="margin-top: 8px; padding: 6px 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; font-size: 10.5px; color: #FDE68A; font-family: monospace; display: flex; align-items: center; gap: 6px;"><span style="color: #F59E0B; font-weight: bold;">⚠️ NOTICE:</span> {announcement_msg}</div>"""
+
+st.markdown(
+    f"""
+<div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; font-family: monospace; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 18px; font-weight: 900; color: #F8FAFC; letter-spacing: 1px;">
+            CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
+        </div>
+        <div style="font-size: 9.5px; color: #64748B; font-family: monospace;">TLS 1.3 // SECURE</div>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 11px;">
+        <span style="color: #94A3B8;"><span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #FBBF24;">{current_operator_id}</strong></span>
+    </div>
+    {integrated_notice_html}
+</div>
+""",
+    unsafe_allow_html=True,
+)
 
 if st.session_state.get("show_admin_login", False) and not st.session_state.get(
     "admin_logged_in", False
