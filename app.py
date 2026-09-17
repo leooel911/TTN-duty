@@ -67,57 +67,157 @@ if "current_unit" not in st.session_state:
 
 
 # =========================================================
-# 前置授權碼門戶檢查（消費者介面：無裝飾貼圖，嚴格驗證）
+# 前置授權碼門戶檢查（航太行控中心風格登入介面）
 # =========================================================
 is_authed = st.session_state.get("authenticated", False)
 is_admin_authed = st.session_state.get("admin_logged_in", False)
 
 if not is_authed and not is_admin_authed:
+    # 注入專屬登入頁面的高質感發光、背景網格與遙測列 CSS
     st.markdown(
         """
-    <div style="text-align: center; margin-top: 1.5rem; margin-bottom: 1.2rem;">
-        <div style="font-size: 26px; font-weight: 900; letter-spacing: 1.5px; color: #F8FAFC; font-family: monospace;">CREW DUTY ENGINE</div>
-        <div style="color: #94A3B8; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 6px; font-family: monospace;">
-            OPERATIONS MANAGEMENT SYSTEM<br>C.L.F EDITION
-        </div>
-    </div>
-    """,
+        <style>
+        /* 全螢幕沉浸式深空漸層背景與微網格 */
+        .stApp {
+            background: radial-gradient(circle at 50% 20%, #0f172a 0%, #070b14 100%) !important;
+        }
+        
+        .stApp::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
+            background-size: 32px 32px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* 終端機風格主標題與副標題 */
+        .login-title {
+            font-size: 26px !important;
+            font-weight: 900 !important;
+            color: #F8FAFC !important;
+            letter-spacing: 2px !important;
+            text-align: center;
+            text-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
+            margin-bottom: 2px;
+            font-family: monospace;
+        }
+        
+        .login-subtitle {
+            font-size: 10px !important;
+            font-weight: 700 !important;
+            color: #38BDF8 !important;
+            font-family: monospace;
+            letter-spacing: 1.5px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        /* 系統動態遙測狀態列 (Live Telemetry Bar) */
+        .telemetry-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 8px;
+            padding: 8px 14px;
+            margin-bottom: 16px;
+            font-family: monospace;
+            font-size: 10.5px;
+            color: #94A3B8;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+        }
+        
+        .telemetry-dot {
+            height: 7px;
+            width: 7px;
+            background-color: #34D399;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 10px #34D399;
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* 玻璃擬態登入主容器改造 */
+        div[data-testid="stContainer"]:has(.login-card-marker) {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(30, 41, 59, 0.82) 100%) !important;
+            backdrop-filter: blur(16px);
+            border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
+            border-radius: 16px !important;
+            padding: 20px 20px 10px 20px !important;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), inset 0 1px 2px rgba(255, 255, 255, 0.15) !important;
+        }
+        </style>
+        """,
         unsafe_allow_html=True,
     )
 
     col1, col2, col3 = st.columns([1, 2.4, 1])
     with col2:
+        # 標題與遙測列
+        st.markdown('<div class="login-title">CREW DUTY ENGINE</div>', unsafe_allow_html=True)
+        st.markdown('<div class="login-subtitle">BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div>', unsafe_allow_html=True)
+
+        st.markdown(
+            """
+            <div class="telemetry-bar">
+                <div><span class="telemetry-dot"></span>SYS: ONLINE</div>
+                <div>SECURE: TLS 1.3</div>
+                <div>NODE: TTN-01</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         with st.expander("系統登入指引與試用須知", expanded=False):
             st.markdown(
                 """
-            <div style="font-size: 12.5px; color: #CBD5E1; line-height: 1.7; font-family: monospace;">
-                <div style="color: #38BDF8; font-weight: 800; margin-bottom: 6px;">INTERNAL TEST NOTICE</div>
-                本系統目前為正式環境第一階段特定人員內部測試。<br><br>
-                <div style="color: #FBBF24; font-weight: 800; margin-bottom: 4px;">IMPORTANT GUIDELINES:</div>
-                1. <b>排班依據</b>：本系統班表僅供個人調假與換班快篩參考，<b>即時班表務必以公司官方公告為準</b>。<br>
-                2. <b>資訊安全</b>：班表相關資料屬內部營運資訊，<b>請勿外流授權碼與班表截圖</b>。<br>
-                3. <b>權限與回報</b>：登入後若發現資料有誤，請透過頁尾功能提出。
-            </div>
-            """,
+                <div style="font-size: 12.5px; color: #CBD5E1; line-height: 1.7; font-family: monospace;">
+                    <div style="color: #38BDF8; font-weight: 800; margin-bottom: 6px;">INTERNAL TEST NOTICE</div>
+                    本系統目前為正式環境第一階段特定人員內部測試。<br><br>
+                    <div style="color: #FBBF24; font-weight: 800; margin-bottom: 4px;">IMPORTANT GUIDELINES:</div>
+                    1. <b>排班依據</b>：本系統班表僅供個人調假與換班快篩參考，<b>即時班表務必以公司官方公告為準</b>。<br>
+                    2. <b>資訊安全</b>：班表相關資料屬內部營運資訊，<b>請勿外流授權碼與班表截圖</b>。<br>
+                    3. <b>權限與回報</b>：登入後若發現資料有誤，請透過頁尾功能提出。
+                </div>
+                """,
                 unsafe_allow_html=True,
             )
 
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         
-        with st.form("login_main_form"):
-            selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"], key="login_unit_box")
-            entered_emp = st.text_input(
-                "使用者員編 (範例：A023300)",
-                value=DEFAULT_EMP_ID,
-                placeholder="例如: A023300",
-                max_chars=10,
-                key="login_emp_box",
-            )
-            entered_key = st.text_input(
-                "系統授權碼", type="password", placeholder="請輸入系統授權碼...", key="login_key_box"
-            )
+        # 登入主容器（發光玻璃卡片）
+        with st.container(border=True):
+            st.markdown('<div class="login-card-marker"></div>', unsafe_allow_html=True)
+            
+            with st.form("login_main_form"):
+                selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"], key="login_unit_box")
+                
+                # 智慧輸入：自動轉大寫
+                raw_entered_emp = st.text_input(
+                    "使用者員編 (範例：A023300)",
+                    value=DEFAULT_EMP_ID,
+                    placeholder="例如: A023300",
+                    max_chars=10,
+                    key="login_emp_box",
+                )
+                entered_emp = raw_entered_emp.strip().upper()
 
-            btn_auth = st.form_submit_button("進入系統", type="primary", use_container_width=True)
+                entered_key = st.text_input(
+                    "系統授權碼", type="password", placeholder="請輸入系統授權碼...", key="login_key_box"
+                )
+
+                btn_auth = st.form_submit_button("進入系統 ➔", type="primary", use_container_width=True)
 
         if btn_auth:
             success, message, user_session = authenticate_user(selected_unit, entered_emp, entered_key)
@@ -224,7 +324,7 @@ st.markdown(
 <div class="header-container">
     <div class="main-title">CREW DUTY ENGINE</div>
     <div style="color: #94A3B8; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; font-family: monospace; margin-top: 3px;">
-        OPERATIONS MANAGEMENT SYSTEM &bull; C.L.F EDITION
+        OPERATIONS MANAGEMENT SYSTEM &bull; BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION
     </div>
     <div class="title-subtitle">
         <span class="online-dot"></span>STATUS: ACTIVE | {current_unit_label} : {current_operator_id}<span class="online-dot"></span>
@@ -235,7 +335,7 @@ st.markdown(
 )
 
 enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
-announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫後台管理者")
+announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫管理者")
 
 if enable_beta_banner:
     st.markdown(
