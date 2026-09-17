@@ -1,5 +1,6 @@
 import os
 import re
+import textwrap
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -656,7 +657,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 優化後：整併排班週期與系統維護狀態
+    # 🚀 優化後：整併排班週期與系統維護狀態 (使用 textwrap.dedent 避免 HTML 變純文字)
     # =========================================================================
     maintenance_active = (
         is_module_maintenance(current_unit_label, "producer") or 
@@ -668,7 +669,7 @@ def render_user_home() -> None:
     if maintenance_active:
         maint_badge_html = '<span style="background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; color: #FCA5A5; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">系統維護中</span>'
 
-    period_html = f"""
+    period_html = textwrap.dedent(f"""
     <div style="
         background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
         border: 1.5px solid {"#EF4444" if maintenance_active else "rgba(56, 189, 248, 0.4)"};
@@ -698,7 +699,7 @@ def render_user_home() -> None:
             </div>
         </details>
     </div>
-    """
+    """)
     st.markdown(period_html, unsafe_allow_html=True)
 
     # =========================================================================
