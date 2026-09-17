@@ -309,46 +309,63 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 👑 【精準結構選取器】：透過 3 欄結構精準鎖定模式切換器，強制在手機與電腦上維持橫向並排不換行 */
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
+        /* 👑 【高質感 Tab 分頁切換器（改造自 st.radio）】：完美支援手機與電腦橫向並排、絕不換行 */
+        div[data-testid="stRadio"] {
             width: 100% !important;
-            max-width: 100% !important;
+        }
+        
+        div[data-testid="stRadio"] > div[role="radiogroup"] {
             background: rgba(15, 23, 42, 0.85) !important;
             border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
             border-radius: 14px !important;
             padding: 5px !important;
             gap: 4px !important;
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
             box-sizing: border-box !important;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45), inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
             margin-bottom: 8px !important;
         }
 
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) > div[data-testid="column"] {
+        div[data-testid="stRadio"] div[role="radiogroup"] > label {
             flex: 1 1 33.33% !important;
             width: 33.33% !important;
             max-width: 33.33% !important;
-            min-width: 0 !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;
-        }
-
-        /* 未選中的分頁按鈕 */
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
             padding: 8px 2px !important;
             border-radius: 10px !important;
-            width: 100% !important;
+            text-align: center !important;
+            cursor: pointer !important;
             transition: all 0.2s ease !important;
+            margin: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            overflow: hidden !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"]:hover {
+
+        div[data-testid="stRadio"] div[role="radiogroup"] > label:hover {
             background: rgba(255, 255, 255, 0.05) !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] p {
+
+        /* 選中狀態的分頁按鈕：高質感發光外框與深藍底 */
+        div[data-testid="stRadio"] div[role="radiogroup"] > label:has(input:checked) {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 132, 199, 0.25) 100%) !important;
+            border: 1.5px solid #38BDF8 !important;
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25) !important;
+        }
+
+        /* 隱藏原生圓圈按鈕 */
+        div[data-testid="stRadio"] div[role="radiogroup"] input[type="radio"] {
+            display: none !important;
+        }
+
+        /* 未選中文字樣式 */
+        div[data-testid="stRadio"] div[role="radiogroup"] > label p {
             color: #64748B !important;
             font-size: 12px !important;
             font-weight: 700 !important;
@@ -358,17 +375,8 @@ def render_user_home() -> None:
             margin: 0 !important;
         }
 
-        /* 已選中的分頁按鈕：發光外框與深藍底 */
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 132, 199, 0.25) 100%) !important;
-            border: 1.5px solid #38BDF8 !important;
-            border-radius: 10px !important;
-            padding: 8px 2px !important;
-            width: 100% !important;
-            box-shadow: 0 0 14px rgba(56, 189, 248, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25) !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"] p {
+        /* 選中文字樣式 */
+        div[data-testid="stRadio"] div[role="radiogroup"] > label:has(input:checked) p {
             color: #38BDF8 !important;
             font-size: 12px !important;
             font-weight: 900 !important;
@@ -702,38 +710,25 @@ def render_user_home() -> None:
     if "active_app_mode" not in st.session_state:
         st.session_state["active_app_mode"] = "個人月班表"
 
-    # 三欄並排切換器
-    col_tab1, col_tab2, col_tab3 = st.columns(3)
+    def on_mode_change():
+        st.session_state["active_app_mode"] = st.session_state["active_mode_radio"]
+        st.session_state.pop("win_raw_candidates", None)
+        st.session_state.pop("ex_raw_candidates", None)
+        st.session_state["ex_search_performed"] = False
 
-    with col_tab1:
-        is_active_1 = st.session_state["active_app_mode"] == "個人月班表"
-        if st.button("個人月班表", key="tab_btn_1", use_container_width=True, type="primary" if is_active_1 else "secondary"):
-            if not is_active_1:
-                st.session_state["active_app_mode"] = "個人月班表"
-                st.session_state.pop("win_raw_candidates", None)
-                st.session_state.pop("ex_raw_candidates", None)
-                st.session_state["ex_search_performed"] = False
-                st.rerun()
+    modes = ["個人月班表", "換班查詢", "換假查詢"]
+    current_mode_idx = modes.index(st.session_state["active_app_mode"]) if st.session_state["active_app_mode"] in modes else 0
 
-    with col_tab2:
-        is_active_2 = st.session_state["active_app_mode"] == "換班查詢"
-        if st.button("換班查詢", key="tab_btn_2", use_container_width=True, type="primary" if is_active_2 else "secondary"):
-            if not is_active_2:
-                st.session_state["active_app_mode"] = "換班查詢"
-                st.session_state.pop("win_raw_candidates", None)
-                st.session_state.pop("ex_raw_candidates", None)
-                st.session_state["ex_search_performed"] = False
-                st.rerun()
-
-    with col_tab3:
-        is_active_3 = st.session_state["active_app_mode"] == "換假查詢"
-        if st.button("換假查詢", key="tab_btn_3", use_container_width=True, type="primary" if is_active_3 else "secondary"):
-            if not is_active_3:
-                st.session_state["active_app_mode"] = "換假查詢"
-                st.session_state.pop("win_raw_candidates", None)
-                st.session_state.pop("ex_raw_candidates", None)
-                st.session_state["ex_search_performed"] = False
-                st.rerun()
+    # 👑 改用水平 st.radio 實作高質感分頁切換器，100% 解決手機版自動換行堆疊問題
+    app_mode = st.radio(
+        "選擇系統操作模式",
+        modes,
+        index=current_mode_idx,
+        horizontal=True,
+        label_visibility="collapsed",
+        key="active_mode_radio",
+        on_change=on_mode_change,
+    )
 
     app_mode = st.session_state["active_app_mode"]
 
