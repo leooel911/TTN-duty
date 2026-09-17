@@ -309,6 +309,7 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
+        /* 膠囊分頁選單：強制單行並排不換行 */
         div[data-testid="stSegmentedControl"] {
             width: 100% !important;
             max-width: 100% !important;
@@ -321,13 +322,14 @@ def render_user_home() -> None:
         div[data-testid="stSegmentedControl"] div[role="group"] {
             display: flex !important;
             flex-direction: row !important;
+            flex-wrap: nowrap !important;
             width: 100% !important;
             max-width: 100% !important;
             background: rgba(15, 23, 42, 0.8) !important;
             border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
             border-radius: 12px !important;
-            padding: 4px !important;
-            gap: 4px !important;
+            padding: 3px !important;
+            gap: 2px !important;
             box-sizing: border-box !important;
             box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
         }
@@ -336,7 +338,6 @@ def render_user_home() -> None:
         div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"],
         div[data-testid="stSegmentedControl"] label {
             flex: 1 1 0% !important;
-            width: 33.333% !important;
             min-width: 0 !important;
             display: flex !important;
             justify-content: center !important;
@@ -345,7 +346,7 @@ def render_user_home() -> None:
             border: none !important;
             background: transparent !important;
             color: #94A3B8 !important;
-            padding: 8px 4px !important;
+            padding: 6px 2px !important;
             margin: 0 !important;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
             box-shadow: none !important;
@@ -372,9 +373,9 @@ def render_user_home() -> None:
 
         div[data-testid="stSegmentedControl"] p,
         div[data-testid="stSegmentedControl"] span {
-            font-size: 14px !important;
+            font-size: 12.5px !important;
             font-weight: 800 !important;
-            letter-spacing: 0.5px !important;
+            letter-spacing: 0.2px !important;
             margin: 0 !important;
             text-align: center !important;
             white-space: nowrap !important;
@@ -708,19 +709,20 @@ def render_user_home() -> None:
 
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
+    # 縮短選項文字，確保在手機小螢幕上能完美並排在同一行
     MODE_OPTIONS = [
-        "繪製個人月班表圖檔",
-        "換班｜選擇換班日期",
-        "換假｜選擇換假日期",
+        "個人月班表",
+        "換班查詢",
+        "換假查詢",
     ]
 
     if "active_app_mode" not in st.session_state:
-        st.session_state["active_app_mode"] = "繪製個人月班表圖檔"
+        st.session_state["active_app_mode"] = "個人月班表"
 
     if st.session_state["active_app_mode"] not in MODE_OPTIONS:
         st.session_state["active_app_mode"] = MODE_OPTIONS[0]
 
-    # 使用 st.segmented_control 完美對應您在 CSS 寫好的膠囊分頁外框
+    # 使用 st.segmented_control 配合不換行 CSS 呈現橫向膠囊分頁
     if hasattr(st, "segmented_control"):
         app_mode = st.segmented_control(
             "系統操作模式選擇",
@@ -759,8 +761,8 @@ def render_user_home() -> None:
 
     st.markdown("---")
 
-    # ==================== 模式一：繪製個人月班表圖檔 ====================
-    if app_mode == "繪製個人月班表圖檔":
+    # ==================== 模式一：個人月班表 ====================
+    if app_mode == "個人月班表":
         if is_module_maintenance(current_unit_label, "producer"):
             if not is_admin_user:
                 st.markdown(
@@ -852,8 +854,8 @@ def render_user_home() -> None:
                 except Exception as e:
                     st.error(f"繪製班表時發生錯誤：{e}")
 
-    # ==================== 模式二：換班｜選擇換班日期 ====================
-    elif app_mode == "換班｜選擇換班日期":
+    # ==================== 模式二：換班查詢 ====================
+    elif app_mode == "換班查詢":
         if is_module_maintenance(current_unit_label, "window_filter"):
             if not is_admin_user:
                 st.markdown(
@@ -1280,8 +1282,8 @@ def render_user_home() -> None:
                         else:
                             st.info("在指定條件內，找不到符合的人員")
 
-    # ==================== 模式三：換假｜選擇換假日期 ====================
-    elif app_mode == "換假｜選擇換假日期":
+    # ==================== 模式三：換假查詢 ====================
+    elif app_mode == "換假查詢":
         if is_module_maintenance(current_unit_label, "exchange_filter"):
             if not is_admin_user:
                 st.markdown(
