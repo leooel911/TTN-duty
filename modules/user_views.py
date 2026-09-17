@@ -1,6 +1,6 @@
 import os
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
@@ -181,6 +181,79 @@ def reset_ex_search() -> None:
     st.session_state.pop("ex_raw_candidates", None)
 
 
+def render_rest_countdown_card(next_duty_time: datetime, duty_info_str: str):
+    """
+    渲染帶有霓虹外框發光警示的休息倒數計時器
+    """
+    now = datetime.now()
+    remaining = next_duty_time - now
+    
+    if remaining.total_seconds() <= 0:
+        status_color = "#ef4444"  # 紅色
+        status_text = "目前值勤中或已過出勤時間"
+        hours, minutes, seconds = 0, 0, 0
+    else:
+        total_seconds = int(remaining.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        
+        # 11 小時法規紅綠燈判斷
+        if hours >= 11:
+            status_color = "#22c55e"  # 綠色 (安全期)
+            status_text = "充分休息中 (高於 11 小時法規)"
+        else:
+            status_color = "#ef4444"  # 紅色 (警戒期)
+            status_text = "注意！距離下次出勤低於 11 小時法定門檻"
+
+    html_card = f"""
+    <div style="
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        border: 2px solid {status_color};
+        border-radius: 14px;
+        padding: 20px 24px;
+        color: #f8fafc;
+        font-family: monospace;
+        box-shadow: 0 0 20px {status_color}44, inset 0 0 10px {status_color}22;
+        margin-bottom: 20px;
+        position: relative;
+    ">
+        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+            <span style="
+                height: 10px; width: 10px; 
+                background-color: {status_color}; 
+                border-radius: 50%; 
+                display: inline-block; 
+                margin-right: 8px; 
+                box-shadow: 0 0 10px {status_color};
+            "></span>
+            <span style="font-size: 13px; font-weight: bold; color: {status_color}; letter-spacing: 1px;">
+                {status_text}
+            </span>
+        </div>
+        <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;">
+            距下次出勤還有
+        </div>
+        <div style="font-size: 36px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 14px; text-shadow: 0 0 20px {status_color}88;">
+            {hours:02d} <span style="font-size: 16px; color: #64748b; font-weight: normal;">時</span> 
+            {minutes:02d} <span style="font-size: 16px; color: #64748b; font-weight: normal;">分</span> 
+            {seconds:02d} <span style="font-size: 16px; color: #64748b; font-weight: normal;">秒</span>
+        </div>
+        <div style="
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: #cbd5e1;
+        ">
+            📅 {duty_info_str}
+        </div>
+    </div>
+    """
+    st.markdown(html_card, unsafe_allow_html=True)
+
+
 # =============================================================================
 # 3. 前台主入口邏輯 (純已登入主畫面)
 # =============================================================================
@@ -222,9 +295,6 @@ def render_user_home() -> None:
             line-height: 1.3 !important;
         }
 
-        /* ========================================================================= */
-        /* 🚀 【Unified Command Box 統合控制主卡片】：將 Streamlit 內建容器改造為高質感發光矩陣 */
-        /* ========================================================================= */
         div[data-testid="stContainer"] {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
             border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
@@ -234,7 +304,6 @@ def render_user_home() -> None:
             margin-bottom: 12px !important;
         }
 
-        /* 🚀 【高質感 Slider 專屬外框改造】：卡片式發光滑桿 */
         div[data-testid="stSlider"] {
             background: rgba(7, 11, 20, 0.85) !important;
             border: 1px solid rgba(56, 189, 248, 0.3) !important;
@@ -302,7 +371,6 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 🚀 【精準結構選取器】：強制三欄模式切換器在所有手機與電腦上維持橫向並排、絕不堆疊 */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
             display: flex !important;
             flex-direction: row !important;
@@ -328,7 +396,6 @@ def render_user_home() -> None:
             overflow: hidden !important;
         }
 
-        /* 未選中按鈕樣式 */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
             background: transparent !important;
             border: 1.5px solid transparent !important;
@@ -352,7 +419,6 @@ def render_user_home() -> None:
             margin: 0 !important;
         }
 
-        /* 選中按鈕 (Primary 霓虹發光態樣) */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
             background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
@@ -392,12 +458,6 @@ def render_user_home() -> None:
             flex: 0 0 calc(50% - 3px) !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
-        }
-
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) *,
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) * {
-            min-width: 0 !important;
-            box-sizing: border-box !important;
         }
 
         .crew-card-integrated, .crew-card-integrated-warn {
@@ -485,29 +545,6 @@ def render_user_home() -> None:
             transition: all 0.2s ease-in-out !important;
         }
 
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button p,
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button p {
-            font-size: 10.5px !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            width: 100% !important;
-            margin: 0 !important;
-            line-height: 1.2 !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.card-theme-0) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(56, 189, 248, 0.65) !important; border-top: 1px dashed rgba(56, 189, 248, 0.3) !important; color: #38BDF8 !important; }
-        div[data-testid="stElementContainer"]:has(.card-theme-1) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(52, 211, 153, 0.65) !important; border-top: 1px dashed rgba(52, 211, 153, 0.3) !important; color: #34D399 !important; }
-        div[data-testid="stElementContainer"]:has(.card-theme-2) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(251, 191, 36, 0.65) !important; border-top: 1px dashed rgba(251, 191, 36, 0.3) !important; color: #FBBF24 !important; }
-        div[data-testid="stElementContainer"]:has(.card-theme-3) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(192, 132, 252, 0.65) !important; border-top: 1px dashed rgba(192, 132, 252, 0.3) !important; color: #C084FC !important; }
-        div[data-testid="stElementContainer"]:has(.card-theme-4) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(251, 146, 60, 0.65) !important; border-top: 1px dashed rgba(251, 146, 60, 0.3) !important; color: #FB923C !important; }
-
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
-            border: 1.5px solid #F43F5E !important;
-            border-top: 1px dashed rgba(244, 63, 94, 0.3) !important;
-            color: #FDA4AF !important;
-        }
-
         button[data-testid="stBaseButton-primary"],
         button[data-testid="stBaseButton-primaryFormSubmit"],
         button[kind="primary"],
@@ -528,30 +565,6 @@ def render_user_home() -> None:
             width: 100% !important;
         }
 
-        button[data-testid="stBaseButton-primary"]:hover,
-        button[data-testid="stBaseButton-primaryFormSubmit"]:hover,
-        button[kind="primary"]:hover,
-        button[kind="primaryFormSubmit"]:hover,
-        div[data-testid="stFormSubmitButton"] > button[kind="primary"]:hover,
-        div[data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"]:hover,
-        div[data-testid="stButton"] > button[kind="primary"]:hover,
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"]:hover {
-            background: linear-gradient(135deg, #0369A1 0%, #1E40AF 100%) !important;
-            border-color: #38BDF8 !important;
-            box-shadow: 0 6px 24px rgba(56, 189, 248, 0.8) !important;
-            transform: translateY(-1px) !important;
-        }
-
-        button[data-testid="stBaseButton-primary"] p,
-        button[data-testid="stBaseButton-primaryFormSubmit"] p,
-        button[kind="primary"] p,
-        button[kind="primaryFormSubmit"] p {
-            font-size: 15px !important;
-            font-weight: 800 !important;
-            color: #FFFFFF !important;
-            letter-spacing: 0.6px !important;
-        }
-
         button[data-testid="stBaseButton-secondary"],
         button[kind="secondary"],
         div[data-testid="stButton"] > button[kind="secondary"],
@@ -563,24 +576,6 @@ def render_user_home() -> None:
             border-radius: 10px !important;
             padding: 8px 12px !important;
             transition: all 0.2s ease-in-out !important;
-        }
-
-        button[data-testid="stBaseButton-secondary"]:hover,
-        button[kind="secondary"]:hover,
-        div[data-testid="stButton"] > button[kind="secondary"]:hover,
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"]:hover {
-            background: rgba(255, 255, 255, 0.08) !important;
-            color: #F1F5F9 !important;
-            border-color: rgba(56, 189, 248, 0.4) !important;
-        }
-
-        button[data-testid="stBaseButton-secondary"] p,
-        button[kind="secondary"] p,
-        div[data-testid="stButton"] > button[kind="secondary"] p,
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] p {
-            color: #94A3B8 !important;
-            font-size: 14px !important;
-            font-weight: 600 !important;
         }
 
         .badge-group {
@@ -601,7 +596,6 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 🚀 注入時間滑桿拖動放大特效
     comp.inject_slider_animation()
 
     active_files = get_current_role_files()
@@ -699,7 +693,6 @@ def render_user_home() -> None:
     if "active_app_mode" not in st.session_state:
         st.session_state["active_app_mode"] = "個人月班表"
 
-    # ==================== 🚀 航太級 Command HUD 互動切換列 ====================
     col_hud1, col_hud2, col_hud3 = st.columns(3)
 
     with col_hud1:
@@ -738,6 +731,10 @@ def render_user_home() -> None:
 
     # ==================== 模式一：個人月班表 ====================
     if app_mode == "個人月班表":
+        # 🚀 插入休息倒數計時卡片（置於個人月班表的最上方，組員第一眼即可看見）
+        mock_next_shift = datetime.now() + timedelta(hours=9, minutes=15)
+        render_rest_countdown_card(mock_next_shift, "下次出勤預告：次日早班 08:30 (車次: NG1550)")
+
         if is_module_maintenance(current_unit_label, "producer"):
             if not is_admin_user:
                 st.markdown(
@@ -858,9 +855,6 @@ def render_user_home() -> None:
                     unsafe_allow_html=True,
                 )
 
-        # =========================================================================
-        # 🚀 使用 Streamlit 內建容器 `st.container(border=True)` 打造 Unified Command Box
-        # =========================================================================
         with st.container(border=True):
             st.markdown(
                 """
