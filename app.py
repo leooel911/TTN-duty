@@ -123,8 +123,8 @@ if not is_authed and not is_admin_authed:
 
         /* 終端機風格主標題與副標題 */
         .login-title {
-            font-size: 30px !important;
-            font-weight: 900 !important;
+            font-size: 32px !important;
+            font-weight: 950 !important;
             color: #F8FAFC !important;
             letter-spacing: 2px !important;
             text-align: center;
