@@ -248,10 +248,10 @@ def reset_ex_search() -> None:
 
 def render_rest_countdown_card(next_duty_time: datetime, duty_info_str: str):
     """
-    透過 streamlit 元件安全渲染具備前端 javascript 動態即時倒數的休息倒數計時器
+    透過 Streamlit 元件安全渲染具備前端 JavaScript 動態即時倒數的休息倒數計時器
     """
     y = next_duty_time.year
-    m = next_duty_time.month - 1  # js 月份為 0-11
+    m = next_duty_time.month - 1  # JS 月份為 0-11
     d = next_duty_time.day
     h = next_duty_time.hour
     mi = next_duty_time.minute
@@ -796,7 +796,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 頂部戰情儀表板 (已預先運算變數以防引號衝突與字串外洩)
+    # 🚀 頂部戰情儀表板 (已完全重構，確保 HTML 結構百分之百正確無誤)
     # =========================================================================
     sys_cfg = load_system_config()
     enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
@@ -808,7 +808,7 @@ def render_user_home() -> None:
         is_module_maintenance(current_unit_label, "exchange_filter")
     )
     
-    border_color_val = "#EF4444" if maintenance_active else "rgba(56, 189, 248, 0.5)"
+    border_color_val = "#EF4444" if maintenance_active else "#38BDF8"
     role_label_str = clean_role_label(user_role)
     user_id_display = current_user_id if current_user_id else "GUEST"
     sched_display_text = sched_range if len(missing_files) < 3 else "資料庫異常"
@@ -819,28 +819,25 @@ def render_user_home() -> None:
     notice_box_html = ""
     if enable_beta_banner:
         notice_box_html = f"""
-        <div style="margin-top: 8px; padding: 6px 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; font-size: 10.5px; color: #FDE68A; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <div style="margin-top: 8px; padding: 6px 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; font-size: 10.5px; color: #FDE68A; text-align: center;">
             <span style="color: #F59E0B; font-weight: bold;">⚠️ NOTICE:</span> {announcement_msg}
         </div>
         """
 
     unified_dashboard_html = f"""
-    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid {border_color_val}; border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; font-family: monospace; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);">
-        <!-- 系統標題與身分狀態 -->
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1.5px solid {border_color_val}; border-radius: 16px; padding: 16px; margin-bottom: 12px; font-family: monospace; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); color: #f8fafc;">
         <div style="text-align: center;">
-            <div style="font-size: 16.5px; font-weight: 900; color: #F8FAFC; letter-spacing: 0.5px;">
+            <div style="font-size: 16px; font-weight: 900; letter-spacing: 0.5px;">
                 CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
             </div>
-            <div style="margin-top: 4px; font-size: 11px; color: #94A3B8;">
-                <span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #FBBF24;">{role_label_str} ({user_id_display})</strong>
+            <div style="margin-top: 4px; font-size: 11px; color: #94a3b8;">
+                <span style="color: #22c55e; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #fbbf24;">{role_label_str} ({user_id_display})</strong>
             </div>
             {notice_box_html}
         </div>
         
-        <!-- 內部細緻分隔線 -->
-        <div style="border-top: 1px dashed rgba(56, 189, 248, 0.3); margin: 10px 0;"></div>
+        <hr style="border: none; border-top: 1px dashed rgba(56, 189, 248, 0.3); margin: 12px 0;">
         
-        <!-- 排班週期與狀態 -->
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="font-size: 13px; font-weight: 900; color: #38BDF8; letter-spacing: 0.5px;">[{current_unit_label}] 排班週期</span>
@@ -851,16 +848,15 @@ def render_user_home() -> None:
             </div>
         </div>
         
-        <!-- 各大表更新時間展開詳情 -->
-        <details style="margin-top: 6px; font-size: 10px; color: #94A3B8; cursor: pointer;">
-            <summary style="outline: none; color: #94A3B8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
+        <details style="margin-top: 8px; font-size: 10px; color: #94a3b8; cursor: pointer;">
+            <summary style="outline: none; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
                 <span style="color: #38BDF8;">檢視各大表更新時間與維護詳情</span>
-                <span style="font-size: 10px; color: #64748B;">▼</span>
+                <span>▼</span>
             </summary>
-            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding: 8px 10px; background: rgba(7, 11, 20, 0.6); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; justify-content: space-between; color: #CBD5E1;"><span>駕駛 (TD)</span><span style="font-family: monospace; color: #94A3B8;">{td_time}</span></div>
-                <div style="display: flex; justify-content: space-between; color: #CBD5E1;"><span>列車長 (TM)</span><span style="font-family: monospace; color: #94A3B8;">{tm_time}</span></div>
-                <div style="display: flex; justify-content: space-between; color: #CBD5E1;"><span>服勤員 (TA)</span><span style="font-family: monospace; color: #94A3B8;">{ta_time}</span></div>
+            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding: 8px 10px; background: rgba(7, 11, 20, 0.8); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; justify-content: space-between; color: #cbd5e1;"><span>駕駛 (TD)</span><span>{td_time}</span></div>
+                <div style="display: flex; justify-content: space-between; color: #cbd5e1;"><span>列車長 (TM)</span><span>{tm_time}</span></div>
+                <div style="display: flex; justify-content: space-between; color: #cbd5e1;"><span>服勤員 (TA)</span><span>{ta_time}</span></div>
             </div>
         </details>
     </div>
