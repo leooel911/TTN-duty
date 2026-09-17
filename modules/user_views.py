@@ -589,7 +589,7 @@ def render_user_home() -> None:
     )
 
     # =========================================================================
-    # 🚀 唯一且完整的精簡版戰情面板（帶有精緻外框與 Notice 提示）
+    # 🚀 唯一且完整的精簡版戰情面板（已移除 TLS 資訊並優化標題單行縮排）
     # =========================================================================
     sys_cfg = load_system_config()
     enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
@@ -601,11 +601,10 @@ def render_user_home() -> None:
 
     header_html = f"""
     <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; font-family: monospace; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-size: 18px; font-weight: 900; color: #F8FAFC; letter-spacing: 1px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div style="font-size: 16.5px; font-weight: 900; color: #F8FAFC; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
             </div>
-            <div style="font-size: 9.5px; color: #64748B; font-family: monospace;">TLS 1.3 // SECURE</div>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 11px;">
             <span style="color: #94A3B8;"><span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #FBBF24;">{clean_role_label(user_role)} ({current_user_id if current_user_id else "GUEST"})</strong></span>
@@ -1602,7 +1601,7 @@ def render_user_home() -> None:
                                     ):
                                         continue
 
-                                if strict_limit and cand["連續上班天數"] >= 6:
+                                if strict_limit and cand["連續上班天数"] >= 6:
                                     continue
 
                                 filtered_candidates.append(cand)
