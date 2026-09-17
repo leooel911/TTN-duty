@@ -183,14 +183,14 @@ def reset_ex_search() -> None:
 
 def render_rest_countdown_card(next_duty_time: datetime, duty_info_str: str):
     """
-    渲染帶有霓虹外框發光警示的休息倒數計時器
+    渲染精簡版霓虹外框休息倒數計時器（右上角狀態標籤化，移除上方冗長文字橫幅）
     """
     now = datetime.now()
     remaining = next_duty_time - now
     
     if remaining.total_seconds() <= 0:
         status_color = "#ef4444"  # 紅色
-        status_text = "目前值勤中或已過出勤時間"
+        status_tag = "🔴 值勤中 / 已過出勤"
         hours, minutes, seconds = 0, 0, 0
     else:
         total_seconds = int(remaining.total_seconds())
@@ -201,50 +201,41 @@ def render_rest_countdown_card(next_duty_time: datetime, duty_info_str: str):
         # 11 小時法規紅綠燈判斷
         if hours >= 11:
             status_color = "#22c55e"  # 綠色 (安全期)
-            status_text = "充分休息中 (高於 11 小時法規)"
+            status_tag = "🟢 休息充足 (>11h)"
         else:
             status_color = "#ef4444"  # 紅色 (警戒期)
-            status_text = "注意！距離下次出勤低於 11 小時法定門檻"
+            status_tag = "⚠️ 低於 11 小時法定門檻"
 
     html_card = f"""
     <div style="
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         border: 2px solid {status_color};
         border-radius: 14px;
-        padding: 20px 24px;
+        padding: 16px 20px;
         color: #f8fafc;
         font-family: monospace;
-        box-shadow: 0 0 20px {status_color}44, inset 0 0 10px {status_color}22;
-        margin-bottom: 20px;
-        position: relative;
+        box-shadow: 0 0 16px {status_color}33, inset 0 0 8px {status_color}22;
+        margin-bottom: 14px;
     ">
-        <div style="display: flex; align-items: center; margin-bottom: 12px;">
-            <span style="
-                height: 10px; width: 10px; 
-                background-color: {status_color}; 
-                border-radius: 50%; 
-                display: inline-block; 
-                margin-right: 8px; 
-                box-shadow: 0 0 10px {status_color};
-            "></span>
-            <span style="font-size: 13px; font-weight: bold; color: {status_color}; letter-spacing: 1px;">
-                {status_text}
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">
+                距下次出勤還有
+            </span>
+            <span style="font-size: 11px; font-weight: bold; color: {status_color};">
+                {status_tag}
             </span>
         </div>
-        <div style="font-size: 12px; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;">
-            距下次出勤還有
-        </div>
-        <div style="font-size: 36px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 14px; text-shadow: 0 0 20px {status_color}88;">
-            {hours:02d} <span style="font-size: 16px; color: #64748b; font-weight: normal;">時</span> 
-            {minutes:02d} <span style="font-size: 16px; color: #64748b; font-weight: normal;">分</span> 
-            {seconds:02d} <span style="font-size: 16px; color: #64748b; font-weight: normal;">秒</span>
+        <div style="font-size: 32px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 12px; text-shadow: 0 0 16px {status_color}66;">
+            {hours:02d} <span style="font-size: 15px; color: #64748b; font-weight: normal;">時</span> 
+            {minutes:02d} <span style="font-size: 15px; color: #64748b; font-weight: normal;">分</span> 
+            {seconds:02d} <span style="font-size: 15px; color: #64748b; font-weight: normal;">秒</span>
         </div>
         <div style="
             background: rgba(15, 23, 42, 0.8);
             border: 1px solid #334155;
             border-radius: 8px;
-            padding: 10px 14px;
-            font-size: 12px;
+            padding: 8px 12px;
+            font-size: 11.5px;
             color: #cbd5e1;
         ">
             📅 {duty_info_str}
@@ -664,18 +655,40 @@ def render_user_home() -> None:
     ta_time = get_file_mtime_str(active_files.get("服勤員", ""))
     sched_range = get_schedule_range()
 
+    # =========================================================================
+    # 🚀 優化後：整併排班週期與系統維護狀態
+    # =========================================================================
+    maintenance_active = (
+        is_module_maintenance(current_unit_label, "producer") or 
+        is_module_maintenance(current_unit_label, "window_filter") or 
+        is_module_maintenance(current_unit_label, "exchange_filter")
+    )
+    
+    maint_badge_html = ""
+    if maintenance_active:
+        maint_badge_html = '<span style="background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; color: #FCA5A5; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">系統維護中</span>'
+
     period_html = f"""
-    <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 !important;">
+    <div style="
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
+        border: 1.5px solid {"#EF4444" if maintenance_active else "rgba(56, 189, 248, 0.4)"};
+        border-radius: 12px;
+        padding: 10px 14px;
+        margin-bottom: 12px;
+        font-family: monospace;
+    ">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="section-title" style="font-size: 13px !important;">[{current_unit_label}] 排班週期</span>
-            <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 13px; font-weight: 900; color: #38BDF8;">[{current_unit_label}] 排班週期</span>
+                {maint_badge_html}
+            </div>
+            <span style="font-size: 13px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800;">
                 {sched_range if len(missing_files) < 3 else "資料庫異常"}
             </span>
-
         </div>
-        <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
+        <details style="margin-top: 6px; font-size: 10px; color: #94A3B8; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
-                <span>點擊檢視各大表更新時間</span>
+                <span>檢視各大表更新時間與維護詳情</span>
                 <span style="font-size: 9px; color: #64748B;">▼</span>
             </summary>
             <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1);">
@@ -686,10 +699,10 @@ def render_user_home() -> None:
         </details>
     </div>
     """
-    st.html(period_html)
+    st.markdown(period_html, unsafe_allow_html=True)
 
     # =========================================================================
-    # 🚀 全域置頂區塊：休息倒數計時器（常駐於操作模式上方，任何分頁皆可見）
+    # 🚀 全域置頂區塊：精簡版休息倒數計時器
     # =========================================================================
     mock_next_shift = datetime.now() + timedelta(hours=9, minutes=15)
     render_rest_countdown_card(mock_next_shift, "下次出勤預告：次日早班 08:30 (車次: NG1550)")
