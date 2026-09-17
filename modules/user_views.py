@@ -517,6 +517,7 @@ def render_user_home() -> None:
             max-width: 100% !important;
             gap: 6px !important;
             box-sizing: border-box !important;
+            margin-bottom: 0px !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
@@ -527,6 +528,7 @@ def render_user_home() -> None:
             flex: 0 0 calc(50% - 3px) !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
+            padding: 0 !important;
         }
 
         .crew-card-integrated, .crew-card-integrated-warn {
@@ -602,11 +604,12 @@ def render_user_home() -> None:
             border-top-right-radius: 0px !important;
             border-bottom-left-radius: 8px !important;
             border-bottom-right-radius: 8px !important;
-            margin-top: -16px !important;
-            margin-bottom: 8px !important;
+            margin-top: -14px !important;
+            margin-bottom: 6px !important;
             box-shadow: none !important;
             font-weight: 700 !important;
             padding: 3px 2px !important;
+            font-size: 11px !important;
             letter-spacing: -0.3px !important;
             white-space: nowrap !important;
             overflow: hidden !important;
@@ -655,12 +658,12 @@ def render_user_home() -> None:
             justify-content: flex-end;
             flex-wrap: nowrap;
         }
-        .role-badge-driver { font-size: 8.5px; font-weight: 800; color: #38BDF8; background: rgba(56, 189, 248, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
-        .role-badge-conductor { font-size: 8.5px; font-weight: 800; color: #34D399; background: rgba(52, 211, 153, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
-        .role-badge-crew { font-size: 8.5px; font-weight: 800; color: #FBBF24; background: rgba(251, 191, 36, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
-        .non-line-badge { font-size: 8.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
-        .long-badge { font-size: 8.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
-        .do2w-badge { font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+        .role-badge-driver { font-size: 8px; font-weight: 800; color: #38BDF8; background: rgba(56, 189, 248, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .role-badge-conductor { font-size: 8px; font-weight: 800; color: #34D399; background: rgba(52, 211, 153, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .role-badge-crew { font-size: 8px; font-weight: 800; color: #FBBF24; background: rgba(251, 191, 36, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .non-line-badge { font-size: 8px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 2px; border-radius: 3px; white-space: nowrap; }
+        .long-badge { font-size: 8px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 2px; border-radius: 3px; white-space: nowrap; }
+        .do2w-badge { font-size: 8px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 2px; border-radius: 3px; white-space: nowrap; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -1235,15 +1238,26 @@ def render_user_home() -> None:
                 )
                 cnt_long = sum(1 for r in filtered_results if r.get("長班"))
 
-                # 人數明細統計欄位：容器外框優化
-                with st.container(border=True):
-                    col_s1, col_s2, col_s3 = st.columns(3)
-                    with col_s1:
-                        st.metric("符合資格人數", f"{len(filtered_results)} 位")
-                    with col_s2:
-                        st.metric("含 DO2W 標記", f"{cnt_do2w} 人")
-                    with col_s3:
-                        st.metric("長班 (>8.5h)", f"{cnt_long} 人")
+                # 完美精緻化的人數明細統計欄位 (Compact 橫向卡片外框)
+                st.markdown(
+                    f"""
+                    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; display: flex; justify-content: space-around; text-align: center; font-family: monospace; box-shadow: 0 4px 16px rgba(0,0,0,0.4);">
+                        <div>
+                            <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">符合資格人數</div>
+                            <div style="font-size: 15px; font-weight: 900; color: #38BDF8; margin-top: 2px;">{len(filtered_results)} 位</div>
+                        </div>
+                        <div style="border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); padding: 0 16px;">
+                            <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">含 DO2W 標記</div>
+                            <div style="font-size: 15px; font-weight: 900; color: #FBBF24; margin-top: 2px;">{cnt_do2w} 人</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">長班 (>8.5h)</div>
+                            <div style="font-size: 15px; font-weight: 900; color: #FB7185; margin-top: 2px;">{cnt_long} 人</div>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 for i in range(0, len(filtered_results), 2):
                     batch = filtered_results[i : i + 2]
@@ -1283,19 +1297,19 @@ def render_user_home() -> None:
 
                             card_html = f"""<div class="{card_class}">
 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-    <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
-        {clean_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_id})</span>
+    <div style="font-size: 12px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%;">
+        {clean_name} <span style="color:#94A3B8; font-size:8.5px; font-weight:500;">({clean_id})</span>
     </div>
     {badges_html}
 </div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); width: 100%;">
-    <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
-        <div class="train-code-text" style="font-size: 13.5px; font-weight: 900; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_train}</div>
-        <div style="font-size: 9.5px; color: #94A3B8; font-family: monospace; white-space: nowrap;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></div>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 3px; border-top: 1px solid rgba(255,255,255,0.1); width: 100%;">
+    <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+        <div class="train-code-text" style="font-size: 12.5px; font-weight: 900; letter-spacing: 0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_train}</div>
+        <div style="font-size: 8.5px; color: #94A3B8; font-family: monospace; white-space: nowrap;">隔日: <strong style="color:#FCD34D;">{clean_next_signin}</strong></div>
     </div>
     <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
-        <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_signin}</div>
-        <div style="font-size: 12px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_signout}</div>
+        <div style="font-size: 11px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_signin}</div>
+        <div style="font-size: 11px; font-weight: 900; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_signout}</div>
     </div>
 </div>
 </div>"""
@@ -1709,15 +1723,26 @@ def render_user_home() -> None:
                                     if c.get("連續上班天數", 0) >= 6
                                 )
 
-                                # 人數明細統計欄位：容器外框優化
-                                with st.container(border=True):
-                                    col_es1, col_es2, col_es3 = st.columns(3)
-                                    with col_es1:
-                                        st.metric("可換假總人數", f"{len(filtered_candidates)} 位")
-                                    with col_es2:
-                                        st.metric("含 DO2W 標記", f"{cnt_do2w} 人")
-                                    with col_es3:
-                                        st.metric("連班 6 天以上", f"{cnt_streak6} 人")
+                                # 完美精緻化的人數明細統計欄位 (Compact 橫向卡片外框)
+                                st.markdown(
+                                    f"""
+                                    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; display: flex; justify-content: space-around; text-align: center; font-family: monospace; box-shadow: 0 4px 16px rgba(0,0,0,0.4);">
+                                        <div>
+                                            <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">可換假總人數</div>
+                                            <div style="font-size: 15px; font-weight: 900; color: #38BDF8; margin-top: 2px;">{len(filtered_candidates)} 位</div>
+                                        </div>
+                                        <div style="border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); padding: 0 16px;">
+                                            <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">含 DO2W 標記</div>
+                                            <div style="font-size: 15px; font-weight: 900; color: #FBBF24; margin-top: 2px;">{cnt_do2w} 人</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">連班 6 天以上</div>
+                                            <div style="font-size: 15px; font-weight: 900; color: #FB7185; margin-top: 2px;">{cnt_streak6} 人</div>
+                                        </div>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True,
+                                )
 
                                 for i in range(0, len(filtered_candidates), 2):
                                     batch = filtered_candidates[i : i + 2]
@@ -1750,18 +1775,18 @@ def render_user_home() -> None:
 
                                             card_html = f"""<div class="{card_class}">
 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-    <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
-        {clean_cand_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_cand_id})</span>
+    <div style="font-size: 12px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%;">
+        {clean_cand_name} <span style="color:#94A3B8; font-size:8.5px; font-weight:500;">({clean_cand_id})</span>
     </div>
     {badges_html}
 </div>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); width: 100%;">
-    <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
-        <div class="train-code-text" style="font-size: 13.5px; font-weight: 900; letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_return_train}</div>
-        <div style="font-size: 9.5px; color: #94A3B8; font-family: monospace; white-space: nowrap;">還休:{clean_cand_return_date} ｜ <strong style="color:{"#FB7185" if streak_cnt >= 6 else "#CBD5E1"};">連:{streak_cnt}天</strong></div>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 3px; border-top: 1px solid rgba(255,255,255,0.1); width: 100%;">
+    <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+        <div class="train-code-text" style="font-size: 12.5px; font-weight: 900; letter-spacing: 0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{clean_cand_return_train}</div>
+        <div style="font-size: 8.5px; color: #94A3B8; font-family: monospace; white-space: nowrap;">還休:{clean_cand_return_date} ｜ <strong style="color:{"#FB7185" if streak_cnt >= 6 else "#CBD5E1"};">連:{streak_cnt}天</strong></div>
     </div>
     <div style="text-align: right; display: flex; flex-direction: column; gap: 1px; flex-shrink: 0;">
-        <div style="font-size: 12px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_cand_signin}</div>
+        <div style="font-size: 11px; font-weight: 900; color: #4ADE80; font-family: monospace; line-height: 1.1;">In {clean_cand_signin}</div>
         <div style="font-size: 9.5px; color: #38BDF8; font-family: monospace; line-height: 1.1;">Out {clean_cand_signout}</div>
     </div>
 </div>
