@@ -171,10 +171,15 @@ def get_week_holidays(target_date: str, date_cols: List[str], columns: Optional[
     return holidays_found
 
 
-def get_real_next_duty(emp_id: str, active_files: dict) -> Tuple[Optional[datetime], str]:
-    """從真實班表檔案中自動搜尋該員編接下來最近的一筆出勤與 Sign-In 時間"""
-    if not emp_id or not active_files:
-        return None, "尚未指定員編"
+def get_real_next_duty(query_str: str, active_files: dict) -> Tuple[Optional[datetime], str]:
+    """從真實班表檔案中自動搜尋該員編或姓名接下來最近的一筆出勤與 Sign-In 時間（支援混合字串與模糊比對）"""
+    if not query_str or not active_files:
+        return None, "尚未指定員編或姓名"
+    
+    query_clean = str(query_str).strip()
+    id_match = re.search(r'[A-Za-z]\d+', query_clean)
+    target_id = id_match.group(0).upper() if id_match else ""
+    target_name = query_clean.replace(target_id, "").strip()
     
     today = date.today()
     current_year = today.year
@@ -186,8 +191,19 @@ def get_real_next_duty(emp_id: str, active_files: dict) -> Tuple[Optional[dateti
             df = safe_read_excel(path, header=3)
             df.columns = [str(c).strip() for c in df.columns]
             for _, row in df.iterrows():
-                row_emp_id = str(row.iloc[0]).strip()
-                if row_emp_id == emp_id:
+                col0_val = str(row.iloc[0]).strip() if len(row) > 0 else ""
+                col1_val = str(row.iloc[1]).strip() if len(row) > 1 else ""
+                row_str = f"{col0_val} {col1_val}".upper()
+                
+                matched = False
+                if target_id and target_id in row_str:
+                    matched = True
+                if target_name and target_name.upper() in row_str:
+                    matched = True
+                if not target_id and not target_name and query_clean.upper() in row_str:
+                    matched = True
+                    
+                if matched:
                     dates = df.columns[2:]
                     for idx, d_col in enumerate(dates):
                         norm_d = normalize_date_str(d_col)
@@ -215,7 +231,7 @@ def get_real_next_duty(emp_id: str, active_files: dict) -> Tuple[Optional[dateti
         except Exception:
             continue
     
-    return None, f"近期無查獲員編 {emp_id} 的有效出勤班次"
+    return None, f"近期無查獲符合「{query_str}」的有效出勤班次"
 
 
 def reset_win_search() -> None:
@@ -773,7 +789,7 @@ def render_user_home() -> None:
     st.markdown(period_html, unsafe_allow_html=True)
 
     # =========================================================================
-    # 🚀 真實抓取該登入組員的下次出勤倒數計時器（已加入安全型態防護）
+    # 🚀 真實抓取該登入組員的下次出勤倒數計時器（已加入模糊比對防護）
     # =========================================================================
     real_next_dt, duty_info_text = get_real_next_duty(current_user_id, active_files)
     if real_next_dt:
