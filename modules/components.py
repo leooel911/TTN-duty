@@ -13,6 +13,36 @@ from modules.drawing import render_schedule_figure
 from modules.utils import log_activity, safe_read_excel, send_admin_email
 
 
+def inject_slider_animation() -> None:
+    """注入時間滑桿圓點在懸停、聚焦與拖動時的高效能放大動畫特效"""
+    st.markdown(
+        """
+        <style>
+        /* 強制重設 BaseWeb 滑桿控制點的變形基準點與過渡動畫 */
+        div[data-baseweb="slider"] div[role="slider"],
+        .stSlider div[role="slider"] {
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+            transform-origin: center center !important;
+        }
+        
+        /* 當滑鼠懸停、取得焦點或按住拖動時，全面觸發放大 1.7 倍 */
+        div[data-baseweb="slider"] div[role="slider"]:hover,
+        div[data-baseweb="slider"] div[role="slider"]:focus,
+        div[data-baseweb="slider"] div[role="slider"]:active {
+            transform: scale(1.7) !important;
+            z-index: 999 !important;
+        }
+
+        /* 確保滑桿父容器不會裁切放大後的圓點 */
+        div[data-baseweb="slider"] {
+            overflow: visible !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def _convert_to_b64_url(image_bytes: Any) -> str:
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
