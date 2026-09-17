@@ -182,7 +182,13 @@ def view_feedback_img_modal(img_path: str, ticket_id: str, reporter: str) -> Non
 def render_feedback_hub_popover(unit_label: str = "TTN", user_id: str = "", is_admin: bool = False) -> None:
     """使用 st.popover 呈現精緻的浮動互動中心，完美結合提交與查詢且絕不重複彈出"""
     with st.popover("系統問題回報與進度查詢中心", use_container_width=True):
-        tab_submit, tab_query = st.tabs(["📝 提交新回報", "🔍 查詢我的回報進度"])
+        
+        # 檢查是否有剛才提交成功的暫存訊息，直接顯示成功提示（無貼圖符號）
+        if "feedback_last_success" in st.session_state:
+            succ_id = st.session_state.pop("feedback_last_success")
+            st.success(f"問題回報提交成功。您的工單編號為：{succ_id}，管理員將盡快處理。")
+
+        tab_submit, tab_query = st.tabs(["提交新回報", "查詢我的回報進度"])
         
         with tab_submit:
             st.markdown(f"#### 系統問題與建議回報 [{unit_label}]")
@@ -216,18 +222,15 @@ def render_feedback_hub_popover(unit_label: str = "TTN", user_id: str = "", is_a
                         
                         log_activity("提交問題回報工單", f"單位:{unit_label} | 單號:{ticket_id}")
 
-                        email_success = True
                         try:
                             email_subject = f"【新工單與問題回報】單號: {ticket_id}"
                             email_content = f"系統收到來自營運單位【{unit_label}】的新問題回報：\n\n----------------------------------------\n{content}\n----------------------------------------\n\n請管理員盡快登入後台處理！"
                             send_admin_email(email_subject, email_content)
                         except Exception as mail_err:
-                            email_success = False
                             print(f"工單通知信發送失敗: {mail_err}")
 
-                        st.toast(f"回報成功！工單編號：{ticket_id}")
-                        if not email_success:
-                            st.toast("管理員通知發送失敗")
+                        # 將成功單號存入 session_state 後重新整理，確保成功訊息穩定顯示
+                        st.session_state["feedback_last_success"] = ticket_id
                         st.rerun()
                     except Exception as e:
                         st.error(f"提交失敗：{e}")
