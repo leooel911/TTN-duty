@@ -507,7 +507,7 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 完美雙排明細卡片鎖定 (強制兩欄並排不變形) */
+        /* 完美雙排並排佈局鎖定 */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -1235,7 +1235,7 @@ def render_user_home() -> None:
                 )
                 cnt_long = sum(1 for r in filtered_results if r.get("長班"))
 
-                # 人數明細統計欄位：加上容器外框優化
+                # 人數明細統計欄位：容器外框優化
                 with st.container(border=True):
                     col_s1, col_s2, col_s3 = st.columns(3)
                     with col_s1:
@@ -1709,7 +1709,7 @@ def render_user_home() -> None:
                                     if c.get("連續上班天數", 0) >= 6
                                 )
 
-                                # 人數明細統計欄位：加上容器外框優化
+                                # 人數明細統計欄位：容器外框優化
                                 with st.container(border=True):
                                     col_es1, col_es2, col_es3 = st.columns(3)
                                     with col_es1:
