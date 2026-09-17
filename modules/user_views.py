@@ -173,14 +173,14 @@ def get_week_holidays(target_date: str, date_cols: List[str], columns: Optional[
 
 def get_real_next_duty(emp_id: str, active_files: dict) -> Tuple[Optional[datetime], str]:
     """從真實班表檔案中自動搜尋該員編接下來最近的一筆出勤與 Sign-In 時間"""
-    if not emp_id:
+    if not emp_id or not active_files:
         return None, "尚未指定員編"
     
     today = date.today()
     current_year = today.year
     
     for role_name, path in active_files.items():
-        if not path or not os.path.exists(path):
+        if not path or not isinstance(path, (str, bytes, os.PathLike)) or not os.path.exists(path):
             continue
         try:
             df = safe_read_excel(path, header=3)
@@ -215,7 +215,7 @@ def get_real_next_duty(emp_id: str, active_files: dict) -> Tuple[Optional[dateti
         except Exception:
             continue
     
-    return None, "近期無查獲有效出勤班次"
+    return None, f"近期無查獲員編 {emp_id} 的有效出勤班次"
 
 
 def reset_win_search() -> None:
@@ -773,15 +773,14 @@ def render_user_home() -> None:
     st.markdown(period_html, unsafe_allow_html=True)
 
     # =========================================================================
-    # 🚀 真實抓取該登入組員的下次出勤倒數計時器
+    # 🚀 真實抓取該登入組員的下次出勤倒數計時器（已加入安全型態防護）
     # =========================================================================
     real_next_dt, duty_info_text = get_real_next_duty(current_user_id, active_files)
     if real_next_dt:
         render_rest_countdown_card(real_next_dt, duty_info_text)
     else:
-        # 若找不到或尚未登入有效員編，顯示提示
         fallback_dt = datetime.now() + timedelta(hours=24)
-        render_rest_countdown_card(fallback_dt, f"尚未偵到組員 {current_user_id} 的近期出勤班次或未輸入有效員編")
+        render_rest_countdown_card(fallback_dt, f"尚未偵測到組員 {current_user_id} 的近期出勤班次或未輸入有效員編")
 
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
@@ -997,7 +996,7 @@ def render_user_home() -> None:
                 valid_paths = {}
                 for r_name in roles_to_query:
                     p = active_files.get(r_name, "")
-                    if p and os.path.exists(p) and os.path.getsize(p) > 0:
+                    if p and isinstance(p, (str, bytes, os.PathLike)) and os.path.exists(p) and os.path.getsize(p) > 0:
                         valid_paths[r_name] = p
 
                 if not valid_paths:
@@ -1380,7 +1379,7 @@ def render_user_home() -> None:
 
         sample_path = active_files.get(selected_role, "")
 
-        if not sample_path or not os.path.exists(sample_path):
+        if not sample_path or not isinstance(sample_path, (str, bytes, os.PathLike)) or not os.path.exists(sample_path):
             st.error(
                 f"找不到【{current_unit_label} -"
                 f" {selected_role}】的班表檔案，請先至管理員後台上傳"
