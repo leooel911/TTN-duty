@@ -248,10 +248,10 @@ def reset_ex_search() -> None:
 
 def render_rest_countdown_card(next_duty_time: datetime, duty_info_str: str):
     """
-    透過 Streamlit 元件安全渲染具備前端 JavaScript 動態即時倒數的休息倒數計時器
+    透過 streamlit 元件安全渲染具備前端 javascript 動態即時倒數的休息倒數計時器
     """
     y = next_duty_time.year
-    m = next_duty_time.month - 1  # JS 月份為 0-11
+    m = next_duty_time.month - 1  # js 月份為 0-11
     d = next_duty_time.day
     h = next_duty_time.hour
     mi = next_duty_time.minute
@@ -796,7 +796,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 頂部戰情儀表板 (已修正 HTML 閉合標籤與視覺整合)
+    # 🚀 頂部戰情儀表板 (已預先運算變數以防引號衝突與字串外洩)
     # =========================================================================
     sys_cfg = load_system_config()
     enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
@@ -808,6 +808,12 @@ def render_user_home() -> None:
         is_module_maintenance(current_unit_label, "exchange_filter")
     )
     
+    border_color_val = "#EF4444" if maintenance_active else "rgba(56, 189, 248, 0.5)"
+    role_label_str = clean_role_label(user_role)
+    user_id_display = current_user_id if current_user_id else "GUEST"
+    sched_display_text = sched_range if len(missing_files) < 3 else "資料庫異常"
+    sched_color_val = "#EF4444" if missing_files else "#38BDF8"
+
     maint_badge_html = '<span style="background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; color: #FCA5A5; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">系統維護中</span>' if maintenance_active else ''
     
     notice_box_html = ""
@@ -819,14 +825,14 @@ def render_user_home() -> None:
         """
 
     unified_dashboard_html = f"""
-    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid {"#EF4444" if maintenance_active else "rgba(56, 189, 248, 0.5)"}; border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; font-family: monospace; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);">
+    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid {border_color_val}; border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; font-family: monospace; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);">
         <!-- 系統標題與身分狀態 -->
         <div style="text-align: center;">
             <div style="font-size: 16.5px; font-weight: 900; color: #F8FAFC; letter-spacing: 0.5px;">
                 CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
             </div>
             <div style="margin-top: 4px; font-size: 11px; color: #94A3B8;">
-                <span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #FBBF24;">{clean_role_label(user_role)} ({current_user_id if current_user_id else "GUEST"})</strong>
+                <span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #FBBF24;">{role_label_str} ({user_id_display})</strong>
             </div>
             {notice_box_html}
         </div>
@@ -841,7 +847,7 @@ def render_user_home() -> None:
                 {maint_badge_html}
             </div>
             <div style="background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); padding: 3px 10px; border-radius: 20px;">
-                <span style="font-size: 12.5px; color: {"#EF4444" if missing_files else "#38BDF8"}; font-weight: 900; letter-spacing: 0.5px;">{sched_range if len(missing_files) < 3 else "資料庫異常"}</span>
+                <span style="font-size: 12.5px; color: {sched_color_val}; font-weight: 900; letter-spacing: 0.5px;">{sched_display_text}</span>
             </div>
         </div>
         
