@@ -65,7 +65,7 @@ def clean_role_label(role: str) -> str:
     """轉換權限標籤文字"""
     mapping = {
         "ADMIN": "系統管理員",
-        "VIP_USER": "VIP",
+        "VIP_USER": "VIP 特權組員",
         "TESTER": "測試員",
         "USER": "一般組員",
         "GUEST": "訪客",
@@ -589,7 +589,7 @@ def render_user_home() -> None:
     )
 
     # =========================================================================
-    # 🚀 區塊 1：精簡優化後的頂部標題與狀態列
+    # 🚀 唯一保留的精簡版頂部標題與狀態列 (舊的已徹底清除)
     # =========================================================================
     header_html = f"""
     <div style="text-align: center; padding: 4px 0 8px 0; font-family: monospace;">
