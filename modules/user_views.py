@@ -921,10 +921,8 @@ def render_user_home() -> None:
         )
 
         with st.form(key="draw_schedule_form", border=False):
-            # 嚴格利用 regex 從登入資訊中萃取出純員編 (例如 A021987)
-            raw_uid = current_user_id.strip()
-            id_match = re.search(r'[A-Za-z]\d+', raw_uid)
-            clean_default_id = id_match.group(0).upper() if id_match else raw_uid
+            # 自動帶入登入者的預設字串 (例如 黃淨菌 (A021987) 或純員編)
+            clean_default_id = current_user_id.strip()
             
             draw_field_label = "請輸入您的員編或姓名 (例如: A023300)"
 
@@ -941,19 +939,24 @@ def render_user_home() -> None:
         if submit_btn:
             current_input = user_input_val.strip() if user_input_val else clean_default_id
 
+            # 智慧解析：自動從輸入內容中萃取出純員編 (例如從 "黃淨菌 (A021987)" 抓出 "A021987")
+            id_match = re.search(r'[A-Za-z]\d+', current_input)
+            search_target = id_match.group(0).upper() if id_match else current_input
+
             if not current_input or current_input.upper() == "A":
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
             else:
                 try:
+                    # 優先使用萃取出的純員編進行大表搜尋，確保百分百成功命中
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(
-                        current_input
+                        search_target
                     )
                     log_activity(
                         "個人班表繪製",
                         f"操作者:{current_user_id} | 單位:{current_unit_label} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
                     )
 
-                    with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
+                    with st.spinner(f"正在繪製【{emp_name}】的個人月班表請稍候..."):
                         buf = render_schedule_figure(
                             start_dt,
                             dates,
@@ -975,7 +978,30 @@ def render_user_home() -> None:
                         use_container_width=True,
                     )
                 except Exception as e:
-                    st.error(f"繪製班表時發生錯誤：{e}")
+                    # 如果純員編搜尋失敗，嘗試以完整原始輸入再試一次備用
+                    try:
+                        start_dt, dates, emp_id, emp_name, cells = process_file_data(current_input)
+                        with st.spinner(f"正在繪製【{emp_name}】的個人月班表請稍候..."):
+                            buf = render_schedule_figure(
+                                start_dt,
+                                dates,
+                                emp_id,
+                                emp_name,
+                                cells,
+                                current_unit_label,
+                                badge_title="Producer | C.L.F",
+                            )
+                        st.success(f"【{emp_name}】個人班表圖片生成成功！")
+                        comp.render_zoomable_image(buf)
+                        st.download_button(
+                            "點此下載班表影像檔",
+                            data=buf,
+                            file_name=f"{current_unit_label}_班表_{emp_name}.png",
+                            mime="image/png",
+                            use_container_width=True,
+                        )
+                    except Exception as inner_e:
+                        st.error(f"繪製班表時發生錯誤：{inner_e}")
 
     # ==================== 模式二：換班查詢 ====================
     elif app_mode == "換班查詢":
