@@ -309,84 +309,21 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 膠囊分頁選單：強制單行並排不換行 */
-        div[data-testid="stSegmentedControl"] {
-            width: 100% !important;
-            max-width: 100% !important;
-            margin-bottom: 12px !important;
+        /* 針對三欄切換按鈕的文字大小微調與不換行設定 */
+        div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) {
+            gap: 4px !important;
         }
 
-        div[data-testid="stSegmentedControl"] > div,
-        div[data-testid="stSegmentedControl"] div[data-baseweb="segmented-control"],
-        div[data-testid="stSegmentedControl"] div[role="radiogroup"],
-        div[data-testid="stSegmentedControl"] div[role="group"] {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            background: rgba(15, 23, 42, 0.8) !important;
-            border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
-            border-radius: 12px !important;
-            padding: 3px !important;
-            gap: 2px !important;
-            box-sizing: border-box !important;
-            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
-        }
-
-        div[data-testid="stSegmentedControl"] button,
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"],
-        div[data-testid="stSegmentedControl"] label {
-            flex: 1 1 0% !important;
-            min-width: 0 !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            border-radius: 8px !important;
-            border: none !important;
-            background: transparent !important;
-            color: #94A3B8 !important;
-            padding: 6px 2px !important;
-            margin: 0 !important;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            box-shadow: none !important;
-            cursor: pointer !important;
-        }
-
-        div[data-testid="stSegmentedControl"] button:hover,
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"]:hover {
-            color: #F1F5F9 !important;
-            background: rgba(255, 255, 255, 0.06) !important;
-        }
-
-        div[data-testid="stSegmentedControl"] button[aria-selected="true"],
-        div[data-testid="stSegmentedControl"] button[aria-checked="true"],
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"],
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][data-checked="true"],
-        div[data-testid="stSegmentedControl"] label:has(input:checked) {
-            background: linear-gradient(135deg, #0284C7 0%, #00A3FF 100%) !important;
-            color: #FFFFFF !important;
-            font-weight: 900 !important;
-            border-radius: 8px !important;
-            box-shadow: 0 0 14px rgba(0, 163, 255, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.35) !important;
-        }
-
-        div[data-testid="stSegmentedControl"] p,
-        div[data-testid="stSegmentedControl"] span {
-            font-size: 12.5px !important;
+        div[data-testid="stHorizontalBlock"] button p {
+            font-size: 13px !important;
             font-weight: 800 !important;
-            letter-spacing: 0.2px !important;
-            margin: 0 !important;
-            text-align: center !important;
             white-space: nowrap !important;
+            margin: 0 !important;
         }
 
-        div[data-testid="stSegmentedControl"] button[aria-selected="true"] p,
-        div[data-testid="stSegmentedControl"] button[aria-checked="true"] p,
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"] p,
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][data-checked="true"] p {
-            color: #FFFFFF !important;
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.6) !important;
+        div[data-testid="stHorizontalBlock"] button {
+            padding: 8px 4px !important;
+            border-radius: 10px !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
@@ -709,55 +646,44 @@ def render_user_home() -> None:
 
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
-    # 縮短選項文字，確保在手機小螢幕上能完美並排在同一行
-    MODE_OPTIONS = [
-        "個人月班表",
-        "換班查詢",
-        "換假查詢",
-    ]
-
+    # 系統模式選項 (改用精簡文字以完美適應三欄並排)
     if "active_app_mode" not in st.session_state:
         st.session_state["active_app_mode"] = "個人月班表"
 
-    if st.session_state["active_app_mode"] not in MODE_OPTIONS:
-        st.session_state["active_app_mode"] = MODE_OPTIONS[0]
+    # 使用 3 欄按鈕完美並排，保證手機絕對不換行
+    col_tab1, col_tab2, col_tab3 = st.columns(3)
 
-    # 使用 st.segmented_control 配合不換行 CSS 呈現橫向膠囊分頁
-    if hasattr(st, "segmented_control"):
-        app_mode = st.segmented_control(
-            "系統操作模式選擇",
-            options=MODE_OPTIONS,
-            default=st.session_state["active_app_mode"],
-            selection_mode="single",
-            label_visibility="collapsed",
-            key="user_app_mode_seg",
-        )
-        if app_mode is None:
-            app_mode = st.session_state["active_app_mode"]
-    else:
-        app_mode = st.radio(
-            "系統操作模式選擇",
-            MODE_OPTIONS,
-            index=MODE_OPTIONS.index(st.session_state["active_app_mode"]),
-            horizontal=True,
-            label_visibility="collapsed",
-            key="user_app_mode_radio",
-        )
+    with col_tab1:
+        is_active_1 = st.session_state["active_app_mode"] == "個人月班表"
+        if st.button("個人月班表", key="tab_btn_1", use_container_width=True, type="primary" if is_active_1 else "secondary"):
+            if not is_active_1:
+                st.session_state["active_app_mode"] = "個人月班表"
+                st.session_state.pop("win_raw_candidates", None)
+                st.session_state.pop("ex_raw_candidates", None)
+                st.session_state["ex_search_performed"] = False
+                st.rerun()
 
-    if app_mode != st.session_state["active_app_mode"]:
-        st.session_state["active_app_mode"] = app_mode
-        st.session_state.pop("win_raw_candidates", None)
-        st.session_state.pop("ex_raw_candidates", None)
-        st.session_state["ex_search_performed"] = False
+    with col_tab2:
+        is_active_2 = st.session_state["active_app_mode"] == "換班查詢"
+        if st.button("換班查詢", key="tab_btn_2", use_container_width=True, type="primary" if is_active_2 else "secondary"):
+            if not is_active_2:
+                st.session_state["active_app_mode"] = "換班查詢"
+                st.session_state.pop("win_raw_candidates", None)
+                st.session_state.pop("ex_raw_candidates", None)
+                st.session_state["ex_search_performed"] = False
+                st.rerun()
 
-        modal_keys_to_clear = [
-            "show_feedback_modal", "show_feedback_dialog",
-            "feedback_open", "show_issue_modal", "show_feedback"
-        ]
-        for mk in modal_keys_to_clear:
-            if mk in st.session_state:
-                st.session_state[mk] = False
-        st.rerun()
+    with col_tab3:
+        is_active_3 = st.session_state["active_app_mode"] == "換假查詢"
+        if st.button("換假查詢", key="tab_btn_3", use_container_width=True, type="primary" if is_active_3 else "secondary"):
+            if not is_active_3:
+                st.session_state["active_app_mode"] = "換假查詢"
+                st.session_state.pop("win_raw_candidates", None)
+                st.session_state.pop("ex_raw_candidates", None)
+                st.session_state["ex_search_performed"] = False
+                st.rerun()
+
+    app_mode = st.session_state["active_app_mode"]
 
     st.markdown("---")
 
