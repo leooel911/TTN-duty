@@ -136,8 +136,8 @@ if not is_authed and not is_admin_authed:
         }
         
         .login-subtitle {
-            font-size: 12px !important;
-            font-weight: 700 !important;
+            font-size: 11px !important;
+            font-weight: 650 !important;
             color: #38BDF8 !important;
             font-family: monospace;
             letter-spacing: 1.5px;
