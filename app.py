@@ -38,7 +38,7 @@ DEFAULT_EMP_ID = sys_cfg.get("default_emp_id", "A")
 st.set_page_config(
     page_title="TRAIN CREW DUTY ENGINE", page_icon="700st.png", layout="centered"
 )
-# 僅保留原本專案統一管理的 CUSTOM_CSS，不作額外暴力覆寫
+# 載入統一管理的 CUSTOM_CSS
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
@@ -315,7 +315,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 頁尾：左側為互動式浮動彈出面板（內含回報與查詢分頁），右側為 ADMIN PANEL
+# 頁尾：左側為互動式浮動彈出面板，右側為 ADMIN PANEL
 col_f1, col_f2 = st.columns(2)
 
 with col_f1:

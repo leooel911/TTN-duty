@@ -222,53 +222,46 @@ def render_user_home() -> None:
             line-height: 1.3 !important;
         }
 
-        /* 放大原生的 Slider 時間標籤字體 */
+        /* ========================================================================= */
+        /* 🚀 【Unified Command Box 統合控制主卡片】：將 Streamlit 內建容器改造為高質感發光矩陣 */
+        /* ========================================================================= */
+        div[data-testid="stContainer"] {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
+            border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
+            border-radius: 16px !important;
+            padding: 14px 14px 6px 14px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+            margin-bottom: 12px !important;
+        }
+
+        /* 🚀 【高質感 Slider 專屬外框改造】：卡片式發光滑桿 */
+        div[data-testid="stSlider"] {
+            background: rgba(7, 11, 20, 0.85) !important;
+            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border-radius: 12px !important;
+            padding: 12px 14px 6px 14px !important;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+            margin-bottom: 8px !important;
+        }
+
         div[data-testid="stSliderTickBarMin"],
         div[data-testid="stSliderTickBarMax"],
         div[data-testid="stWidgetLabel"] + div [data-testid="stMarkdownContainer"] p,
         div[data-baseweb="slider"] div[role="slider"] + div {
-            font-size: 16px !important;
-            font-weight: 800 !important;
+            font-size: 15px !important;
+            font-weight: 900 !important;
             color: #38BDF8 !important;
-        }
-
-        /* 顯眼的時間區間提示盒 */
-        .time-range-display-box {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
-            border: 1.5px solid rgba(56, 189, 248, 0.5);
-            border-radius: 10px;
-            padding: 8px 14px;
-            margin-top: 6px;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        }
-
-        .time-range-label {
-            font-size: 13.5px;
-            font-weight: 700;
-            color: #94A3B8;
-        }
-
-        .time-range-value {
-            font-size: 20px;
-            font-weight: 900;
-            color: #38BDF8;
-            font-family: monospace;
-            letter-spacing: 1px;
-            text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+            font-family: monospace !important;
         }
 
         div[data-testid="stWidgetLabel"] p,
         div[data-testid="stWidgetLabel"] label,
         label[data-testid="stWidgetLabel"] p {
-            font-size: 15px !important;
+            font-size: 14.5px !important;
             font-weight: 800 !important;
             color: #F8FAFC !important;
             letter-spacing: 0.3px !important;
-            margin-bottom: 6px !important;
+            margin-bottom: 4px !important;
         }
 
         div[data-testid="stCheckbox"] {
@@ -309,83 +302,75 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        div[data-testid="stSegmentedControl"] {
+        /* 🚀 【精準結構選取器】：強制三欄模式切換器在所有手機與電腦上維持橫向並排、絕不堆疊 */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
             width: 100% !important;
             max-width: 100% !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
+            border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
+            border-radius: 16px !important;
+            padding: 5px !important;
+            gap: 4px !important;
+            box-sizing: border-box !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.7) !important;
             margin-bottom: 12px !important;
         }
 
-        div[data-testid="stSegmentedControl"] > div,
-        div[data-testid="stSegmentedControl"] div[data-baseweb="segmented-control"],
-        div[data-testid="stSegmentedControl"] div[role="radiogroup"],
-        div[data-testid="stSegmentedControl"] div[role="group"] {
-            display: flex !important;
-            flex-direction: row !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            background: rgba(15, 23, 42, 0.8) !important;
-            border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
-            border-radius: 12px !important;
-            padding: 4px !important;
-            gap: 4px !important;
-            box-sizing: border-box !important;
-            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
-        }
-
-        div[data-testid="stSegmentedControl"] button,
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"],
-        div[data-testid="stSegmentedControl"] label {
-            flex: 1 1 0% !important;
-            width: 33.333% !important;
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) > div[data-testid="column"] {
+            flex: 0 0 33.33% !important;
+            width: 33.33% !important;
+            max-width: 33.33% !important;
             min-width: 0 !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            border-radius: 8px !important;
-            border: none !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+
+        /* 未選中按鈕樣式 */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
             background: transparent !important;
-            color: #94A3B8 !important;
-            padding: 8px 4px !important;
-            margin: 0 !important;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            border: 1.5px solid transparent !important;
             box-shadow: none !important;
-            cursor: pointer !important;
+            padding: 9px 2px !important;
+            border-radius: 10px !important;
+            width: 100% !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
-
-        div[data-testid="stSegmentedControl"] button:hover,
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"]:hover {
-            color: #F1F5F9 !important;
-            background: rgba(255, 255, 255, 0.06) !important;
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"]:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-color: rgba(56, 189, 248, 0.3) !important;
         }
-
-        div[data-testid="stSegmentedControl"] button[aria-selected="true"],
-        div[data-testid="stSegmentedControl"] button[aria-checked="true"],
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"],
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][data-checked="true"],
-        div[data-testid="stSegmentedControl"] label:has(input:checked) {
-            background: linear-gradient(135deg, #0284C7 0%, #00A3FF 100%) !important;
-            color: #FFFFFF !important;
-            font-weight: 900 !important;
-            border-radius: 8px !important;
-            box-shadow: 0 0 14px rgba(0, 163, 255, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.35) !important;
-        }
-
-        div[data-testid="stSegmentedControl"] p,
-        div[data-testid="stSegmentedControl"] span {
-            font-size: 14px !important;
-            font-weight: 800 !important;
-            letter-spacing: 0.5px !important;
-            margin: 0 !important;
-            text-align: center !important;
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] p {
+            color: #64748B !important;
+            font-size: 12.5px !important;
+            font-weight: 700 !important;
             white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            margin: 0 !important;
         }
 
-        div[data-testid="stSegmentedControl"] button[aria-selected="true"] p,
-        div[data-testid="stSegmentedControl"] button[aria-checked="true"] p,
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][aria-selected="true"] p,
-        div[data-testid="stSegmentedControl"] [data-testid="stSegmentedControlOption"][data-checked="true"] p {
-            color: #FFFFFF !important;
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.6) !important;
+        /* 選中按鈕 (Primary 霓虹發光態樣) */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
+            background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
+            border: 1.5px solid #38BDF8 !important;
+            border-radius: 10px !important;
+            padding: 9px 2px !important;
+            width: 100% !important;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.35) !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"] p {
+            color: #38BDF8 !important;
+            font-size: 13px !important;
+            font-weight: 900 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            margin: 0 !important;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
@@ -539,7 +524,7 @@ def render_user_home() -> None:
             box-shadow: 0 4px 18px rgba(2, 132, 199, 0.6) !important;
             transition: all 0.25s ease-in-out !important;
             margin-top: 6px !important;
-            margin-bottom: 12px !important;
+            margin-bottom: 6px !important;
             width: 100% !important;
         }
 
@@ -706,54 +691,50 @@ def render_user_home() -> None:
     """
     st.html(period_html)
 
-    st.markdown(
-        """
-    <div style='font-size: 13px; font-weight: 700; color: #94A3B8; margin-bottom: 8px;'>選擇系統操作模式</div>
-    """,
-        unsafe_allow_html=True,
-    )
-
-    MODE_OPTIONS = [
-        "繪製個人月班表圖檔",
-        "換班｜選擇換班日期",
-        "換假｜選擇換假日期",
-    ]
+    st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
     if "active_app_mode" not in st.session_state:
-        st.session_state["active_app_mode"] = "繪製個人月班表圖檔"
+        st.session_state["active_app_mode"] = "個人月班表"
 
-    try:
-        current_mode_idx = MODE_OPTIONS.index(st.session_state["active_app_mode"])
-    except ValueError:
-        current_mode_idx = 0
+    # ==================== 🚀 航太級 Command HUD 互動切換列 ====================
+    col_hud1, col_hud2, col_hud3 = st.columns(3)
 
-    app_mode = st.radio(
-        "系統操作模式選擇",
-        MODE_OPTIONS,
-        index=current_mode_idx,
-        horizontal=False,
-        label_visibility="collapsed",
-        key="user_app_mode",
-    )
+    with col_hud1:
+        is_mode_1 = st.session_state["active_app_mode"] == "個人月班表"
+        if st.button("個人月班表", key="tab_hud_1", use_container_width=True, type="primary" if is_mode_1 else "secondary"):
+            if not is_mode_1:
+                st.session_state["active_app_mode"] = "個人月班表"
+                st.session_state.pop("win_raw_candidates", None)
+                st.session_state.pop("ex_raw_candidates", None)
+                st.session_state["ex_search_performed"] = False
+                st.rerun()
 
-    if app_mode != st.session_state["active_app_mode"]:
-        st.session_state["active_app_mode"] = app_mode
-        st.session_state.pop("win_raw_candidates", None)
-        st.session_state.pop("ex_raw_candidates", None)
-        st.session_state["ex_search_performed"] = False
+    with col_hud2:
+        is_mode_2 = st.session_state["active_app_mode"] == "換班查詢"
+        if st.button("換班查詢", key="tab_hud_2", use_container_width=True, type="primary" if is_mode_2 else "secondary"):
+            if not is_mode_2:
+                st.session_state["active_app_mode"] = "換班查詢"
+                st.session_state.pop("win_raw_candidates", None)
+                st.session_state.pop("ex_raw_candidates", None)
+                st.session_state["ex_search_performed"] = False
+                st.rerun()
 
-        modal_keys_to_clear = [
-            "show_feedback_modal", "show_feedback_dialog",
-            "feedback_open", "show_issue_modal", "show_feedback"
-        ]
-        for mk in modal_keys_to_clear:
-            if mk in st.session_state:
-                st.session_state[mk] = False
+    with col_hud3:
+        is_mode_3 = st.session_state["active_app_mode"] == "換假查詢"
+        if st.button("換假查詢", key="tab_hud_3", use_container_width=True, type="primary" if is_mode_3 else "secondary"):
+            if not is_mode_3:
+                st.session_state["active_app_mode"] = "換假查詢"
+                st.session_state.pop("win_raw_candidates", None)
+                st.session_state.pop("ex_raw_candidates", None)
+                st.session_state["ex_search_performed"] = False
+                st.rerun()
+
+    app_mode = st.session_state["active_app_mode"]
 
     st.markdown("---")
 
-    # ==================== 模式一：繪製個人月班表圖檔 ====================
-    if app_mode == "繪製個人月班表圖檔":
+    # ==================== 模式一：個人月班表 ====================
+    if app_mode == "個人月班表":
         if is_module_maintenance(current_unit_label, "producer"):
             if not is_admin_user:
                 st.markdown(
@@ -845,8 +826,8 @@ def render_user_home() -> None:
                 except Exception as e:
                     st.error(f"繪製班表時發生錯誤：{e}")
 
-    # ==================== 模式二：換班｜選擇換班日期 ====================
-    elif app_mode == "換班｜選擇換班日期":
+    # ==================== 模式二：換班查詢 ====================
+    elif app_mode == "換班查詢":
         if is_module_maintenance(current_unit_label, "window_filter"):
             if not is_admin_user:
                 st.markdown(
@@ -874,380 +855,359 @@ def render_user_home() -> None:
                     unsafe_allow_html=True,
                 )
 
-        st.markdown(
-            """
-        <div class="section-header-box">
-            <div class="section-title">換班檢索｜指定 Sign-In 時段組員快篩</div>
-            <div class="section-subtitle">Duty Time Window & Sign-In Filter Matrix</div>
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
-
-        st.markdown('<div class="section-field-label">點擊選擇查詢職位</div>', unsafe_allow_html=True)
-
-        if "saved_win_roles" not in st.session_state:
-            st.session_state["saved_win_roles"] = ["服勤員"]
-
-        if hasattr(st, "segmented_control"):
-            selected_roles = st.segmented_control(
-                "點擊選擇查詢職位",
-                options=["服勤員", "列車長", "駕駛"],
-                default=st.session_state["saved_win_roles"],
-                selection_mode="multi",
-                label_visibility="collapsed",
-                key="win_seg_roles",
-                on_change=reset_win_search,
-            )
-        else:
-            selected_roles = st.multiselect(
-                "點擊選擇查詢職位",
-                options=["服勤員", "列車長", "駕駛"],
-                default=st.session_state["saved_win_roles"],
-                label_visibility="collapsed",
-                key="win_multi_roles",
-                on_change=reset_win_search,
+        # =========================================================================
+        # 🚀 使用 Streamlit 內建容器 `st.container(border=True)` 打造 Unified Command Box
+        # =========================================================================
+        with st.container(border=True):
+            st.markdown(
+                """
+                <div style="margin-bottom: 8px;">
+                    <div style="font-size: 14.5px; font-weight: 900; color: #F8FAFC; letter-spacing: 0.3px;">換班檢索｜指定 Sign-In 時段組員快篩</div>
+                    <div style="font-size: 10px; color: #38BDF8; font-family: monospace; letter-spacing: 0.8px; margin-top: 2px;">DUTY TIME WINDOW & SIGN-IN FILTER MATRIX</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
-        roles_to_query = list(selected_roles) if selected_roles else []
-        if roles_to_query:
-            st.session_state["saved_win_roles"] = roles_to_query
+            st.markdown('<div class="section-field-label">點擊選擇查詢職位</div>', unsafe_allow_html=True)
 
-        if not roles_to_query:
-            st.warning("⚠️請至少選取一個職位 以進行查詢！")
-        else:
-            has_driver = "駕駛" in roles_to_query
-            start_h = 3 if has_driver else 5
-            morn_start_time = f"{start_h:02d}:00"
+            if "saved_win_roles" not in st.session_state:
+                st.session_state["saved_win_roles"] = ["服勤員"]
 
-            TIME_OPTIONS = [
-                f"{h:02d}:{m:02d}"
-                for h in range(start_h, 19)
-                for m in (0, 30)
-                if not (h == 18 and m == 30)
-            ]
-
-            valid_paths = {}
-            for r_name in roles_to_query:
-                p = active_files.get(r_name, "")
-                if p and os.path.exists(p) and os.path.getsize(p) > 0:
-                    valid_paths[r_name] = p
-
-            if not valid_paths:
-                st.error(
-                    f"找不到【{current_unit_label}】所選職位的班表檔案，請先至管理員後台上傳"
+            if hasattr(st, "segmented_control"):
+                selected_roles = st.segmented_control(
+                    "點擊選擇查詢職位",
+                    options=["服勤員", "列車長", "駕駛"],
+                    default=st.session_state["saved_win_roles"],
+                    selection_mode="multi",
+                    label_visibility="collapsed",
+                    key="win_seg_roles",
+                    on_change=reset_win_search,
                 )
             else:
-                first_role, first_path = list(valid_paths.items())[0]
-                df_search_sample = safe_read_excel(first_path, header=3)
-                df_search_sample.columns = [str(c).strip() for c in df_search_sample.columns]
-                date_cols = [
-                    normalize_date_str(col)
-                    for col in df_search_sample.columns[2:]
-                    if normalize_date_str(col)
+                selected_roles = st.multiselect(
+                    "點擊選擇查詢職位",
+                    options=["服勤員", "列車長", "駕駛"],
+                    default=st.session_state["saved_win_roles"],
+                    label_visibility="collapsed",
+                    key="win_multi_roles",
+                    on_change=reset_win_search,
+                )
+
+            roles_to_query = list(selected_roles) if selected_roles else []
+            if roles_to_query:
+                st.session_state["saved_win_roles"] = roles_to_query
+
+            if not roles_to_query:
+                st.warning("⚠️請至少選取一個職位 以進行查詢！")
+            else:
+                has_driver = "駕駛" in roles_to_query
+                start_h = 3 if has_driver else 5
+                morn_start_time = f"{start_h:02d}:00"
+
+                TIME_OPTIONS = [
+                    f"{h:02d}:{m:02d}"
+                    for h in range(start_h, 19)
+                    for m in (0, 30)
+                    if not (h == 18 and m == 30)
                 ]
 
-                if date_cols:
-                    default_win_idx = 0
-                    saved_target_date = st.session_state.get("saved_win_target_date")
-                    if saved_target_date and saved_target_date in date_cols:
-                        default_win_idx = date_cols.index(saved_target_date)
-                    else:
-                        tomorrow_dt = date.today() + timedelta(days=1)
-                        found_idx = None
-                        for idx, d_str in enumerate(date_cols):
-                            parts = d_str.split("/")
-                            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                                if int(parts[0]) == tomorrow_dt.month and int(parts[1]) == tomorrow_dt.day:
-                                    found_idx = idx
-                                    break
-                        if found_idx is None:
-                            today_dt = date.today()
+                valid_paths = {}
+                for r_name in roles_to_query:
+                    p = active_files.get(r_name, "")
+                    if p and os.path.exists(p) and os.path.getsize(p) > 0:
+                        valid_paths[r_name] = p
+
+                if not valid_paths:
+                    st.error(
+                        f"找不到【{current_unit_label}】所選職位的班表檔案，請先至管理員後台上傳"
+                    )
+                else:
+                    first_role, first_path = list(valid_paths.items())[0]
+                    df_search_sample = safe_read_excel(first_path, header=3)
+                    df_search_sample.columns = [str(c).strip() for c in df_search_sample.columns]
+                    date_cols = [
+                        normalize_date_str(col)
+                        for col in df_search_sample.columns[2:]
+                        if normalize_date_str(col)
+                    ]
+
+                    if date_cols:
+                        default_win_idx = 0
+                        saved_target_date = st.session_state.get("saved_win_target_date")
+                        if saved_target_date and saved_target_date in date_cols:
+                            default_win_idx = date_cols.index(saved_target_date)
+                        else:
+                            tomorrow_dt = date.today() + timedelta(days=1)
+                            found_idx = None
                             for idx, d_str in enumerate(date_cols):
                                 parts = d_str.split("/")
                                 if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                                    if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
+                                    if int(parts[0]) == tomorrow_dt.month and int(parts[1]) == tomorrow_dt.day:
                                         found_idx = idx
                                         break
-                        default_win_idx = found_idx if found_idx is not None else 0
+                            if found_idx is None:
+                                today_dt = date.today()
+                                for idx, d_str in enumerate(date_cols):
+                                    parts = d_str.split("/")
+                                    if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                                        if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
+                                            found_idx = idx
+                                            break
+                            default_win_idx = found_idx if found_idx is not None else 0
 
-                    target_date = st.selectbox(
-                        "選擇換班日期",
-                        date_cols,
-                        index=default_win_idx,
-                        format_func=lambda d: get_date_label(d, df_search_sample.columns),
-                        key="win_target_date",
-                        on_change=reset_win_search,
-                    )
-                    st.session_state["saved_win_target_date"] = target_date
+                        target_date = st.selectbox(
+                            "選擇換班日期",
+                            date_cols,
+                            index=default_win_idx,
+                            format_func=lambda d: get_date_label(d, df_search_sample.columns),
+                            key="win_target_date",
+                            on_change=reset_win_search,
+                        )
+                        st.session_state["saved_win_target_date"] = target_date
 
-                    win_week_holidays = get_week_holidays(
-                        target_date, date_cols, df_search_sample.columns
-                    )
-                    _, win_week_str = check_week_has_holiday(
-                        target_date, date_cols, df_search_sample.columns
-                    )
+                        win_week_holidays = get_week_holidays(
+                            target_date, date_cols, df_search_sample.columns
+                        )
+                        _, win_week_str = check_week_has_holiday(
+                            target_date, date_cols, df_search_sample.columns
+                        )
 
-                    comp.show_holiday_notice(win_week_holidays, win_week_str)
+                        comp.show_holiday_notice(win_week_holidays, win_week_str)
 
-                    # -----------------------------------------------------------------
-                    # 獨立時段滑塊（綁定獨立記憶變數 + 大字體醒目顯示盒）
-                    # -----------------------------------------------------------------
-                    st.markdown('<div class="section-field-label">Sign-In 時段區間 (拖曳調整)</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="section-field-label">Sign-In 時段區間 (05:00 ～ 18:00)</div>', unsafe_allow_html=True)
 
-                    if "saved_win_time_range" not in st.session_state:
-                        st.session_state["saved_win_time_range"] = (TIME_OPTIONS[0], TIME_OPTIONS[-1])
+                        if "saved_win_time_range" not in st.session_state:
+                            st.session_state["saved_win_time_range"] = (TIME_OPTIONS[0], TIME_OPTIONS[-1])
 
-                    curr_saved = st.session_state["saved_win_time_range"]
-                    if (
-                        not isinstance(curr_saved, (tuple, list))
-                        or len(curr_saved) != 2
-                        or curr_saved[0] not in TIME_OPTIONS
-                        or curr_saved[1] not in TIME_OPTIONS
-                    ):
-                        curr_saved = (TIME_OPTIONS[0], TIME_OPTIONS[-1])
-                        st.session_state["saved_win_time_range"] = curr_saved
+                        curr_saved = st.session_state["saved_win_time_range"]
+                        if (
+                            not isinstance(curr_saved, (tuple, list))
+                            or len(curr_saved) != 2
+                            or curr_saved[0] not in TIME_OPTIONS
+                            or curr_saved[1] not in TIME_OPTIONS
+                        ):
+                            curr_saved = (TIME_OPTIONS[0], TIME_OPTIONS[-1])
+                            st.session_state["saved_win_time_range"] = curr_saved
 
-                    slider_val = st.select_slider(
-                        "Sign-In 時段區間 (拖曳調整)",
-                        options=TIME_OPTIONS,
-                        value=curr_saved,
-                        key="win_time_slider_widget",
-                        on_change=reset_win_search,
-                        label_visibility="collapsed",
-                    )
+                        slider_val = st.select_slider(
+                            "Sign-In 時段區間 (05:00 ～ 18:00)",
+                            options=TIME_OPTIONS,
+                            value=curr_saved,
+                            key="win_time_slider_widget",
+                            on_change=reset_win_search,
+                            label_visibility="collapsed",
+                        )
 
-                    st.session_state["saved_win_time_range"] = slider_val
-                    min_time, max_time_sel = slider_val
-                    # 【精巧橫向時段顯示】不佔空間、精美俐落
-                    st.markdown(
-                        f"""
-                        <div style="background: rgba(15, 23, 42, 0.85); 
-                                    border: 1px solid rgba(56, 189, 248, 0.4); 
-                                    border-radius: 8px; 
-                                    padding: 6px 12px; 
-                                    display: flex; 
-                                    justify-content: space-between; 
-                                    align-items: center; 
-                                    margin-top: 4px; 
-                                    margin-bottom: 8px;">
-                            <span style="font-size: 16px; font-weight: 700; color: #94A3B8;">目前選擇區間</span>
-                            <span style="font-size: 16px; font-weight: 800; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px;">
-                                 {min_time} ～ {max_time_sel}
-                            </span>
+                        st.session_state["saved_win_time_range"] = slider_val
+                        min_time, max_time_sel = slider_val
+
+                        st.markdown('<div class="section-field-label">進階篩選條件</div>', unsafe_allow_html=True)
+
+                        if "saved_win_main_line" not in st.session_state:
+                            st.session_state["saved_win_main_line"] = False
+                        if "saved_win_long_shift" not in st.session_state:
+                            st.session_state["saved_win_long_shift"] = False
+
+                        filter_col1, filter_col2 = st.columns(2)
+                        with filter_col1:
+                            only_main_line = st.checkbox(
+                                "僅顯示正線勤務",
+                                value=st.session_state["saved_win_main_line"],
+                                key="win_main_line",
+                            )
+                            st.session_state["saved_win_main_line"] = only_main_line
+                        with filter_col2:
+                            only_long_shift = st.checkbox(
+                                "僅顯示長班 (>8.5h)",
+                                value=st.session_state["saved_win_long_shift"],
+                                key="win_long_shift",
+                            )
+                            st.session_state["saved_win_long_shift"] = only_long_shift
+
+                        search_clicked = st.button("搜尋可換班組員名單", key="btn_window_search", type="primary", use_container_width=True)
+
+        if search_clicked:
+            raw_candidates = []
+            search_min_time, search_max_time = slider_val
+
+            for r_name, p_path in valid_paths.items():
+                df_search = safe_read_excel(p_path, header=3)
+                df_search.columns = [str(c).strip() for c in df_search.columns]
+                target_col_idx = find_date_column_index(df_search.columns, target_date)
+
+                if target_col_idx != -1:
+                    for _, row in df_search.iterrows():
+                        emp_id = str(row.iloc[0]).strip()
+                        emp_name = str(row.iloc[1]).strip()
+                        if not emp_id or emp_id.upper() in ["NAN", "NONE", ""]:
+                            continue
+
+                        if target_col_idx < len(row):
+                            cell_raw = row.iloc[target_col_idx]
+                            parsed = parse_cell(cell_raw)
+                            start_t = parsed["start"]
+
+                            is_off = is_cell_off_day(cell_raw)
+
+                            if not is_off or start_t:
+                                s_time_str = str(start_t).strip() if start_t else "--:--"
+
+                                if s_time_str == "--:--" or not (search_min_time <= s_time_str <= search_max_time):
+                                    continue
+
+                                tr_upper = str(parsed["train"]).strip().upper()
+                                raw_cell_upper = str(cell_raw).upper()
+                                is_leave = (
+                                    any(k in raw_cell_upper for k in LEAVE_CODES)
+                                    or tr_upper in LEAVE_CODES
+                                )
+                                is_non_line = is_town_shift(parsed["train"], parsed["note"])
+                                is_long = is_overtime(
+                                    parsed["hours"], parsed["train"], parsed["note"]
+                                )
+
+                                if only_main_line and (is_non_line or is_leave):
+                                    continue
+                                if only_long_shift and not is_long:
+                                    continue
+
+                                do_match = re.search(
+                                    r"(DO\d*W?|D\d+W|OGC)", str(cell_raw), re.IGNORECASE
+                                )
+                                do_tag = do_match.group(1).upper() if do_match else ""
+
+                                next_day_sign_in = "無"
+                                if target_col_idx + 1 < len(row):
+                                    next_parsed = parse_cell(row.iloc[target_col_idx + 1])
+                                    next_day_sign_in = (
+                                        next_parsed["start"]
+                                        if next_parsed["start"]
+                                        else (
+                                            next_parsed["train"]
+                                            if next_parsed["train"]
+                                            else "無"
+                                        )
+                                    )
+
+                                raw_candidates.append({
+                                    "日期": target_date,
+                                    "職位": r_name,
+                                    "員編": emp_id,
+                                    "姓名": emp_name,
+                                    "Sign-In": s_time_str,
+                                    "Sign-Out": parsed["end"] if parsed["end"] else "--:--",
+                                    "工時": parsed.get("hours", ""),
+                                    "車次": translate_train_code(parsed["train"]),
+                                    "隔日Sign-In": next_day_sign_in,
+                                    "長班": is_long,
+                                    "非正線": is_non_line,
+                                    "請假": is_leave,
+                                    "出勤標記": do_tag,
+                                })
+
+            st.session_state["win_raw_candidates"] = raw_candidates
+            st.rerun()
+
+        if st.session_state.get("win_raw_candidates") is not None:
+            filtered_results = st.session_state["win_raw_candidates"]
+
+            ROLE_ORDER = {"服勤員": 1, "列車長": 2, "駕駛": 3}
+            filtered_results = sorted(
+                filtered_results,
+                key=lambda x: (
+                    str(x["Sign-In"]) if x["Sign-In"] != "--:--" else "99:99",
+                    get_shift_group_num(x["車次"]),
+                    ROLE_ORDER.get(x.get("職位", ""), 9),
+                    str(x["車次"]),
+                ),
+            )
+
+            unique_groups_in_order = []
+            for r in filtered_results:
+                g_key = get_shift_group_key(r["車次"])
+                if g_key not in unique_groups_in_order:
+                    unique_groups_in_order.append(g_key)
+
+            shift_key_to_theme = {g_key: idx % 5 for idx, g_key in enumerate(unique_groups_in_order)}
+
+            log_activity(
+                "換班日期快篩",
+                f"單位:{current_unit_label} | 選擇職位:{'/'.join(roles_to_query)} | 日期:{target_date} | "
+                f"時段:{min_time}~{max_time_sel} | 僅正線:{only_main_line} | "
+                f"僅長班:{only_long_shift} | 命中數:{len(filtered_results)}筆"
+            )
+
+            st.markdown(
+                f"### 換班可選人員名單（共符合 {len(filtered_results)} 筆）"
+            )
+
+            if filtered_results:
+                cnt_do2w = sum(
+                    1
+                    for r in filtered_results
+                    if "DO2" in r.get("出勤標記", "")
+                    or "OGC" in r.get("出勤標記", "")
+                )
+                cnt_long = sum(1 for r in filtered_results if r.get("長班"))
+
+                st.markdown(
+                    f"""
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
+                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">符合資格人數</div>
+                            <div style="font-size: 17px; font-weight: 900; color: #38BDF8; font-family: monospace;">{len(filtered_results)} <span style="font-size: 10px;">位</span></div>
                         </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
+                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(245, 158, 11, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">含 DO2W 標記</div>
+                            <div style="font-size: 17px; font-weight: 900; color: #FBBF24; font-family: monospace;">{cnt_do2w} <span style="font-size: 10px;">人</span></div>
+                        </div>
+                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">長班 (>8.5h)</div>
+                            <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_long} <span style="font-size: 10px;">人</span></div>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
-                    st.markdown('<div class="section-field-label">進階篩選條件</div>', unsafe_allow_html=True)
+                for i in range(0, len(filtered_results), 2):
+                    batch = filtered_results[i : i + 2]
+                    cols = st.columns(2)
 
-                    if "saved_win_main_line" not in st.session_state:
-                        st.session_state["saved_win_main_line"] = False
-                    if "saved_win_long_shift" not in st.session_state:
-                        st.session_state["saved_win_long_shift"] = False
+                    for idx_in_batch, r in enumerate(batch):
+                        with cols[idx_in_batch]:
+                            do_tag = r.get("出勤標記", "")
+                            r_role = r.get("職位", "")
 
-                    filter_col1, filter_col2 = st.columns(2)
-                    with filter_col1:
-                        only_main_line = st.checkbox(
-                            "僅顯示正線勤務",
-                            value=st.session_state["saved_win_main_line"],
-                            key="win_main_line",
-                        )
-                        st.session_state["saved_win_main_line"] = only_main_line
-                    with filter_col2:
-                        only_long_shift = st.checkbox(
-                            "僅顯示長班 (>8.5h)",
-                            value=st.session_state["saved_win_long_shift"],
-                            key="win_long_shift",
-                        )
-                        st.session_state["saved_win_long_shift"] = only_long_shift
+                            badges_html = '<div class="badge-group">'
+                            if r_role == "駕駛":
+                                badges_html += '<span class="role-badge-driver">TD</span>'
+                            elif r_role == "列車長":
+                                badges_html += '<span class="role-badge-conductor">TM</span>'
+                            elif r_role == "服勤員":
+                                badges_html += '<span class="role-badge-crew">TA</span>'
 
-                    # -----------------------------------------------------------------
-                    # 搜尋執行邏輯
-                    # -----------------------------------------------------------------
-                    if st.button("搜尋可換班組員名單", key="btn_window_search", type="primary", use_container_width=True):
-                        raw_candidates = []
+                            if r.get("非正線"):
+                                badges_html += '<span class="non-line-badge">非正線</span>'
+                            if r.get("長班"):
+                                badges_html += '<span class="long-badge">長班</span>'
+                            if do_tag:
+                                badges_html += f'<span class="do2w-badge">[{do_tag}]</span>'
+                            badges_html += "</div>"
 
-                        search_min_time, search_max_time = slider_val
+                            clean_name = str(r.get("姓名", "")).replace("\n", " ").strip()
+                            clean_id = str(r.get("員編", "")).replace("\n", " ").strip()
+                            clean_train = str(r.get("車次", "")).replace("\n", " ").strip()
+                            clean_signin = str(r.get("Sign-In", "--:--")).replace("\n", " ").strip()
+                            clean_signout = str(r.get("Sign-Out", "--:--")).replace("\n", " ").strip()
+                            clean_next_signin = str(r.get("隔日Sign-In", "無")).replace("\n", " ").strip()
 
-                        for r_name, p_path in valid_paths.items():
-                            df_search = safe_read_excel(p_path, header=3)
-                            df_search.columns = [str(c).strip() for c in df_search.columns]
-                            target_col_idx = find_date_column_index(df_search.columns, target_date)
+                            g_key = get_shift_group_key(clean_train)
+                            theme_idx = shift_key_to_theme.get(g_key, 0)
+                            card_class = f"crew-card-integrated card-theme-{theme_idx}"
 
-                            if target_col_idx != -1:
-                                for _, row in df_search.iterrows():
-                                    emp_id = str(row.iloc[0]).strip()
-                                    emp_name = str(row.iloc[1]).strip()
-                                    if not emp_id or emp_id.upper() in ["NAN", "NONE", ""]:
-                                        continue
-
-                                    if target_col_idx < len(row):
-                                        cell_raw = row.iloc[target_col_idx]
-                                        parsed = parse_cell(cell_raw)
-                                        start_t = parsed["start"]
-
-                                        is_off = is_cell_off_day(cell_raw)
-
-                                        if not is_off or start_t:
-                                            s_time_str = str(start_t).strip() if start_t else "--:--"
-
-                                            if s_time_str == "--:--" or not (search_min_time <= s_time_str <= search_max_time):
-                                                continue
-
-                                            tr_upper = str(parsed["train"]).strip().upper()
-                                            raw_cell_upper = str(cell_raw).upper()
-                                            is_leave = (
-                                                any(k in raw_cell_upper for k in LEAVE_CODES)
-                                                or tr_upper in LEAVE_CODES
-                                            )
-                                            is_non_line = is_town_shift(parsed["train"], parsed["note"])
-                                            is_long = is_overtime(
-                                                parsed["hours"], parsed["train"], parsed["note"]
-                                            )
-
-                                            if only_main_line and (is_non_line or is_leave):
-                                                continue
-                                            if only_long_shift and not is_long:
-                                                continue
-
-                                            do_match = re.search(
-                                                r"(DO\d*W?|D\d+W|OGC)", str(cell_raw), re.IGNORECASE
-                                            )
-                                            do_tag = do_match.group(1).upper() if do_match else ""
-
-                                            next_day_sign_in = "無"
-                                            if target_col_idx + 1 < len(row):
-                                                next_parsed = parse_cell(row.iloc[target_col_idx + 1])
-                                                next_day_sign_in = (
-                                                    next_parsed["start"]
-                                                    if next_parsed["start"]
-                                                    else (
-                                                        next_parsed["train"]
-                                                        if next_parsed["train"]
-                                                        else "無"
-                                                    )
-                                                )
-
-                                            raw_candidates.append({
-                                                "日期": target_date,
-                                                "職位": r_name,
-                                                "員編": emp_id,
-                                                "姓名": emp_name,
-                                                "Sign-In": s_time_str,
-                                                "Sign-Out": parsed["end"] if parsed["end"] else "--:--",
-                                                "工時": parsed.get("hours", ""),
-                                                "車次": translate_train_code(parsed["train"]),
-                                                "隔日Sign-In": next_day_sign_in,
-                                                "長班": is_long,
-                                                "非正線": is_non_line,
-                                                "請假": is_leave,
-                                                "出勤標記": do_tag,
-                                            })
-
-                        st.session_state["win_raw_candidates"] = raw_candidates
-                        st.rerun()
-
-                    if st.session_state.get("win_raw_candidates") is not None:
-                        filtered_results = st.session_state["win_raw_candidates"]
-
-                        ROLE_ORDER = {"服勤員": 1, "列車長": 2, "駕駛": 3}
-                        filtered_results = sorted(
-                            filtered_results,
-                            key=lambda x: (
-                                str(x["Sign-In"]) if x["Sign-In"] != "--:--" else "99:99",
-                                get_shift_group_num(x["車次"]),
-                                ROLE_ORDER.get(x.get("職位", ""), 9),
-                                str(x["車次"]),
-                            ),
-                        )
-
-                        unique_groups_in_order = []
-                        for r in filtered_results:
-                            g_key = get_shift_group_key(r["車次"])
-                            if g_key not in unique_groups_in_order:
-                                unique_groups_in_order.append(g_key)
-
-                        shift_key_to_theme = {g_key: idx % 5 for idx, g_key in enumerate(unique_groups_in_order)}
-
-                        log_activity(
-                            "換班日期快篩",
-                            f"單位:{current_unit_label} | 選擇職位:{'/'.join(roles_to_query)} | 日期:{target_date} | "
-                            f"時段:{min_time}~{max_time_sel} | 僅正線:{only_main_line} | "
-                            f"僅長班:{only_long_shift} | 命中數:{len(filtered_results)}筆"
-                        )
-
-                        st.markdown(
-                            f"### 換班可選人員名單（共符合 {len(filtered_results)} 筆）"
-                        )
-
-                        if filtered_results:
-                            cnt_do2w = sum(
-                                1
-                                for r in filtered_results
-                                if "DO2" in r.get("出勤標記", "")
-                                or "OGC" in r.get("出勤標記", "")
-                            )
-                            cnt_long = sum(1 for r in filtered_results if r.get("長班"))
-
-                            st.markdown(
-                                f"""
-                                <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
-                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                                        <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">符合資格人數</div>
-                                        <div style="font-size: 17px; font-weight: 900; color: #38BDF8; font-family: monospace;">{len(filtered_results)} <span style="font-size: 10px;">位</span></div>
-                                    </div>
-                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(245, 158, 11, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                                        <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">含 DO2W 標記</div>
-                                        <div style="font-size: 17px; font-weight: 900; color: #FBBF24; font-family: monospace;">{cnt_do2w} <span style="font-size: 10px;">人</span></div>
-                                    </div>
-                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                                        <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">長班 (>8.5h)</div>
-                                        <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_long} <span style="font-size: 10px;">人</span></div>
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
-
-                            for i in range(0, len(filtered_results), 2):
-                                batch = filtered_results[i : i + 2]
-                                cols = st.columns(2)
-
-                                for idx_in_batch, r in enumerate(batch):
-                                    with cols[idx_in_batch]:
-                                        do_tag = r.get("出勤標記", "")
-                                        r_role = r.get("職位", "")
-
-                                        badges_html = '<div class="badge-group">'
-                                        if r_role == "駕駛":
-                                            badges_html += '<span class="role-badge-driver">TD</span>'
-                                        elif r_role == "列車長":
-                                            badges_html += '<span class="role-badge-conductor">TM</span>'
-                                        elif r_role == "服勤員":
-                                            badges_html += '<span class="role-badge-crew">TA</span>'
-
-                                        if r.get("非正線"):
-                                            badges_html += '<span class="non-line-badge">非正線</span>'
-                                        if r.get("長班"):
-                                            badges_html += '<span class="long-badge">長班</span>'
-                                        if do_tag:
-                                            badges_html += f'<span class="do2w-badge">[{do_tag}]</span>'
-                                        badges_html += "</div>"
-
-                                        clean_name = str(r.get("姓名", "")).replace("\n", " ").strip()
-                                        clean_id = str(r.get("員編", "")).replace("\n", " ").strip()
-                                        clean_train = str(r.get("車次", "")).replace("\n", " ").strip()
-                                        clean_signin = str(r.get("Sign-In", "--:--")).replace("\n", " ").strip()
-                                        clean_signout = str(r.get("Sign-Out", "--:--")).replace("\n", " ").strip()
-                                        clean_next_signin = str(r.get("隔日Sign-In", "無")).replace("\n", " ").strip()
-
-                                        g_key = get_shift_group_key(clean_train)
-                                        theme_idx = shift_key_to_theme.get(g_key, 0)
-                                        card_class = f"crew-card-integrated card-theme-{theme_idx}"
-
-                                        card_html = f"""<div class="{card_class}">
+                            card_html = f"""<div class="{card_class}">
 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
     <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_id})</span>
@@ -1266,21 +1226,21 @@ def render_user_home() -> None:
 </div>
 </div>"""
 
-                                        st.markdown(card_html, unsafe_allow_html=True)
+                            st.markdown(card_html, unsafe_allow_html=True)
 
-                                        if st.button(
-                                            f"檢視 {clean_name} 完整班表 ➔",
-                                            key=f"win_btn_{clean_id}_{i+idx_in_batch}",
-                                            use_container_width=True,
-                                        ):
-                                            log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_name}({clean_id})")
-                                            st.session_state["inspect_emp_target"] = clean_id
-                                            st.rerun()
-                        else:
-                            st.info("在指定條件內，找不到符合的人員")
+                            if st.button(
+                                f"檢視 {clean_name} 完整班表 ➔",
+                                key=f"win_btn_{clean_id}_{i+idx_in_batch}",
+                                use_container_width=True,
+                            ):
+                                log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_name}({clean_id})")
+                                st.session_state["inspect_emp_target"] = clean_id
+                                st.rerun()
+            else:
+                st.info("在指定條件內，找不到符合的人員")
 
-    # ==================== 模式三：換假｜選擇換假日期 ====================
-    elif app_mode == "換假｜選擇換假日期":
+    # ==================== 模式三：換假查詢 ====================
+    elif app_mode == "換假查詢":
         if is_module_maintenance(current_unit_label, "exchange_filter"):
             if not is_admin_user:
                 st.markdown(
@@ -1715,8 +1675,8 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                for i in range(0, len(filtered_candidates), 2):
-                                    batch = filtered_candidates[i : i + 2]
+                                for i in range(0, len(filtered_results), 2):
+                                    batch = filtered_results[i : i + 2]
                                     cols = st.columns(2)
 
                                     for idx_in_batch, cand in enumerate(batch):
