@@ -799,7 +799,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 頂部戰情儀表板 (原生安全穩定架構)
+    # 🚀 頂部戰情儀表板 (視覺精緻化優化版)
     # =========================================================================
     sys_cfg = load_system_config()
     enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
@@ -814,29 +814,26 @@ def render_user_home() -> None:
     identity_str = get_identity_display_str(user_role, current_user_name, current_user_id)
     sched_display_text = sched_range if len(missing_files) < 3 else "資料庫異常"
 
-    with st.container(border=True):
-        st.markdown(
-            f"""
-            <div style="text-align: center;">
-                <div style="font-size: 16px; font-weight: 900; letter-spacing: 0.5px; color: #F8FAFC; font-family: monospace;">
-                    CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
+    st.markdown(
+        f"""
+        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 14px; padding: 12px 16px 10px 16px; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div style="font-size: 15px; font-weight: 900; letter-spacing: 0.8px; color: #F8FAFC; font-family: monospace;">
+                    CREW DUTY ENGINE <span style="font-size: 10px; color: #38BDF8; font-weight: 600; background: rgba(56,189,248,0.15); padding: 2px 6px; border-radius: 4px; margin-left: 4px;">C.L.F EDITION</span>
                 </div>
-                <div style="margin-top: 4px; font-size: 11px; color: #94A3B8; font-family: monospace;">
-                    <span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #FBBF24;">{identity_str}</strong>
+                <div style="display: flex; gap: 6px; align-items: center; font-size: 11px; font-family: monospace;">
+                    <span style="background: rgba(74, 222, 128, 0.15); color: #4ADE80; padding: 2px 8px; border-radius: 6px; font-weight: bold;">● ACTIVE</span>
+                    <span style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; padding: 2px 8px; border-radius: 6px; font-weight: bold;">{current_unit_label}</span>
+                    <span style="background: rgba(251, 191, 36, 0.15); color: #FBBF24; padding: 2px 8px; border-radius: 6px; font-weight: bold;">{identity_str}</span>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            {'<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: #FDE68A; text-align: center; font-family: monospace;">' + announcement_msg + '</div>' if enable_beta_banner and announcement_msg else ''}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-        if enable_beta_banner and announcement_msg:
-            st.markdown(
-                f"<div style='font-size: 11.5px; color: #FDE68A; text-align: center; margin-top: 6px; font-family: monospace;'>{announcement_msg}</div>",
-                unsafe_allow_html=True,
-            )
-
-        st.markdown("---")
-
+    with st.container(border=True):
         top_col1, top_col2 = st.columns([1.2, 1])
         with top_col1:
             st.markdown(f"**[{current_unit_label}] 排班週期**")
@@ -926,8 +923,10 @@ def render_user_home() -> None:
         )
 
         with st.form(key="draw_schedule_form", border=False):
-            # 強制只取純員編 (例如 A026925) 作為預設輸入值
-            clean_default_id = current_user_id.strip()
+            # 嚴格利用 regex 從登入資訊中萃取出純員編 (例如 A021987)
+            raw_uid = current_user_id.strip()
+            id_match = re.search(r'[A-Za-z]\d+', raw_uid)
+            clean_default_id = id_match.group(0).upper() if id_match else raw_uid
             
             draw_field_label = "請輸入您的員編或姓名 (例如: A023300)"
 
