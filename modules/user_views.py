@@ -309,8 +309,8 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 👑 【強制覆蓋手機版響應式堆疊】：讓上方三顆切換按鈕在手機上永遠維持橫向三欄並排 */
-        div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) {
+        /* 👑 【精準結構選取器】：透過 3 欄結構精準鎖定模式切換器，強制在手機與電腦上維持橫向並排不換行 */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -326,7 +326,7 @@ def render_user_home() -> None:
             margin-bottom: 8px !important;
         }
 
-        div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) > div[data-testid="column"] {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) > div[data-testid="column"] {
             flex: 1 1 33.33% !important;
             width: 33.33% !important;
             max-width: 33.33% !important;
@@ -335,21 +335,8 @@ def render_user_home() -> None:
             overflow: hidden !important;
         }
 
-        @media (max-width: 768px) {
-            div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) {
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-            }
-            div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) > div[data-testid="column"] {
-                flex: 1 1 33.33% !important;
-                width: 33.33% !important;
-                max-width: 33.33% !important;
-                min-width: 0 !important;
-            }
-        }
-
         /* 未選中的分頁按鈕 */
-        div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) button[data-testid="stBaseButton-secondary"] {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
@@ -358,10 +345,10 @@ def render_user_home() -> None:
             width: 100% !important;
             transition: all 0.2s ease !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) button[data-testid="stBaseButton-secondary"]:hover {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"]:hover {
             background: rgba(255, 255, 255, 0.05) !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) button[data-testid="stBaseButton-secondary"] p {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] p {
             color: #64748B !important;
             font-size: 12px !important;
             font-weight: 700 !important;
@@ -372,8 +359,8 @@ def render_user_home() -> None:
         }
 
         /* 已選中的分頁按鈕：發光外框與深藍底 */
-        div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) button[data-testid="stBaseButton-primary"],
-        div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) button[kind="primary"] {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 132, 199, 0.25) 100%) !important;
             border: 1.5px solid #38BDF8 !important;
             border-radius: 10px !important;
@@ -381,7 +368,7 @@ def render_user_home() -> None:
             width: 100% !important;
             box-shadow: 0 0 14px rgba(56, 189, 248, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25) !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(button[key*="tab_btn_"]) button[data-testid="stBaseButton-primary"] p {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"] p {
             color: #38BDF8 !important;
             font-size: 12px !important;
             font-weight: 900 !important;
@@ -715,7 +702,7 @@ def render_user_home() -> None:
     if "active_app_mode" not in st.session_state:
         st.session_state["active_app_mode"] = "個人月班表"
 
-    # 鎖定橫向並排的三欄按鈕外框
+    # 三欄並排切換器
     col_tab1, col_tab2, col_tab3 = st.columns(3)
 
     with col_tab1:
