@@ -222,43 +222,27 @@ def render_user_home() -> None:
             line-height: 1.3 !important;
         }
 
-        /* 放大原生的 Slider 時間標籤字體 */
+        /* ========================================================================= */
+        /* 🚀 【高質感 Slider 專屬外框改造】：完美對齊參考圖中的卡片式發光滑桿 */
+        /* ========================================================================= */
+        div[data-testid="stSlider"] {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%) !important;
+            border: 1.5px solid rgba(56, 189, 248, 0.4) !important;
+            border-radius: 12px !important;
+            padding: 14px 16px 8px 16px !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.1) !important;
+            margin-bottom: 10px !important;
+        }
+
+        /* 放大 Slider 內部時間標籤與數值字體 */
         div[data-testid="stSliderTickBarMin"],
         div[data-testid="stSliderTickBarMax"],
         div[data-testid="stWidgetLabel"] + div [data-testid="stMarkdownContainer"] p,
         div[data-baseweb="slider"] div[role="slider"] + div {
-            font-size: 16px !important;
-            font-weight: 800 !important;
+            font-size: 15px !important;
+            font-weight: 900 !important;
             color: #38BDF8 !important;
-        }
-
-        /* 顯眼的時間區間提示盒 */
-        .time-range-display-box {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
-            border: 1.5px solid rgba(56, 189, 248, 0.5);
-            border-radius: 10px;
-            padding: 8px 14px;
-            margin-top: 6px;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        }
-
-        .time-range-label {
-            font-size: 13.5px;
-            font-weight: 700;
-            color: #94A3B8;
-        }
-
-        .time-range-value {
-            font-size: 20px;
-            font-weight: 900;
-            color: #38BDF8;
-            font-family: monospace;
-            letter-spacing: 1px;
-            text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+            font-family: monospace !important;
         }
 
         div[data-testid="stWidgetLabel"] p,
@@ -309,9 +293,7 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* ========================================================================= */
         /* 🚀 【精準結構選取器】：強制三欄模式切換器在所有手機與電腦上維持橫向並排、絕不堆疊 */
-        /* ========================================================================= */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
             display: flex !important;
             flex-direction: row !important;
@@ -980,7 +962,7 @@ def render_user_home() -> None:
 
                     comp.show_holiday_notice(win_week_holidays, win_week_str)
 
-                    st.markdown('<div class="section-field-label">Sign-In 時段區間 (拖曳調整)</div>', unsafe_allow_html=True)
+                    st.markdown('<div class="section-field-label">Sign-In 時段區間 (05:00 ～ 18:00)</div>', unsafe_allow_html=True)
 
                     if "saved_win_time_range" not in st.session_state:
                         st.session_state["saved_win_time_range"] = (TIME_OPTIONS[0], TIME_OPTIONS[-1])
@@ -996,7 +978,7 @@ def render_user_home() -> None:
                         st.session_state["saved_win_time_range"] = curr_saved
 
                     slider_val = st.select_slider(
-                        "Sign-In 時段區間 (拖曳調整)",
+                        "Sign-In 時段區間 (05:00 ～ 18:00)",
                         options=TIME_OPTIONS,
                         value=curr_saved,
                         key="win_time_slider_widget",
@@ -1006,26 +988,6 @@ def render_user_home() -> None:
 
                     st.session_state["saved_win_time_range"] = slider_val
                     min_time, max_time_sel = slider_val
-                    
-                    st.markdown(
-                        f"""
-                        <div style="background: rgba(15, 23, 42, 0.85); 
-                                    border: 1px solid rgba(56, 189, 248, 0.4); 
-                                    border-radius: 8px; 
-                                    padding: 6px 12px; 
-                                    display: flex; 
-                                    justify-content: space-between; 
-                                    align-items: center; 
-                                    margin-top: 4px; 
-                                    margin-bottom: 8px;">
-                            <span style="font-size: 16px; font-weight: 700; color: #94A3B8;">目前選擇區間</span>
-                            <span style="font-size: 16px; font-weight: 800; color: #38BDF8; font-family: monospace; letter-spacing: 0.5px;">
-                                 {min_time} ～ {max_time_sel}
-                            </span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
 
                     st.markdown('<div class="section-field-label">進階篩選條件</div>', unsafe_allow_html=True)
 
