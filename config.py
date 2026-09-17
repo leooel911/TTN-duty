@@ -130,62 +130,11 @@ C_OT_TXT: str = "#EF4444"
 C_NOTE_TXT: str = "#4C1D95"
 C_TOWN_TXT: str = "#000000"
 
-# 全站專業級 CSS 美化樣式 (已將 Radio 調整為極簡、輕量、不佔空間的專業清單膠囊風格)
-# 全站專業級 CSS 美化樣式 (已加入彈出對話框內輸入框的深色防白化修正)
-CUSTOM_CSS: str = """
-<style>
-    header[data-testid="stHeader"] { background: transparent !important; }
-    div[data-testid="stToolbar"] { visibility: hidden !important; }
-    footer { visibility: hidden !important; }
-
-    .stApp { 
-        background: radial-gradient(circle at 50% 0%, #0f172a 0%, #090d16 55%, #020617 100%) !important; 
-        color: #F8FAFC !important; 
-        background-attachment: fixed !important;
-    }
-    
-    .hours-badge {
-        background: rgba(56, 189, 248, 0.15) !important;
-        color: #38BDF8 !important;
-        border: 1px solid rgba(56, 189, 248, 0.4) !important;
-        border-radius: 6px !important;
-        padding: 2px 6px !important;
-        font-size: 10.5px !important;
-        font-weight: 800 !important;
-        font-family: monospace !important;
-        line-height: 1.2 !important;
-    }
-    
-    .do2w-badge {
-        background: rgba(245, 158, 11, 0.2) !important;
-        color: #FDE68A !important;
-        border: 1px solid #F59E0B !important;
-        border-radius: 6px !important;
-        padding: 2px 6px !important;
-        font-size: 10.5px !important;
-        font-weight: 800 !important;
-        font-family: monospace !important;
-        line-height: 1.2 !important;
-    }
-    
-    @media (min-width: 1024px) {
-        .block-container { padding: 2.5rem 1.5rem 2.5rem 1.5rem !important; max-width: 1080px !important; }
-    }
-    @media (max-width: 1023px) {
-        .block-container { padding: 1rem 0.75rem 2rem 0.75rem !important; max-width: 100% !important; }
-    }
-
-    div[data-testid="stButton"], div.stButton { width: 100% !important; }
-    div[data-testid="stButton"] > button, div.stButton > button {
-        width: 100% !important;
-        min-height: 44px !important;
-        border-radius: 8px !important;
-        font-family: monospace !important;
-    }
-
+/* ========================================================= */
+    /* 步驟一優化：鎖定表單輸入框與下拉選單底色與字體            */
     /* ========================================================= */
-    /* 強化版：全面覆蓋一般頁面與對話框 (Dialog) 內的輸入框與下拉選單 */
-    /* ========================================================= */
+    
+    /* 1. 外層容器：鎖定深色背景與邊框 */
     .stTextInput > div > div > div,
     .stSelectbox > div > div > div,
     div[data-baseweb="input"],
@@ -197,12 +146,7 @@ CUSTOM_CSS: str = """
         color: #F8FAFC !important;
     }
     
-    div[data-baseweb="textarea"] {
-        background-color: #1E293B !important;
-        border: 1px solid #475569 !important;
-        border-radius: 8px !important;
-    }
-
+    /* 2. 內部文字輸入與佔位符 (Placeholder) 顏色鎖定 */
     div[data-testid="stTextInput"] input,
     div[data-testid="stTextArea"] textarea,
     input, textarea {
@@ -221,6 +165,7 @@ CUSTOM_CSS: str = """
         -webkit-text-fill-color: #64748B !important;
     }
     
+    /* 3. 聚焦狀態 (Focus) 高亮發光邊框 */
     .stTextInput > div > div > div:focus-within,
     .stSelectbox > div > div > div:focus-within,
     div[data-baseweb="input"]:focus-within {
@@ -228,6 +173,7 @@ CUSTOM_CSS: str = """
         box-shadow: 0 0 12px rgba(56, 189, 248, 0.3) !important;
     }
 
+    /* 4. 下拉選單展開後的彈出清單背景 */
     div[data-baseweb="popover"] div {
         background-color: #1E293B !important;
         color: #F8FAFC !important;
