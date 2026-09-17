@@ -363,7 +363,7 @@ st.markdown(
 <div class="header-container">
     <div class="main-title">CREW DUTY ENGINE</div>
     <div style="color: #94A3B8; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; font-family: monospace; margin-top: 3px;">
-        OPERATIONS MANAGEMENT SYSTEM &bull; BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION
+       BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION
     </div>
     <div class="title-subtitle">
         <span class="online-dot"></span>STATUS: ACTIVE | {current_unit_label} : {current_operator_id}<span class="online-dot"></span>
