@@ -251,7 +251,7 @@ def reset_ex_search() -> None:
 
 def render_rest_countdown_card(next_duty_time: datetime, duty_info_str: str):
     """
-    透過 Streamlit 元件安全渲染具備前端 JavaScript 動態即時倒數的休息倒數計時器
+    透過 streamlit 元件安全渲染具備前端 JavaScript 動態即時倒數的休息倒數計時器
     """
     y = next_duty_time.year
     m = next_duty_time.month - 1  # JS 月份為 0-11
@@ -926,13 +926,14 @@ def render_user_home() -> None:
         )
 
         with st.form(key="draw_schedule_form", border=False):
-            default_emp_val = current_user_id if current_user_id else st.session_state.get("draw_input_key", "")
+            # 強制只取純員編 (例如 A026925) 作為預設輸入值
+            clean_default_id = current_user_id.strip()
             
             draw_field_label = "請輸入您的員編或姓名 (例如: A023300)"
 
             user_input_val = st.text_input(
                 draw_field_label,
-                value=default_emp_val,
+                value=clean_default_id,
                 disabled=False,
                 key="draw_input_key",
             )
@@ -941,7 +942,7 @@ def render_user_home() -> None:
             )
 
         if submit_btn:
-            current_input = user_input_val.strip() if user_input_val else current_user_id
+            current_input = user_input_val.strip() if user_input_val else clean_default_id
 
             if not current_input or current_input.upper() == "A":
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
