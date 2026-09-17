@@ -18,18 +18,21 @@ def inject_slider_animation() -> None:
     st.markdown(
         """
         <style>
-        /* 針對 Streamlit 滑桿圓點在拖動時的放大效果 */
-        div[data-baseweb="slider"] [role="slider"] {
-            transition: transform 0.2s ease-in-out !important;
+        /* 精準鎖定 Streamlit 滑桿的圓點（Thumb） */
+        div[data-baseweb="slider"] div[role="slider"] {
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
         
-        div[data-baseweb="slider"] [role="slider"]:active {
-            transform: scale(1.4) !important; /* 按住拖動時放大 1.4 倍 */
+        /* 當按住、拖動或聚焦時放大 1.6 倍 */
+        div[data-baseweb="slider"] div[role="slider"]:active,
+        div[data-baseweb="slider"] div[role="slider"]:focus {
+            transform: scale(1.6) !important;
         }
-        
-        /* 針對滑桿相關數值與標籤的動態過渡效果 */
+
+        /* 讓滑桿上方顯示的時間文字在變動時也有平滑放大感 */
+        div[data-baseweb="slider"] ~ div span,
         div[data-baseweb="slider"] span {
-            transition: font-size 0.2s ease-in-out, transform 0.2s ease-in-out !important;
+            transition: font-size 0.2s ease !important;
         }
         </style>
         """,
