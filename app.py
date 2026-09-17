@@ -345,32 +345,7 @@ if st.session_state.get("inspect_emp_target") is not None:
 current_unit_label = st.session_state.get("current_unit", "TTN")
 current_operator_id = st.session_state.get("current_user_id", DEFAULT_EMP_ID)
 
-# =========================================================
-# 🚀 優化整合後：精簡現代化頂部戰情與狀態面板（無縮排，確保 Markdown 正確解析 HTML）
-# =========================================================
-enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
-announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫管理者")
-
-integrated_notice_html = ""
-if enable_beta_banner:
-    integrated_notice_html = f"""<div style="margin-top: 8px; padding: 6px 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; font-size: 10.5px; color: #FDE68A; font-family: monospace; display: flex; align-items: center; gap: 6px;"><span style="color: #F59E0B; font-weight: bold;">⚠️ NOTICE:</span> {announcement_msg}</div>"""
-
-st.markdown(
-    f"""
-<div class="header-container" style="padding: 12px 14px; margin-bottom: 12px;">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div class="main-title" style="font-size: 19px !important; margin: 0;">CREW DUTY ENGINE</div>
-        <div style="font-size: 9.5px; color: #38BDF8; font-family: monospace; letter-spacing: 1px;">C.L.F EDITION</div>
-    </div>
-    <div class="title-subtitle" style="margin-top: 5px; display: flex; justify-content: space-between; align-items: center; font-size: 10px;">
-        <span><span class="online-dot"></span>ACTIVE | <strong style="color: #F8FAFC;">{current_unit_label}</strong> : {current_operator_id}</span>
-        <span style="color: #64748B;">TLS 1.3 // SECURE</span>
-    </div>
-    {integrated_notice_html}
-</div>
-""",
-    unsafe_allow_html=True,
-)
+# 🚀 (已在此處移除原本重複渲染的舊標題區塊，改由 user_views.py 統一處理精簡標題)
 
 if st.session_state.get("show_admin_login", False) and not st.session_state.get(
     "admin_logged_in", False
