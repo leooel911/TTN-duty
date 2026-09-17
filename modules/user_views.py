@@ -87,7 +87,7 @@ def get_shift_group_key(code_str: str) -> str:
 
 
 def get_shift_group_num(code_str: str) -> int:
-    """提取車次/班別中的核心數字用於排序 (例: ND0007 -> 7, ND1012 -> 1012)"""
+    """提取車次/班別中的核心數字用於排序"""
     nums = re.findall(r"\d+", str(code_str))
     if nums:
         return int("".join(nums))
@@ -95,7 +95,7 @@ def get_shift_group_num(code_str: str) -> int:
 
 
 def find_date_column_index(columns: Any, target_date: str) -> int:
-    """精準匹配日期欄位索引，避免 substring 誤判與年份格式不符"""
+    """精準匹配日期欄位索引"""
     if columns is None:
         return -1
     target_norm = normalize_date_str(target_date)
@@ -169,6 +169,53 @@ def get_week_holidays(target_date: str, date_cols: List[str], columns: Optional[
         pass
 
     return holidays_found
+
+
+def get_real_next_duty(emp_id: str, active_files: dict) -> Tuple[Optional[datetime], str]:
+    """從真實班表檔案中自動搜尋該員編接下來最近的一筆出勤與 Sign-In 時間"""
+    if not emp_id:
+        return None, "尚未指定員編"
+    
+    today = date.today()
+    current_year = today.year
+    
+    for role_name, path in active_files.items():
+        if not path or not os.path.exists(path):
+            continue
+        try:
+            df = safe_read_excel(path, header=3)
+            df.columns = [str(c).strip() for c in df.columns]
+            for _, row in df.iterrows():
+                row_emp_id = str(row.iloc[0]).strip()
+                if row_emp_id == emp_id:
+                    dates = df.columns[2:]
+                    for idx, d_col in enumerate(dates):
+                        norm_d = normalize_date_str(d_col)
+                        if not norm_d:
+                            continue
+                        try:
+                            m, d = map(int, norm_d.split("/"))
+                            d_obj = date(current_year, m, d)
+                            if d_obj >= today:
+                                cell_val = row.iloc[idx + 2]
+                                parsed = parse_cell(cell_val)
+                                is_off = is_cell_off_day(cell_val)
+                                start_t = parsed.get("start")
+                                train = parsed.get("train")
+                                
+                                if not is_off and start_t and start_t != "--:--":
+                                    h, mi = map(int, start_t.split(":"))
+                                    duty_dt = datetime(d_obj.year, d_obj.month, d_obj.day, h, mi)
+                                    if duty_dt >= datetime.now():
+                                        train_display = translate_train_code(train) if train else "一般勤務"
+                                        info_str = f"下次出勤預告：{norm_d} ({d_obj.strftime('%a')}) {start_t} (車次/班別: {train_display})"
+                                        return duty_dt, info_str
+                        except Exception:
+                            continue
+        except Exception:
+            continue
+    
+    return None, "近期無查獲有效出勤班次"
 
 
 def reset_win_search() -> None:
@@ -619,7 +666,7 @@ def render_user_home() -> None:
     )
 
     # =========================================================================
-    # 🚀 置中對齊的戰情面板（已同步真實登入身分與員編）
+    # 🚀 置中對齊的戰情面板
     # =========================================================================
     sys_cfg = load_system_config()
     enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
@@ -646,7 +693,7 @@ def render_user_home() -> None:
 
     active_files = get_current_role_files()
 
-    # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
+    # ==================== 大表/完整班表檢視模式 ====================
     inspect_emp_id = st.session_state.get("inspect_emp_target")
     if inspect_emp_id:
         st.markdown(
@@ -726,10 +773,15 @@ def render_user_home() -> None:
     st.markdown(period_html, unsafe_allow_html=True)
 
     # =========================================================================
-    # 🚀 動態即時倒數計時器
+    # 🚀 真實抓取該登入組員的下次出勤倒數計時器
     # =========================================================================
-    mock_next_shift = datetime.now() + timedelta(hours=9, minutes=15, seconds=30)
-    render_rest_countdown_card(mock_next_shift, "下次出勤預告：次日早班 08:30 (車次: NG1550)")
+    real_next_dt, duty_info_text = get_real_next_duty(current_user_id, active_files)
+    if real_next_dt:
+        render_rest_countdown_card(real_next_dt, duty_info_text)
+    else:
+        # 若找不到或尚未登入有效員編，顯示提示
+        fallback_dt = datetime.now() + timedelta(hours=24)
+        render_rest_countdown_card(fallback_dt, f"尚未偵到組員 {current_user_id} 的近期出勤班次或未輸入有效員編")
 
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
@@ -783,9 +835,6 @@ def render_user_home() -> None:
                         <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
                             【{current_unit_label}】個人月班表圖檔生成系統進行維護中
                         </div>
-                        <div style="font-size: 12px; color: #CBD5E1;">
-                            目前正在進行系統升級維護，暫不開放服務，請稍後再試。
-                        </div>
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -795,7 +844,7 @@ def render_user_home() -> None:
                 st.markdown(
                     f"""
                     <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 個人月班表圖檔】已開啟維護模式（一般組員已被阻擋），您正以管理員身分預覽測試。
+                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 個人月班表圖檔】已開啟維護模式，您正以管理員身分預覽測試。
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -885,7 +934,7 @@ def render_user_home() -> None:
                 st.markdown(
                     f"""
                     <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換班日期快篩】已開啟維護模式（一般組員已被阻擋），您正以管理員身分預覽測試。
+                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換班日期快篩】已開啟維護模式，您正以管理員身分預覽測試。
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -1292,7 +1341,7 @@ def render_user_home() -> None:
                 st.markdown(
                     f"""
                     <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換假日期快篩】已開啟維護模式（一般組員已被阻擋），您正以管理員身分預覽測試。
+                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換假日期快篩】已開啟維護模式，您正以管理員身分預覽測試。
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -1766,7 +1815,6 @@ def render_user_home() -> None:
                             else:
                                 st.info(
                                     "在指定條件內，找不到符合的可換假人員"
-                                    " (可嘗試放寬還假日 Sign-In 時間限制或取消嚴格過濾)"
                                 )
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
