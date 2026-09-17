@@ -1,5 +1,6 @@
 import os
 import re
+import textwrap
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -796,7 +797,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 頂部戰情儀表板 (已完全重構，確保 HTML 結構百分之百正確無誤)
+    # 🚀 頂部戰情儀表板 (已使用 textwrap.dedent 徹底消除 Markdown 縮排程式碼區塊誤判)
     # =========================================================================
     sys_cfg = load_system_config()
     enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
@@ -824,7 +825,7 @@ def render_user_home() -> None:
         </div>
         """
 
-    unified_dashboard_html = f"""
+    unified_dashboard_html = textwrap.dedent(f"""
     <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1.5px solid {border_color_val}; border-radius: 16px; padding: 16px; margin-bottom: 12px; font-family: monospace; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); color: #f8fafc;">
         <div style="text-align: center;">
             <div style="font-size: 16px; font-weight: 900; letter-spacing: 0.5px;">
@@ -860,7 +861,7 @@ def render_user_home() -> None:
             </div>
         </details>
     </div>
-    """
+    """)
     st.markdown(unified_dashboard_html, unsafe_allow_html=True)
 
     comp.inject_slider_animation()
@@ -921,24 +922,24 @@ def render_user_home() -> None:
         if is_module_maintenance(current_unit_label, "producer"):
             if not is_admin_user:
                 st.markdown(
-                    f"""
+                    textwrap.dedent(f"""
                     <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #EF4444; border-radius: 10px; padding: 16px; margin-bottom: 16px; text-align: center;">
                         <div style="font-size: 16px; font-weight: 900; color: #FCA5A5; font-family: monospace;">SYSTEM MAINTENANCE // 系統維護中</div>
                         <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
                             【{current_unit_label}】個人月班表圖檔生成系統進行維護中
                         </div>
                     </div>
-                    """,
+                    """),
                     unsafe_allow_html=True,
                 )
                 st.stop()
             else:
                 st.markdown(
-                    f"""
+                    textwrap.dedent(f"""
                     <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
                         <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 個人月班表圖檔】已開啟維護模式，您正以管理員身分預覽測試。
                     </div>
-                    """,
+                    """),
                     unsafe_allow_html=True,
                 )
 
@@ -1011,24 +1012,24 @@ def render_user_home() -> None:
         if is_module_maintenance(current_unit_label, "window_filter"):
             if not is_admin_user:
                 st.markdown(
-                    f"""
+                    textwrap.dedent(f"""
                     <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #EF4444; border-radius: 10px; padding: 16px; margin-bottom: 16px; text-align: center;">
                         <div style="font-size: 16px; font-weight: 900; color: #FCA5A5; font-family: monospace;">SYSTEM MAINTENANCE // 系統維護中</div>
                         <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
                             【{current_unit_label}】換班選擇日期快篩系統進行維護中
                         </div>
                     </div>
-                    """,
+                    """),
                     unsafe_allow_html=True,
                 )
                 st.stop()
             else:
                 st.markdown(
-                    f"""
+                    textwrap.dedent(f"""
                     <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
                         <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換班日期快篩】已開啟維護模式，您正以管理員身分預覽測試。
                     </div>
-                    """,
+                    """),
                     unsafe_allow_html=True,
                 )
 
@@ -1326,7 +1327,7 @@ def render_user_home() -> None:
                 cnt_long = sum(1 for r in filtered_results if r.get("長班"))
 
                 st.markdown(
-                    f"""
+                    textwrap.dedent(f"""
                     <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
                         <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
                             <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">符合資格人數</div>
@@ -1341,7 +1342,7 @@ def render_user_home() -> None:
                             <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_long} <span style="font-size: 10px;">人</span></div>
                         </div>
                     </div>
-                    """,
+                    """),
                     unsafe_allow_html=True,
                 )
 
@@ -1418,24 +1419,24 @@ def render_user_home() -> None:
         if is_module_maintenance(current_unit_label, "exchange_filter"):
             if not is_admin_user:
                 st.markdown(
-                    f"""
+                    textwrap.dedent(f"""
                     <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #EF4444; border-radius: 10px; padding: 16px; margin-bottom: 16px; text-align: center;">
                         <div style="font-size: 16px; font-weight: 900; color: #FCA5A5; font-family: monospace;">SYSTEM MAINTENANCE // 系統維護中</div>
                         <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
                             【{current_unit_label}】換假選擇日期快篩系統進行維護中
                         </div>
                     </div>
-                    """,
+                    """),
                     unsafe_allow_html=True,
                 )
                 st.stop()
             else:
                 st.markdown(
-                    f"""
+                    textwrap.dedent(f"""
                     <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
                         <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換假日期快篩】已開啟維護模式，您正以管理員身分預覽測試。
                     </div>
-                    """,
+                    """),
                     unsafe_allow_html=True,
                 )
 
@@ -1827,7 +1828,7 @@ def render_user_home() -> None:
                                 )
 
                                 st.markdown(
-                                    f"""
+                                    textwrap.dedent(f"""
                                     <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
                                         <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
                                             <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">可換假總人數</div>
@@ -1842,7 +1843,7 @@ def render_user_home() -> None:
                                             <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_streak6} <span style="font-size: 10px;">人</span></div>
                                         </div>
                                     </div>
-                                    """,
+                                    """),
                                     unsafe_allow_html=True,
                                 )
 
