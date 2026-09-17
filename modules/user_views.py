@@ -439,7 +439,7 @@ def render_user_home() -> None:
 
         div[data-testid="stSlider"] {
             background: rgba(7, 11, 20, 0.85) !important;
-            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border: 1.5px solid rgba(56, 189, 248, 0.3) !important;
             border-radius: 12px !important;
             padding: 12px 14px 6px 14px !important;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3) !important;
@@ -796,11 +796,11 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 頂部戰情儀表板 (已將系統狀態與排班週期完美結合成單一外框)
+    # 🚀 頂部戰情儀表板 (已修正 HTML 閉合標籤與視覺整合)
     # =========================================================================
     sys_cfg = load_system_config()
     enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
-    announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫管理者")
+    announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁面末端可聯繫管理者")
 
     maintenance_active = (
         is_module_maintenance(current_unit_label, "producer") or 
