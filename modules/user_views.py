@@ -310,9 +310,9 @@ def render_user_home() -> None:
         }
 
         /* ========================================================================= */
-        /* 🚀 【Command HUD 航太級面板切換器】：頂級無縫橫向排列與霓虹互動設計 */
+        /* 🚀 【精準結構選取器】：強制三欄模式切換器在所有手機與電腦上維持橫向並排、絕不堆疊 */
         /* ========================================================================= */
-        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -321,15 +321,15 @@ def render_user_home() -> None:
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
             border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
             border-radius: 16px !important;
-            padding: 6px !important;
-            gap: 6px !important;
+            padding: 5px !important;
+            gap: 4px !important;
             box-sizing: border-box !important;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.7) !important;
             margin-bottom: 12px !important;
         }
 
-        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) > div[data-testid="column"] {
-            flex: 1 1 33.33% !important;
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) > div[data-testid="column"] {
+            flex: 0 0 33.33% !important;
             width: 33.33% !important;
             max-width: 33.33% !important;
             min-width: 0 !important;
@@ -337,51 +337,49 @@ def render_user_home() -> None:
             overflow: hidden !important;
         }
 
-        /* HUD 切換按鈕通用樣式 (未選中) */
-        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) button[data-testid="stBaseButton-secondary"] {
+        /* 未選中按鈕樣式 */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
             background: transparent !important;
             border: 1.5px solid transparent !important;
             box-shadow: none !important;
-            padding: 10px 4px !important;
+            padding: 9px 2px !important;
             border-radius: 10px !important;
             width: 100% !important;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) button[data-testid="stBaseButton-secondary"]:hover {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"]:hover {
             background: rgba(255, 255, 255, 0.05) !important;
-            border-color: rgba(56, 189, 248, 0.25) !important;
+            border-color: rgba(56, 189, 248, 0.3) !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) button[data-testid="stBaseButton-secondary"] p {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] p {
             color: #64748B !important;
-            font-size: 13px !important;
+            font-size: 12.5px !important;
             font-weight: 700 !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
             margin: 0 !important;
-            letter-spacing: 0.3px !important;
         }
 
-        /* HUD 切換按鈕啟動狀態 (選中) */
-        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) button[data-testid="stBaseButton-primary"],
-        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) button[kind="primary"] {
+        /* 選中按鈕 (Primary 霓虹發光態樣) */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
             background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
             border: 1.5px solid #38BDF8 !important;
             border-radius: 10px !important;
-            padding: 10px 4px !important;
+            padding: 9px 2px !important;
             width: 100% !important;
-            box-shadow: 0 0 18px rgba(56, 189, 248, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.35) !important;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.35) !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) button[data-testid="stBaseButton-primary"] p {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"] p {
             color: #38BDF8 !important;
-            font-size: 13.5px !important;
+            font-size: 13px !important;
             font-weight: 900 !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
             margin: 0 !important;
             text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
-            letter-spacing: 0.5px !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
@@ -712,7 +710,7 @@ def render_user_home() -> None:
 
     with col_hud1:
         is_mode_1 = st.session_state["active_app_mode"] == "個人月班表"
-        if st.button("個人月班表", key="hud_mode_1", use_container_width=True, type="primary" if is_mode_1 else "secondary"):
+        if st.button("個人月班表", key="tab_hud_1", use_container_width=True, type="primary" if is_mode_1 else "secondary"):
             if not is_mode_1:
                 st.session_state["active_app_mode"] = "個人月班表"
                 st.session_state.pop("win_raw_candidates", None)
@@ -722,7 +720,7 @@ def render_user_home() -> None:
 
     with col_hud2:
         is_mode_2 = st.session_state["active_app_mode"] == "換班查詢"
-        if st.button("換班查詢", key="hud_mode_2", use_container_width=True, type="primary" if is_mode_2 else "secondary"):
+        if st.button("換班查詢", key="tab_hud_2", use_container_width=True, type="primary" if is_mode_2 else "secondary"):
             if not is_mode_2:
                 st.session_state["active_app_mode"] = "換班查詢"
                 st.session_state.pop("win_raw_candidates", None)
@@ -732,7 +730,7 @@ def render_user_home() -> None:
 
     with col_hud3:
         is_mode_3 = st.session_state["active_app_mode"] == "換假查詢"
-        if st.button("換假查詢", key="hud_mode_3", use_container_width=True, type="primary" if is_mode_3 else "secondary"):
+        if st.button("換假查詢", key="tab_hud_3", use_container_width=True, type="primary" if is_mode_3 else "secondary"):
             if not is_mode_3:
                 st.session_state["active_app_mode"] = "換假查詢"
                 st.session_state.pop("win_raw_candidates", None)
@@ -1702,7 +1700,7 @@ def render_user_home() -> None:
                                 )
 
                                 for i in range(0, len(filtered_candidates), 2):
-                                    batch = filtered_candidates[i : i + 2]
+                                    batch = filtered_results[i : i + 2]
                                     cols = st.columns(2)
 
                                     for idx_in_batch, cand in enumerate(batch):
