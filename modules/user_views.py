@@ -589,20 +589,28 @@ def render_user_home() -> None:
     )
 
     # =========================================================================
-    # 🚀 唯一保留的精簡版頂部標題與狀態列 (舊的已徹底清除)
+    # 🚀 唯一且完整的精簡版戰情面板（帶有精緻外框與 Notice 提示）
     # =========================================================================
+    sys_cfg = load_system_config()
+    enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
+    announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫管理者")
+
+    integrated_notice_html = ""
+    if enable_beta_banner:
+        integrated_notice_html = f"""<div style="margin-top: 8px; padding: 6px 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; font-size: 10.5px; color: #FDE68A; font-family: monospace; display: flex; align-items: center; gap: 6px;"><span style="color: #F59E0B; font-weight: bold;">⚠️ NOTICE:</span> {announcement_msg}</div>"""
+
     header_html = f"""
-    <div style="text-align: center; padding: 4px 0 8px 0; font-family: monospace;">
-        <div style="font-size: 18px; font-weight: 900; color: #F8FAFC; letter-spacing: 1px;">
-            CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
+    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; font-family: monospace; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 18px; font-weight: 900; color: #F8FAFC; letter-spacing: 1px;">
+                CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
+            </div>
+            <div style="font-size: 9.5px; color: #64748B; font-family: monospace;">TLS 1.3 // SECURE</div>
         </div>
-        <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 4px; font-size: 11px;">
-            <span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span>
-            <span style="color: #64748B;">|</span>
-            <span style="color: #38BDF8; font-weight: bold;">單位：{current_unit_label}</span>
-            <span style="color: #64748B;">|</span>
-            <span style="color: #FBBF24;">身分：{clean_role_label(user_role)} ({current_user_id if current_user_id else "GUEST"})</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 11px;">
+            <span style="color: #94A3B8;"><span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #FBBF24;">{clean_role_label(user_role)} ({current_user_id if current_user_id else "GUEST"})</strong></span>
         </div>
+        {integrated_notice_html}
     </div>
     """
     st.markdown(header_html, unsafe_allow_html=True)
@@ -676,7 +684,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 區塊 2：優化版排班週期卡片 (膠囊日期標籤與高質感內層)
+    # 🚀 排班週期卡片 (膠囊日期標籤與高質感內層)
     # =========================================================================
     maintenance_active = (
         is_module_maintenance(current_unit_label, "producer") or 
@@ -691,7 +699,7 @@ def render_user_home() -> None:
     st.markdown(period_html, unsafe_allow_html=True)
 
     # =========================================================================
-    # 🚀 全域置頂區塊：精簡版休息倒數計時器
+    # 🚀 休息倒數計時器
     # =========================================================================
     mock_next_shift = datetime.now() + timedelta(hours=9, minutes=15)
     render_rest_countdown_card(mock_next_shift, "下次出勤預告：次日早班 08:30 (車次: NG1550)")
