@@ -207,6 +207,35 @@ CUSTOM_CSS: str = """
     }
 
     /* ========================================================= */
+    /* 步驟二優化：Streamlit 表格與資料容器 (DataFrame) 深色適配     */
+    /* ========================================================= */
+    div[data-testid="stDataFrame"], 
+    div[data-testid="stTable"] {
+        background-color: #1E293B !important;
+        border: 1px solid #475569 !important;
+        border-radius: 10px !important;
+        padding: 4px !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    div[data-testid="stDataFrame"] div[data-testid="stTableContainer"],
+    .dataframe {
+        background-color: #0F172A !important;
+        color: #F8FAFC !important;
+        font-family: monospace !important;
+    }
+
+    th, td {
+        border-color: #334155 !important;
+    }
+    
+    div[data-testid="stExpander"] {
+        background: rgba(30, 41, 59, 0.5) !important;
+        border: 1px solid rgba(56, 189, 248, 0.2) !important;
+        border-radius: 10px !important;
+    }
+
+    /* ========================================================= */
     /* 專業化 UI：極簡、輕量、不佔空間的輕膠囊 Radio 按鈕         */
     /* ========================================================= */
     div[data-testid="stRadio"] {
