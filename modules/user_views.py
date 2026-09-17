@@ -58,7 +58,7 @@ def get_login_user_id() -> str:
     auth = get_auth_session()
     if auth.get("authenticated"):
         return auth.get("emp_id", "")
-    return ""
+    return st.session_state.get("current_user_id", "")
 
 
 def clean_role_label(role: str) -> str:
@@ -184,52 +184,35 @@ def reset_ex_search() -> None:
 
 def render_rest_countdown_card(next_duty_time: datetime, duty_info_str: str):
     """
-    渲染精簡版霓虹外框休息倒數計時器（右上角狀態標籤化，移除上方冗長文字橫幅）
+    渲染具備前端 JavaScript 動態即時倒數的休息倒數計時器
     """
-    now = datetime.now()
-    remaining = next_duty_time - now
-    
-    if remaining.total_seconds() <= 0:
-        status_color = "#ef4444"  # 紅色
-        status_tag = "🔴 值勤中 / 已過出勤"
-        hours, minutes, seconds = 0, 0, 0
-    else:
-        total_seconds = int(remaining.total_seconds())
-        hours = total_seconds // 3600
-        minutes = (total_seconds % 3600) // 60
-        seconds = total_seconds % 60
-        
-        # 11 小時法規紅綠燈判斷
-        if hours >= 11:
-            status_color = "#22c55e"  # 綠色 (安全期)
-            status_tag = "🟢 休息充足 (>11h)"
-        else:
-            status_color = "#ef4444"  # 紅色 (警戒期)
-            status_tag = "⚠️ 低於 11 小時法定門檻"
+    target_timestamp = int(next_duty_time.timestamp() * 1000)
+    card_uid = f"cd-{int(datetime.now().timestamp() * 1000)}"
 
     html_card = f"""
     <div style="
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        border: 2px solid {status_color};
+        border: 2px solid #38BDF8;
         border-radius: 14px;
         padding: 16px 20px;
         color: #f8fafc;
         font-family: monospace;
-        box-shadow: 0 0 16px {status_color}33, inset 0 0 8px {status_color}22;
+        box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
         margin-bottom: 14px;
+        text-align: center;
     ">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">
                 距下次出勤還有
             </span>
-            <span style="font-size: 11px; font-weight: bold; color: {status_color};">
-                {status_tag}
+            <span id="status-tag-{card_uid}" style="font-size: 11px; font-weight: bold; color: #22c55e;">
+                計算中...
             </span>
         </div>
-        <div style="font-size: 32px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 12px; text-shadow: 0 0 16px {status_color}66;">
-            {hours:02d} <span style="font-size: 15px; color: #64748b; font-weight: normal;">時</span> 
-            {minutes:02d} <span style="font-size: 15px; color: #64748b; font-weight: normal;">分</span> 
-            {seconds:02d} <span style="font-size: 15px; color: #64748b; font-weight: normal;">秒</span>
+        <div style="font-size: 32px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 12px; text-shadow: 0 0 16px rgba(56, 189, 248, 0.4);">
+            <span id="hours-{card_uid}">00</span> <span style="font-size: 15px; color: #64748b; font-weight: normal;">時</span> 
+            <span id="mins-{card_uid}">00</span> <span style="font-size: 15px; color: #64748b; font-weight: normal;">分</span> 
+            <span id="secs-{card_uid}">00</span> <span style="font-size: 15px; color: #64748b; font-weight: normal;">秒</span>
         </div>
         <div style="
             background: rgba(15, 23, 42, 0.8);
@@ -238,10 +221,58 @@ def render_rest_countdown_card(next_duty_time: datetime, duty_info_str: str):
             padding: 8px 12px;
             font-size: 11.5px;
             color: #cbd5e1;
+            text-align: left;
         ">
             📅 {duty_info_str}
         </div>
     </div>
+
+    <script>
+    (function() {{
+        const targetTime = {target_timestamp};
+        const hoursEl = document.getElementById('hours-{card_uid}');
+        const minsEl = document.getElementById('mins-{card_uid}');
+        const secsEl = document.getElementById('secs-{card_uid}');
+        const statusEl = document.getElementById('status-tag-{card_uid}');
+
+        function updateCountdown() {{
+            const now = new Date().getTime();
+            const distance = targetTime - now;
+
+            if (distance <= 0) {{
+                if (hoursEl) hoursEl.innerText = "00";
+                if (minsEl) minsEl.innerText = "00";
+                if (secsEl) secsEl.innerText = "00";
+                if (statusEl) {{
+                    statusEl.innerText = "🔴 值勤中 / 已過出勤";
+                    statusEl.style.color = "#ef4444";
+                }}
+                return;
+            }}
+
+            const hours = Math.floor(distance / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+            if (hoursEl) hoursEl.innerText = String(hours).padStart(2, '0');
+            if (minsEl) minsEl.innerText = String(minutes).padStart(2, '0');
+            if (secsEl) secsEl.innerText = String(seconds).padStart(2, '0');
+
+            if (statusEl) {{
+                if (hours >= 11) {{
+                    statusEl.innerText = "🟢 休息充足 (>11h)";
+                    statusEl.style.color = "#22c55e";
+                }} else {{
+                    statusEl.innerText = "⚠️ 低於 11 小時法定門檻";
+                    statusEl.style.color = "#ef4444";
+                }}
+            }}
+        }}
+
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+    }})();
+    </script>
     """
     st.markdown(html_card, unsafe_allow_html=True)
 
@@ -254,10 +285,9 @@ def render_user_home() -> None:
     """繪製使用者首頁主要介面與功能模組"""
 
     auth = get_auth_session()
-    current_user_id = auth["emp_id"]
+    current_user_id = get_login_user_id() or auth.get("emp_id", "")
     current_user_name = auth.get("emp_name", current_user_id)
-    user_role = auth["role"]
-    is_privileged = user_role in ["ADMIN", "VIP_USER"]
+    user_role = st.session_state.get("current_role", auth.get("role", "GUEST"))
     is_admin_user = (user_role == "ADMIN") or st.session_state.get("admin_logged_in", False)
     current_unit_label = st.session_state.get("current_unit", auth.get("unit", "TTN"))
 
@@ -589,7 +619,7 @@ def render_user_home() -> None:
     )
 
     # =========================================================================
-    # 🚀 唯一且完整的精簡版戰情面板（已移除 TLS 資訊並優化標題單行縮排）
+    # 🚀 置中對齊的戰情面板（已同步真實登入身分與員編）
     # =========================================================================
     sys_cfg = load_system_config()
     enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
@@ -597,16 +627,14 @@ def render_user_home() -> None:
 
     integrated_notice_html = ""
     if enable_beta_banner:
-        integrated_notice_html = f"""<div style="margin-top: 8px; padding: 6px 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; font-size: 10.5px; color: #FDE68A; font-family: monospace; display: flex; align-items: center; gap: 6px;"><span style="color: #F59E0B; font-weight: bold;">⚠️ NOTICE:</span> {announcement_msg}</div>"""
+        integrated_notice_html = f"""<div style="margin-top: 8px; padding: 6px 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; font-size: 10.5px; color: #FDE68A; font-family: monospace; display: flex; align-items: center; justify-content: center; gap: 6px;"><span style="color: #F59E0B; font-weight: bold;">⚠️ NOTICE:</span> {announcement_msg}</div>"""
 
     header_html = f"""
-    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; font-family: monospace; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);">
-        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <div style="font-size: 16.5px; font-weight: 900; color: #F8FAFC; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
-            </div>
+    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; font-family: monospace; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); text-align: center;">
+        <div style="font-size: 16.5px; font-weight: 900; color: #F8FAFC; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 11px;">
+        <div style="margin-top: 6px; font-size: 11px;">
             <span style="color: #94A3B8;"><span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #FBBF24;">{clean_role_label(user_role)} ({current_user_id if current_user_id else "GUEST"})</strong></span>
         </div>
         {integrated_notice_html}
@@ -683,7 +711,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 排班週期卡片 (膠囊日期標籤與高質感內層)
+    # 🚀 排班週期卡片
     # =========================================================================
     maintenance_active = (
         is_module_maintenance(current_unit_label, "producer") or 
@@ -698,9 +726,9 @@ def render_user_home() -> None:
     st.markdown(period_html, unsafe_allow_html=True)
 
     # =========================================================================
-    # 🚀 休息倒數計時器
+    # 🚀 動態即時倒數計時器
     # =========================================================================
-    mock_next_shift = datetime.now() + timedelta(hours=9, minutes=15)
+    mock_next_shift = datetime.now() + timedelta(hours=9, minutes=15, seconds=30)
     render_rest_countdown_card(mock_next_shift, "下次出勤預告：次日早班 08:30 (車次: NG1550)")
 
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
@@ -847,9 +875,6 @@ def render_user_home() -> None:
                         <div style="font-size: 16px; font-weight: 900; color: #FCA5A5; font-family: monospace;">SYSTEM MAINTENANCE // 系統維護中</div>
                         <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
                             【{current_unit_label}】換班選擇日期快篩系統進行維護中
-                        </div>
-                        <div style="font-size: 12px; color: #CBD5E1;">
-                            目前正在進行系統升級維護，暫不開放服務，請稍後再試。
                         </div>
                     </div>
                     """,
@@ -1258,9 +1283,6 @@ def render_user_home() -> None:
                         <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
                             【{current_unit_label}】換假選擇日期快篩系統進行維護中
                         </div>
-                        <div style="font-size: 12px; color: #CBD5E1;">
-                            目前正在進行系統升級維護，暫不開放服務，請稍後再試。
-                        </div>
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -1601,7 +1623,7 @@ def render_user_home() -> None:
                                     ):
                                         continue
 
-                                if strict_limit and cand["連續上班天数"] >= 6:
+                                if strict_limit and cand["連續上班天數"] >= 6:
                                     continue
 
                                 filtered_candidates.append(cand)
@@ -1683,8 +1705,8 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                for i in range(0, len(filtered_results), 2):
-                                    batch = filtered_results[i : i + 2]
+                                for i in range(0, len(filtered_candidates), 2):
+                                    batch = filtered_candidates[i : i + 2]
                                     cols = st.columns(2)
 
                                     for idx_in_batch, cand in enumerate(batch):
