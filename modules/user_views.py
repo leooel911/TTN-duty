@@ -223,7 +223,56 @@ def render_user_home() -> None:
         }
 
         /* ========================================================================= */
-        /* 🚀 【高質感 Slider 專屬外框改造】：完美對齊參考圖中的卡片式發光滑桿 */
+        /* 🚀 【Segmented Control 專屬膠囊改造】：讓職位選擇鈕完美呈現高級發光體系 */
+        /* ========================================================================= */
+        div[data-baseweb="segmented-control"] {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
+            border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
+            border-radius: 14px !important;
+            padding: 4px !important;
+            gap: 4px !important;
+            box-sizing: border-box !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), inset 0 2px 6px rgba(0, 0, 0, 0.6) !important;
+            margin-bottom: 10px !important;
+        }
+
+        div[data-baseweb="segmented-control"] button {
+            background: transparent !important;
+            border: 1.5px solid transparent !important;
+            border-radius: 10px !important;
+            padding: 8px 4px !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+
+        div[data-baseweb="segmented-control"] button:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-color: rgba(56, 189, 248, 0.3) !important;
+        }
+
+        div[data-baseweb="segmented-control"] button div p,
+        div[data-baseweb="segmented-control"] button span {
+            color: #94A3B8 !important;
+            font-size: 13.5px !important;
+            font-weight: 700 !important;
+        }
+
+        /* 選中狀態 (Primary 霓虹發光態樣) */
+        div[data-baseweb="segmented-control"] button[aria-selected="true"] {
+            background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
+            border: 1.5px solid #38BDF8 !important;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.35) !important;
+        }
+
+        div[data-baseweb="segmented-control"] button[aria-selected="true"] div p,
+        div[data-baseweb="segmented-control"] button[aria-selected="true"] span {
+            color: #38BDF8 !important;
+            font-size: 14px !important;
+            font-weight: 900 !important;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+        }
+
+        /* ========================================================================= */
+        /* 🚀 【高質感 Slider 專屬外框改造】：卡片式發光滑桿 */
         /* ========================================================================= */
         div[data-testid="stSlider"] {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%) !important;
@@ -234,7 +283,6 @@ def render_user_home() -> None:
             margin-bottom: 10px !important;
         }
 
-        /* 放大 Slider 內部時間標籤與數值字體 */
         div[data-testid="stSliderTickBarMin"],
         div[data-testid="stSliderTickBarMax"],
         div[data-testid="stWidgetLabel"] + div [data-testid="stMarkdownContainer"] p,
@@ -1661,7 +1709,7 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                for i in range(0, len(filtered_candidates), 2):
+                                for i in range(0, len(filtered_results), 2):
                                     batch = filtered_results[i : i + 2]
                                     cols = st.columns(2)
 
