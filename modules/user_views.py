@@ -1,6 +1,5 @@
 import os
 import re
-import textwrap
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -797,7 +796,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 頂部戰情儀表板 (已使用 textwrap.dedent 徹底消除 Markdown 縮排程式碼區塊誤判)
+    # 🚀 頂部戰情儀表板 (改回原生的 Streamlit 容器與元件，絕對安全穩定)
     # =========================================================================
     sys_cfg = load_system_config()
     enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
@@ -809,60 +808,45 @@ def render_user_home() -> None:
         is_module_maintenance(current_unit_label, "exchange_filter")
     )
     
-    border_color_val = "#EF4444" if maintenance_active else "#38BDF8"
     role_label_str = clean_role_label(user_role)
     user_id_display = current_user_id if current_user_id else "GUEST"
     sched_display_text = sched_range if len(missing_files) < 3 else "資料庫異常"
-    sched_color_val = "#EF4444" if missing_files else "#38BDF8"
 
-    maint_badge_html = '<span style="background: rgba(239, 68, 68, 0.2); border: 1px solid #EF4444; color: #FCA5A5; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold;">系統維護中</span>' if maintenance_active else ''
-    
-    notice_box_html = ""
-    if enable_beta_banner:
-        notice_box_html = f"""
-        <div style="margin-top: 8px; padding: 6px 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; font-size: 10.5px; color: #FDE68A; text-align: center;">
-            <span style="color: #F59E0B; font-weight: bold;">⚠️ NOTICE:</span> {announcement_msg}
-        </div>
-        """
+    with st.container(border=True):
+        st.markdown(
+            f"""
+            <div style="text-align: center;">
+                <div style="font-size: 16px; font-weight: 900; letter-spacing: 0.5px; color: #F8FAFC; font-family: monospace;">
+                    CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
+                </div>
+                <div style="margin-top: 4px; font-size: 11px; color: #94A3B8; font-family: monospace;">
+                    <span style="color: #4ADE80; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #FBBF24;">{role_label_str} ({user_id_display})</strong>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    unified_dashboard_html = textwrap.dedent(f"""
-    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1.5px solid {border_color_val}; border-radius: 16px; padding: 16px; margin-bottom: 12px; font-family: monospace; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); color: #f8fafc;">
-        <div style="text-align: center;">
-            <div style="font-size: 16px; font-weight: 900; letter-spacing: 0.5px;">
-                CREW DUTY ENGINE <span style="font-size: 11px; color: #38BDF8; font-weight: 600;">C.L.F EDITION</span>
-            </div>
-            <div style="margin-top: 4px; font-size: 11px; color: #94a3b8;">
-                <span style="color: #22c55e; font-weight: bold;">● ACTIVE</span> | 單位：<strong style="color: #38BDF8;">{current_unit_label}</strong> | 身分：<strong style="color: #fbbf24;">{role_label_str} ({user_id_display})</strong>
-            </div>
-            {notice_box_html}
-        </div>
-        
-        <hr style="border: none; border-top: 1px dashed rgba(56, 189, 248, 0.3); margin: 12px 0;">
-        
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 13px; font-weight: 900; color: #38BDF8; letter-spacing: 0.5px;">[{current_unit_label}] 排班週期</span>
-                {maint_badge_html}
-            </div>
-            <div style="background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.4); padding: 3px 10px; border-radius: 20px;">
-                <span style="font-size: 12.5px; color: {sched_color_val}; font-weight: 900; letter-spacing: 0.5px;">{sched_display_text}</span>
-            </div>
-        </div>
-        
-        <details style="margin-top: 8px; font-size: 10px; color: #94a3b8; cursor: pointer;">
-            <summary style="outline: none; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: #38BDF8;">檢視各大表更新時間與維護詳情</span>
-                <span>▼</span>
-            </summary>
-            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding: 8px 10px; background: rgba(7, 11, 20, 0.8); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; justify-content: space-between; color: #cbd5e1;"><span>駕駛 (TD)</span><span>{td_time}</span></div>
-                <div style="display: flex; justify-content: space-between; color: #cbd5e1;"><span>列車長 (TM)</span><span>{tm_time}</span></div>
-                <div style="display: flex; justify-content: space-between; color: #cbd5e1;"><span>服勤員 (TA)</span><span>{ta_time}</span></div>
-            </div>
-        </details>
-    </div>
-    """)
-    st.markdown(unified_dashboard_html, unsafe_allow_html=True)
+        if enable_beta_banner and announcement_msg:
+            st.warning(f"⚠️ NOTICE: {announcement_msg}")
+
+        st.markdown("---")
+
+        top_col1, top_col2 = st.columns([1.2, 1])
+        with top_col1:
+            st.markdown(f"**[{current_unit_label}] 排班週期**")
+            if maintenance_active:
+                st.error("系統維護中")
+        with top_col2:
+            st.markdown(
+                f"<div style='text-align: right; font-family: monospace; font-size: 13px; font-weight: 900; color: {'#EF4444' if missing_files else '#38BDF8'};'>{sched_display_text}</div>",
+                unsafe_allow_html=True,
+            )
+
+        with st.expander("檢視各大表更新時間與維護詳情"):
+            st.markdown(f"- **駕駛 (TD)**: `{td_time}`")
+            st.markdown(f"- **列車長 (TM)**: `{tm_time}`")
+            st.markdown(f"- **服勤員 (TA)**: `{ta_time}`")
 
     comp.inject_slider_animation()
 
@@ -921,27 +905,10 @@ def render_user_home() -> None:
     if app_mode == "個人月班表":
         if is_module_maintenance(current_unit_label, "producer"):
             if not is_admin_user:
-                st.markdown(
-                    textwrap.dedent(f"""
-                    <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #EF4444; border-radius: 10px; padding: 16px; margin-bottom: 16px; text-align: center;">
-                        <div style="font-size: 16px; font-weight: 900; color: #FCA5A5; font-family: monospace;">SYSTEM MAINTENANCE // 系統維護中</div>
-                        <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
-                            【{current_unit_label}】個人月班表圖檔生成系統進行維護中
-                        </div>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
+                st.error(f"【{current_unit_label}】個人月班表圖檔生成系統進行維護中")
                 st.stop()
             else:
-                st.markdown(
-                    textwrap.dedent(f"""
-                    <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 個人月班表圖檔】已開啟維護模式，您正以管理員身分預覽測試。
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
+                st.warning(f"【管理員維護預覽】 當前【{current_unit_label} - 個人月班表圖檔】已開啟維護模式，您正以管理員身分預覽測試。")
 
         st.markdown(
             """
@@ -1011,27 +978,10 @@ def render_user_home() -> None:
     elif app_mode == "換班查詢":
         if is_module_maintenance(current_unit_label, "window_filter"):
             if not is_admin_user:
-                st.markdown(
-                    textwrap.dedent(f"""
-                    <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #EF4444; border-radius: 10px; padding: 16px; margin-bottom: 16px; text-align: center;">
-                        <div style="font-size: 16px; font-weight: 900; color: #FCA5A5; font-family: monospace;">SYSTEM MAINTENANCE // 系統維護中</div>
-                        <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
-                            【{current_unit_label}】換班選擇日期快篩系統進行維護中
-                        </div>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
+                st.error(f"【{current_unit_label}】換班選擇日期快篩系統進行維護中")
                 st.stop()
             else:
-                st.markdown(
-                    textwrap.dedent(f"""
-                    <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換班日期快篩】已開啟維護模式，您正以管理員身分預覽測試。
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
+                st.warning(f"【管理員維護預覽】 當前【{current_unit_label} - 換班日期快篩】已開啟維護模式，您正以管理員身分預覽測試。")
 
         with st.container(border=True):
             st.markdown(
@@ -1326,25 +1276,13 @@ def render_user_home() -> None:
                 )
                 cnt_long = sum(1 for r in filtered_results if r.get("長班"))
 
-                st.markdown(
-                    textwrap.dedent(f"""
-                    <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
-                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">符合資格人數</div>
-                            <div style="font-size: 17px; font-weight: 900; color: #38BDF8; font-family: monospace;">{len(filtered_results)} <span style="font-size: 10px;">位</span></div>
-                        </div>
-                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(245, 158, 11, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">含 DO2W 標記</div>
-                            <div style="font-size: 17px; font-weight: 900; color: #FBBF24; font-family: monospace;">{cnt_do2w} <span style="font-size: 10px;">人</span></div>
-                        </div>
-                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">長班 (>8.5h)</div>
-                            <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_long} <span style="font-size: 10px;">人</span></div>
-                        </div>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
+                col_s1, col_s2, col_s3 = st.columns(3)
+                with col_s1:
+                    st.metric("符合資格人數", f"{len(filtered_results)} 位")
+                with col_s2:
+                    st.metric("含 DO2W 標記", f"{cnt_do2w} 人")
+                with col_s3:
+                    st.metric("長班 (>8.5h)", f"{cnt_long} 人")
 
                 for i in range(0, len(filtered_results), 2):
                     batch = filtered_results[i : i + 2]
@@ -1418,27 +1356,10 @@ def render_user_home() -> None:
     elif app_mode == "換假查詢":
         if is_module_maintenance(current_unit_label, "exchange_filter"):
             if not is_admin_user:
-                st.markdown(
-                    textwrap.dedent(f"""
-                    <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #EF4444; border-radius: 10px; padding: 16px; margin-bottom: 16px; text-align: center;">
-                        <div style="font-size: 16px; font-weight: 900; color: #FCA5A5; font-family: monospace;">SYSTEM MAINTENANCE // 系統維護中</div>
-                        <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
-                            【{current_unit_label}】換假選擇日期快篩系統進行維護中
-                        </div>
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
+                st.error(f"【{current_unit_label}】換假選擇日期快篩系統進行維護中")
                 st.stop()
             else:
-                st.markdown(
-                    textwrap.dedent(f"""
-                    <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換假日期快篩】已開啟維護模式，您正以管理員身分預覽測試。
-                    </div>
-                    """),
-                    unsafe_allow_html=True,
-                )
+                st.warning(f"【管理員維護預覽】 當前【{current_unit_label} - 換假日期快篩】已開啟維護模式，您正以管理員身分預覽測試。")
 
         st.markdown(
             """
@@ -1827,25 +1748,13 @@ def render_user_home() -> None:
                                     if c.get("連續上班天數", 0) >= 6
                                 )
 
-                                st.markdown(
-                                    textwrap.dedent(f"""
-                                    <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
-                                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">可換假總人數</div>
-                                            <div style="font-size: 17px; font-weight: 900; color: #38BDF8; font-family: monospace;">{len(filtered_candidates)} <span style="font-size: 10px;">位</span></div>
-                                        </div>
-                                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(245, 158, 11, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">含 DO2W 標記</div>
-                                            <div style="font-size: 17px; font-weight: 900; color: #FBBF24; font-family: monospace;">{cnt_do2w} <span style="font-size: 10px;">人</span></div>
-                                        </div>
-                                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">連班 6 天以上</div>
-                                            <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_streak6} <span style="font-size: 10px;">人</span></div>
-                                        </div>
-                                    </div>
-                                    """),
-                                    unsafe_allow_html=True,
-                                )
+                                col_es1, col_es2, col_es3 = st.columns(3)
+                                with col_es1:
+                                    st.metric("可換假總人數", f"{len(filtered_candidates)} 位")
+                                with col_es2:
+                                    st.metric("含 DO2W 標記", f"{cnt_do2w} 人")
+                                with col_es3:
+                                    st.metric("連班 6 天以上", f"{cnt_streak6} 人")
 
                                 for i in range(0, len(filtered_candidates), 2):
                                     batch = filtered_candidates[i : i + 2]
