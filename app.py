@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 import streamlit as st
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -73,30 +73,25 @@ is_authed = st.session_state.get("authenticated", False)
 is_admin_authed = st.session_state.get("admin_logged_in", False)
 
 if not is_authed and not is_admin_authed:
-    # 注入專屬登入頁面的動態漂移網格、掃描光束與發光卡片 CSS
     st.markdown(
         """
         <style>
-        /* 全螢幕沉浸式深空漸層背景 */
         .stApp {
             background: radial-gradient(circle at 50% 20%, #0f172a 0%, #070b14 100%) !important;
             overflow-x: hidden;
         }
         
-        /* 動態網格緩慢漂移動畫 */
         @keyframes gridDrift {
             0% { background-position: 0 0; }
             100% { background-position: 64px 64px; }
         }
 
-        /* 科技雷達掃描光束動畫 */
         @keyframes scanline {
             0% { transform: translateY(-100px); opacity: 0; }
             50% { opacity: 0.8; }
             100% { transform: translateY(900px); opacity: 0; }
         }
 
-        /* 動態生動網格背景 */
         .stApp::before {
             content: "";
             position: fixed;
@@ -109,7 +104,6 @@ if not is_authed and not is_admin_authed:
             animation: gridDrift 25s linear infinite;
         }
 
-        /* 疊加動態掃描光束 */
         .stApp::after {
             content: "";
             position: fixed;
@@ -121,7 +115,6 @@ if not is_authed and not is_admin_authed:
             animation: scanline 8s ease-in-out infinite;
         }
 
-        /* 終端機風格主標題與副標題 */
         .login-title {
             font-size: 32px !important;
             font-weight: 950 !important;
@@ -147,7 +140,6 @@ if not is_authed and not is_admin_authed:
             z-index: 1;
         }
 
-        /* 系統動態遙測狀態列 (Live Telemetry Bar) */
         .telemetry-bar {
             display: flex;
             justify-content: space-between;
@@ -182,7 +174,6 @@ if not is_authed and not is_admin_authed:
             100% { opacity: 1; transform: scale(1); }
         }
 
-        /* 玻璃擬態登入主容器改造 */
         div[data-testid="stContainer"]:has(.login-card-marker) {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(30, 41, 59, 0.82) 100%) !important;
             backdrop-filter: blur(16px);
@@ -200,11 +191,9 @@ if not is_authed and not is_admin_authed:
 
     col1, col2, col3 = st.columns([1, 2.4, 1])
     with col2:
-        # 標題
         st.markdown('<div class="login-title">CREW DUTY ENGINE</div>', unsafe_allow_html=True)
         st.markdown('<div class="login-subtitle">BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div>', unsafe_allow_html=True)
 
-        # 動態即時取得目前選擇的單位（不帶 -01）
         current_login_unit = st.session_state.get("login_unit_box", "TTN")
 
         st.markdown(
@@ -235,14 +224,12 @@ if not is_authed and not is_admin_authed:
 
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         
-        # 登入主容器（發光玻璃卡片）
         with st.container(border=True):
             st.markdown('<div class="login-card-marker"></div>', unsafe_allow_html=True)
             
             selected_unit = st.selectbox("選擇所屬單位", ["TTN", "TTC", "TTS"], key="login_unit_box")
             
             with st.form("login_main_form"):
-                # 智慧輸入：自動轉大寫
                 raw_entered_emp = st.text_input(
                     "使用者員編 (範例：A023300)",
                     value=DEFAULT_EMP_ID,
@@ -358,34 +345,48 @@ if st.session_state.get("inspect_emp_target") is not None:
 current_unit_label = st.session_state.get("current_unit", "TTN")
 current_operator_id = st.session_state.get("current_user_id", DEFAULT_EMP_ID)
 
+# =========================================================
+# 🚀 優化整合後：精簡現代化頂部戰情與狀態面板 (取代原本佔空間的雙標題)
+# =========================================================
+enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
+announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫管理者")
+
+integrated_notice_html = ""
+if enable_beta_banner:
+    integrated_notice_html = f"""
+    <div style="
+        margin-top: 8px;
+        padding: 6px 10px;
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        border-radius: 6px;
+        font-size: 10.5px;
+        color: #FDE68A;
+        font-family: monospace;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    ">
+        <span style="color: #F59E0B; font-weight: bold;">⚠️ NOTICE:</span> {announcement_msg}
+    </div>
+    """
+
 st.markdown(
     f"""
-<div class="header-container">
-    <div class="main-title">CREW DUTY ENGINE</div>
-    <div style="color: #94A3B8; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; font-family: monospace; margin-top: 3px;">
-       BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION
+<div class="header-container" style="padding: 12px 14px; margin-bottom: 12px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="main-title" style="font-size: 19px !important; margin: 0;">CREW DUTY ENGINE</div>
+        <div style="font-size: 9.5px; color: #38BDF8; font-family: monospace; letter-spacing: 1px;">C.L.F EDITION</div>
     </div>
-    <div class="title-subtitle">
-        <span class="online-dot"></span>STATUS: ACTIVE | {current_unit_label} : {current_operator_id}<span class="online-dot"></span>
+    <div class="title-subtitle" style="margin-top: 5px; display: flex; justify-content: space-between; align-items: center; font-size: 10px;">
+        <span><span class="online-dot"></span>ACTIVE | <strong style="color: #F8FAFC;">{current_unit_label}</strong> : {current_operator_id}</span>
+        <span style="color: #64748B;">TLS 1.3 // SECURE</span>
     </div>
+    {integrated_notice_html}
 </div>
 """,
     unsafe_allow_html=True,
 )
-
-enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
-announcement_msg = sys_cfg.get("announcement", "目前為內部測試階段｜本頁末端可聯繫管理者")
-
-if enable_beta_banner:
-    st.markdown(
-        f"""
-    <div class="test-env-banner">
-        <div class="test-env-title">SYSTEM MAINTENANCE NOTICE // BETA ENVIRONMENT</div>
-        <div class="test-env-sub">{announcement_msg}</div>
-    </div>
-    """,
-        unsafe_allow_html=True,
-    )
 
 if st.session_state.get("show_admin_login", False) and not st.session_state.get(
     "admin_logged_in", False
