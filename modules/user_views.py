@@ -310,65 +310,48 @@ def render_user_home() -> None:
         }
 
         /* ========================================================================= */
-        /* 👑 【高質感膠囊發光 Tab 切換器】完美完美對齊參考圖中的高級設計風格 */
+        /* 🚀 【Command HUD 航太級面板切換器】：頂級無縫橫向排列與霓虹互動設計 */
         /* ========================================================================= */
-        div[data-testid="stRadio"] {
-            width: 100% !important;
-        }
-        
-        div[data-testid="stRadio"] > div[role="radiogroup"] {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%) !important;
-            border: 1.5px solid rgba(56, 189, 248, 0.4) !important;
-            border-radius: 14px !important;
-            padding: 5px !important;
-            gap: 6px !important;
+        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             width: 100% !important;
+            max-width: 100% !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
+            border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
+            border-radius: 16px !important;
+            padding: 6px !important;
+            gap: 6px !important;
             box-sizing: border-box !important;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), inset 0 2px 6px rgba(0, 0, 0, 0.6) !important;
-            margin-bottom: 10px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.7) !important;
+            margin-bottom: 12px !important;
         }
 
-        /* 每一顆切換按鈕本體 */
-        div[data-testid="stRadio"] div[role="radiogroup"] > label {
+        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) > div[data-testid="column"] {
             flex: 1 1 33.33% !important;
             width: 33.33% !important;
             max-width: 33.33% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+
+        /* HUD 切換按鈕通用樣式 (未選中) */
+        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) button[data-testid="stBaseButton-secondary"] {
             background: transparent !important;
             border: 1.5px solid transparent !important;
-            padding: 8px 4px !important;
+            box-shadow: none !important;
+            padding: 10px 4px !important;
             border-radius: 10px !important;
-            text-align: center !important;
-            cursor: pointer !important;
+            width: 100% !important;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            margin: 0 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            box-sizing: border-box !important;
         }
-
-        div[data-testid="stRadio"] div[role="radiogroup"] > label:hover {
-            background: rgba(255, 255, 255, 0.04) !important;
-            border-color: rgba(56, 189, 248, 0.2) !important;
+        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) button[data-testid="stBaseButton-secondary"]:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-color: rgba(56, 189, 248, 0.25) !important;
         }
-
-        /* 完全隱藏原生的 radio 圓圈與圖示容器 */
-        div[data-testid="stRadio"] div[role="radiogroup"] > label > div:first-child {
-            display: none !important;
-        }
-
-        /* 選中狀態：發光深藍漸層與霓虹外框 (完美對齊參考圖風格) */
-        div[data-testid="stRadio"] div[role="radiogroup"] > label:has(input:checked) {
-            background: linear-gradient(135deg, rgba(2, 132, 199, 0.35) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
-            border: 1.5px solid #38BDF8 !important;
-            box-shadow: 0 0 16px rgba(56, 189, 248, 0.45), inset 0 1px 3px rgba(255, 255, 255, 0.3) !important;
-        }
-
-        /* 未選中文字樣式 */
-        div[data-testid="stRadio"] div[role="radiogroup"] > label p {
+        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) button[data-testid="stBaseButton-secondary"] p {
             color: #64748B !important;
             font-size: 13px !important;
             font-weight: 700 !important;
@@ -379,8 +362,17 @@ def render_user_home() -> None:
             letter-spacing: 0.3px !important;
         }
 
-        /* 選中文字樣式：高亮水藍、帶有微光特效 */
-        div[data-testid="stRadio"] div[role="radiogroup"] > label:has(input:checked) p {
+        /* HUD 切換按鈕啟動狀態 (選中) */
+        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) button[data-testid="stBaseButton-primary"],
+        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) button[kind="primary"] {
+            background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
+            border: 1.5px solid #38BDF8 !important;
+            border-radius: 10px !important;
+            padding: 10px 4px !important;
+            width: 100% !important;
+            box-shadow: 0 0 18px rgba(56, 189, 248, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.35) !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(button[key*="hud_mode_"]) button[data-testid="stBaseButton-primary"] p {
             color: #38BDF8 !important;
             font-size: 13.5px !important;
             font-weight: 900 !important;
@@ -388,7 +380,7 @@ def render_user_home() -> None:
             overflow: hidden !important;
             text-overflow: ellipsis !important;
             margin: 0 !important;
-            text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
             letter-spacing: 0.5px !important;
         }
 
@@ -715,25 +707,38 @@ def render_user_home() -> None:
     if "active_app_mode" not in st.session_state:
         st.session_state["active_app_mode"] = "個人月班表"
 
-    def on_mode_change():
-        st.session_state["active_app_mode"] = st.session_state["active_mode_radio"]
-        st.session_state.pop("win_raw_candidates", None)
-        st.session_state.pop("ex_raw_candidates", None)
-        st.session_state["ex_search_performed"] = False
+    # ==================== 🚀 航太級 Command HUD 互動切換列 ====================
+    col_hud1, col_hud2, col_hud3 = st.columns(3)
 
-    modes = ["個人月班表", "換班查詢", "換假查詢"]
-    current_mode_idx = modes.index(st.session_state["active_app_mode"]) if st.session_state["active_app_mode"] in modes else 0
+    with col_hud1:
+        is_mode_1 = st.session_state["active_app_mode"] == "個人月班表"
+        if st.button("個人月班表", key="hud_mode_1", use_container_width=True, type="primary" if is_mode_1 else "secondary"):
+            if not is_mode_1:
+                st.session_state["active_app_mode"] = "個人月班表"
+                st.session_state.pop("win_raw_candidates", None)
+                st.session_state.pop("ex_raw_candidates", None)
+                st.session_state["ex_search_performed"] = False
+                st.rerun()
 
-    # 👑 高質感膠囊切換器 (完全對齊參考圖中的高級設計)
-    app_mode = st.radio(
-        "選擇系統操作模式",
-        modes,
-        index=current_mode_idx,
-        horizontal=True,
-        label_visibility="collapsed",
-        key="active_mode_radio",
-        on_change=on_mode_change,
-    )
+    with col_hud2:
+        is_mode_2 = st.session_state["active_app_mode"] == "換班查詢"
+        if st.button("換班查詢", key="hud_mode_2", use_container_width=True, type="primary" if is_mode_2 else "secondary"):
+            if not is_mode_2:
+                st.session_state["active_app_mode"] = "換班查詢"
+                st.session_state.pop("win_raw_candidates", None)
+                st.session_state.pop("ex_raw_candidates", None)
+                st.session_state["ex_search_performed"] = False
+                st.rerun()
+
+    with col_hud3:
+        is_mode_3 = st.session_state["active_app_mode"] == "換假查詢"
+        if st.button("換假查詢", key="hud_mode_3", use_container_width=True, type="primary" if is_mode_3 else "secondary"):
+            if not is_mode_3:
+                st.session_state["active_app_mode"] = "換假查詢"
+                st.session_state.pop("win_raw_candidates", None)
+                st.session_state.pop("ex_raw_candidates", None)
+                st.session_state["ex_search_performed"] = False
+                st.rerun()
 
     app_mode = st.session_state["active_app_mode"]
 
