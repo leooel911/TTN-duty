@@ -309,82 +309,87 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 👑 【高質感 Tab 分頁切換器（改造自 st.radio）】：完美支援手機與電腦橫向並排、絕不換行 */
+        /* ========================================================================= */
+        /* 👑 【高質感膠囊發光 Tab 切換器】完美完美對齊參考圖中的高級設計風格 */
+        /* ========================================================================= */
         div[data-testid="stRadio"] {
             width: 100% !important;
         }
         
         div[data-testid="stRadio"] > div[role="radiogroup"] {
-            background: rgba(15, 23, 42, 0.85) !important;
-            border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%) !important;
+            border: 1.5px solid rgba(56, 189, 248, 0.4) !important;
             border-radius: 14px !important;
             padding: 5px !important;
-            gap: 4px !important;
+            gap: 6px !important;
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
             width: 100% !important;
             box-sizing: border-box !important;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45), inset 0 2px 8px rgba(0, 0, 0, 0.6) !important;
-            margin-bottom: 8px !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), inset 0 2px 6px rgba(0, 0, 0, 0.6) !important;
+            margin-bottom: 10px !important;
         }
 
+        /* 每一顆切換按鈕本體 */
         div[data-testid="stRadio"] div[role="radiogroup"] > label {
             flex: 1 1 33.33% !important;
             width: 33.33% !important;
             max-width: 33.33% !important;
             background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            padding: 8px 2px !important;
+            border: 1.5px solid transparent !important;
+            padding: 8px 4px !important;
             border-radius: 10px !important;
             text-align: center !important;
             cursor: pointer !important;
-            transition: all 0.2s ease !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
             margin: 0 !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            overflow: hidden !important;
+            box-sizing: border-box !important;
         }
 
         div[data-testid="stRadio"] div[role="radiogroup"] > label:hover {
-            background: rgba(255, 255, 255, 0.05) !important;
+            background: rgba(255, 255, 255, 0.04) !important;
+            border-color: rgba(56, 189, 248, 0.2) !important;
         }
 
-        /* 選中狀態的分頁按鈕：高質感發光外框與深藍底 */
-        div[data-testid="stRadio"] div[role="radiogroup"] > label:has(input:checked) {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 132, 199, 0.25) 100%) !important;
-            border: 1.5px solid #38BDF8 !important;
-            box-shadow: 0 0 14px rgba(56, 189, 248, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25) !important;
-        }
-
-        /* 隱藏原生圓圈按鈕 */
-        div[data-testid="stRadio"] div[role="radiogroup"] input[type="radio"] {
+        /* 完全隱藏原生的 radio 圓圈與圖示容器 */
+        div[data-testid="stRadio"] div[role="radiogroup"] > label > div:first-child {
             display: none !important;
+        }
+
+        /* 選中狀態：發光深藍漸層與霓虹外框 (完美對齊參考圖風格) */
+        div[data-testid="stRadio"] div[role="radiogroup"] > label:has(input:checked) {
+            background: linear-gradient(135deg, rgba(2, 132, 199, 0.35) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+            border: 1.5px solid #38BDF8 !important;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.45), inset 0 1px 3px rgba(255, 255, 255, 0.3) !important;
         }
 
         /* 未選中文字樣式 */
         div[data-testid="stRadio"] div[role="radiogroup"] > label p {
             color: #64748B !important;
-            font-size: 12px !important;
+            font-size: 13px !important;
             font-weight: 700 !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
             margin: 0 !important;
+            letter-spacing: 0.3px !important;
         }
 
-        /* 選中文字樣式 */
+        /* 選中文字樣式：高亮水藍、帶有微光特效 */
         div[data-testid="stRadio"] div[role="radiogroup"] > label:has(input:checked) p {
             color: #38BDF8 !important;
-            font-size: 12px !important;
+            font-size: 13.5px !important;
             font-weight: 900 !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
             margin: 0 !important;
-            text-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+            letter-spacing: 0.5px !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
@@ -719,7 +724,7 @@ def render_user_home() -> None:
     modes = ["個人月班表", "換班查詢", "換假查詢"]
     current_mode_idx = modes.index(st.session_state["active_app_mode"]) if st.session_state["active_app_mode"] in modes else 0
 
-    # 👑 改用水平 st.radio 實作高質感分頁切換器，100% 解決手機版自動換行堆疊問題
+    # 👑 高質感膠囊切換器 (完全對齊參考圖中的高級設計)
     app_mode = st.radio(
         "選擇系統操作模式",
         modes,
