@@ -13,6 +13,30 @@ from modules.drawing import render_schedule_figure
 from modules.utils import log_activity, safe_read_excel, send_admin_email
 
 
+def inject_slider_animation() -> None:
+    """注入時間滑桿圓點與數值在拖動時的放大動畫特效"""
+    st.markdown(
+        """
+        <style>
+        /* 針對 Streamlit 滑桿圓點在拖動時的放大效果 */
+        div[data-baseweb="slider"] [role="slider"] {
+            transition: transform 0.2s ease-in-out !important;
+        }
+        
+        div[data-baseweb="slider"] [role="slider"]:active {
+            transform: scale(1.4) !important; /* 按住拖動時放大 1.4 倍 */
+        }
+        
+        /* 針對滑桿相關數值與標籤的動態過渡效果 */
+        div[data-baseweb="slider"] span {
+            transition: font-size 0.2s ease-in-out, transform 0.2s ease-in-out !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def _convert_to_b64_url(image_bytes: Any) -> str:
     if hasattr(image_bytes, "getvalue"):
         raw_bytes = image_bytes.getvalue()
