@@ -507,79 +507,12 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
-            border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
-            border-radius: 16px !important;
-            padding: 5px !important;
-            gap: 4px !important;
-            box-sizing: border-box !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.7) !important;
-            margin-bottom: 12px !important;
-        }
-
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) > div[data-testid="column"] {
-            flex: 0 0 33.33% !important;
-            width: 33.33% !important;
-            max-width: 33.33% !important;
-            min-width: 0 !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;
-        }
-
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
-            background: transparent !important;
-            border: 1.5px solid transparent !important;
-            box-shadow: none !important;
-            padding: 9px 2px !important;
-            border-radius: 10px !important;
-            width: 100% !important;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"]:hover {
-            background: rgba(255, 255, 255, 0.05) !important;
-            border-color: rgba(56, 189, 248, 0.3) !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] p {
-            color: #64748B !important;
-            font-size: 12.5px !important;
-            font-weight: 700 !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            margin: 0 !important;
-        }
-
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
-            background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
-            border: 1.5px solid #38BDF8 !important;
-            border-radius: 10px !important;
-            padding: 9px 2px !important;
-            width: 100% !important;
-            box-shadow: 0 0 16px rgba(56, 189, 248, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.35) !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"] p {
-            color: #38BDF8 !important;
-            font-size: 13px !important;
-            font-weight: 900 !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            margin: 0 !important;
-            text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
-        }
-
+        /* 響應式圖卡欄位排版：小螢幕自動堆疊，寬螢幕兩欄並排 */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
             flex-direction: row !important;
-            flex-wrap: nowrap !important;
+            flex-wrap: wrap !important;
             width: 100% !important;
             max-width: 100% !important;
             gap: 6px !important;
@@ -588,12 +521,24 @@ def render_user_home() -> None:
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
-            width: calc(50% - 3px) !important;
-            max-width: calc(50% - 3px) !important;
-            min-width: 0 !important;
-            flex: 0 0 calc(50% - 3px) !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 0 0 100% !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
+        }
+
+        @media (min-width: 640px) {
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
+                flex-wrap: nowrap !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
+            div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
+                width: calc(50% - 3px) !important;
+                max-width: calc(50% - 3px) !important;
+                flex: 0 0 calc(50% - 3px) !important;
+            }
         }
 
         .crew-card-integrated, .crew-card-integrated-warn {
@@ -921,7 +866,6 @@ def render_user_home() -> None:
         )
 
         with st.form(key="draw_schedule_form", border=False):
-            # 自動帶入登入者的預設字串 (例如 黃淨菌 (A021987) 或純員編)
             clean_default_id = current_user_id.strip()
             
             draw_field_label = "請輸入您的員編或姓名 (例如: A023300)"
@@ -939,7 +883,6 @@ def render_user_home() -> None:
         if submit_btn:
             current_input = user_input_val.strip() if user_input_val else clean_default_id
 
-            # 智慧解析：自動從輸入內容中萃取出純員編 (例如從 "黃淨菌 (A021987)" 抓出 "A021987")
             id_match = re.search(r'[A-Za-z]\d+', current_input)
             search_target = id_match.group(0).upper() if id_match else current_input
 
@@ -947,7 +890,6 @@ def render_user_home() -> None:
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
             else:
                 try:
-                    # 優先使用萃取出的純員編進行大表搜尋，確保百分百成功命中
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(
                         search_target
                     )
@@ -956,7 +898,7 @@ def render_user_home() -> None:
                         f"操作者:{current_user_id} | 單位:{current_unit_label} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
                     )
 
-                    with st.spinner(f"正在繪製【{emp_name}】的個人月班表請稍候..."):
+                    with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
                         buf = render_schedule_figure(
                             start_dt,
                             dates,
@@ -978,10 +920,9 @@ def render_user_home() -> None:
                         use_container_width=True,
                     )
                 except Exception as e:
-                    # 如果純員編搜尋失敗，嘗試以完整原始輸入再試一次備用
                     try:
                         start_dt, dates, emp_id, emp_name, cells = process_file_data(current_input)
-                        with st.spinner(f"正在繪製【{emp_name}】的個人月班表請稍候..."):
+                        with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
                             buf = render_schedule_figure(
                                 start_dt,
                                 dates,
