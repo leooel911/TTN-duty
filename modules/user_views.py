@@ -507,7 +507,10 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 完美雙排並排佈局鎖定 (防止手機端溢出) */
+        /* -----------------------------------------------------------------
+           🎯 高隔離性（Scoped）雙排並排佈局：
+           只對「包含組員卡片」的水平區塊生效，絕不影響全域其他普通的 st.columns
+           ----------------------------------------------------------------- */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -515,7 +518,7 @@ def render_user_home() -> None:
             flex-wrap: nowrap !important;
             width: 100% !important;
             max-width: 100% !important;
-            gap: 4px !important;
+            gap: 6px !important;
             box-sizing: border-box !important;
             margin-bottom: 0px !important;
             overflow: hidden !important;
@@ -523,10 +526,9 @@ def render_user_home() -> None:
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
-            width: calc(50% - 2px) !important;
-            max-width: calc(50% - 2px) !important;
+            flex: 1 1 50% !important;
+            max-width: 50% !important;
             min-width: 0 !important;
-            flex: 0 0 calc(50% - 2px) !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             padding: 0 !important;
