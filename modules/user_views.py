@@ -1,6 +1,6 @@
-from datetime import date, datetime, timedelta
 import os
 import re
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
@@ -182,14 +182,94 @@ def reset_ex_search() -> None:
 
 
 # =============================================================================
-# 3. 前台主入口邏輯 (純已登入主畫面)
+# 3. 智慧下次勤務計算與解析輔助
+# =============================================================================
+
+def get_user_next_duty_info(emp_id: str) -> dict:
+    """自動掃描登入者的班表檔案，計算下次勤務倒數與今日狀態"""
+    default_res = {
+        "today_status": "今日待命",
+        "has_next": False,
+        "date_label": "--/--",
+        "train": "一般勤務",
+        "start": "--:--",
+        "end": "--:--",
+        "hours": "--",
+        "hours_left": 0,
+        "mins_left": 0,
+        "secs_left": 0,
+    }
+    if not emp_id:
+        return default_res
+
+    try:
+        start_dt, dates, _, _, cells = process_file_data(emp_id)
+        now = datetime.now()
+        current_year = now.year
+        weekday_map = {0: "(一)", 1: "(二)", 2: "(三)", 3: "(四)", 4: "(五)", 5: "(六)", 6: "(日)"}
+
+        today_status = "今日出勤"
+        next_shift = None
+
+        for d_str, cell_val in zip(dates, cells):
+            norm_d = normalize_date_str(d_str)
+            if not norm_d:
+                continue
+            parts = norm_d.split("/")
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                d_date = date(current_year, int(parts[0]), int(parts[1]))
+                
+                # 判定今日狀態
+                if d_date == now.date():
+                    is_off = is_cell_off_day(cell_val)
+                    cell_str = str(cell_val).strip()
+                    if is_off:
+                        today_status = f"今日休假 · {cell_str}" if cell_str else "今日休假"
+                    else:
+                        parsed_today = parse_cell(cell_val)
+                        tr_name = parsed_today.get('train', '當班')
+                        today_status = f"今日出勤 · {tr_name}"
+
+                # 尋找未來最近一筆有效出勤
+                if d_date >= now.date():
+                    is_off = is_cell_off_day(cell_val)
+                    parsed = parse_cell(cell_val)
+                    start_t = parsed.get("start")
+                    
+                    if start_t and start_t != "--:--" and not is_off:
+                        shift_dt = datetime.combine(d_date, datetime.strptime(start_t, "%H:%M").time())
+                        if shift_dt >= now:
+                            diff = shift_dt - now
+                            w_str = weekday_map.get(d_date.weekday(), "")
+                            next_shift = {
+                                "today_status": today_status,
+                                "has_next": True,
+                                "date_label": f"{d_str} {w_str}",
+                                "train": translate_train_code(parsed.get("train", "")),
+                                "start": start_t,
+                                "end": parsed.get("end", "--:--"),
+                                "hours": parsed.get("hours", "--"),
+                                "hours_left": int(diff.total_seconds() // 3600),
+                                "mins_left": int((diff.total_seconds() % 3600) // 60),
+                                "secs_left": int(diff.total_seconds() % 60),
+                            }
+                            break
+        if next_shift:
+            return next_shift
+        return {**default_res, "today_status": today_status}
+    except Exception:
+        return default_res
+
+
+# =============================================================================
+# 4. 前台主入口邏輯 (純已登入主畫面)
 # =============================================================================
 
 def render_user_home() -> None:
     """繪製使用者首頁主要介面與功能模組"""
 
     auth = get_auth_session()
-    current_user_id = auth.get("emp_id", "")
+    current_user_id = auth["emp_id"]
     current_user_name = auth.get("emp_name", current_user_id)
     user_role = auth["role"]
     is_privileged = user_role in ["ADMIN", "VIP_USER"]
@@ -212,34 +292,6 @@ def render_user_home() -> None:
             padding-top: 0.6rem !important;
         }
 
-        .section-header-box {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
-            border-left: 4px solid #38BDF8 !important;
-            border-top: 1px solid rgba(56, 189, 248, 0.3) !important;
-            border-right: 1px solid rgba(56, 189, 248, 0.3) !important;
-            border-bottom: 1px solid rgba(56, 189, 248, 0.3) !important;
-            border-radius: 12px !important;
-            padding: 10px 14px !important;
-            margin-bottom: 12px !important;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-        }
-
-        .section-title {
-            font-size: 15px !important;
-            font-weight: 900 !important;
-            color: #38BDF8 !important;
-            font-family: monospace !important;
-            letter-spacing: 0.5px !important;
-        }
-
-        .section-subtitle {
-            font-size: 10px !important;
-            color: #94A3B8 !important;
-            font-family: monospace !important;
-            letter-spacing: 0.8px !important;
-            margin-top: 2px !important;
-        }
-
         .section-field-label {
             font-size: 15px !important;
             font-weight: 800 !important;
@@ -250,6 +302,116 @@ def render_user_home() -> None:
             line-height: 1.3 !important;
         }
 
+        /* ========================================================================= */
+        /* 🚀 【旗艦級倒數計時卡片專屬樣式】 */
+        /* ========================================================================= */
+        .countdown-card {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%);
+            border: 1.5px solid rgba(56, 189, 248, 0.35);
+            border-radius: 16px;
+            padding: 16px 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.4);
+            margin-bottom: 12px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            color: #FBBF24;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-family: monospace;
+        }
+        .status-badge::before {
+            content: "●";
+            font-size: 8px;
+        }
+        .period-text {
+            font-size: 11px;
+            color: #64748B;
+            font-family: monospace;
+            letter-spacing: 0.5px;
+        }
+        .countdown-label {
+            font-size: 12px;
+            color: #94A3B8;
+            font-family: monospace;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+        .countdown-timer {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+            font-family: monospace;
+            margin-bottom: 14px;
+        }
+        .time-number {
+            font-size: 28px;
+            font-weight: 900;
+            color: #F8FAFC;
+            letter-spacing: 1px;
+        }
+        .time-unit {
+            font-size: 11.5px;
+            color: #64748B;
+            margin-right: 6px;
+        }
+        .card-divider {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .shift-info-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .shift-date-train {
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #CBD5E1;
+        }
+        .shift-time-range {
+            font-size: 16px;
+            font-weight: 900;
+            color: #F8FAFC;
+            font-family: monospace;
+            letter-spacing: 0.5px;
+        }
+        .shift-time-range span {
+            color: #64748B;
+            font-weight: 500;
+            margin: 0 4px;
+        }
+        .hours-pill {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: #38BDF8;
+            font-size: 11.5px;
+            font-weight: 900;
+            font-family: monospace;
+            padding: 6px 12px;
+            border-radius: 10px;
+        }
+
+        /* ========================================================================= */
+        /* 🚀 【Unified Command Box 統合控制主卡片】：將 Streamlit 內建容器改造為高質感發光矩陣 */
+        /* ========================================================================= */
         div[data-testid="stContainer"] {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
             border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
@@ -259,6 +421,7 @@ def render_user_home() -> None:
             margin-bottom: 12px !important;
         }
 
+        /* 🚀 【高質感 Slider 專屬外框改造】：卡片式發光滑桿 */
         div[data-testid="stSlider"] {
             background: rgba(7, 11, 20, 0.85) !important;
             border: 1px solid rgba(56, 189, 248, 0.3) !important;
@@ -326,6 +489,7 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
+        /* 🚀 【精準結構選取器】：強制三欄模式切換器在所有手機與電腦上維持橫向並排、絕不堆疊 */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
             display: flex !important;
             flex-direction: row !important;
@@ -351,6 +515,7 @@ def render_user_home() -> None:
             overflow: hidden !important;
         }
 
+        /* 未選中按鈕樣式 */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
             background: transparent !important;
             border: 1.5px solid transparent !important;
@@ -374,6 +539,7 @@ def render_user_home() -> None:
             margin: 0 !important;
         }
 
+        /* 選中按鈕 (Primary 霓虹發光態樣) */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
             background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
@@ -392,6 +558,33 @@ def render_user_home() -> None:
             text-overflow: ellipsis !important;
             margin: 0 !important;
             text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+        }
+
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            gap: 6px !important;
+            box-sizing: border-box !important;
+        }
+
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
+            width: calc(50% - 3px) !important;
+            max-width: calc(50% - 3px) !important;
+            min-width: 0 !important;
+            flex: 0 0 calc(50% - 3px) !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) *,
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) * {
+            min-width: 0 !important;
+            box-sizing: border-box !important;
         }
 
         .crew-card-integrated, .crew-card-integrated-warn {
@@ -595,19 +788,10 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
+    # 🚀 注入時間滑桿拖動放大特效
     comp.inject_slider_animation()
-    active_files = get_current_role_files()
 
-    # ==================== 系統最上方標題區塊 ====================
-    st.markdown(
-        f"""
-        <div class="section-header-box">
-            <div class="section-title">[{current_unit_label}] TRAIN CREW DUTY ENGINE</div>
-            <div class="section-subtitle">乘務員出勤與排班管理系統 // 登入者：{current_user_name} ({current_user_id or "未登入"})</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    active_files = get_current_role_files()
 
     # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
     inspect_emp_id = st.session_state.get("inspect_emp_target")
@@ -641,7 +825,9 @@ def render_user_home() -> None:
                     badge_title="Producer | C.L.F",
                 )
             st.success(f"【{emp_name} ({emp_id})】完整班表載入完成！")
+
             comp.render_zoomable_image(buf)
+
             st.download_button(
                 "點此下載班表影像檔",
                 data=buf,
@@ -651,6 +837,7 @@ def render_user_home() -> None:
             )
         except Exception as e:
             st.error(f"繪製組員班表時發生錯誤：{e}")
+
         st.stop()
 
     missing_files = [
@@ -659,6 +846,11 @@ def render_user_home() -> None:
         if not os.path.exists(active_files.get(role, ""))
         or os.path.getsize(active_files.get(role, "")) == 0
     ]
+
+    if missing_files:
+        st.error(
+            f"【{current_unit_label}】資料庫異常或尚無檔案：請洽管理員上傳！"
+        )
 
     td_time = get_file_mtime_str(active_files.get("駕駛", ""))
     tm_time = get_file_mtime_str(active_files.get("列車長", ""))
@@ -672,6 +864,7 @@ def render_user_home() -> None:
             <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
                 {sched_range if len(missing_files) < 3 else "資料庫異常"}
             </span>
+
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
@@ -688,130 +881,30 @@ def render_user_home() -> None:
     """
     st.html(period_html)
 
-    # =========================================================================
-    # 🚀 自動抓取登入者下次勤務倒數與詳細資訊卡片（純依賴登入 Session）
-    # =========================================================================
-    next_shift_info = None
-    if current_user_id:
-        current_date = date.today()
-        current_year = current_date.year
-
-        for r_name, p_path in active_files.items():
-            if not os.path.exists(p_path) or os.path.getsize(p_path) == 0:
-                continue
-            df_u = safe_read_excel(p_path, header=3)
-            df_u.columns = [str(c).strip() for c in df_u.columns]
-
-            for _, row in df_u.iterrows():
-                u_id = str(row.iloc[0]).strip()
-                u_name = str(row.iloc[1]).strip()
-                if current_user_id.upper() in u_id.upper() or current_user_id in u_name:
-                    for col in df_u.columns[2:]:
-                        norm_d = normalize_date_str(col)
-                        if not norm_d:
-                            continue
-                        try:
-                            m, d = map(int, norm_d.split("/"))
-                            shift_date = date(current_year, m, d)
-
-                            if shift_date >= current_date:
-                                col_idx = find_date_column_index(df_u.columns, col)
-                                if col_idx != -1 and col_idx < len(row):
-                                    cell_val = row.iloc[col_idx]
-                                    parsed = parse_cell(cell_val)
-                                    start_t = parsed.get("start")
-                                    is_off = is_cell_off_day(cell_val)
-
-                                    if start_t and not is_off:
-                                        train_code = translate_train_code(parsed.get("train", ""))
-                                        end_t = parsed.get("end", "--:--")
-                                        hours = parsed.get("hours", "")
-                                        sh, sm = map(int, start_t.split(":"))
-                                        shift_dt = datetime(current_year, m, d, sh, sm)
-
-                                        if shift_dt >= datetime.now() or shift_date > current_date:
-                                            next_shift_info = {
-                                                "date_str": col,
-                                                "date_obj": shift_date,
-                                                "train": train_code,
-                                                "start": start_t,
-                                                "end": end_t,
-                                                "hours": hours,
-                                                "shift_dt": shift_dt,
-                                            }
-                                            break
-                        except Exception:
-                            continue
-                if next_shift_info:
-                    break
-            if next_shift_info:
-                break
-
-    if next_shift_info:
-        now = datetime.now()
-        diff = next_shift_info["shift_dt"] - now
-        total_seconds = int(diff.total_seconds())
-        if total_seconds < 0:
-            total_seconds = 0
-
-        hours_left = total_seconds // 3600
-        minutes_left = (total_seconds % 3600) // 60
-        seconds_left = total_seconds % 60
-
-        d_obj = next_shift_info["date_obj"]
-        if d_obj == current_date:
-            day_label = f"{d_obj.day}日 (今天)"
-        elif d_obj == current_date + timedelta(days=1):
-            day_label = f"{d_obj.day}日 (明天)"
-        else:
-            day_label = f"{d_obj.day}日"
-
-        train_display = next_shift_info["train"]
-        start_display = next_shift_info["start"]
-        end_display = next_shift_info["end"]
-        hours_display = next_shift_info["hours"] if next_shift_info["hours"] else "--"
-
-        countdown_html = f"""
-        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important; border: 1.5px solid rgba(56, 189, 248, 0.5) !important; border-radius: 16px !important; padding: 14px 16px !important; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important; margin-bottom: 12px !important;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <div style="display: flex; align-items: center; gap: 6px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); padding: 3px 10px; border-radius: 20px;">
-                    <span style="width: 6px; height: 6px; background-color: #FBBF24; border-radius: 50%; display: inline-block;"></span>
-                    <span style="font-size: 11.5px; font-weight: 800; color: #FBBF24; font-family: monospace;">待勤中 · {train_display}</span>
-                </div>
-                <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace;">週期 {sched_range}</div>
-            </div>
-            
-            <div style="font-size: 11px; color: #94A3B8; font-weight: 600; margin-bottom: 2px;">距下次出勤簽到</div>
-            
-            <div style="display: flex; align-items: baseline; gap: 4px; font-family: monospace; margin-bottom: 10px;">
-                <span style="font-size: 24px; font-weight: 900; color: #F8FAFC;">{hours_left:02d}</span><span style="font-size: 11px; color: #94A3B8;">時</span>
-                <span style="font-size: 24px; font-weight: 900; color: #F8FAFC;">{minutes_left:02d}</span><span style="font-size: 11px; color: #94A3B8;">分</span>
-                <span style="font-size: 24px; font-weight: 900; color: #38BDF8;">{seconds_left:02d}</span><span style="font-size: 11px; color: #94A3B8;">秒</span>
-            </div>
-            
-            <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 8px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-size: 11.5px; font-weight: 700; color: #94A3B8; font-family: monospace;">{day_label} &nbsp; <span style="color: #38BDF8;">{train_display}</span></div>
-                    <div style="font-size: 15px; font-weight: 900; color: #F8FAFC; font-family: monospace; margin-top: 2px;">
-                        {start_display} <span style="color: #64748B;">→</span> {end_display}
-                    </div>
-                </div>
-                <div style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: #38BDF8; font-size: 11.5px; font-weight: 800; padding: 4px 10px; border-radius: 8px; font-family: monospace;">
-                    {hours_display}
-                </div>
-            </div>
+    # 🚀 自動抓取登入者資料並渲染高質感下次勤務倒數卡片
+    duty_info = get_user_next_duty_info(current_user_id)
+    countdown_card_html = f"""
+    <div class="countdown-card">
+        <div class="card-top">
+            <div class="status-badge">{duty_info['today_status']}</div>
+            <div class="period-text">週期 {sched_range}</div>
         </div>
-        """
-        st.html(countdown_html)
-    else:
-        st.markdown(
-            """
-            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 12px; text-align: center; margin-bottom: 12px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: #94A3B8;">目前查無近期待出勤班次記錄</div>
+        <div class="countdown-label">距下次出勤簽到</div>
+        <div class="countdown-timer">
+            <span class="time-number">{duty_info['hours_left']:02d}</span><span class="time-unit">時</span>
+            <span class="time-number">{duty_info['mins_left']:02d}</span><span class="time-unit">分</span>
+            <span class="time-number">{duty_info['secs_left']:02d}</span><span class="time-unit">秒</span>
+        </div>
+        <div class="card-divider">
+            <div class="shift-info-left">
+                <div class="shift-date-train">{duty_info['date_label']} {duty_info['train']}</div>
+                <div class="shift-time-range">{duty_info['start']} <span>→</span> {duty_info['end']}</div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            <div class="hours-pill">{duty_info['hours']}</div>
+        </div>
+    </div>
+    """
+    st.markdown(countdown_card_html, unsafe_allow_html=True)
 
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
@@ -977,6 +1070,9 @@ def render_user_home() -> None:
                     unsafe_allow_html=True,
                 )
 
+        # =========================================================================
+        # 🚀 使用 Streamlit 內建容器 `st.container(border=True)` 打造 Unified Command Box
+        # =========================================================================
         with st.container(border=True):
             st.markdown(
                 """
@@ -1537,7 +1633,7 @@ def render_user_home() -> None:
                         comp.show_holiday_notice(ex_week_holidays, target_week_str)
 
                         st.caption(
-                            f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）"
+                            f"📌 **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）"
                         )
 
                         if "saved_ex_time_filter" not in st.session_state:
@@ -1698,132 +1794,132 @@ def render_user_home() -> None:
                             st.session_state["ex_search_performed"] = True
                             st.rerun()
 
-                        if st.session_state.get("ex_search_performed"):
-                            raw_list = st.session_state.get("ex_raw_candidates", [])
-                            filtered_candidates = []
+                    if st.session_state.get("ex_search_performed"):
+                        raw_list = st.session_state.get("ex_raw_candidates", [])
+                        filtered_candidates = []
 
-                            for cand in raw_list:
-                                if return_time_filter != "不限":
-                                    min_allowed = return_time_filter.split(" ")[0]
-                                    if (
-                                        not cand["Sign-In"]
-                                        or cand["Sign-In"] == "--:--"
-                                        or cand["Sign-In"] < min_allowed
-                                    ):
-                                        continue
-
-                                if strict_limit and cand["連續上班天數"] >= 6:
+                        for cand in raw_list:
+                            if return_time_filter != "不限":
+                                min_allowed = return_time_filter.split(" ")[0]
+                                if (
+                                    not cand["Sign-In"]
+                                    or cand["Sign-In"] == "--:--"
+                                    or cand["Sign-In"] < min_allowed
+                                ):
                                     continue
 
-                                filtered_candidates.append(cand)
+                            if strict_limit and cand["連續上班天數"] >= 6:
+                                continue
 
-                            if sort_order == "依 Sign-In 時間 (由早至晚)":
-                                filtered_candidates = sorted(
-                                    filtered_candidates,
-                                    key=lambda x: (
-                                        x["Sign-In"] if x["Sign-In"] != "--:--" else "99:99",
-                                        get_shift_group_num(x["還假車次"]),
-                                        str(x["還假車次"]),
-                                    ),
-                                )
-                            elif sort_order == "依同類班別末四碼數字":
-                                filtered_candidates = sorted(
-                                    filtered_candidates,
-                                    key=lambda x: (
-                                        get_shift_group_num(x["還假車次"]),
-                                        x["Sign-In"] if x["Sign-In"] != "--:--" else "99:99",
-                                        str(x["還假車次"]),
-                                    ),
-                                )
-                            elif sort_order == "依最早 Sign-Out":
-                                filtered_candidates = sorted(
-                                    filtered_candidates,
-                                    key=lambda x: (
-                                        x["Sign-Out"] if x["Sign-Out"] != "--:--" else "99:99",
-                                        x["Sign-In"] if x["Sign-In"] != "--:--" else "99:99",
-                                    ),
-                                )
-                            elif sort_order == "依工時長短":
-                                filtered_candidates = sorted(
-                                    filtered_candidates,
-                                    key=lambda x: x["工時"] or "0h00m",
-                                    reverse=True,
-                                )
+                            filtered_candidates.append(cand)
 
-                            log_activity(
-                                "換假日期快篩",
-                                f"單位:{current_unit_label} | 職位:{selected_role} | 想休:{target_date} | "
-                                f"還假:{return_date} | 時間限制:{return_time_filter} | "
-                                f"排序:{sort_order} | 嚴格連六:{strict_limit} | 命中數:{len(filtered_candidates)}筆"
+                        if sort_order == "依 Sign-In 時間 (由早至晚)":
+                            filtered_candidates = sorted(
+                                filtered_candidates,
+                                key=lambda x: (
+                                    x["Sign-In"] if x["Sign-In"] != "--:--" else "99:99",
+                                    get_shift_group_num(x["還假車次"]),
+                                    str(x["還假車次"]),
+                                ),
+                            )
+                        elif sort_order == "依同類班別末四碼數字":
+                            filtered_candidates = sorted(
+                                filtered_candidates,
+                                key=lambda x: (
+                                    get_shift_group_num(x["還假車次"]),
+                                    x["Sign-In"] if x["Sign-In"] != "--:--" else "99:99",
+                                    str(x["還假車次"]),
+                                ),
+                            )
+                        elif sort_order == "依最早 Sign-Out":
+                            filtered_candidates = sorted(
+                                filtered_candidates,
+                                key=lambda x: (
+                                    x["Sign-Out"] if x["Sign-Out"] != "--:--" else "99:99",
+                                    x["Sign-In"] if x["Sign-In"] != "--:--" else "99:99",
+                                ),
+                            )
+                        elif sort_order == "依工時長短":
+                            filtered_candidates = sorted(
+                                filtered_candidates,
+                                key=lambda x: x["工時"] or "0h00m",
+                                reverse=True,
+                            )
+
+                        log_activity(
+                            "換假日期快篩",
+                            f"單位:{current_unit_label} | 職位:{selected_role} | 想休:{target_date} | "
+                            f"還假:{return_date} | 時間限制:{return_time_filter} | "
+                            f"排序:{sort_order} | 嚴格連六:{strict_limit} | 命中數:{len(filtered_candidates)}筆"
+                        )
+
+                        st.markdown(
+                            f"### 換假可選人員名單（共 {len(filtered_candidates)} 位）"
+                        )
+
+                        if filtered_candidates:
+                            cnt_do2w = sum(
+                                1
+                                for c in filtered_candidates
+                                if c.get("有DO2W標記")
+                                or "DO2" in c.get("出勤標記", "")
+                            )
+                            cnt_streak6 = sum(
+                                1
+                                for c in filtered_candidates
+                                if c.get("連續上班天數", 0) >= 6
                             )
 
                             st.markdown(
-                                f"### 換假可選人員名單（共 {len(filtered_candidates)} 位）"
+                                f"""
+                                <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
+                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                        <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">可換假總人數</div>
+                                        <div style="font-size: 17px; font-weight: 900; color: #38BDF8; font-family: monospace;">{len(filtered_candidates)} <span style="font-size: 10px;">位</span></div>
+                                    </div>
+                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(245, 158, 11, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                        <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">含 DO2W 標記</div>
+                                        <div style="font-size: 17px; font-weight: 900; color: #FBBF24; font-family: monospace;">{cnt_do2w} <span style="font-size: 10px;">人</span></div>
+                                    </div>
+                                    <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
+                                        <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">連班 6 天以上</div>
+                                        <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_streak6} <span style="font-size: 10px;">人</span></div>
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
                             )
 
-                            if filtered_candidates:
-                                cnt_do2w = sum(
-                                    1
-                                    for c in filtered_candidates
-                                    if c.get("有DO2W標記")
-                                    or "DO2" in c.get("出勤標記", "")
-                                )
-                                cnt_streak6 = sum(
-                                    1
-                                    for c in filtered_candidates
-                                    if c.get("連續上班天數", 0) >= 6
-                                )
+                            for i in range(0, len(filtered_candidates), 2):
+                                batch = filtered_candidates[i : i + 2]
+                                cols = st.columns(2)
 
-                                st.markdown(
-                                    f"""
-                                    <div style="display: flex; gap: 8px; margin-bottom: 12px; margin-top: 4px;">
-                                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">可換假總人數</div>
-                                            <div style="font-size: 17px; font-weight: 900; color: #38BDF8; font-family: monospace;">{len(filtered_candidates)} <span style="font-size: 10px;">位</span></div>
-                                        </div>
-                                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(245, 158, 11, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">含 DO2W 標記</div>
-                                            <div style="font-size: 17px; font-weight: 900; color: #FBBF24; font-family: monospace;">{cnt_do2w} <span style="font-size: 10px;">人</span></div>
-                                        </div>
-                                        <div style="flex: 1; background: rgba(15, 23, 42, 0.6); border: 1.5px solid rgba(244, 63, 94, 0.5); border-radius: 8px; padding: 6px 10px; text-align: center;">
-                                            <div style="font-size: 10px; color: #94A3B8; font-family: monospace;">連班 6 天以上</div>
-                                            <div style="font-size: 17px; font-weight: 900; color: #FB7185; font-family: monospace;">{cnt_streak6} <span style="font-size: 10px;">人</span></div>
-                                        </div>
-                                    </div>
-                                    """,
-                                    unsafe_allow_html=True,
-                                )
+                                for idx_in_batch, cand in enumerate(batch):
+                                    with cols[idx_in_batch]:
+                                        do_tag = cand.get("出勤標記", "")
 
-                                for i in range(0, len(filtered_results), 2):
-                                    batch = filtered_results[i : i + 2]
-                                    cols = st.columns(2)
+                                        badges_html = '<div class="badge-group">'
+                                        if cand.get("非正線"):
+                                            badges_html += '<span class="non-line-badge">非正線</span>'
+                                        if cand.get("長班"):
+                                            badges_html += '<span class="long-badge">長班</span>'
+                                        if cand.get("有DO2W標記") or do_tag:
+                                            tag_text = do_tag if do_tag else "DO2W"
+                                            badges_html += f'<span class="do2w-badge">[{tag_text}]</span>'
+                                        badges_html += "</div>"
 
-                                    for idx_in_batch, cand in enumerate(batch):
-                                        with cols[idx_in_batch]:
-                                            do_tag = cand.get("出勤標記", "")
+                                        streak_cnt = cand.get("連續上班天數", 0)
 
-                                            badges_html = '<div class="badge-group">'
-                                            if cand.get("非正線"):
-                                                badges_html += '<span class="non-line-badge">非正線</span>'
-                                            if cand.get("長班"):
-                                                badges_html += '<span class="long-badge">長班</span>'
-                                            if cand.get("有DO2W標記") or do_tag:
-                                                tag_text = do_tag if do_tag else "DO2W"
-                                                badges_html += f'<span class="do2w-badge">[{tag_text}]</span>'
-                                            badges_html += "</div>"
+                                        clean_cand_name = str(cand.get("姓名", "")).replace("\n", " ").strip()
+                                        clean_cand_id = str(cand.get("員編", "")).replace("\n", " ").strip()
+                                        clean_cand_return_date = str(cand.get("還休日", "")).replace("\n", " ").strip()
+                                        clean_cand_return_train = str(cand.get("還假車次", "無")).replace("\n", " ").strip()
+                                        clean_cand_signin = str(cand.get("Sign-In", "--:--")).replace("\n", " ").strip()
+                                        clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
 
-                                            streak_cnt = cand.get("連續上班天數", 0)
+                                        card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else "crew-card-integrated card-theme-0"
 
-                                            clean_cand_name = str(cand.get("姓名", "")).replace("\n", " ").strip()
-                                            clean_cand_id = str(cand.get("員編", "")).replace("\n", " ").strip()
-                                            clean_cand_return_date = str(cand.get("還休日", "")).replace("\n", " ").strip()
-                                            clean_cand_return_train = str(cand.get("還假車次", "無")).replace("\n", " ").strip()
-                                            clean_cand_signin = str(cand.get("Sign-In", "--:--")).replace("\n", " ").strip()
-                                            clean_cand_signout = str(cand.get("Sign-Out", "--:--")).replace("\n", " ").strip()
-
-                                            card_class = "crew-card-integrated-warn" if streak_cnt >= 6 else "crew-card-integrated card-theme-0"
-
-                                            card_html = f"""<div class="{card_class}">
+                                        card_html = f"""<div class="{card_class}">
 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
     <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;">
         {clean_cand_name} <span style="color:#94A3B8; font-size:9.5px; font-weight:500;">({clean_cand_id})</span>
@@ -1842,21 +1938,21 @@ def render_user_home() -> None:
 </div>
 </div>"""
 
-                                            st.markdown(card_html, unsafe_allow_html=True)
+                                        st.markdown(card_html, unsafe_allow_html=True)
 
-                                            if st.button(
-                                                f"檢視 {clean_cand_name} 完整班表 ➔",
-                                                key=f"ex_btn_{clean_cand_id}_{i+idx_in_batch}",
-                                                use_container_width=True,
-                                            ):
-                                                log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
-                                                st.session_state["inspect_emp_target"] = clean_cand_id
-                                                st.rerun()
-                            else:
-                                st.info(
-                                    "在指定條件內，找不到符合的可換假人員"
-                                    " (可嘗試放寬還假日 Sign-In 時間限制或取消嚴格過濾)"
-                                )
+                                        if st.button(
+                                            f"檢視 {clean_cand_name} 完整班表 ➔",
+                                            key=f"ex_btn_{clean_cand_id}_{i+idx_in_batch}",
+                                            use_container_width=True,
+                                        ):
+                                            log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
+                                            st.session_state["inspect_emp_target"] = clean_cand_id
+                                            st.rerun()
+                        else:
+                            st.info(
+                                "在指定條件內，找不到符合的可換假人員"
+                                " (可嘗試放寬還假日 Sign-In 時間限制或取消嚴格過濾)"
+                            )
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
 
