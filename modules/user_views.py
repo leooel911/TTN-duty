@@ -601,6 +601,9 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
+    # 🚀 注入時間滑桿拖動放大特效
+    comp.inject_slider_animation()
+
     active_files = get_current_role_files()
 
     # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
