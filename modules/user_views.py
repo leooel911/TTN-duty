@@ -666,6 +666,153 @@ def render_user_home() -> None:
         </style>
         """,
         unsafe_allow_html=True,
+    )st.markdown(
+        """
+        <style>
+        html, body, .stApp, [data-testid="stAppViewContainer"], .main,
+        [data-testid="stMainBlockContainer"], .block-container {
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
+        }
+
+        [data-testid="stMainBlockContainer"], .block-container {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            padding-top: 0.6rem !important;
+        }
+
+        .section-field-label {
+            font-size: 15px !important;
+            font-weight: 800 !important;
+            color: #F8FAFC !important;
+            margin-top: 10px !important;
+            margin-bottom: 8px !important;
+            letter-spacing: 0.3px !important;
+            line-height: 1.3 !important;
+        }
+
+        div[data-testid="stContainer"] {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
+            border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
+            border-radius: 16px !important;
+            padding: 14px 14px 6px 14px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+            margin-bottom: 12px !important;
+        }
+
+        /* 💡 修正處：允許在窄螢幕自動換行，防止右側卡片被切掉或跑位 */
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: wrap !important; 
+            width: 100% !important;
+            max-width: 100% !important;
+            gap: 4% !important;
+            box-sizing: border-box !important;
+            margin-bottom: 0px !important;
+        }
+
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
+            width: 48% !important;
+            max-width: 48% !important;
+            min-width: 260px !important;
+            flex: 1 1 48% !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            padding: 0 !important;
+        }
+
+        .crew-card-integrated, .crew-card-integrated-warn {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
+            border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
+            border-bottom: none !important;
+            border-top-left-radius: 8px !important;
+            border-top-right-radius: 8px !important;
+            border-bottom-left-radius: 0px !important;
+            border-bottom-right-radius: 0px !important;
+            padding: 8px 8px 6px 8px !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+            overflow: hidden !important;
+            transition: all 0.25s ease-in-out !important;
+        }
+
+        .crew-card-integrated-warn {
+            border-color: #F43F5E !important;
+            box-shadow: 0 4px 14px rgba(244, 63, 94, 0.3) !important;
+        }
+
+        .card-theme-0 {
+            border-color: rgba(56, 189, 248, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(14, 116, 144, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15) !important;
+        }
+        .card-theme-0 .train-code-text { color: #38BDF8 !important; }
+
+        .card-theme-1 {
+            border-color: rgba(52, 211, 153, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(6, 95, 70, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(52, 211, 153, 0.15) !important;
+        }
+        .card-theme-1 .train-code-text { color: #34D399 !important; }
+
+        .card-theme-2 {
+            border-color: rgba(251, 191, 36, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(120, 53, 15, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15) !important;
+        }
+        .card-theme-2 .train-code-text { color: #FBBF24 !important; }
+
+        .card-theme-3 {
+            border-color: rgba(192, 132, 252, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(88, 28, 135, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(192, 132, 252, 0.15) !important;
+        }
+        .card-theme-3 .train-code-text { color: #C084FC !important; }
+
+        .card-theme-4 {
+            border-color: rgba(251, 146, 60, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(124, 45, 18, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(251, 146, 60, 0.15) !important;
+        }
+        .card-theme-4 .train-code-text { color: #FB923C !important; }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"],
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button,
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            border-top-left-radius: 0px !important;
+            border-top-right-radius: 0px !important;
+            border-bottom-left-radius: 8px !important;
+            border-bottom-right-radius: 8px !important;
+            margin-top: -14px !important;
+            margin-bottom: 6px !important;
+            box-shadow: none !important;
+            font-weight: 700 !important;
+            padding: 3px 2px !important;
+            font-size: 11px !important;
+            letter-spacing: -0.3px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            background-color: rgba(15, 23, 42, 0.95) !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
 
     active_files = get_current_role_files()
