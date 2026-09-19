@@ -176,7 +176,7 @@ def get_week_holidays(target_date: str, date_cols: List[str], columns: Optional[
 
 
 def get_real_next_duty(query_str: str, active_files: dict) -> Tuple[Optional[datetime], str]:
-    """從真實班表檔案中自動搜尋該員編或姓名接下來最近的一筆出勤與 Sign-In 時間（支援混合字串與模糊比對）"""
+    """從真實班表檔案中自動搜尋該員編或姓名接下來最近的一筆出勤與 Sign-In 時間"""
     if not query_str or not active_files:
         return None, "尚未指定員編或姓名"
     
@@ -250,11 +250,9 @@ def reset_ex_search() -> None:
 
 
 def render_rest_countdown_card(next_duty_time: datetime, duty_info_str: str):
-    """
-    透過 streamlit 元件安全渲染具備前端 JavaScript 動態即時倒數的休息倒數計時器
-    """
+    """透過 streamlit 元件安全渲染具備前端 JavaScript 動態即時倒數的休息倒數計時器"""
     y = next_duty_time.year
-    m = next_duty_time.month - 1  # JS 月份為 0-11
+    m = next_duty_time.month - 1
     d = next_duty_time.day
     h = next_duty_time.hour
     mi = next_duty_time.minute
@@ -416,8 +414,8 @@ def render_user_home() -> None:
         }
 
         [data-testid="stMainBlockContainer"], .block-container {
-            padding-left: 0.4rem !important;
-            padding-right: 0.4rem !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
             padding-top: 0.6rem !important;
         }
 
@@ -507,7 +505,7 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 完美雙排並排佈局鎖定 */
+        /* 完美雙排並排佈局鎖定 (採用正式版最穩定的 48% 計算，絕對不切邊) */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -515,17 +513,18 @@ def render_user_home() -> None:
             flex-wrap: nowrap !important;
             width: 100% !important;
             max-width: 100% !important;
-            gap: 6px !important;
+            gap: 4% !important;
             box-sizing: border-box !important;
             margin-bottom: 0px !important;
+            overflow: hidden !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
-            width: calc(50% - 3px) !important;
-            max-width: calc(50% - 3px) !important;
+            width: 48% !important;
+            max-width: 48% !important;
             min-width: 0 !important;
-            flex: 0 0 calc(50% - 3px) !important;
+            flex: 0 0 48% !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             padding: 0 !important;
@@ -1238,26 +1237,15 @@ def render_user_home() -> None:
                 )
                 cnt_long = sum(1 for r in filtered_results if r.get("長班"))
 
-                # 完美精緻化的人數明細統計欄位 (Compact 橫向卡片外框)
-                st.markdown(
-                    f"""
-                    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; display: flex; justify-content: space-around; text-align: center; font-family: monospace; box-shadow: 0 4px 16px rgba(0,0,0,0.4);">
-                        <div>
-                            <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">符合資格人數</div>
-                            <div style="font-size: 15px; font-weight: 900; color: #38BDF8; margin-top: 2px;">{len(filtered_results)} 位</div>
-                        </div>
-                        <div style="border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); padding: 0 16px;">
-                            <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">含 DO2W 標記</div>
-                            <div style="font-size: 15px; font-weight: 900; color: #FBBF24; margin-top: 2px;">{cnt_do2w} 人</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">長班 (>8.5h)</div>
-                            <div style="font-size: 15px; font-weight: 900; color: #FB7185; margin-top: 2px;">{cnt_long} 人</div>
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                # 完美還原正式版最穩定的 st.container 搭配 st.metric 結構
+                with st.container(border=True):
+                    col_s1, col_s2, col_s3 = st.columns(3)
+                    with col_s1:
+                        st.metric("符合資格人數", f"{len(filtered_results)} 位")
+                    with col_s2:
+                        st.metric("含 DO2W 標記", f"{cnt_do2w} 人")
+                    with col_s3:
+                        st.metric("長班 (>8.5h)", f"{cnt_long} 人")
 
                 for i in range(0, len(filtered_results), 2):
                     batch = filtered_results[i : i + 2]
@@ -1723,26 +1711,15 @@ def render_user_home() -> None:
                                     if c.get("連續上班天數", 0) >= 6
                                 )
 
-                                # 完美精緻化的人數明細統計欄位 (Compact 橫向卡片外框)
-                                st.markdown(
-                                    f"""
-                                    <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; display: flex; justify-content: space-around; text-align: center; font-family: monospace; box-shadow: 0 4px 16px rgba(0,0,0,0.4);">
-                                        <div>
-                                            <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">可換假總人數</div>
-                                            <div style="font-size: 15px; font-weight: 900; color: #38BDF8; margin-top: 2px;">{len(filtered_candidates)} 位</div>
-                                        </div>
-                                        <div style="border-left: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); padding: 0 16px;">
-                                            <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">含 DO2W 標記</div>
-                                            <div style="font-size: 15px; font-weight: 900; color: #FBBF24; margin-top: 2px;">{cnt_do2w} 人</div>
-                                        </div>
-                                        <div>
-                                            <div style="font-size: 10px; color: #94A3B8; text-transform: uppercase;">連班 6 天以上</div>
-                                            <div style="font-size: 15px; font-weight: 900; color: #FB7185; margin-top: 2px;">{cnt_streak6} 人</div>
-                                        </div>
-                                    </div>
-                                    """,
-                                    unsafe_allow_html=True,
-                                )
+                                # 完美還原正式版最穩定的 st.container 搭配 st.metric 結構
+                                with st.container(border=True):
+                                    col_es1, col_es2, col_es3 = st.columns(3)
+                                    with col_es1:
+                                        st.metric("可換假總人數", f"{len(filtered_candidates)} 位")
+                                    with col_es2:
+                                        st.metric("含 DO2W 標記", f"{cnt_do2w} 人")
+                                    with col_es3:
+                                        st.metric("連班 6 天以上", f"{cnt_streak6} 人")
 
                                 for i in range(0, len(filtered_candidates), 2):
                                     batch = filtered_candidates[i : i + 2]
