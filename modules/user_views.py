@@ -189,7 +189,10 @@ def render_user_home() -> None:
     """繪製使用者首頁主要介面與功能模組"""
 
     auth = get_auth_session()
-    current_user_id = auth["emp_id"]
+    current_user_id = auth.get("emp_id", "")
+    if not current_user_id:
+        current_user_id = st.session_state.get("target_emp_id", "") or st.session_state.get("draw_input_key", "")
+
     current_user_name = auth.get("emp_name", current_user_id)
     user_role = auth["role"]
     is_privileged = user_role in ["ADMIN", "VIP_USER"]
@@ -650,7 +653,7 @@ def render_user_home() -> None:
     st.html(period_html)
 
     # =========================================================================
-    # 🚀 【新增功能】：抓取登入者的下次勤務簽到倒數與詳細資訊卡片（緊接排班週期下方）
+    # 🚀 【升級功能】：自動抓取登入者下次勤務倒數與詳細資訊卡片（支援快速綁定員編）
     # =========================================================================
     next_shift_info = None
     if current_user_id:
@@ -665,7 +668,8 @@ def render_user_home() -> None:
 
             for _, row in df_u.iterrows():
                 u_id = str(row.iloc[0]).strip()
-                if u_id == current_user_id:
+                u_name = str(row.iloc[1]).strip()
+                if current_user_id.upper() in u_id.upper() or current_user_id in u_name:
                     for col in df_u.columns[2:]:
                         norm_d = normalize_date_str(col)
                         if not norm_d:
@@ -764,14 +768,24 @@ def render_user_home() -> None:
         """
         st.html(countdown_html)
     else:
+        # 如果尚未輸入員編或查無紀錄，提供一個小表單讓使用者快速綁定員編以啟用倒數
         st.markdown(
             """
-            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 12px; text-align: center; margin-bottom: 12px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: #94A3B8;">目前查無近期待出勤班次記錄</div>
+            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 14px 16px; margin-bottom: 12px;">
+                <div style="font-size: 13px; font-weight: 800; color: #38BDF8; margin-bottom: 6px;">💡 個人出勤倒數解鎖</div>
+                <div style="font-size: 11.5px; color: #94A3B8; margin-bottom: 10px;">請輸入您的員編（例如 A023300），即可自動計算並顯示您的下次勤務倒數：</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
+        col_q1, col_q2 = st.columns([3, 1])
+        with col_q1:
+            quick_emp = st.text_input("快速綁定員編", value=current_user_id, placeholder="請輸入員編...", key="quick_emp_input", label_visibility="collapsed")
+        with col_q2:
+            if st.button("綁定並顯示", key="btn_quick_bind", use_container_width=True):
+                if quick_emp:
+                    st.session_state["target_emp_id"] = quick_emp.strip()
+                    st.rerun()
 
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
@@ -876,6 +890,7 @@ def render_user_home() -> None:
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
             else:
                 try:
+                    st.session_state["target_emp_id"] = current_input
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(
                         current_input
                     )
