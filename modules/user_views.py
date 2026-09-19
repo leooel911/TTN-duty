@@ -340,7 +340,7 @@ def get_user_next_duty_info(emp_id: str) -> dict:
 
 
 # =============================================================================
-# 5. 前台主入口邏輯
+# 5. 前台主入口邏輯 (純已登入主畫面)
 # =============================================================================
 
 def render_user_home() -> None:
@@ -485,6 +485,9 @@ def render_user_home() -> None:
             border-radius: 10px;
         }
 
+        /* ========================================================================= */
+        /* 🚀 【Unified Command Box 統合控制主卡片】：將 Streamlit 內建容器改造為高質感發光矩陣 */
+        /* ========================================================================= */
         div[data-testid="stContainer"] {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
             border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
@@ -494,6 +497,7 @@ def render_user_home() -> None:
             margin-bottom: 12px !important;
         }
 
+        /* 🚀 【高質感 Slider 專屬外框改造】：卡片式發光滑桿 */
         div[data-testid="stSlider"] {
             background: rgba(7, 11, 20, 0.85) !important;
             border: 1px solid rgba(56, 189, 248, 0.3) !important;
@@ -501,6 +505,26 @@ def render_user_home() -> None:
             padding: 12px 14px 6px 14px !important;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3) !important;
             margin-bottom: 8px !important;
+        }
+
+        div[data-testid="stSliderTickBarMin"],
+        div[data-testid="stSliderTickBarMax"],
+        div[data-testid="stWidgetLabel"] + div [data-testid="stMarkdownContainer"] p,
+        div[data-baseweb="slider"] div[role="slider"] + div {
+            font-size: 15px !important;
+            font-weight: 900 !important;
+            color: #38BDF8 !important;
+            font-family: monospace !important;
+        }
+
+        div[data-testid="stWidgetLabel"] p,
+        div[data-testid="stWidgetLabel"] label,
+        label[data-testid="stWidgetLabel"] p {
+            font-size: 14.5px !important;
+            font-weight: 800 !important;
+            color: #F8FAFC !important;
+            letter-spacing: 0.3px !important;
+            margin-bottom: 4px !important;
         }
 
         div[data-testid="stCheckbox"] {
@@ -513,6 +537,35 @@ def render_user_home() -> None:
             margin-bottom: 6px !important;
         }
 
+        div[data-testid="stCheckbox"]:hover {
+            background: rgba(30, 41, 59, 0.8) !important;
+            border-color: rgba(56, 189, 248, 0.4) !important;
+        }
+
+        div[data-testid="stCheckbox"]:has(input:checked) {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(2, 132, 199, 0.25) 100%) !important;
+            border-color: #38BDF8 !important;
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
+        }
+
+        div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div {
+            background-color: #00A3FF !important;
+            border-color: #38BDF8 !important;
+        }
+
+        div[data-testid="stCheckbox"] label p {
+            font-size: 13.5px !important;
+            font-weight: 700 !important;
+            color: #94A3B8 !important;
+            transition: color 0.2s ease !important;
+        }
+
+        div[data-testid="stCheckbox"]:has(input:checked) label p {
+            color: #F8FAFC !important;
+            font-weight: 800 !important;
+        }
+
+        /* 🚀 【精準結構選取器】：強制三欄模式切換器在所有手機與電腦上維持橫向並排、絕不堆疊 */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
             display: flex !important;
             flex-direction: row !important;
@@ -538,6 +591,78 @@ def render_user_home() -> None:
             overflow: hidden !important;
         }
 
+        /* 未選中按鈕樣式 */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
+            background: transparent !important;
+            border: 1.5px solid transparent !important;
+            box-shadow: none !important;
+            padding: 9px 2px !important;
+            border-radius: 10px !important;
+            width: 100% !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"]:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-color: rgba(56, 189, 248, 0.3) !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] p {
+            color: #64748B !important;
+            font-size: 12.5px !important;
+            font-weight: 700 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            margin: 0 !important;
+        }
+
+        /* 選中按鈕 (Primary 霓虹發光態樣) */
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
+            background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
+            border: 1.5px solid #38BDF8 !important;
+            border-radius: 10px !important;
+            padding: 9px 2px !important;
+            width: 100% !important;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.35) !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"] p {
+            color: #38BDF8 !important;
+            font-size: 13px !important;
+            font-weight: 900 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            margin: 0 !important;
+            text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+        }
+
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            gap: 6px !important;
+            box-sizing: border-box !important;
+        }
+
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
+            width: calc(50% - 3px) !important;
+            max-width: calc(50% - 3px) !important;
+            min-width: 0 !important;
+            flex: 0 0 calc(50% - 3px) !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) *,
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) * {
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+        }
+
         .crew-card-integrated, .crew-card-integrated-warn {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
             border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
@@ -549,6 +674,8 @@ def render_user_home() -> None:
             padding: 8px 8px 6px 8px !important;
             box-sizing: border-box !important;
             width: 100% !important;
+            overflow: hidden !important;
+            transition: all 0.25s ease-in-out !important;
         }
 
         .crew-card-integrated-warn {
@@ -556,36 +683,188 @@ def render_user_home() -> None:
             box-shadow: 0 4px 14px rgba(244, 63, 94, 0.3) !important;
         }
 
-        button[data-testid="stBaseButton-primary"], button[kind="primary"] {
+        .card-theme-0 {
+            border-color: rgba(56, 189, 248, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(14, 116, 144, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15) !important;
+        }
+        .card-theme-0 .train-code-text { color: #38BDF8 !important; }
+
+        .card-theme-1 {
+            border-color: rgba(52, 211, 153, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(6, 95, 70, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(52, 211, 153, 0.15) !important;
+        }
+        .card-theme-1 .train-code-text { color: #34D399 !important; }
+
+        .card-theme-2 {
+            border-color: rgba(251, 191, 36, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(120, 53, 15, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15) !important;
+        }
+        .card-theme-2 .train-code-text { color: #FBBF24 !important; }
+
+        .card-theme-3 {
+            border-color: rgba(192, 132, 252, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(88, 28, 135, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(192, 132, 252, 0.15) !important;
+        }
+        .card-theme-3 .train-code-text { color: #C084FC !important; }
+
+        .card-theme-4 {
+            border-color: rgba(251, 146, 60, 0.65) !important;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(124, 45, 18, 0.2) 100%) !important;
+            box-shadow: 0 4px 12px rgba(251, 146, 60, 0.15) !important;
+        }
+        .card-theme-4 .train-code-text { color: #FB923C !important; }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"],
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button,
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            border-top-left-radius: 0px !important;
+            border-top-right-radius: 0px !important;
+            border-bottom-left-radius: 8px !important;
+            border-bottom-right-radius: 8px !important;
+            margin-top: -16px !important;
+            margin-bottom: 8px !important;
+            box-shadow: none !important;
+            font-weight: 700 !important;
+            padding: 3px 2px !important;
+            letter-spacing: -0.3px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            background-color: rgba(15, 23, 42, 0.95) !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button p,
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button p {
+            font-size: 10.5px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            width: 100% !important;
+            margin: 0 !important;
+            line-height: 1.2 !important;
+        }
+
+        div[data-testid="stElementContainer"]:has(.card-theme-0) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(56, 189, 248, 0.65) !important; border-top: 1px dashed rgba(56, 189, 248, 0.3) !important; color: #38BDF8 !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-1) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(52, 211, 153, 0.65) !important; border-top: 1px dashed rgba(52, 211, 153, 0.3) !important; color: #34D399 !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-2) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(251, 191, 36, 0.65) !important; border-top: 1px dashed rgba(251, 191, 36, 0.3) !important; color: #FBBF24 !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-3) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(192, 132, 252, 0.65) !important; border-top: 1px dashed rgba(192, 132, 252, 0.3) !important; color: #C084FC !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-4) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(251, 146, 60, 0.65) !important; border-top: 1px dashed rgba(251, 146, 60, 0.3) !important; color: #FB923C !important; }
+
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
+            border: 1.5px solid #F43F5E !important;
+            border-top: 1px dashed rgba(244, 63, 94, 0.3) !important;
+            color: #FDA4AF !important;
+        }
+
+        button[data-testid="stBaseButton-primary"],
+        button[data-testid="stBaseButton-primaryFormSubmit"],
+        button[kind="primary"],
+        button[kind="primaryFormSubmit"],
+        div[data-testid="stFormSubmitButton"] > button[kind="primary"],
+        div[data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"],
+        div[data-testid="stButton"] > button[kind="primary"],
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"] {
             background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%) !important;
             color: #FFFFFF !important;
             border: 1.5px solid #38BDF8 !important;
             border-radius: 12px !important;
             padding: 10px 16px !important;
             box-shadow: 0 4px 18px rgba(2, 132, 199, 0.6) !important;
+            transition: all 0.25s ease-in-out !important;
+            margin-top: 6px !important;
+            margin-bottom: 6px !important;
             width: 100% !important;
         }
 
-        button[data-testid="stBaseButton-secondary"], button[kind="secondary"] {
+        button[data-testid="stBaseButton-primary"]:hover,
+        button[data-testid="stBaseButton-primaryFormSubmit"]:hover,
+        button[kind="primary"]:hover,
+        button[kind="primaryFormSubmit"]:hover,
+        div[data-testid="stFormSubmitButton"] > button[kind="primary"]:hover,
+        div[data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"]:hover,
+        div[data-testid="stButton"] > button[kind="primary"]:hover,
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"]:hover {
+            background: linear-gradient(135deg, #0369A1 0%, #1E40AF 100%) !important;
+            border-color: #38BDF8 !important;
+            box-shadow: 0 6px 24px rgba(56, 189, 248, 0.8) !important;
+            transform: translateY(-1px) !important;
+        }
+
+        button[data-testid="stBaseButton-primary"] p,
+        button[data-testid="stBaseButton-primaryFormSubmit"] p,
+        button[kind="primary"] p,
+        button[kind="primaryFormSubmit"] p {
+            font-size: 15px !important;
+            font-weight: 800 !important;
+            color: #FFFFFF !important;
+            letter-spacing: 0.6px !important;
+        }
+
+        button[data-testid="stBaseButton-secondary"],
+        button[kind="secondary"],
+        div[data-testid="stButton"] > button[kind="secondary"],
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] {
             background: rgba(15, 23, 42, 0.6) !important;
             color: #94A3B8 !important;
             border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+            box-shadow: none !important;
             border-radius: 10px !important;
             padding: 8px 12px !important;
+            transition: all 0.2s ease-in-out !important;
         }
 
-        .badge-group { display: flex; gap: 2px; align-items: center; justify-content: flex-end; flex-wrap: nowrap; }
-        .role-badge-driver { font-size: 8.5px; font-weight: 800; color: #38BDF8; background: rgba(56, 189, 248, 0.2); padding: 1px 4px; border-radius: 3px; font-family: monospace; }
-        .role-badge-conductor { font-size: 8.5px; font-weight: 800; color: #34D399; background: rgba(52, 211, 153, 0.2); padding: 1px 4px; border-radius: 3px; font-family: monospace; }
-        .role-badge-crew { font-size: 8.5px; font-weight: 800; color: #FBBF24; background: rgba(251, 191, 36, 0.2); padding: 1px 4px; border-radius: 3px; font-family: monospace; }
-        .non-line-badge { font-size: 8.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; }
-        .long-badge { font-size: 8.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; }
-        .do2w-badge { font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; }
+        button[data-testid="stBaseButton-secondary"]:hover,
+        button[kind="secondary"]:hover,
+        div[data-testid="stButton"] > button[kind="secondary"]:hover,
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"]:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: #F1F5F9 !important;
+            border-color: rgba(56, 189, 248, 0.4) !important;
+        }
+
+        button[data-testid="stBaseButton-secondary"] p,
+        button[kind="secondary"] p,
+        div[data-testid="stButton"] > button[kind="secondary"] p,
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] p {
+            color: #94A3B8 !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+        }
+
+        .badge-group {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: nowrap;
+        }
+        .role-badge-driver { font-size: 8.5px; font-weight: 800; color: #38BDF8; background: rgba(56, 189, 248, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .role-badge-conductor { font-size: 8.5px; font-weight: 800; color: #34D399; background: rgba(52, 211, 153, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .role-badge-crew { font-size: 8.5px; font-weight: 800; color: #FBBF24; background: rgba(251, 191, 36, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .non-line-badge { font-size: 8.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+        .long-badge { font-size: 8.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+        .do2w-badge { font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
+    # 🚀 注入時間滑桿拖動放大特效
     comp.inject_slider_animation()
 
     active_files = get_current_role_files()
@@ -595,7 +874,7 @@ def render_user_home() -> None:
     if inspect_emp_id:
         st.markdown(
             f"""
-            <div style="border-left: 4px solid #38BDF8; background: rgba(15,23,42,0.8); padding: 10px 14px; border-radius: 8px; margin-bottom: 12px;">
+            <div class="section-header-box" style="border-left-color: #38BDF8; padding: 10px 14px !important; margin-bottom: 12px !important;">
                 <div style="font-size: 15px; font-weight: 900; color: #38BDF8; font-family: monospace;">
                     [{current_unit_label}] 組員完整班表檢視：{inspect_emp_id}
                 </div>
@@ -613,10 +892,18 @@ def render_user_home() -> None:
             start_dt, dates, emp_id, emp_name, cells = process_file_data(inspect_emp_id)
             with st.spinner(f"正在讀取【{emp_name}】完整班表，請稍候..."):
                 buf = render_schedule_figure(
-                    start_dt, dates, emp_id, emp_name, cells, current_unit_label, badge_title="Producer | C.L.F"
+                    start_dt,
+                    dates,
+                    emp_id,
+                    emp_name,
+                    cells,
+                    current_unit_label,
+                    badge_title="Producer | C.L.F",
                 )
             st.success(f"【{emp_name} ({emp_id})】完整班表載入完成！")
+
             comp.render_zoomable_image(buf)
+
             st.download_button(
                 "點此下載班表影像檔",
                 data=buf,
@@ -626,15 +913,20 @@ def render_user_home() -> None:
             )
         except Exception as e:
             st.error(f"繪製組員班表時發生錯誤：{e}")
+
         st.stop()
 
     missing_files = [
-        role for role in ["駕駛", "列車長", "服勤員"]
-        if not os.path.exists(active_files.get(role, "")) or os.path.getsize(active_files.get(role, "")) == 0
+        role
+        for role in ["駕駛", "列車長", "服勤員"]
+        if not os.path.exists(active_files.get(role, ""))
+        or os.path.getsize(active_files.get(role, "")) == 0
     ]
 
     if missing_files:
-        st.error(f"【{current_unit_label}】資料庫異常或尚無檔案：請洽管理員上傳！")
+        st.error(
+            f"【{current_unit_label}】資料庫異常或尚無檔案：請洽管理員上傳！"
+        )
 
     td_time = get_file_mtime_str(active_files.get("駕駛", ""))
     tm_time = get_file_mtime_str(active_files.get("列車長", ""))
@@ -642,9 +934,9 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     period_html = f"""
-    <div style="border-left: 4px solid #60A5FA; background: rgba(15,23,42,0.8); padding: 8px 12px; border-radius: 8px; margin: 6px 0;">
+    <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 !important;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 13px; font-weight: 800; color: #F8FAFC;">[{current_unit_label}] 排班週期</span>
+            <span class="section-title" style="font-size: 13px !important;">[{current_unit_label}] 排班週期</span>
             <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
                 {sched_range if len(missing_files) < 3 else "資料庫異常"}
             </span>
@@ -695,7 +987,7 @@ def render_user_home() -> None:
     if "active_app_mode" not in st.session_state:
         st.session_state["active_app_mode"] = "個人月班表"
 
-    # ==================== 互動切換列 ====================
+    # ==================== 🚀 航太級 Command HUD 互動切換列 ====================
     col_hud1, col_hud2, col_hud3 = st.columns(3)
 
     with col_hud1:
@@ -763,20 +1055,21 @@ def render_user_home() -> None:
 
         st.markdown(
             """
-            <div style="margin-bottom: 8px;">
-                <div style="font-size: 15px; font-weight: 900; color: #F8FAFC;">個人班表圖檔生成</div>
-                <div style="font-size: 10px; color: #38BDF8; font-family: monospace;">Personal Shift Schedule Image Generator</div>
-            </div>
-            """,
+        <div class="section-header-box">
+            <div class="section-title">個人班表圖檔生成</div>
+            <div class="section-subtitle">Personal Shift Schedule Image Generator</div>
+        </div>
+        """,
             unsafe_allow_html=True,
         )
 
         with st.form(key="draw_schedule_form", border=False):
-            # 🚀 自動預填登入者員編
             default_emp_val = current_user_id if current_user_id else st.session_state.get("draw_input_key", "")
             
+            draw_field_label = "請輸入您的員編或姓名 (已自動帶入您的員編)"
+
             user_input_val = st.text_input(
-                "請輸入您的員編或姓名 (已自動帶入您的員編)",
+                draw_field_label,
                 value=default_emp_val,
                 disabled=False,
                 key="draw_input_key",
@@ -792,7 +1085,9 @@ def render_user_home() -> None:
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
             else:
                 try:
-                    start_dt, dates, emp_id, emp_name, cells = process_file_data(current_input)
+                    start_dt, dates, emp_id, emp_name, cells = process_file_data(
+                        current_input
+                    )
                     log_activity(
                         "個人班表繪製",
                         f"操作者:{current_user_id} | 單位:{current_unit_label} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
@@ -800,10 +1095,18 @@ def render_user_home() -> None:
 
                     with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
                         buf = render_schedule_figure(
-                            start_dt, dates, emp_id, emp_name, cells, current_unit_label, badge_title="Producer | C.L.F"
+                            start_dt,
+                            dates,
+                            emp_id,
+                            emp_name,
+                            cells,
+                            current_unit_label,
+                            badge_title="Producer | C.L.F",
                         )
                     st.success(f"【{emp_name}】個人班表圖片生成成功！")
+
                     comp.render_zoomable_image(buf)
+
                     st.download_button(
                         "點此下載班表影像檔",
                         data=buf,
@@ -843,6 +1146,9 @@ def render_user_home() -> None:
                     unsafe_allow_html=True,
                 )
 
+        # =========================================================================
+        # 🚀 使用 Streamlit 內建容器 `st.container(border=True)` 打造 Unified Command Box
+        # =========================================================================
         with st.container(border=True):
             st.markdown(
                 """
@@ -888,6 +1194,7 @@ def render_user_home() -> None:
             else:
                 has_driver = "駕駛" in roles_to_query
                 start_h = 3 if has_driver else 5
+                morn_start_time = f"{start_h:02d}:00"
 
                 TIME_OPTIONS = [
                     f"{h:02d}:{m:02d}"
@@ -903,7 +1210,9 @@ def render_user_home() -> None:
                         valid_paths[r_name] = p
 
                 if not valid_paths:
-                    st.error(f"找不到【{current_unit_label}】所選職位的班表檔案，請先至管理員後台上傳")
+                    st.error(
+                        f"找不到【{current_unit_label}】所選職位的班表檔案，請先至管理員後台上傳"
+                    )
                 else:
                     first_role, first_path = list(valid_paths.items())[0]
                     df_search_sample = safe_read_excel(first_path, header=3)
@@ -948,8 +1257,12 @@ def render_user_home() -> None:
                         )
                         st.session_state["saved_win_target_date"] = target_date
 
-                        win_week_holidays = get_week_holidays(target_date, date_cols, df_search_sample.columns)
-                        _, win_week_str = check_week_has_holiday(target_date, date_cols, df_search_sample.columns)
+                        win_week_holidays = get_week_holidays(
+                            target_date, date_cols, df_search_sample.columns
+                        )
+                        _, win_week_str = check_week_has_holiday(
+                            target_date, date_cols, df_search_sample.columns
+                        )
 
                         comp.show_holiday_notice(win_week_holidays, win_week_str)
 
@@ -1025,6 +1338,7 @@ def render_user_home() -> None:
                             cell_raw = row.iloc[target_col_idx]
                             parsed = parse_cell(cell_raw)
                             start_t = parsed["start"]
+
                             is_off = is_cell_off_day(cell_raw)
 
                             if not is_off or start_t:
@@ -1040,7 +1354,9 @@ def render_user_home() -> None:
                                     or tr_upper in LEAVE_CODES
                                 )
                                 is_non_line = is_town_shift(parsed["train"], parsed["note"])
-                                is_long = is_overtime(parsed["hours"], parsed["train"], parsed["note"])
+                                is_long = is_overtime(
+                                    parsed["hours"], parsed["train"], parsed["note"]
+                                )
 
                                 if only_main_line and (is_non_line or is_leave):
                                     continue
@@ -1113,12 +1429,16 @@ def render_user_home() -> None:
                 f"僅長班:{only_long_shift} | 命中數:{len(filtered_results)}筆"
             )
 
-            st.markdown(f"### 換班可選人員名單（共符合 {len(filtered_results)} 筆）")
+            st.markdown(
+                f"### 換班可選人員名單（共符合 {len(filtered_results)} 筆）"
+            )
 
             if filtered_results:
                 cnt_do2w = sum(
-                    1 for r in filtered_results
-                    if "DO2" in r.get("出勤標記", "") or "OGC" in r.get("出勤標記", "")
+                    1
+                    for r in filtered_results
+                    if "DO2" in r.get("出勤標記", "")
+                    or "OGC" in r.get("出勤標記", "")
                 )
                 cnt_long = sum(1 for r in filtered_results if r.get("長班"))
 
@@ -1241,11 +1561,11 @@ def render_user_home() -> None:
 
         st.markdown(
             """
-            <div class="section-header-box">
-                <div class="section-title">換假檢索｜選擇換假日期快篩</div>
-                <div class="section-subtitle">Shift Exchange Date Filter Matrix</div>
-            </div>
-            """,
+        <div class="section-header-box">
+            <div class="section-title">換假檢索｜選擇換假日期快篩</div>
+            <div class="section-subtitle">Shift Exchange Date Filter Matrix</div>
+        </div>
+        """,
             unsafe_allow_html=True,
         )
 
@@ -1273,7 +1593,10 @@ def render_user_home() -> None:
         sample_path = active_files.get(selected_role, "")
 
         if not sample_path or not os.path.exists(sample_path):
-            st.error(f"找不到【{current_unit_label} - {selected_role}】的班表檔案，請先至管理員後台上傳")
+            st.error(
+                f"找不到【{current_unit_label} -"
+                f" {selected_role}】的班表檔案，請先至管理員後台上傳"
+            )
         else:
             try:
                 df_ex = safe_read_excel(sample_path, header=3)
@@ -1385,7 +1708,9 @@ def render_user_home() -> None:
 
                         comp.show_holiday_notice(ex_week_holidays, target_week_str)
 
-                        st.caption(f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）")
+                        st.caption(
+                            f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）"
+                        )
 
                         if "saved_ex_time_filter" not in st.session_state:
                             st.session_state["saved_ex_time_filter"] = "不限"
@@ -1604,15 +1929,20 @@ def render_user_home() -> None:
                                 f"排序:{sort_order} | 嚴格連六:{strict_limit} | 命中數:{len(filtered_candidates)}筆"
                             )
 
-                            st.markdown(f"### 換假可選人員名單（共 {len(filtered_candidates)} 位）")
+                            st.markdown(
+                                f"### 換假可選人員名單（共 {len(filtered_candidates)} 位）"
+                            )
 
                             if filtered_candidates:
                                 cnt_do2w = sum(
-                                    1 for c in filtered_candidates
-                                    if c.get("有DO2W標記") or "DO2" in c.get("出勤標記", "")
+                                    1
+                                    for c in filtered_candidates
+                                    if c.get("有DO2W標記")
+                                    or "DO2" in c.get("出勤標記", "")
                                 )
                                 cnt_streak6 = sum(
-                                    1 for c in filtered_candidates
+                                    1
+                                    for c in filtered_candidates
                                     if c.get("連續上班天數", 0) >= 6
                                 )
 
@@ -1695,14 +2025,16 @@ def render_user_home() -> None:
                                                 st.session_state["inspect_emp_target"] = clean_cand_id
                                                 st.rerun()
                             else:
-                                st.info("在指定條件內，找不到符合的可換假人員 (可嘗試放寬還假日 Sign-In 時間限制或取消嚴格過濾)")
+                                st.info(
+                                    "在指定條件內，找不到符合的可換假人員"
+                                    " (可嘗試放寬還假日 Sign-In 時間限制或取消嚴格過濾)"
+                                )
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
 
 
 if __name__ == "__main__":
     auth = get_auth_session()
-    # 檢查是否已通過驗證，若未登入則攔截並顯示登入驗證畫面
     if not auth.get("authenticated", False):
         render_login_screen()
     else:
