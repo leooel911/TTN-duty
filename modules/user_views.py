@@ -58,7 +58,7 @@ def get_login_user_id() -> str:
     auth = get_auth_session()
     if auth.get("authenticated"):
         return auth.get("emp_id", "")
-    return ""
+    return st.session_state.get("emp_id", "") or st.session_state.get("user_id", "")
 
 
 def clean_role_label(role: str) -> str:
@@ -189,8 +189,22 @@ def render_user_home() -> None:
     """繪製使用者首頁主要介面與功能模組"""
 
     auth = get_auth_session()
-    current_user_id = auth["emp_id"]
-    current_user_name = auth.get("emp_name", current_user_id)
+    
+    # 強固型登入者資料抓取（涵蓋 auth session 與各常用 st.session_state 鍵值）
+    current_user_id = (
+        auth.get("emp_id") 
+        or st.session_state.get("emp_id") 
+        or st.session_state.get("user_id") 
+        or ""
+    )
+    current_user_name = (
+        auth.get("emp_name") 
+        or st.session_state.get("emp_name") 
+        or st.session_state.get("user_name") 
+        or current_user_id 
+        or "GUEST"
+    )
+    
     user_role = auth["role"]
     is_privileged = user_role in ["ADMIN", "VIP_USER"]
     is_admin_user = (user_role == "ADMIN") or st.session_state.get("admin_logged_in", False)
@@ -594,7 +608,7 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 頂部主標題與狀態列 (CREW DUTY ENGINE)
+    # 頂部主標題框 (將登入者姓名正確嵌入小字內)
     role_label_str = clean_role_label(user_role)
     st.markdown(
         f"""
@@ -602,7 +616,7 @@ def render_user_home() -> None:
             <div style="font-size: 18px; font-weight: 900; color: #F8FAFC; letter-spacing: 1.5px; font-family: monospace;">CREW DUTY ENGINE</div>
             <div style="font-size: 10px; color: #38BDF8; font-family: monospace; letter-spacing: 0.8px; margin-top: 2px;">BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div>
             <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
-                STATUS: ACTIVE | {current_unit_label} : {current_user_name} ({role_label_str})
+                STATUS: ACTIVE | {current_unit_label} : {current_user_name}
             </div>
         </div>
         """,
@@ -615,23 +629,6 @@ def render_user_home() -> None:
         <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 12px; padding: 12px; margin-bottom: 12px; text-align: center; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.2);">
             <div style="font-size: 13px; font-weight: 900; color: #FDE68A; font-family: monospace; letter-spacing: 1px;">SYSTEM MAINTENANCE NOTICE // BETA ENVIRONMENT</div>
             <div style="font-size: 11px; color: #FCD34D; margin-top: 4px;">目前為內部測試階段｜本頁面未滿可聯繫管理員</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # 專業化登入者歡迎詞專區 (自動抓取姓名與員編，無貼圖符號)
-    display_user_name = current_user_name if current_user_name else "訪客"
-    display_user_id = f" ({current_user_id})" if current_user_id else ""
-    st.markdown(
-        f"""
-        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);">
-            <div style="font-size: 13.5px; font-weight: 800; color: #F8FAFC; font-family: monospace;">
-                歡迎登入，{display_user_name}{display_user_id}
-            </div>
-            <div style="font-size: 11px; color: #38BDF8; font-family: monospace; font-weight: 700; letter-spacing: 0.5px;">
-                單位: {current_unit_label} | 身分: {role_label_str}
-            </div>
         </div>
         """,
         unsafe_allow_html=True,
