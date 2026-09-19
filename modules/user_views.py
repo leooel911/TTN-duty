@@ -222,9 +222,6 @@ def render_user_home() -> None:
             line-height: 1.3 !important;
         }
 
-        /* ========================================================================= */
-        /* 🚀 【Unified Command Box 統合控制主卡片】：將 Streamlit 內建容器改造為高質感發光矩陣 */
-        /* ========================================================================= */
         div[data-testid="stContainer"] {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
             border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
@@ -234,7 +231,6 @@ def render_user_home() -> None:
             margin-bottom: 12px !important;
         }
 
-        /* 🚀 【高質感 Slider 專屬外框改造】：卡片式發光滑桿 */
         div[data-testid="stSlider"] {
             background: rgba(7, 11, 20, 0.85) !important;
             border: 1px solid rgba(56, 189, 248, 0.3) !important;
@@ -302,7 +298,6 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 🚀 【精準結構選取器】：強制三欄模式切換器在所有手機與電腦上維持橫向並排、絕不堆疊 */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
             display: flex !important;
             flex-direction: row !important;
@@ -328,7 +323,6 @@ def render_user_home() -> None:
             overflow: hidden !important;
         }
 
-        /* 未選中按鈕樣式 */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
             background: transparent !important;
             border: 1.5px solid transparent !important;
@@ -352,7 +346,6 @@ def render_user_home() -> None:
             margin: 0 !important;
         }
 
-        /* 選中按鈕 (Primary 霓虹發光態樣) */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
             background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
@@ -601,6 +594,22 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
+    # 🚀 完整加回：頂部主標題與狀態列 (CREW DUTY ENGINE)
+    role_label_str = clean_role_label(user_role)
+    status_color = "#34D399" if auth.get("authenticated") else "#FBBF24"
+    st.markdown(
+        f"""
+        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 14px; text-align: center; margin-bottom: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);">
+            <div style="font-size: 18px; font-weight: 900; color: #F8FAFC; letter-spacing: 1.5px; font-family: monospace;">CREW DUTY ENGINE</div>
+            <div style="font-size: 10px; color: #38BDF8; font-family: monospace; letter-spacing: 0.8px; margin-top: 2px;">BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div>
+            <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
+                <span style="color: {status_color};">● STATUS: ACTIVE</span> | {current_unit_label} : {current_user_name} ({role_label_str})
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # 🚀 注入時間滑桿拖動放大特效
     comp.inject_slider_animation()
 
@@ -677,7 +686,6 @@ def render_user_home() -> None:
             <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
                 {sched_range if len(missing_files) < 3 else "資料庫異常"}
             </span>
-
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
@@ -699,7 +707,7 @@ def render_user_home() -> None:
     if "active_app_mode" not in st.session_state:
         st.session_state["active_app_mode"] = "個人月班表"
 
-    # ==================== 🚀 航太級 Command HUD 互動切換列 ====================
+    # ==================== 航太級 Command HUD 互動切換列 ====================
     col_hud1, col_hud2, col_hud3 = st.columns(3)
 
     with col_hud1:
@@ -777,7 +785,6 @@ def render_user_home() -> None:
 
         with st.form(key="draw_schedule_form", border=False):
             default_emp_val = current_user_id if current_user_id else st.session_state.get("draw_input_key", "")
-            
             draw_field_label = "請輸入您的員編或姓名 (例如: A023300)"
 
             user_input_val = st.text_input(
@@ -858,9 +865,6 @@ def render_user_home() -> None:
                     unsafe_allow_html=True,
                 )
 
-        # =========================================================================
-        # 🚀 使用 Streamlit 內建容器 `st.container(border=True)` 打造 Unified Command Box
-        # =========================================================================
         with st.container(border=True):
             st.markdown(
                 """
@@ -1678,8 +1682,8 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                for i in range(0, len(filtered_results), 2):
-                                    batch = filtered_results[i : i + 2]
+                                for i in range(0, len(filtered_candidates), 2):
+                                    batch = filtered_candidates[i : i + 2]
                                     cols = st.columns(2)
 
                                     for idx_in_batch, cand in enumerate(batch):
