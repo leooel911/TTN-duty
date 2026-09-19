@@ -212,33 +212,6 @@ def render_user_home() -> None:
             padding-top: 0.6rem !important;
         }
 
-        /* 標題區塊專屬樣式 */
-        .section-header-box {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
-            border-left: 4px solid #38BDF8;
-            border-top: 1.5px solid rgba(56, 189, 248, 0.3);
-            border-right: 1.5px solid rgba(56, 189, 248, 0.3);
-            border-bottom: 1.5px solid rgba(56, 189, 248, 0.3);
-            padding: 10px 14px !important;
-            border-radius: 8px;
-            margin-bottom: 12px !important;
-        }
-
-        .section-title {
-            font-size: 16px !important;
-            font-weight: 900 !important;
-            color: #F8FAFC !important;
-            letter-spacing: 0.4px !important;
-        }
-
-        .section-subtitle {
-            font-size: 11px !important;
-            color: #94A3B8 !important;
-            font-family: monospace !important;
-            margin-top: 2px !important;
-            letter-spacing: 0.5px !important;
-        }
-
         .section-field-label {
             font-size: 15px !important;
             font-weight: 800 !important;
@@ -249,6 +222,9 @@ def render_user_home() -> None:
             line-height: 1.3 !important;
         }
 
+        /* ========================================================================= */
+        /* 🚀 【Unified Command Box 統合控制主卡片】：將 Streamlit 內建容器改造為高質感發光矩陣 */
+        /* ========================================================================= */
         div[data-testid="stContainer"] {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
             border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
@@ -258,6 +234,7 @@ def render_user_home() -> None:
             margin-bottom: 12px !important;
         }
 
+        /* 🚀 【高質感 Slider 專屬外框改造】：卡片式發光滑桿 */
         div[data-testid="stSlider"] {
             background: rgba(7, 11, 20, 0.85) !important;
             border: 1px solid rgba(56, 189, 248, 0.3) !important;
@@ -325,6 +302,7 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
+        /* 🚀 【精準結構選取器】：強制三欄模式切換器在所有手機與電腦上維持橫向並排、絕不堆疊 */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
             display: flex !important;
             flex-direction: row !important;
@@ -350,6 +328,7 @@ def render_user_home() -> None:
             overflow: hidden !important;
         }
 
+        /* 未選中按鈕樣式 */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
             background: transparent !important;
             border: 1.5px solid transparent !important;
@@ -373,6 +352,7 @@ def render_user_home() -> None:
             margin: 0 !important;
         }
 
+        /* 選中按鈕 (Primary 霓虹發光態樣) */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
             background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
@@ -621,10 +601,12 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
+    # 🚀 注入時間滑桿拖動放大特效
     comp.inject_slider_animation()
 
     active_files = get_current_role_files()
 
+    # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
     inspect_emp_id = st.session_state.get("inspect_emp_target")
     if inspect_emp_id:
         st.markdown(
@@ -717,6 +699,7 @@ def render_user_home() -> None:
     if "active_app_mode" not in st.session_state:
         st.session_state["active_app_mode"] = "個人月班表"
 
+    # ==================== 🚀 航太級 Command HUD 互動切換列 ====================
     col_hud1, col_hud2, col_hud3 = st.columns(3)
 
     with col_hud1:
@@ -753,6 +736,7 @@ def render_user_home() -> None:
 
     st.markdown("---")
 
+    # ==================== 模式一：個人月班表 ====================
     if app_mode == "個人月班表":
         if is_module_maintenance(current_unit_label, "producer"):
             if not is_admin_user:
@@ -775,7 +759,7 @@ def render_user_home() -> None:
                 st.markdown(
                     f"""
                     <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 個人月班表圖檔】已開啟維護模式，您正以管理員身分預覽測試。
+                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 個人月班表圖檔】已開啟維護模式（一般組員已被阻擋），您正以管理員身分預覽測試。
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -845,6 +829,7 @@ def render_user_home() -> None:
                 except Exception as e:
                     st.error(f"繪製班表時發生錯誤：{e}")
 
+    # ==================== 模式二：換班查詢 ====================
     elif app_mode == "換班查詢":
         if is_module_maintenance(current_unit_label, "window_filter"):
             if not is_admin_user:
@@ -867,12 +852,15 @@ def render_user_home() -> None:
                 st.markdown(
                     f"""
                     <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換班日期快篩】已開啟維護模式，您正以管理員身分預覽測試。
+                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換班日期快篩】已開啟維護模式（一般組員已被阻擋），您正以管理員身分預覽測試。
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
 
+        # =========================================================================
+        # 🚀 使用 Streamlit 內建容器 `st.container(border=True)` 打造 Unified Command Box
+        # =========================================================================
         with st.container(border=True):
             st.markdown(
                 """
@@ -918,6 +906,7 @@ def render_user_home() -> None:
             else:
                 has_driver = "駕駛" in roles_to_query
                 start_h = 3 if has_driver else 5
+                morn_start_time = f"{start_h:02d}:00"
 
                 TIME_OPTIONS = [
                     f"{h:02d}:{m:02d}"
@@ -1253,6 +1242,7 @@ def render_user_home() -> None:
             else:
                 st.info("在指定條件內，找不到符合的人員")
 
+    # ==================== 模式三：換假查詢 ====================
     elif app_mode == "換假查詢":
         if is_module_maintenance(current_unit_label, "exchange_filter"):
             if not is_admin_user:
@@ -1275,7 +1265,7 @@ def render_user_home() -> None:
                 st.markdown(
                     f"""
                     <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換假日期快篩】已開啟維護模式，您正以管理員身分預覽測試。
+                        <strong>【管理員維護預覽】</strong> 當前【{current_unit_label} - 換假日期快篩】已開啟維護模式（一般組員已被阻擋），您正以管理員身分預覽測試。
                     </div>
                     """,
                     unsafe_allow_html=True,
