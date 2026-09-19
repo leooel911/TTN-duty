@@ -73,60 +73,7 @@ def clean_role_label(role: str) -> str:
 
 
 # =============================================================================
-# 2. 登入驗證畫面
-# =============================================================================
-
-def render_login_screen() -> None:
-    """繪製系統登入驗證畫面，解決未登入空轉問題"""
-    st.markdown(
-        """
-        <div style="max-width: 420px; margin: 60px auto; padding: 24px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
-            <div style="font-size: 20px; font-weight: 900; color: #38BDF8; margin-bottom: 6px; text-align: center;">TRAIN CREW DUTY SYSTEM</div>
-            <div style="font-size: 11px; color: #94A3B8; text-align: center; font-family: monospace; margin-bottom: 20px;">組員派班與勤務引擎 // 系統登入驗證</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    with st.form("system_login_form", border=False):
-        emp_id_input = st.text_input("請輸入您的員編 (例如: A023300)", placeholder="A023300")
-        submit_login = st.form_submit_button("登入系統", type="primary", use_container_width=True)
-
-        if submit_login:
-            clean_id = emp_id_input.strip().upper()
-            if not clean_id:
-                st.warning("請輸入有效的員編！")
-            else:
-                try:
-                    auth_res = authenticate_user(clean_id)
-                    if isinstance(auth_res, tuple):
-                        is_valid, user_data = auth_res
-                    elif isinstance(auth_res, bool):
-                        is_valid = auth_res
-                        user_data = {"emp_id": clean_id, "emp_name": clean_id, "role": "USER", "unit": "TTN"}
-                    else:
-                        is_valid = True
-                        user_data = auth_res if isinstance(auth_res, dict) else {"emp_id": clean_id, "emp_name": clean_id}
-                except Exception:
-                    is_valid = True
-                    user_data = {"emp_id": clean_id, "emp_name": clean_id, "role": "USER", "unit": "TTN"}
-
-                if is_valid:
-                    st.session_state[AUTH_SESSION_KEY] = {
-                        "authenticated": True,
-                        "emp_id": user_data.get("emp_id", clean_id) if isinstance(user_data, dict) else clean_id,
-                        "emp_name": user_data.get("emp_name", clean_id) if isinstance(user_data, dict) else clean_id,
-                        "role": user_data.get("role", "USER") if isinstance(user_data, dict) else "USER",
-                        "unit": user_data.get("unit", "TTN") if isinstance(user_data, dict) else "TTN",
-                    }
-                    st.success("登入成功！正在載入您的專屬班表...")
-                    st.rerun()
-                else:
-                    st.error("登入失敗：找不到此員編，請重新輸入。")
-
-
-# =============================================================================
-# 3. 資料處理與工具函式
+# 2. 資料處理與工具函式
 # =============================================================================
 
 def get_shift_group_key(code_str: str) -> str:
@@ -235,112 +182,7 @@ def reset_ex_search() -> None:
 
 
 # =============================================================================
-# 4. 智慧下次勤務計算與解析輔助
-# =============================================================================
-
-def get_user_next_duty_info(emp_id: str) -> dict:
-    """自動掃描登入者的班表檔案，計算下次勤務倒數與今日狀態"""
-    default_res = {
-        "today_status": "今日待命",
-        "has_next": False,
-        "date_label": "--/--",
-        "train": "一般勤務",
-        "start": "--:--",
-        "end": "--:--",
-        "hours": "--",
-        "hours_left": 0,
-        "mins_left": 0,
-        "secs_left": 0,
-    }
-    if not emp_id:
-        return default_res
-
-    active_files = get_current_role_files()
-    target_data = None
-
-    for r_name, p_path in active_files.items():
-        if not p_path or not os.path.exists(p_path):
-            continue
-        try:
-            start_dt, dates, e_id, e_name, cells = process_file_data(emp_id)
-            if dates and cells:
-                target_data = (start_dt, dates, e_id, e_name, cells)
-                break
-        except Exception:
-            try:
-                df = safe_read_excel(p_path, header=3)
-                df.columns = [str(c).strip() for c in df.columns]
-                matched_row = df[df.iloc[:, 0].astype(str).str.strip().str.upper() == str(emp_id).strip().upper()]
-                if not matched_row.empty:
-                    exact_id = str(matched_row.iloc[0, 0]).strip()
-                    start_dt, dates, e_id, e_name, cells = process_file_data(exact_id)
-                    target_data = (start_dt, dates, e_id, e_name, cells)
-                    break
-            except Exception:
-                continue
-
-    if not target_data:
-        return default_res
-
-    try:
-        start_dt, dates, _, _, cells = target_data
-        now = datetime.now()
-        current_year = now.year
-        weekday_map = {0: "(一)", 1: "(二)", 2: "(三)", 3: "(四)", 4: "(五)", 5: "(六)", 6: "(日)"}
-
-        today_status = "今日出勤"
-        next_shift = None
-
-        for d_str, cell_val in zip(dates, cells):
-            norm_d = normalize_date_str(d_str)
-            if not norm_d:
-                continue
-            parts = norm_d.split("/")
-            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                d_date = date(current_year, int(parts[0]), int(parts[1]))
-                
-                if d_date == now.date():
-                    is_off = is_cell_off_day(cell_val)
-                    cell_str = str(cell_val).strip()
-                    if is_off:
-                        today_status = f"今日休假 · {cell_str}" if cell_str else "今日休假"
-                    else:
-                        parsed_today = parse_cell(cell_val)
-                        tr_name = parsed_today.get('train', '當班')
-                        today_status = f"今日出勤 · {tr_name}"
-
-                if d_date >= now.date():
-                    is_off = is_cell_off_day(cell_val)
-                    parsed = parse_cell(cell_val)
-                    start_t = parsed.get("start")
-                    
-                    if start_t and start_t != "--:--" and not is_off:
-                        shift_dt = datetime.combine(d_date, datetime.strptime(start_t, "%H:%M").time())
-                        if shift_dt >= now:
-                            diff = shift_dt - now
-                            w_str = weekday_map.get(d_date.weekday(), "")
-                            next_shift = {
-                                "today_status": today_status,
-                                "has_next": True,
-                                "date_label": f"{d_str} {w_str}",
-                                "train": translate_train_code(parsed.get("train", "")),
-                                "start": start_t,
-                                "end": parsed.get("end", "--:--"),
-                                "hours": parsed.get("hours", "--"),
-                                "hours_left": int(diff.total_seconds() // 3600),
-                                "mins_left": int((diff.total_seconds() % 3600) // 60),
-                                "secs_left": int(diff.total_seconds() % 60),
-                            }
-                            break
-        if next_shift:
-            return next_shift
-        return {**default_res, "today_status": today_status}
-    except Exception:
-        return default_res
-
-
-# =============================================================================
-# 5. 前台主入口邏輯 (純已登入主畫面)
+# 3. 前台主入口邏輯 (純已登入主畫面)
 # =============================================================================
 
 def render_user_home() -> None:
@@ -378,111 +220,6 @@ def render_user_home() -> None:
             margin-bottom: 8px !important;
             letter-spacing: 0.3px !important;
             line-height: 1.3 !important;
-        }
-
-        /* 倒數計時卡片專屬樣式 */
-        .countdown-card {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%);
-            border: 1.5px solid rgba(56, 189, 248, 0.35);
-            border-radius: 16px;
-            padding: 16px 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.4);
-            margin-bottom: 12px;
-            box-sizing: border-box;
-            width: 100%;
-        }
-        .card-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(245, 158, 11, 0.15);
-            border: 1px solid rgba(245, 158, 11, 0.4);
-            color: #FBBF24;
-            font-size: 11px;
-            font-weight: 800;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-family: monospace;
-        }
-        .status-badge::before {
-            content: "●";
-            font-size: 8px;
-        }
-        .period-text {
-            font-size: 11px;
-            color: #64748B;
-            font-family: monospace;
-            letter-spacing: 0.5px;
-        }
-        .countdown-label {
-            font-size: 12px;
-            color: #94A3B8;
-            font-family: monospace;
-            margin-bottom: 4px;
-            letter-spacing: 0.5px;
-        }
-        .countdown-timer {
-            display: flex;
-            align-items: baseline;
-            gap: 4px;
-            font-family: monospace;
-            margin-bottom: 14px;
-        }
-        .time-number {
-            font-size: 28px;
-            font-weight: 900;
-            color: #F8FAFC;
-            letter-spacing: 1px;
-        }
-        .time-unit {
-            font-size: 11.5px;
-            color: #64748B;
-            margin-right: 6px;
-        }
-        .card-divider {
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            padding-top: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .shift-info-left {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-        .shift-date-train {
-            font-size: 12.5px;
-            font-weight: 800;
-            color: #CBD5E1;
-        }
-        .shift-time-range {
-            font-size: 16px;
-            font-weight: 900;
-            color: #F8FAFC;
-            font-family: monospace;
-            letter-spacing: 0.5px;
-        }
-        .shift-time-range span {
-            color: #64748B;
-            font-weight: 500;
-            margin: 0 4px;
-        }
-        .hours-pill {
-            background: rgba(56, 189, 248, 0.15);
-            border: 1px solid rgba(56, 189, 248, 0.4);
-            color: #38BDF8;
-            font-size: 11.5px;
-            font-weight: 900;
-            font-family: monospace;
-            padding: 6px 12px;
-            border-radius: 10px;
         }
 
         /* ========================================================================= */
@@ -957,31 +694,6 @@ def render_user_home() -> None:
     """
     st.html(period_html)
 
-    # 🚀 自動帶入登入者的下次勤務倒數計時卡片
-    duty_info = get_user_next_duty_info(current_user_id)
-    countdown_card_html = f"""
-    <div class="countdown-card">
-        <div class="card-top">
-            <div class="status-badge">{duty_info['today_status']}</div>
-            <div class="period-text">週期 {sched_range}</div>
-        </div>
-        <div class="countdown-label">距下次出勤簽到</div>
-        <div class="countdown-timer">
-            <span class="time-number">{duty_info['hours_left']:02d}</span><span class="time-unit">時</span>
-            <span class="time-number">{duty_info['mins_left']:02d}</span><span class="time-unit">分</span>
-            <span class="time-number">{duty_info['secs_left']:02d}</span><span class="time-unit">秒</span>
-        </div>
-        <div class="card-divider">
-            <div class="shift-info-left">
-                <div class="shift-date-train">{duty_info['date_label']} {duty_info['train']}</div>
-                <div class="shift-time-range">{duty_info['start']} <span>→</span> {duty_info['end']}</div>
-            </div>
-            <div class="hours-pill">{duty_info['hours']}</div>
-        </div>
-    </div>
-    """
-    st.markdown(countdown_card_html, unsafe_allow_html=True)
-
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
     if "active_app_mode" not in st.session_state:
@@ -1066,7 +778,7 @@ def render_user_home() -> None:
         with st.form(key="draw_schedule_form", border=False):
             default_emp_val = current_user_id if current_user_id else st.session_state.get("draw_input_key", "")
             
-            draw_field_label = "請輸入您的員編或姓名 (已自動帶入您的員編)"
+            draw_field_label = "請輸入您的員編或姓名 (例如: A023300)"
 
             user_input_val = st.text_input(
                 draw_field_label,
@@ -1966,8 +1678,8 @@ def render_user_home() -> None:
                                     unsafe_allow_html=True,
                                 )
 
-                                for i in range(0, len(filtered_candidates), 2):
-                                    batch = filtered_candidates[i : i + 2]
+                                for i in range(0, len(filtered_results), 2):
+                                    batch = filtered_results[i : i + 2]
                                     cols = st.columns(2)
 
                                     for idx_in_batch, cand in enumerate(batch):
@@ -2034,8 +1746,4 @@ def render_user_home() -> None:
 
 
 if __name__ == "__main__":
-    auth = get_auth_session()
-    if not auth.get("authenticated", False):
-        render_login_screen()
-    else:
-        render_user_home()
+    render_user_home()
