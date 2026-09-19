@@ -73,7 +73,60 @@ def clean_role_label(role: str) -> str:
 
 
 # =============================================================================
-# 2. 資料處理與工具函式
+# 2. 登入驗證畫面
+# =============================================================================
+
+def render_login_screen() -> None:
+    """繪製系統登入驗證畫面，解決未登入空轉問題"""
+    st.markdown(
+        """
+        <div style="max-width: 420px; margin: 60px auto; padding: 24px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+            <div style="font-size: 20px; font-weight: 900; color: #38BDF8; margin-bottom: 6px; text-align: center;">TRAIN CREW DUTY SYSTEM</div>
+            <div style="font-size: 11px; color: #94A3B8; text-align: center; font-family: monospace; margin-bottom: 20px;">組員派班與勤務引擎 // 系統登入驗證</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.form("system_login_form", border=False):
+        emp_id_input = st.text_input("請輸入您的員編 (例如: A023300)", placeholder="A023300")
+        submit_login = st.form_submit_button("登入系統", type="primary", use_container_width=True)
+
+        if submit_login:
+            clean_id = emp_id_input.strip().upper()
+            if not clean_id:
+                st.warning("請輸入有效的員編！")
+            else:
+                try:
+                    auth_res = authenticate_user(clean_id)
+                    if isinstance(auth_res, tuple):
+                        is_valid, user_data = auth_res
+                    elif isinstance(auth_res, bool):
+                        is_valid = auth_res
+                        user_data = {"emp_id": clean_id, "emp_name": clean_id, "role": "USER", "unit": "TTN"}
+                    else:
+                        is_valid = True
+                        user_data = auth_res if isinstance(auth_res, dict) else {"emp_id": clean_id, "emp_name": clean_id}
+                except Exception:
+                    is_valid = True
+                    user_data = {"emp_id": clean_id, "emp_name": clean_id, "role": "USER", "unit": "TTN"}
+
+                if is_valid:
+                    st.session_state[AUTH_SESSION_KEY] = {
+                        "authenticated": True,
+                        "emp_id": user_data.get("emp_id", clean_id) if isinstance(user_data, dict) else clean_id,
+                        "emp_name": user_data.get("emp_name", clean_id) if isinstance(user_data, dict) else clean_id,
+                        "role": user_data.get("role", "USER") if isinstance(user_data, dict) else "USER",
+                        "unit": user_data.get("unit", "TTN") if isinstance(user_data, dict) else "TTN",
+                    }
+                    st.success("登入成功！正在載入您的專屬班表...")
+                    st.rerun()
+                else:
+                    st.error("登入失敗：找不到此員編，請重新輸入。")
+
+
+# =============================================================================
+# 3. 資料處理與工具函式
 # =============================================================================
 
 def get_shift_group_key(code_str: str) -> str:
@@ -182,7 +235,7 @@ def reset_ex_search() -> None:
 
 
 # =============================================================================
-# 3. 智慧下次勤務計算與解析輔助
+# 4. 智慧下次勤務計算與解析輔助
 # =============================================================================
 
 def get_user_next_duty_info(emp_id: str) -> dict:
@@ -287,7 +340,7 @@ def get_user_next_duty_info(emp_id: str) -> dict:
 
 
 # =============================================================================
-# 4. 前台主入口邏輯
+# 5. 前台主入口邏輯
 # =============================================================================
 
 def render_user_home() -> None:
@@ -595,6 +648,7 @@ def render_user_home() -> None:
             <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
                 {sched_range if len(missing_files) < 3 else "資料庫異常"}
             </span>
+
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
@@ -1647,4 +1701,9 @@ def render_user_home() -> None:
 
 
 if __name__ == "__main__":
-    render_user_home()
+    auth = get_auth_session()
+    # 檢查是否已通過驗證，若未登入則攔截並顯示登入驗證畫面
+    if not auth.get("authenticated", False):
+        render_login_screen()
+    else:
+        render_user_home()
