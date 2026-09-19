@@ -303,6 +303,42 @@ def get_all_crew_options(unit_code: str) -> List[Dict[str, str]]:
     return crew_options
 
 
+def check_employee_exists_or_valid(unit_code: str, uid: str) -> bool:
+    """【新增】雙向驗證組員是否存在於後台白名單 JSON 或 Excel 班表大表中"""
+    target_uid = str(uid).strip().upper()
+    if not target_uid or target_uid in ["NAN", "NONE"]:
+        return False
+        
+    # 1. 優先檢查後台白名單 JSON
+    whitelist_data = robust_load_whitelist(unit_code)
+    if target_uid in whitelist_data:
+        return True
+        
+    # 2. 若白名單沒有，再檢查 Excel 班表大表
+    unit_files = UNITS.get(unit_code, {})
+    if not unit_files:
+        unit_files = {
+            "駕駛": os.path.join(DATA_DIR, f"{unit_code.lower()}_driver.xlsx"),
+            "列車長": os.path.join(DATA_DIR, f"{unit_code.lower()}_conductor.xlsx"),
+            "服勤員": os.path.join(DATA_DIR, f"{unit_code.lower()}_attendant.xlsx"),
+        }
+        
+    for role_name, file_path in unit_files.items():
+        if isinstance(file_path, str) and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+            try:
+                df = safe_read_excel(file_path, header=3)
+                if df is not None and not df.empty:
+                    for _, row in df.iterrows():
+                        if len(row) >= 2:
+                            excel_uid = str(row.iloc[0]).strip().upper()
+                            if excel_uid == target_uid:
+                                return True
+            except Exception:
+                pass
+                
+    return False
+
+
 def load_all_feedback_tickets() -> List[Dict[str, Any]]:
     """讀取所有問題回報工單"""
     tickets: List[Dict[str, Any]] = []
