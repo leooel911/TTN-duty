@@ -212,6 +212,33 @@ def render_user_home() -> None:
             padding-top: 0.6rem !important;
         }
 
+        /* 標題區塊專屬樣式 */
+        .section-header-box {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
+            border-left: 4px solid #38BDF8;
+            border-top: 1.5px solid rgba(56, 189, 248, 0.3);
+            border-right: 1.5px solid rgba(56, 189, 248, 0.3);
+            border-bottom: 1.5px solid rgba(56, 189, 248, 0.3);
+            padding: 10px 14px !important;
+            border-radius: 8px;
+            margin-bottom: 12px !important;
+        }
+
+        .section-title {
+            font-size: 16px !important;
+            font-weight: 900 !important;
+            color: #F8FAFC !important;
+            letter-spacing: 0.4px !important;
+        }
+
+        .section-subtitle {
+            font-size: 11px !important;
+            color: #94A3B8 !important;
+            font-family: monospace !important;
+            margin-top: 2px !important;
+            letter-spacing: 0.5px !important;
+        }
+
         .section-field-label {
             font-size: 15px !important;
             font-weight: 800 !important;
