@@ -210,23 +210,29 @@ def render_user_home() -> None:
     is_admin_user = (user_role == "ADMIN") or st.session_state.get("admin_logged_in", False)
     current_unit_label = st.session_state.get("current_unit", auth.get("unit", "TTN"))
 
+    # 組合完整顯示字串：姓名 (員編)
+    if current_user_id and current_user_id != current_user_name:
+        user_display_full = f"{current_user_name} ({current_user_id})"
+    else:
+        user_display_full = current_user_name
+
     st.markdown(
-        """
+        f"""
         <style>
         html, body, .stApp, [data-testid="stAppViewContainer"], .main,
-        [data-testid="stMainBlockContainer"], .block-container {
+        [data-testid="stMainBlockContainer"], .block-container {{
             max-width: 100vw !important;
             overflow-x: hidden !important;
             box-sizing: border-box !important;
-        }
+        }}
 
-        [data-testid="stMainBlockContainer"], .block-container {
+        [data-testid="stMainBlockContainer"], .block-container {{
             padding-left: 0.4rem !important;
             padding-right: 0.4rem !important;
             padding-top: 0.6rem !important;
-        }
+        }}
 
-        .section-field-label {
+        .section-field-label {{
             font-size: 15px !important;
             font-weight: 800 !important;
             color: #F8FAFC !important;
@@ -234,47 +240,47 @@ def render_user_home() -> None:
             margin-bottom: 8px !important;
             letter-spacing: 0.3px !important;
             line-height: 1.3 !important;
-        }
+        }}
 
-        div[data-testid="stContainer"] {
+        div[data-testid="stContainer"] {{
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
             border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
             border-radius: 16px !important;
             padding: 14px 14px 6px 14px !important;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.4) !important;
             margin-bottom: 12px !important;
-        }
+        }}
 
-        div[data-testid="stSlider"] {
+        div[data-testid="stSlider"] {{
             background: rgba(7, 11, 20, 0.85) !important;
             border: 1px solid rgba(56, 189, 248, 0.3) !important;
             border-radius: 12px !important;
             padding: 12px 14px 6px 14px !important;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3) !important;
             margin-bottom: 8px !important;
-        }
+        }}
 
         div[data-testid="stSliderTickBarMin"],
         div[data-testid="stSliderTickBarMax"],
         div[data-testid="stWidgetLabel"] + div [data-testid="stMarkdownContainer"] p,
-        div[data-baseweb="slider"] div[role="slider"] + div {
+        div[data-baseweb="slider"] div[role="slider"] + div {{
             font-size: 15px !important;
             font-weight: 900 !important;
             color: #38BDF8 !important;
             font-family: monospace !important;
-        }
+        }}
 
         div[data-testid="stWidgetLabel"] p,
         div[data-testid="stWidgetLabel"] label,
-        label[data-testid="stWidgetLabel"] p {
+        label[data-testid="stWidgetLabel"] p {{
             font-size: 14.5px !important;
             font-weight: 800 !important;
             color: #F8FAFC !important;
             letter-spacing: 0.3px !important;
             margin-bottom: 4px !important;
-        }
+        }}
 
-        div[data-testid="stCheckbox"] {
+        div[data-testid="stCheckbox"] {{
             background: rgba(15, 23, 42, 0.6) !important;
             border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
             border-radius: 10px !important;
@@ -282,37 +288,37 @@ def render_user_home() -> None:
             transition: all 0.25s ease-in-out !important;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3) !important;
             margin-bottom: 6px !important;
-        }
+        }}
 
-        div[data-testid="stCheckbox"]:hover {
+        div[data-testid="stCheckbox"]:hover {{
             background: rgba(30, 41, 59, 0.8) !important;
             border-color: rgba(56, 189, 248, 0.4) !important;
-        }
+        }}
 
-        div[data-testid="stCheckbox"]:has(input:checked) {
+        div[data-testid="stCheckbox"]:has(input:checked) {{
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(2, 132, 199, 0.25) 100%) !important;
             border-color: #38BDF8 !important;
             box-shadow: 0 0 14px rgba(56, 189, 248, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
-        }
+        }}
 
-        div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div {
+        div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div {{
             background-color: #00A3FF !important;
             border-color: #38BDF8 !important;
-        }
+        }}
 
-        div[data-testid="stCheckbox"] label p {
+        div[data-testid="stCheckbox"] label p {{
             font-size: 13.5px !important;
             font-weight: 700 !important;
             color: #94A3B8 !important;
             transition: color 0.2s ease !important;
-        }
+        }}
 
-        div[data-testid="stCheckbox"]:has(input:checked) label p {
+        div[data-testid="stCheckbox"]:has(input:checked) label p {{
             color: #F8FAFC !important;
             font-weight: 800 !important;
-        }
+        }}
 
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {{
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -326,18 +332,18 @@ def render_user_home() -> None:
             box-sizing: border-box !important;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.7) !important;
             margin-bottom: 12px !important;
-        }
+        }}
 
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) > div[data-testid="column"] {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) > div[data-testid="column"] {{
             flex: 0 0 33.33% !important;
             width: 33.33% !important;
             max-width: 33.33% !important;
             min-width: 0 !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
-        }
+        }}
 
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {{
             background: transparent !important;
             border: 1.5px solid transparent !important;
             box-shadow: none !important;
@@ -345,12 +351,12 @@ def render_user_home() -> None:
             border-radius: 10px !important;
             width: 100% !important;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"]:hover {
+        }}
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"]:hover {{
             background: rgba(255, 255, 255, 0.05) !important;
             border-color: rgba(56, 189, 248, 0.3) !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] p {
+        }}
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] p {{
             color: #64748B !important;
             font-size: 12.5px !important;
             font-weight: 700 !important;
@@ -358,18 +364,18 @@ def render_user_home() -> None:
             overflow: hidden !important;
             text-overflow: ellipsis !important;
             margin: 0 !important;
-        }
+        }}
 
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {{
             background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
             border: 1.5px solid #38BDF8 !important;
             border-radius: 10px !important;
             padding: 9px 2px !important;
             width: 100% !important;
             box-shadow: 0 0 16px rgba(56, 189, 248, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.35) !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"] p {
+        }}
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"] p {{
             color: #38BDF8 !important;
             font-size: 13px !important;
             font-weight: 900 !important;
@@ -378,10 +384,10 @@ def render_user_home() -> None:
             text-overflow: ellipsis !important;
             margin: 0 !important;
             text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
-        }
+        }}
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {{
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -389,25 +395,25 @@ def render_user_home() -> None:
             max-width: 100% !important;
             gap: 6px !important;
             box-sizing: border-box !important;
-        }
+        }}
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {{
             width: calc(50% - 3px) !important;
             max-width: calc(50% - 3px) !important;
             min-width: 0 !important;
             flex: 0 0 calc(50% - 3px) !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
-        }
+        }}
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) *,
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) * {
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) * {{
             min-width: 0 !important;
             box-sizing: border-box !important;
-        }
+        }}
 
-        .crew-card-integrated, .crew-card-integrated-warn {
+        .crew-card-integrated, .crew-card-integrated-warn {{
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
             border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
             border-bottom: none !important;
@@ -420,57 +426,57 @@ def render_user_home() -> None:
             width: 100% !important;
             overflow: hidden !important;
             transition: all 0.25s ease-in-out !important;
-        }
+        }}
 
-        .crew-card-integrated-warn {
+        .crew-card-integrated-warn {{
             border-color: #F43F5E !important;
             box-shadow: 0 4px 14px rgba(244, 63, 94, 0.3) !important;
-        }
+        }}
 
-        .card-theme-0 {
+        .card-theme-0 {{
             border-color: rgba(56, 189, 248, 0.65) !important;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(14, 116, 144, 0.2) 100%) !important;
             box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15) !important;
-        }
-        .card-theme-0 .train-code-text { color: #38BDF8 !important; }
+        }}
+        .card-theme-0 .train-code-text {{ color: #38BDF8 !important; }}
 
-        .card-theme-1 {
+        .card-theme-1 {{
             border-color: rgba(52, 211, 153, 0.65) !important;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(6, 95, 70, 0.2) 100%) !important;
             box-shadow: 0 4px 12px rgba(52, 211, 153, 0.15) !important;
-        }
-        .card-theme-1 .train-code-text { color: #34D399 !important; }
+        }}
+        .card-theme-1 .train-code-text {{ color: #34D399 !important; }}
 
-        .card-theme-2 {
+        .card-theme-2 {{
             border-color: rgba(251, 191, 36, 0.65) !important;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(120, 53, 15, 0.2) 100%) !important;
             box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15) !important;
-        }
-        .card-theme-2 .train-code-text { color: #FBBF24 !important; }
+        }}
+        .card-theme-2 .train-code-text {{ color: #FBBF24 !important; }}
 
-        .card-theme-3 {
+        .card-theme-3 {{
             border-color: rgba(192, 132, 252, 0.65) !important;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(88, 28, 135, 0.2) 100%) !important;
             box-shadow: 0 4px 12px rgba(192, 132, 252, 0.15) !important;
-        }
-        .card-theme-3 .train-code-text { color: #C084FC !important; }
+        }}
+        .card-theme-3 .train-code-text {{ color: #C084FC !important; }}
 
-        .card-theme-4 {
+        .card-theme-4 {{
             border-color: rgba(251, 146, 60, 0.65) !important;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(124, 45, 18, 0.2) 100%) !important;
             box-shadow: 0 4px 12px rgba(251, 146, 60, 0.15) !important;
-        }
-        .card-theme-4 .train-code-text { color: #FB923C !important; }
+        }}
+        .card-theme-4 .train-code-text {{ color: #FB923C !important; }}
 
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"],
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {{
             width: 100% !important;
             max-width: 100% !important;
             box-sizing: border-box !important;
-        }
+        }}
 
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button,
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {{
             width: 100% !important;
             min-width: 0 !important;
             max-width: 100% !important;
@@ -490,10 +496,10 @@ def render_user_home() -> None:
             text-overflow: ellipsis !important;
             background-color: rgba(15, 23, 42, 0.95) !important;
             transition: all 0.2s ease-in-out !important;
-        }
+        }}
 
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button p,
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button p {
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button p {{
             font-size: 10.5px !important;
             white-space: nowrap !important;
             overflow: hidden !important;
@@ -501,19 +507,19 @@ def render_user_home() -> None:
             width: 100% !important;
             margin: 0 !important;
             line-height: 1.2 !important;
-        }
+        }}
 
-        div[data-testid="stElementContainer"]:has(.card-theme-0) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(56, 189, 248, 0.65) !important; border-top: 1px dashed rgba(56, 189, 248, 0.3) !important; color: #38BDF8 !important; }
-        div[data-testid="stElementContainer"]:has(.card-theme-1) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(52, 211, 153, 0.65) !important; border-top: 1px dashed rgba(52, 211, 153, 0.3) !important; color: #34D399 !important; }
-        div[data-testid="stElementContainer"]:has(.card-theme-2) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(251, 191, 36, 0.65) !important; border-top: 1px dashed rgba(251, 191, 36, 0.3) !important; color: #FBBF24 !important; }
-        div[data-testid="stElementContainer"]:has(.card-theme-3) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(192, 132, 252, 0.65) !important; border-top: 1px dashed rgba(192, 132, 252, 0.3) !important; color: #C084FC !important; }
-        div[data-testid="stElementContainer"]:has(.card-theme-4) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(251, 146, 60, 0.65) !important; border-top: 1px dashed rgba(251, 146, 60, 0.3) !important; color: #FB923C !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-0) + div[data-testid="stElementContainer"] button {{ border: 1.5px solid rgba(56, 189, 248, 0.65) !important; border-top: 1px dashed rgba(56, 189, 248, 0.3) !important; color: #38BDF8 !important; }}
+        div[data-testid="stElementContainer"]:has(.card-theme-1) + div[data-testid="stElementContainer"] button {{ border: 1.5px solid rgba(52, 211, 153, 0.65) !important; border-top: 1px dashed rgba(52, 211, 153, 0.3) !important; color: #34D399 !important; }}
+        div[data-testid="stElementContainer"]:has(.card-theme-2) + div[data-testid="stElementContainer"] button {{ border: 1.5px solid rgba(251, 191, 36, 0.65) !important; border-top: 1px dashed rgba(251, 191, 36, 0.3) !important; color: #FBBF24 !important; }}
+        div[data-testid="stElementContainer"]:has(.card-theme-3) + div[data-testid="stElementContainer"] button {{ border: 1.5px solid rgba(192, 132, 252, 0.65) !important; border-top: 1px dashed rgba(192, 132, 252, 0.3) !important; color: #C084FC !important; }}
+        div[data-testid="stElementContainer"]:has(.card-theme-4) + div[data-testid="stElementContainer"] button {{ border: 1.5px solid rgba(251, 146, 60, 0.65) !important; border-top: 1px dashed rgba(251, 146, 60, 0.3) !important; color: #FB923C !important; }}
 
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {{
             border: 1.5px solid #F43F5E !important;
             border-top: 1px dashed rgba(244, 63, 94, 0.3) !important;
             color: #FDA4AF !important;
-        }
+        }}
 
         button[data-testid="stBaseButton-primary"],
         button[data-testid="stBaseButton-primaryFormSubmit"],
@@ -522,7 +528,7 @@ def render_user_home() -> None:
         div[data-testid="stFormSubmitButton"] > button[kind="primary"],
         div[data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"],
         div[data-testid="stButton"] > button[kind="primary"],
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"] {
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"] {{
             background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%) !important;
             color: #FFFFFF !important;
             border: 1.5px solid #38BDF8 !important;
@@ -533,7 +539,7 @@ def render_user_home() -> None:
             margin-top: 6px !important;
             margin-bottom: 6px !important;
             width: 100% !important;
-        }
+        }}
 
         button[data-testid="stBaseButton-primary"]:hover,
         button[data-testid="stBaseButton-primaryFormSubmit"]:hover,
@@ -542,27 +548,27 @@ def render_user_home() -> None:
         div[data-testid="stFormSubmitButton"] > button[kind="primary"]:hover,
         div[data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"]:hover,
         div[data-testid="stButton"] > button[kind="primary"]:hover,
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"]:hover {
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"]:hover {{
             background: linear-gradient(135deg, #0369A1 0%, #1E40AF 100%) !important;
             border-color: #38BDF8 !important;
             box-shadow: 0 6px 24px rgba(56, 189, 248, 0.8) !important;
             transform: translateY(-1px) !important;
-        }
+        }}
 
         button[data-testid="stBaseButton-primary"] p,
         button[data-testid="stBaseButton-primaryFormSubmit"] p,
         button[kind="primary"] p,
-        button[kind="primaryFormSubmit"] p {
+        button[kind="primaryFormSubmit"] p {{
             font-size: 15px !important;
             font-weight: 800 !important;
             color: #FFFFFF !important;
             letter-spacing: 0.6px !important;
-        }
+        }}
 
         button[data-testid="stBaseButton-secondary"],
         button[kind="secondary"],
         div[data-testid="stButton"] > button[kind="secondary"],
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] {
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] {{
             background: rgba(15, 23, 42, 0.6) !important;
             color: #94A3B8 !important;
             border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
@@ -570,45 +576,45 @@ def render_user_home() -> None:
             border-radius: 10px !important;
             padding: 8px 12px !important;
             transition: all 0.2s ease-in-out !important;
-        }
+        }}
 
         button[data-testid="stBaseButton-secondary"]:hover,
         button[kind="secondary"]:hover,
         div[data-testid="stButton"] > button[kind="secondary"]:hover,
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"]:hover {
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"]:hover {{
             background: rgba(255, 255, 255, 0.08) !important;
             color: #F1F5F9 !important;
             border-color: rgba(56, 189, 248, 0.4) !important;
-        }
+        }}
 
         button[data-testid="stBaseButton-secondary"] p,
         button[kind="secondary"] p,
         div[data-testid="stButton"] > button[kind="secondary"] p,
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] p {
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] p {{
             color: #94A3B8 !important;
             font-size: 14px !important;
             font-weight: 600 !important;
-        }
+        }}
 
-        .badge-group {
+        .badge-group {{
             display: flex;
             gap: 2px;
             align-items: center;
             justify-content: flex-end;
             flex-wrap: nowrap;
-        }
-        .role-badge-driver { font-size: 8.5px; font-weight: 800; color: #38BDF8; background: rgba(56, 189, 248, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
-        .role-badge-conductor { font-size: 8.5px; font-weight: 800; color: #34D399; background: rgba(52, 211, 153, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
-        .role-badge-crew { font-size: 8.5px; font-weight: 800; color: #FBBF24; background: rgba(251, 191, 36, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
-        .non-line-badge { font-size: 8.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
-        .long-badge { font-size: 8.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
-        .do2w-badge { font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+        }}
+        .role-badge-driver {{ font-size: 8.5px; font-weight: 800; color: #38BDF8; background: rgba(56, 189, 248, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }}
+        .role-badge-conductor {{ font-size: 8.5px; font-weight: 800; color: #34D399; background: rgba(52, 211, 153, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }}
+        .role-badge-crew {{ font-size: 8.5px; font-weight: 800; color: #FBBF24; background: rgba(251, 191, 36, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }}
+        .non-line-badge {{ font-size: 8.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }}
+        .long-badge {{ font-size: 8.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }}
+        .do2w-badge {{ font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }}
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    # 頂部主標題框 (將登入者姓名正確嵌入小字內)
+    # 頂部主標題框 (完整顯示姓名與員編)
     role_label_str = clean_role_label(user_role)
     st.markdown(
         f"""
@@ -616,7 +622,7 @@ def render_user_home() -> None:
             <div style="font-size: 18px; font-weight: 900; color: #F8FAFC; letter-spacing: 1.5px; font-family: monospace;">CREW DUTY ENGINE</div>
             <div style="font-size: 10px; color: #38BDF8; font-family: monospace; letter-spacing: 0.8px; margin-top: 2px;">BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div>
             <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
-                STATUS: ACTIVE | {current_unit_label} : {current_user_name}
+                STATUS: ACTIVE | {current_unit_label} : {user_display_full}
             </div>
         </div>
         """,
@@ -710,6 +716,7 @@ def render_user_home() -> None:
             <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
                 {sched_range if len(missing_files) < 3 else "資料庫異常"}
             </span>
+
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
