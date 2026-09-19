@@ -594,23 +594,22 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 🚀 完整加回：頂部主標題與狀態列 (CREW DUTY ENGINE)
+    # 頂部主標題與狀態列 (CREW DUTY ENGINE)
     role_label_str = clean_role_label(user_role)
-    status_color = "#34D399" if auth.get("authenticated") else "#FBBF24"
     st.markdown(
         f"""
         <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 14px; text-align: center; margin-bottom: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);">
             <div style="font-size: 18px; font-weight: 900; color: #F8FAFC; letter-spacing: 1.5px; font-family: monospace;">CREW DUTY ENGINE</div>
             <div style="font-size: 10px; color: #38BDF8; font-family: monospace; letter-spacing: 0.8px; margin-top: 2px;">BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div>
             <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
-                <span style="color: {status_color};">● STATUS: ACTIVE</span> | {current_unit_label} : {current_user_name} ({role_label_str})
+                STATUS: ACTIVE | {current_unit_label} : {current_user_name} ({role_label_str})
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # 🚀 完整加回：測試環境公告欄 (SYSTEM MAINTENANCE NOTICE // BETA ENVIRONMENT)
+    # 測試環境公告欄
     st.markdown(
         """
         <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 12px; padding: 12px; margin-bottom: 12px; text-align: center; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.2);">
@@ -621,7 +620,24 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 🚀 注入時間滑桿拖動放大特效
+    # 專業化登入者歡迎詞專區 (自動抓取姓名與員編，無貼圖符號)
+    display_user_name = current_user_name if current_user_name else "訪客"
+    display_user_id = f" ({current_user_id})" if current_user_id else ""
+    st.markdown(
+        f"""
+        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);">
+            <div style="font-size: 13.5px; font-weight: 800; color: #F8FAFC; font-family: monospace;">
+                歡迎登入，{display_user_name}{display_user_id}
+            </div>
+            <div style="font-size: 11px; color: #38BDF8; font-family: monospace; font-weight: 700; letter-spacing: 0.5px;">
+                單位: {current_unit_label} | 身分: {role_label_str}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # 注入時間滑桿拖動放大特效
     comp.inject_slider_animation()
 
     active_files = get_current_role_files()
@@ -917,7 +933,7 @@ def render_user_home() -> None:
                 st.session_state["saved_win_roles"] = roles_to_query
 
             if not roles_to_query:
-                st.warning("⚠️請至少選取一個職位 以進行查詢！")
+                st.warning("請至少選取一個職位以進行查詢")
             else:
                 has_driver = "駕駛" in roles_to_query
                 start_h = 3 if has_driver else 5
@@ -1436,7 +1452,7 @@ def render_user_home() -> None:
                         comp.show_holiday_notice(ex_week_holidays, target_week_str)
 
                         st.caption(
-                            f" **同一週規範換假區間：{target_week_str}**（還假選單已自動設定於當週區間）"
+                            f"同一週規範換假區間：{target_week_str}（還假選單已自動設定於當週區間）"
                         )
 
                         if "saved_ex_time_filter" not in st.session_state:
