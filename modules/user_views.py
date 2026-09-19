@@ -179,15 +179,15 @@ def get_real_next_duty(query_str: str, active_files: dict) -> Tuple[Optional[dat
     """從真實班表檔案中自動搜尋該員編或姓名接下來最近的一筆出勤與 Sign-In 時間"""
     if not query_str or not active_files:
         return None, "尚未指定員編或姓名"
-    
+     
     query_clean = str(query_str).strip()
     id_match = re.search(r'[A-Za-z]\d+', query_clean)
     target_id = id_match.group(0).upper() if id_match else ""
     target_name = query_clean.replace(target_id, "").strip()
-    
+     
     today = date.today()
     current_year = today.year
-    
+     
     for role_name, path in active_files.items():
         if not path or not isinstance(path, (str, bytes, os.PathLike)) or not os.path.exists(path):
             continue
@@ -198,7 +198,7 @@ def get_real_next_duty(query_str: str, active_files: dict) -> Tuple[Optional[dat
                 col0_val = str(row.iloc[0]).strip() if len(row) > 0 else ""
                 col1_val = str(row.iloc[1]).strip() if len(row) > 1 else ""
                 row_str = f"{col0_val} {col1_val}".upper()
-                
+                 
                 matched = False
                 if target_id and target_id in row_str:
                     matched = True
@@ -206,7 +206,7 @@ def get_real_next_duty(query_str: str, active_files: dict) -> Tuple[Optional[dat
                     matched = True
                 if not target_id and not target_name and query_clean.upper() in row_str:
                     matched = True
-                    
+                     
                 if matched:
                     dates = df.columns[2:]
                     for idx, d_col in enumerate(dates):
@@ -222,7 +222,7 @@ def get_real_next_duty(query_str: str, active_files: dict) -> Tuple[Optional[dat
                                 is_off = is_cell_off_day(cell_val)
                                 start_t = parsed.get("start")
                                 train = parsed.get("train")
-                                
+                                 
                                 if not is_off and start_t and start_t != "--:--":
                                     h, mi = map(int, start_t.split(":"))
                                     duty_dt = datetime(d_obj.year, d_obj.month, d_obj.day, h, mi)
@@ -234,7 +234,7 @@ def get_real_next_duty(query_str: str, active_files: dict) -> Tuple[Optional[dat
                             continue
         except Exception:
             continue
-    
+     
     return None, f"近期無查獲符合「{query_str}」的有效出勤班次"
 
 
@@ -505,203 +505,7 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 完美雙排並排佈局鎖定 (採用正式版最穩定的 48% 計算，絕對不切邊) */
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            gap: 4% !important;
-            box-sizing: border-box !important;
-            margin-bottom: 0px !important;
-            overflow: hidden !important;
-        }
-
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
-            width: 48% !important;
-            max-width: 48% !important;
-            min-width: 0 !important;
-            flex: 0 0 48% !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;
-            padding: 0 !important;
-        }
-
-        .crew-card-integrated, .crew-card-integrated-warn {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
-            border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
-            border-bottom: none !important;
-            border-top-left-radius: 8px !important;
-            border-top-right-radius: 8px !important;
-            border-bottom-left-radius: 0px !important;
-            border-bottom-right-radius: 0px !important;
-            padding: 8px 8px 6px 8px !important;
-            box-sizing: border-box !important;
-            width: 100% !important;
-            overflow: hidden !important;
-            transition: all 0.25s ease-in-out !important;
-        }
-
-        .crew-card-integrated-warn {
-            border-color: #F43F5E !important;
-            box-shadow: 0 4px 14px rgba(244, 63, 94, 0.3) !important;
-        }
-
-        .card-theme-0 {
-            border-color: rgba(56, 189, 248, 0.65) !important;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(14, 116, 144, 0.2) 100%) !important;
-            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15) !important;
-        }
-        .card-theme-0 .train-code-text { color: #38BDF8 !important; }
-
-        .card-theme-1 {
-            border-color: rgba(52, 211, 153, 0.65) !important;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(6, 95, 70, 0.2) 100%) !important;
-            box-shadow: 0 4px 12px rgba(52, 211, 153, 0.15) !important;
-        }
-        .card-theme-1 .train-code-text { color: #34D399 !important; }
-
-        .card-theme-2 {
-            border-color: rgba(251, 191, 36, 0.65) !important;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(120, 53, 15, 0.2) 100%) !important;
-            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15) !important;
-        }
-        .card-theme-2 .train-code-text { color: #FBBF24 !important; }
-
-        .card-theme-3 {
-            border-color: rgba(192, 132, 252, 0.65) !important;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(88, 28, 135, 0.2) 100%) !important;
-            box-shadow: 0 4px 12px rgba(192, 132, 252, 0.15) !important;
-        }
-        .card-theme-3 .train-code-text { color: #C084FC !important; }
-
-        .card-theme-4 {
-            border-color: rgba(251, 146, 60, 0.65) !important;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(124, 45, 18, 0.2) 100%) !important;
-            box-shadow: 0 4px 12px rgba(251, 146, 60, 0.15) !important;
-        }
-        .card-theme-4 .train-code-text { color: #FB923C !important; }
-
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"],
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {
-            width: 100% !important;
-            max-width: 100% !important;
-            box-sizing: border-box !important;
-        }
-
-        /* 完美融合的卡片底部按鈕下緣 */
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button,
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
-            width: 100% !important;
-            min-width: 0 !important;
-            max-width: 100% !important;
-            box-sizing: border-box !important;
-            border-top-left-radius: 0px !important;
-            border-top-right-radius: 0px !important;
-            border-bottom-left-radius: 8px !important;
-            border-bottom-right-radius: 8px !important;
-            margin-top: -14px !important;
-            margin-bottom: 6px !important;
-            box-shadow: none !important;
-            font-weight: 700 !important;
-            padding: 3px 2px !important;
-            font-size: 11px !important;
-            letter-spacing: -0.3px !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            background-color: rgba(15, 23, 42, 0.95) !important;
-            transition: all 0.2s ease-in-out !important;
-        }
-
-        button[data-testid="stBaseButton-primary"],
-        button[data-testid="stBaseButton-primaryFormSubmit"],
-        button[kind="primary"],
-        button[kind="primaryFormSubmit"],
-        div[data-testid="stFormSubmitButton"] > button[kind="primary"],
-        div[data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"],
-        div[data-testid="stButton"] > button[kind="primary"],
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"] {
-            background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%) !important;
-            color: #FFFFFF !important;
-            border: 1.5px solid #38BDF8 !important;
-            border-radius: 12px !important;
-            padding: 10px 16px !important;
-            box-shadow: 0 4px 18px rgba(2, 132, 199, 0.6) !important;
-            transition: all 0.25s ease-in-out !important;
-            margin-top: 6px !important;
-            margin-bottom: 6px !important;
-            width: 100% !important;
-        }
-
-        button[data-testid="stBaseButton-secondary"],
-        button[kind="secondary"],
-        div[data-testid="stButton"] > button[kind="secondary"],
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] {
-            background: rgba(15, 23, 42, 0.6) !important;
-            color: #94A3B8 !important;
-            border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
-            box-shadow: none !important;
-            border-radius: 10px !important;
-            padding: 8px 12px !important;
-            transition: all 0.2s ease-in-out !important;
-        }
-
-        .badge-group {
-            display: flex;
-            gap: 2px;
-            align-items: center;
-            justify-content: flex-end;
-            flex-wrap: nowrap;
-        }
-        .role-badge-driver { font-size: 8px; font-weight: 800; color: #38BDF8; background: rgba(56, 189, 248, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
-        .role-badge-conductor { font-size: 8px; font-weight: 800; color: #34D399; background: rgba(52, 211, 153, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
-        .role-badge-crew { font-size: 8px; font-weight: 800; color: #FBBF24; background: rgba(251, 191, 36, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
-        .non-line-badge { font-size: 8px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 2px; border-radius: 3px; white-space: nowrap; }
-        .long-badge { font-size: 8px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 2px; border-radius: 3px; white-space: nowrap; }
-        .do2w-badge { font-size: 8px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 2px; border-radius: 3px; white-space: nowrap; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )st.markdown(
-        """
-        <style>
-        html, body, .stApp, [data-testid="stAppViewContainer"], .main,
-        [data-testid="stMainBlockContainer"], .block-container {
-            max-width: 100vw !important;
-            overflow-x: hidden !important;
-            box-sizing: border-box !important;
-        }
-
-        [data-testid="stMainBlockContainer"], .block-container {
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-            padding-top: 0.6rem !important;
-        }
-
-        .section-field-label {
-            font-size: 15px !important;
-            font-weight: 800 !important;
-            color: #F8FAFC !important;
-            margin-top: 10px !important;
-            margin-bottom: 8px !important;
-            letter-spacing: 0.3px !important;
-            line-height: 1.3 !important;
-        }
-
-        div[data-testid="stContainer"] {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
-            border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
-            border-radius: 16px !important;
-            padding: 14px 14px 6px 14px !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.4) !important;
-            margin-bottom: 12px !important;
-        }
-
-        /* 💡 修正處：允許在窄螢幕自動換行，防止右側卡片被切掉或跑位 */
+        /* 雙排並排佈局 (支援自動換行，防止右側卡片切邊) */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
@@ -810,6 +614,53 @@ def render_user_home() -> None:
             background-color: rgba(15, 23, 42, 0.95) !important;
             transition: all 0.2s ease-in-out !important;
         }
+
+        button[data-testid="stBaseButton-primary"],
+        button[data-testid="stBaseButton-primaryFormSubmit"],
+        button[kind="primary"],
+        button[kind="primaryFormSubmit"],
+        div[data-testid="stFormSubmitButton"] > button[kind="primary"],
+        div[data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"],
+        div[data-testid="stButton"] > button[kind="primary"],
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"] {
+            background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%) !important;
+            color: #FFFFFF !important;
+            border: 1.5px solid #38BDF8 !important;
+            border-radius: 12px !important;
+            padding: 10px 16px !important;
+            box-shadow: 0 4px 18px rgba(2, 132, 199, 0.6) !important;
+            transition: all 0.25s ease-in-out !important;
+            margin-top: 6px !important;
+            margin-bottom: 6px !important;
+            width: 100% !important;
+        }
+
+        button[data-testid="stBaseButton-secondary"],
+        button[kind="secondary"],
+        div[data-testid="stButton"] > button[kind="secondary"],
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] {
+            background: rgba(15, 23, 42, 0.6) !important;
+            color: #94A3B8 !important;
+            border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+            box-shadow: none !important;
+            border-radius: 10px !important;
+            padding: 8px 12px !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+
+        .badge-group {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+            justify-content: flex-end;
+            flex-wrap: nowrap;
+        }
+        .role-badge-driver { font-size: 8px; font-weight: 800; color: #38BDF8; background: rgba(56, 189, 248, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .role-badge-conductor { font-size: 8px; font-weight: 800; color: #34D399; background: rgba(52, 211, 153, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .role-badge-crew { font-size: 8px; font-weight: 800; color: #FBBF24; background: rgba(251, 191, 36, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .non-line-badge { font-size: 8px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 2px; border-radius: 3px; white-space: nowrap; }
+        .long-badge { font-size: 8px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 2px; border-radius: 3px; white-space: nowrap; }
+        .do2w-badge { font-size: 8px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 2px; border-radius: 3px; white-space: nowrap; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -893,7 +744,7 @@ def render_user_home() -> None:
         is_module_maintenance(current_unit_label, "window_filter") or 
         is_module_maintenance(current_unit_label, "exchange_filter")
     )
-    
+     
     identity_str = get_identity_display_str(user_role, current_user_name, current_user_id)
     sched_display_text = sched_range if len(missing_files) < 3 else "資料庫異常"
 
@@ -908,7 +759,7 @@ def render_user_home() -> None:
                 <span style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; padding: 2px 8px; border-radius: 6px; font-weight: bold;">單位：{current_unit_label}</span>
                 <span style="background: rgba(251, 191, 36, 0.15); color: #FBBF24; padding: 2px 8px; border-radius: 6px; font-weight: bold;">身分：{identity_str}</span>
             </div>
-            {'<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: #FDE68A; text-align: center; font-family: monospace;">' + announcement_msg + '</div>' if enable_beta_banner and announcement_msg else ''}
+            {('<div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: #FDE68A; text-align: center; font-family: monospace;">' + announcement_msg + '</div>' if enable_beta_banner and announcement_msg else '')}
         </div>
         """,
         unsafe_allow_html=True,
@@ -934,7 +785,7 @@ def render_user_home() -> None:
     comp.inject_slider_animation()
 
     # =========================================================================
-    # 🚀 真實抓取該登入組員的下次出勤倒數計時器（安全組件渲染）
+    # 🚀 真實抓取該登入組員的下次出勤倒數計時器
     # =========================================================================
     real_next_dt, duty_info_text = get_real_next_duty(current_user_id, active_files)
     if real_next_dt:
@@ -1005,7 +856,7 @@ def render_user_home() -> None:
 
         with st.form(key="draw_schedule_form", border=False):
             clean_default_id = current_user_id.strip()
-            
+             
             draw_field_label = "請輸入您的員編或姓名 (例如: A023300)"
 
             user_input_val = st.text_input(
@@ -1384,7 +1235,6 @@ def render_user_home() -> None:
                 )
                 cnt_long = sum(1 for r in filtered_results if r.get("長班"))
 
-                # 完美還原正式版最穩定的 st.container 搭配 st.metric 結構
                 with st.container(border=True):
                     col_s1, col_s2, col_s3 = st.columns(3)
                     with col_s1:
@@ -1858,7 +1708,6 @@ def render_user_home() -> None:
                                     if c.get("連續上班天數", 0) >= 6
                                 )
 
-                                # 完美還原正式版最穩定的 st.container 搭配 st.metric 結構
                                 with st.container(border=True):
                                     col_es1, col_es2, col_es3 = st.columns(3)
                                     with col_es1:
