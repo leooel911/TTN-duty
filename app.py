@@ -64,6 +64,14 @@ if "login_user_id" not in st.session_state:
     st.session_state["login_user_id"] = DEFAULT_EMP_ID
 if "current_unit" not in st.session_state:
     st.session_state["current_unit"] = "TTN"
+if "CURRENT_AUTH_SESSION" not in st.session_state:
+    st.session_state["CURRENT_AUTH_SESSION"] = {
+        "authenticated": False,
+        "emp_id": "",
+        "emp_name": "",
+        "role": "GUEST",
+        "unit": "TTN",
+    }
 
 
 # =========================================================
@@ -249,6 +257,9 @@ div[data-testid="stContainer"]:has(.login-card-marker) {
             success, message, user_session = authenticate_user(selected_unit, entered_emp, entered_key)
             
             if success:
+                # 【關鍵修正】將驗證回傳的完整 user_session 寫入集中管理的 Session 內！
+                st.session_state["CURRENT_AUTH_SESSION"] = user_session
+                
                 role = user_session.get("role", "USER")
                 is_adm = (role == "ADMIN")
                 
@@ -381,6 +392,16 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                     st.session_state["show_admin_login"] = False
                     st.session_state["current_user_id"] = f"ADMIN ({curr_op})"
                     st.session_state["login_user_id"] = admin_uid
+                    
+                    # 同步設定 ADMIN 的 Auth Session
+                    st.session_state["CURRENT_AUTH_SESSION"] = {
+                        "authenticated": True,
+                        "emp_id": admin_uid,
+                        "emp_name": "系統管理員",
+                        "role": "ADMIN",
+                        "unit": st.session_state.get("current_unit", "TTN"),
+                    }
+
                     log_activity(
                         action="管理員操作",
                         detail=f"管理員登入後台 ({curr_op})",
