@@ -695,11 +695,26 @@ def render_user_home() -> None:
     st.html(period_html)
 
     # =========================================================================
-    # 🚀 【新增功能】：下次出勤倒數計時模組 (完全獨立於明細卡之外)
+    # 🚀 【新增功能】：下次出勤倒數計時模組 (具備智慧自動帶入與回退機制)
     # =========================================================================
-    if current_user_id:
+    target_countdown_id = current_user_id or st.session_state.get("draw_input_key", "").strip()
+    if not target_countdown_id:
+        for r_name in ["服勤員", "列車長", "駕駛"]:
+            p = active_files.get(r_name, "")
+            if p and os.path.exists(p) and os.path.getsize(p) > 0:
+                try:
+                    df_tmp = safe_read_excel(p, header=3)
+                    if not df_tmp.empty and len(df_tmp.columns) > 0:
+                        first_id = str(df_tmp.iloc[0, 0]).strip()
+                        if first_id and first_id.upper() not in ["NAN", "NONE", ""]:
+                            target_countdown_id = first_id
+                            break
+                except Exception:
+                    pass
+
+    if target_countdown_id:
         try:
-            _, u_dates, _, _, u_cells = process_file_data(current_user_id)
+            _, u_dates, _, u_emp_name, u_cells = process_file_data(target_countdown_id)
             now_dt = datetime.now()
             next_shift_found = None
 
@@ -737,7 +752,7 @@ def render_user_home() -> None:
                 countdown_html = f"""
                 <div style="background: linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1.5px solid #38BDF8; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);">
                     <div>
-                        <div style="font-size: 10.5px; color: #38BDF8; font-family: monospace; font-weight: 800; letter-spacing: 0.5px;">NEXT DUTY COUNTDOWN // 下次出勤倒數</div>
+                        <div style="font-size: 10.5px; color: #38BDF8; font-family: monospace; font-weight: 800; letter-spacing: 0.5px;">NEXT DUTY COUNTDOWN // 下次出勤倒數 ({u_emp_name})</div>
                         <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; margin-top: 2px;">
                             {next_shift_found['date']} ｜ 車次: <span style="color: #34D399;">{next_shift_found['train']}</span> ｜ Sign-In: <span style="color: #FBBF24;">{next_shift_found['start']}</span>
                         </div>
