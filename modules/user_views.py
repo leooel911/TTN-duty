@@ -1,6 +1,6 @@
+from datetime import date, datetime, timedelta
 import os
 import re
-from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
@@ -222,9 +222,6 @@ def render_user_home() -> None:
             line-height: 1.3 !important;
         }
 
-        /* ========================================================================= */
-        /* 🚀 【Unified Command Box 統合控制主卡片】：將 Streamlit 內建容器改造為高質感發光矩陣 */
-        /* ========================================================================= */
         div[data-testid="stContainer"] {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
             border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
@@ -234,7 +231,6 @@ def render_user_home() -> None:
             margin-bottom: 12px !important;
         }
 
-        /* 🚀 【高質感 Slider 專屬外框改造】：卡片式發光滑桿 */
         div[data-testid="stSlider"] {
             background: rgba(7, 11, 20, 0.85) !important;
             border: 1px solid rgba(56, 189, 248, 0.3) !important;
@@ -302,7 +298,6 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 🚀 【精準結構選取器】：強制三欄模式切換器在所有手機與電腦上維持橫向並排、絕不堆疊 */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
             display: flex !important;
             flex-direction: row !important;
@@ -328,7 +323,6 @@ def render_user_home() -> None:
             overflow: hidden !important;
         }
 
-        /* 未選中按鈕樣式 */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
             background: transparent !important;
             border: 1.5px solid transparent !important;
@@ -352,7 +346,6 @@ def render_user_home() -> None:
             margin: 0 !important;
         }
 
-        /* 選中按鈕 (Primary 霓虹發光態樣) */
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
             background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
@@ -371,33 +364,6 @@ def render_user_home() -> None:
             text-overflow: ellipsis !important;
             margin: 0 !important;
             text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
-        }
-
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            gap: 6px !important;
-            box-sizing: border-box !important;
-        }
-
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
-            width: calc(50% - 3px) !important;
-            max-width: calc(50% - 3px) !important;
-            min-width: 0 !important;
-            flex: 0 0 calc(50% - 3px) !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;
-        }
-
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) *,
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) * {
-            min-width: 0 !important;
-            box-sizing: border-box !important;
         }
 
         .crew-card-integrated, .crew-card-integrated-warn {
@@ -601,9 +567,7 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 🚀 注入時間滑桿拖動放大特效
     comp.inject_slider_animation()
-
     active_files = get_current_role_files()
 
     # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
@@ -638,9 +602,7 @@ def render_user_home() -> None:
                     badge_title="Producer | C.L.F",
                 )
             st.success(f"【{emp_name} ({emp_id})】完整班表載入完成！")
-
             comp.render_zoomable_image(buf)
-
             st.download_button(
                 "點此下載班表影像檔",
                 data=buf,
@@ -650,7 +612,6 @@ def render_user_home() -> None:
             )
         except Exception as e:
             st.error(f"繪製組員班表時發生錯誤：{e}")
-
         st.stop()
 
     missing_files = [
@@ -659,11 +620,6 @@ def render_user_home() -> None:
         if not os.path.exists(active_files.get(role, ""))
         or os.path.getsize(active_files.get(role, "")) == 0
     ]
-
-    if missing_files:
-        st.error(
-            f"【{current_unit_label}】資料庫異常或尚無檔案：請洽管理員上傳！"
-        )
 
     td_time = get_file_mtime_str(active_files.get("駕駛", ""))
     tm_time = get_file_mtime_str(active_files.get("列車長", ""))
@@ -677,7 +633,6 @@ def render_user_home() -> None:
             <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
                 {sched_range if len(missing_files) < 3 else "資料庫異常"}
             </span>
-
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
@@ -695,77 +650,128 @@ def render_user_home() -> None:
     st.html(period_html)
 
     # =========================================================================
-    # 🚀 【新增功能】：下次出勤倒數計時模組 (具備智慧自動帶入與回退機制)
+    # 🚀 【新增功能】：抓取登入者的下次勤務簽到倒數與詳細資訊卡片（緊接排班週期下方）
     # =========================================================================
-    target_countdown_id = current_user_id or st.session_state.get("draw_input_key", "").strip()
-    if not target_countdown_id:
-        for r_name in ["服勤員", "列車長", "駕駛"]:
-            p = active_files.get(r_name, "")
-            if p and os.path.exists(p) and os.path.getsize(p) > 0:
-                try:
-                    df_tmp = safe_read_excel(p, header=3)
-                    if not df_tmp.empty and len(df_tmp.columns) > 0:
-                        first_id = str(df_tmp.iloc[0, 0]).strip()
-                        if first_id and first_id.upper() not in ["NAN", "NONE", ""]:
-                            target_countdown_id = first_id
-                            break
-                except Exception:
-                    pass
+    next_shift_info = None
+    if current_user_id:
+        current_date = date.today()
+        current_year = current_date.year
 
-    if target_countdown_id:
-        try:
-            _, u_dates, _, u_emp_name, u_cells = process_file_data(target_countdown_id)
-            now_dt = datetime.now()
-            next_shift_found = None
+        for r_name, p_path in active_files.items():
+            if not os.path.exists(p_path) or os.path.getsize(p_path) == 0:
+                continue
+            df_u = safe_read_excel(p_path, header=3)
+            df_u.columns = [str(c).strip() for c in df_u.columns]
 
-            for d_str, cell_val in zip(u_dates, u_cells):
-                parsed = parse_cell(cell_val)
-                s_time = parsed.get("start")
-                if s_time and s_time != "--:--":
-                    norm_d = normalize_date_str(d_str)
-                    if norm_d:
-                        parts = norm_d.split("/")
-                        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                            try:
-                                shift_dt = datetime(
-                                    now_dt.year,
-                                    int(parts[0]),
-                                    int(parts[1]),
-                                    int(s_time.split(":")[0]),
-                                    int(s_time.split(":")[1]),
-                                )
-                                if shift_dt > now_dt:
-                                    next_shift_found = {
-                                        "date": d_str,
-                                        "train": translate_train_code(parsed["train"]),
-                                        "start": s_time,
-                                        "datetime": shift_dt,
-                                    }
-                                    break
-                            except Exception:
-                                continue
+            for _, row in df_u.iterrows():
+                u_id = str(row.iloc[0]).strip()
+                if u_id == current_user_id:
+                    for col in df_u.columns[2:]:
+                        norm_d = normalize_date_str(col)
+                        if not norm_d:
+                            continue
+                        try:
+                            m, d = map(int, norm_d.split("/"))
+                            shift_date = date(current_year, m, d)
 
-            if next_shift_found:
-                delta = next_shift_found["datetime"] - now_dt
-                hours = int(delta.total_seconds() // 3600)
-                minutes = int((delta.total_seconds() % 3600) // 60)
-                countdown_html = f"""
-                <div style="background: linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1.5px solid #38BDF8; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);">
-                    <div>
-                        <div style="font-size: 10.5px; color: #38BDF8; font-family: monospace; font-weight: 800; letter-spacing: 0.5px;">NEXT DUTY COUNTDOWN // 下次出勤倒數 ({u_emp_name})</div>
-                        <div style="font-size: 13px; font-weight: 800; color: #F8FAFC; margin-top: 2px;">
-                            {next_shift_found['date']} ｜ 車次: <span style="color: #34D399;">{next_shift_found['train']}</span> ｜ Sign-In: <span style="color: #FBBF24;">{next_shift_found['start']}</span>
-                        </div>
-                    </div>
-                    <div style="text-align: right; font-family: monospace; font-size: 11.5px; color: #94A3B8;">
-                        距離報到還有
-                        <div style="font-size: 15px; font-weight: 900; color: #38BDF8; text-shadow: 0 0 10px rgba(56,189,248,0.5);">{hours} 小時 {minutes} 分</div>
+                            if shift_date >= current_date:
+                                col_idx = find_date_column_index(df_u.columns, col)
+                                if col_idx != -1 and col_idx < len(row):
+                                    cell_val = row.iloc[col_idx]
+                                    parsed = parse_cell(cell_val)
+                                    start_t = parsed.get("start")
+                                    is_off = is_cell_off_day(cell_val)
+
+                                    if start_t and not is_off:
+                                        train_code = translate_train_code(parsed.get("train", ""))
+                                        end_t = parsed.get("end", "--:--")
+                                        hours = parsed.get("hours", "")
+                                        sh, sm = map(int, start_t.split(":"))
+                                        shift_dt = datetime(current_year, m, d, sh, sm)
+
+                                        if shift_dt >= datetime.now() or shift_date > current_date:
+                                            next_shift_info = {
+                                                "date_str": col,
+                                                "date_obj": shift_date,
+                                                "train": train_code,
+                                                "start": start_t,
+                                                "end": end_t,
+                                                "hours": hours,
+                                                "shift_dt": shift_dt,
+                                            }
+                                            break
+                        except Exception:
+                            continue
+                if next_shift_info:
+                    break
+            if next_shift_info:
+                break
+
+    if next_shift_info:
+        now = datetime.now()
+        diff = next_shift_info["shift_dt"] - now
+        total_seconds = int(diff.total_seconds())
+        if total_seconds < 0:
+            total_seconds = 0
+
+        hours_left = total_seconds // 3600
+        minutes_left = (total_seconds % 3600) // 60
+        seconds_left = total_seconds % 60
+
+        d_obj = next_shift_info["date_obj"]
+        if d_obj == current_date:
+            day_label = f"{d_obj.day}日 (今天)"
+        elif d_obj == current_date + timedelta(days=1):
+            day_label = f"{d_obj.day}日 (明天)"
+        else:
+            day_label = f"{d_obj.day}日"
+
+        train_display = next_shift_info["train"]
+        start_display = next_shift_info["start"]
+        end_display = next_shift_info["end"]
+        hours_display = next_shift_info["hours"] if next_shift_info["hours"] else "--"
+
+        countdown_html = f"""
+        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important; border: 1.5px solid rgba(56, 189, 248, 0.5) !important; border-radius: 16px !important; padding: 14px 16px !important; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important; margin-bottom: 12px !important;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); padding: 3px 10px; border-radius: 20px;">
+                    <span style="width: 6px; height: 6px; background-color: #FBBF24; border-radius: 50%; display: inline-block;"></span>
+                    <span style="font-size: 11.5px; font-weight: 800; color: #FBBF24; font-family: monospace;">待勤中 · {train_display}</span>
+                </div>
+                <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace;">週期 {sched_range}</div>
+            </div>
+            
+            <div style="font-size: 11px; color: #94A3B8; font-weight: 600; margin-bottom: 2px;">距下次出勤簽到</div>
+            
+            <div style="display: flex; align-items: baseline; gap: 4px; font-family: monospace; margin-bottom: 10px;">
+                <span style="font-size: 24px; font-weight: 900; color: #F8FAFC;">{hours_left:02d}</span><span style="font-size: 11px; color: #94A3B8;">時</span>
+                <span style="font-size: 24px; font-weight: 900; color: #F8FAFC;">{minutes_left:02d}</span><span style="font-size: 11px; color: #94A3B8;">分</span>
+                <span style="font-size: 24px; font-weight: 900; color: #38BDF8;">{seconds_left:02d}</span><span style="font-size: 11px; color: #94A3B8;">秒</span>
+            </div>
+            
+            <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size: 11.5px; font-weight: 700; color: #94A3B8; font-family: monospace;">{day_label} &nbsp; <span style="color: #38BDF8;">{train_display}</span></div>
+                    <div style="font-size: 15px; font-weight: 900; color: #F8FAFC; font-family: monospace; margin-top: 2px;">
+                        {start_display} <span style="color: #64748B;">→</span> {end_display}
                     </div>
                 </div>
-                """
-                st.html(countdown_html)
-        except Exception:
-            pass
+                <div style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: #38BDF8; font-size: 11.5px; font-weight: 800; padding: 4px 10px; border-radius: 8px; font-family: monospace;">
+                    {hours_display}
+                </div>
+            </div>
+        </div>
+        """
+        st.html(countdown_html)
+    else:
+        st.markdown(
+            """
+            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 12px; text-align: center; margin-bottom: 12px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: #94A3B8;">目前查無近期待出勤班次記錄</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
