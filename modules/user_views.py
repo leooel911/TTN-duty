@@ -505,25 +505,25 @@ def render_user_home() -> None:
             font-weight: 800 !important;
         }
 
-        /* 雙排並排佈局 (支援自動換行，防止右側卡片切邊) */
+        /* 雙排並排佈局 (強制左右並排不換行，支援手機等窄螢幕) */
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
             flex-direction: row !important;
-            flex-wrap: wrap !important; 
+            flex-wrap: nowrap !important; 
             width: 100% !important;
             max-width: 100% !important;
-            gap: 4% !important;
+            gap: 3% !important;
             box-sizing: border-box !important;
             margin-bottom: 0px !important;
         }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
-            width: 48% !important;
-            max-width: 48% !important;
-            min-width: 260px !important;
-            flex: 1 1 48% !important;
+            width: 48.5% !important;
+            max-width: 48.5% !important;
+            min-width: 130px !important;
+            flex: 1 1 48.5% !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
             padding: 0 !important;
