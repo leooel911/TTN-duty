@@ -190,9 +190,6 @@ def render_user_home() -> None:
 
     auth = get_auth_session()
     current_user_id = auth.get("emp_id", "")
-    if not current_user_id:
-        current_user_id = st.session_state.get("target_emp_id", "") or st.session_state.get("draw_input_key", "")
-
     current_user_name = auth.get("emp_name", current_user_id)
     user_role = auth["role"]
     is_privileged = user_role in ["ADMIN", "VIP_USER"]
@@ -213,6 +210,34 @@ def render_user_home() -> None:
             padding-left: 0.4rem !important;
             padding-right: 0.4rem !important;
             padding-top: 0.6rem !important;
+        }
+
+        .section-header-box {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
+            border-left: 4px solid #38BDF8 !important;
+            border-top: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border-right: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border-bottom: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border-radius: 12px !important;
+            padding: 10px 14px !important;
+            margin-bottom: 12px !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+        }
+
+        .section-title {
+            font-size: 15px !important;
+            font-weight: 900 !important;
+            color: #38BDF8 !important;
+            font-family: monospace !important;
+            letter-spacing: 0.5px !important;
+        }
+
+        .section-subtitle {
+            font-size: 10px !important;
+            color: #94A3B8 !important;
+            font-family: monospace !important;
+            letter-spacing: 0.8px !important;
+            margin-top: 2px !important;
         }
 
         .section-field-label {
@@ -573,6 +598,17 @@ def render_user_home() -> None:
     comp.inject_slider_animation()
     active_files = get_current_role_files()
 
+    # ==================== 系統最上方標題區塊 ====================
+    st.markdown(
+        f"""
+        <div class="section-header-box">
+            <div class="section-title">[{current_unit_label}] TRAIN CREW DUTY ENGINE</div>
+            <div class="section-subtitle">乘務員出勤與排班管理系統 // 登入者：{current_user_name} ({current_user_id or "未登入"})</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
     inspect_emp_id = st.session_state.get("inspect_emp_target")
     if inspect_emp_id:
@@ -653,7 +689,7 @@ def render_user_home() -> None:
     st.html(period_html)
 
     # =========================================================================
-    # 🚀 【升級功能】：自動抓取登入者下次勤務倒數與詳細資訊卡片（支援快速綁定員編）
+    # 🚀 自動抓取登入者下次勤務倒數與詳細資訊卡片（純依賴登入 Session）
     # =========================================================================
     next_shift_info = None
     if current_user_id:
@@ -768,24 +804,14 @@ def render_user_home() -> None:
         """
         st.html(countdown_html)
     else:
-        # 如果尚未輸入員編或查無紀錄，提供一個小表單讓使用者快速綁定員編以啟用倒數
         st.markdown(
             """
-            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 14px 16px; margin-bottom: 12px;">
-                <div style="font-size: 13px; font-weight: 800; color: #38BDF8; margin-bottom: 6px;">💡 個人出勤倒數解鎖</div>
-                <div style="font-size: 11.5px; color: #94A3B8; margin-bottom: 10px;">請輸入您的員編（例如 A023300），即可自動計算並顯示您的下次勤務倒數：</div>
+            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 12px; text-align: center; margin-bottom: 12px;">
+                <div style="font-size: 12.5px; font-weight: 800; color: #94A3B8;">目前查無近期待出勤班次記錄</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-        col_q1, col_q2 = st.columns([3, 1])
-        with col_q1:
-            quick_emp = st.text_input("快速綁定員編", value=current_user_id, placeholder="請輸入員編...", key="quick_emp_input", label_visibility="collapsed")
-        with col_q2:
-            if st.button("綁定並顯示", key="btn_quick_bind", use_container_width=True):
-                if quick_emp:
-                    st.session_state["target_emp_id"] = quick_emp.strip()
-                    st.rerun()
 
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
@@ -890,7 +916,6 @@ def render_user_home() -> None:
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
             else:
                 try:
-                    st.session_state["target_emp_id"] = current_input
                     start_dt, dates, emp_id, emp_name, cells = process_file_data(
                         current_input
                     )
