@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 import modules.components as comp
 from config import LEAVE_CODES, NATIONAL_HOLIDAYS
@@ -250,143 +249,42 @@ def reset_ex_search() -> None:
 
 
 def render_rest_countdown_card(next_duty_time: datetime, duty_info_str: str):
-    """透過 streamlit 元件安全渲染具備前端 JavaScript 動態即時倒數的休息倒數計時器"""
-    y = next_duty_time.year
-    m = next_duty_time.month - 1
-    d = next_duty_time.day
-    h = next_duty_time.hour
-    mi = next_duty_time.minute
-    s = next_duty_time.second
+    """透過原生 Streamlit Markdown 渲染美觀的休息倒數計時卡片（免 iframe，確保排版穩定）"""
+    now = datetime.now()
+    diff = next_duty_time - now
+    total_seconds = int(diff.total_seconds())
 
-    card_uid = f"cd-{int(datetime.now().timestamp() * 1000)}"
+    if total_seconds <= 0:
+        hours = 0
+        mins = 0
+        status_text = "🔴 值勤中 / 已過出勤"
+        status_color = "#ef4444"
+    else:
+        hours = total_seconds // 3600
+        mins = (total_seconds % 3600) // 60
+        if hours >= 11:
+            status_text = "🟢 休息充足 (>11h)"
+            status_color = "#22c55e"
+        else:
+            status_text = "⚠️ 低於 11 小時法定門檻"
+            status_color = "#ef4444"
 
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta charset="utf-8">
-    <style>
-        body {{
-            margin: 0;
-            background-color: transparent;
-            font-family: monospace;
-        }}
-        .cd-card {{
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            border: 2px solid #38BDF8;
-            border-radius: 14px;
-            padding: 14px 18px;
-            color: #f8fafc;
-            box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
-            box-sizing: border-box;
-        }}
-        .cd-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }}
-        .cd-title {{
-            font-size: 11px;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }}
-        .cd-status {{
-            font-size: 11px;
-            font-weight: bold;
-            color: #22c55e;
-        }}
-        .cd-timer {{
-            font-size: 30px;
-            font-weight: 900;
-            letter-spacing: 2px;
-            color: #ffffff;
-            margin-bottom: 10px;
-            text-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
-            text-align: center;
-        }}
-        .cd-timer span.unit {{
-            font-size: 14px;
-            color: #64748b;
-            font-weight: normal;
-        }}
-        .cd-footer {{
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid #334155;
-            border-radius: 8px;
-            padding: 7px 10px;
-            font-size: 11.5px;
-            color: #cbd5e1;
-        }}
-    </style>
-    </head>
-    <body>
-    <div class="cd-card">
-        <div class="cd-header">
-            <span class="cd-title">距下次出勤還有</span>
-            <span id="status-tag-{card_uid}" class="cd-status">計算中...</span>
+    card_html = f"""
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 2px solid #38BDF8; border-radius: 14px; padding: 14px 18px; color: #f8fafc; box-shadow: 0 0 16px rgba(56, 189, 248, 0.2); box-sizing: border-box; margin-bottom: 12px; font-family: monospace;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">距下次出勤還有</span>
+            <span style="font-size: 11px; font-weight: bold; color: {status_color};">{status_text}</span>
         </div>
-        <div class="cd-timer">
-            <span id="hours-{card_uid}">00</span><span class="unit">時</span> 
-            <span id="mins-{card_uid}">00</span><span class="unit">分</span> 
-            <span id="secs-{card_uid}">00</span><span class="unit">秒</span>
+        <div style="font-size: 30px; font-weight: 900; letter-spacing: 2px; color: #ffffff; margin-bottom: 10px; text-shadow: 0 0 16px rgba(56, 189, 248, 0.4); text-align: center;">
+            {hours:02d}<span style="font-size: 14px; color: #64748b; font-weight: normal;">時</span> 
+            {mins:02d}<span style="font-size: 14px; color: #64748b; font-weight: normal;">分</span>
         </div>
-        <div class="cd-footer">
+        <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; border-radius: 8px; padding: 7px 10px; font-size: 11.5px; color: #cbd5e1;">
             📅 {duty_info_str}
         </div>
     </div>
-
-    <script>
-    (function() {{
-        const targetTime = new Date({y}, {m}, {d}, {h}, {mi}, {s}).getTime();
-        const hoursEl = document.getElementById('hours-{card_uid}');
-        const minsEl = document.getElementById('mins-{card_uid}');
-        const secsEl = document.getElementById('secs-{card_uid}');
-        const statusEl = document.getElementById('status-tag-{card_uid}');
-
-        function updateCountdown() {{
-            const now = new Date().getTime();
-            const distance = targetTime - now;
-
-            if (distance <= 0) {{
-                if (hoursEl) hoursEl.innerText = "00";
-                if (minsEl) minsEl.innerText = "00";
-                if (secsEl) secsEl.innerText = "00";
-                if (statusEl) {{
-                    statusEl.innerText = "🔴 值勤中 / 已過出勤";
-                    statusEl.style.color = "#ef4444";
-                }}
-                return;
-            }}
-
-            const hours = Math.floor(distance / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            if (hoursEl) hoursEl.innerText = String(hours).padStart(2, '0');
-            if (minsEl) minsEl.innerText = String(minutes).padStart(2, '0');
-            if (secsEl) secsEl.innerText = String(seconds).padStart(2, '0');
-
-            if (statusEl) {{
-                if (hours >= 11) {{
-                    statusEl.innerText = "🟢 休息充足 (>11h)";
-                    statusEl.style.color = "#22c55e";
-                }} else {{
-                    statusEl.innerText = "⚠️ 低於 11 小時法定門檻";
-                    statusEl.style.color = "#ef4444";
-                }}
-            }}
-        }}
-
-        updateCountdown();
-        setInterval(updateCountdown, 1000);
-    }})();
-    </script>
-    </body>
-    </html>
     """
-    components.html(html_content, height=135, scrolling=False)
+    st.markdown(card_html, unsafe_allow_html=True)
 
 
 # =============================================================================
@@ -506,7 +404,7 @@ def render_user_home() -> None:
         }
 
         /* -----------------------------------------------------------------
-           強制覆蓋 Streamlit 手機版預設的 column 堆疊，保持左右並排不換行
+           強制維持左右並排不換行 (手機與桌機一致)
            ----------------------------------------------------------------- */
         div[data-testid="stHorizontalBlock"] {
             display: flex !important;
@@ -746,7 +644,7 @@ def render_user_home() -> None:
     sched_range = get_schedule_range()
 
     # =========================================================================
-    # 🚀 頂部戰情儀表板 (視覺精緻化 + 置中對齊版)
+    # 🚀 頂部戰情儀表板
     # =========================================================================
     sys_cfg = load_system_config()
     enable_beta_banner = sys_cfg.get("enable_beta_notice", True)
@@ -798,7 +696,7 @@ def render_user_home() -> None:
     comp.inject_slider_animation()
 
     # =========================================================================
-    # 🚀 真實抓取該登入組員的下次出勤倒數計時器
+    # 🚀 休息倒數計時卡片 (原生 HTML 渲染，完美貼合排版)
     # =========================================================================
     real_next_dt, duty_info_text = get_real_next_duty(current_user_id, active_files)
     if real_next_dt:
