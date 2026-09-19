@@ -34,14 +34,14 @@ from modules.utils import (
 
 
 # =============================================================================
-# 1. 安全會話與身份授權輔助函式
+# 1. 安全會話與身份授權輔助函式 (含防呆狀態校正)
 # =============================================================================
 
 AUTH_SESSION_KEY = "CURRENT_AUTH_SESSION"
 
 
 def get_auth_session() -> dict:
-    """取得集中管理的登入 Session 狀態"""
+    """取得集中管理的登入 Session 狀態，並自動校正異常空值"""
     if AUTH_SESSION_KEY not in st.session_state:
         st.session_state[AUTH_SESSION_KEY] = {
             "authenticated": False,
@@ -50,6 +50,13 @@ def get_auth_session() -> dict:
             "role": "GUEST",
             "unit": "TTN",
         }
+    else:
+        # 🛡️ 防呆機制：若狀態為已登入但員編為空，強制重設為未登入以防畫面空轉
+        session = st.session_state[AUTH_SESSION_KEY]
+        if session.get("authenticated") and not str(session.get("emp_id", "")).strip():
+            session["authenticated"] = False
+            session["emp_id"] = ""
+            session["emp_name"] = ""
     return st.session_state[AUTH_SESSION_KEY]
 
 
@@ -500,7 +507,7 @@ def render_user_home() -> None:
         /* 🚀 【高質感 Slider 專屬外框改造】：卡片式發光滑桿 */
         div[data-testid="stSlider"] {
             background: rgba(7, 11, 20, 0.85) !important;
-            border: 1px solid rgba(56, 189, 248, 0.3) !important;
+            border: 1.5px solid rgba(56, 189, 248, 0.3) !important;
             border-radius: 12px !important;
             padding: 12px 14px 6px 14px !important;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3) !important;
@@ -863,6 +870,22 @@ def render_user_home() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+    # 🚀 頂端登入身分與登出快捷列
+    with st.container():
+        top_col1, top_col2 = st.columns([3, 1])
+        with top_col1:
+            st.markdown(f"👤 已登入組員：**{current_user_name}** (`{current_user_id}`) | 單位：`{current_unit_label}`", unsafe_allow_html=True)
+        with top_col2:
+            if st.button("切換帳號", use_container_width=True):
+                st.session_state[AUTH_SESSION_KEY] = {
+                    "authenticated": False,
+                    "emp_id": "",
+                    "emp_name": "",
+                    "role": "GUEST",
+                    "unit": "TTN",
+                }
+                st.rerun()
 
     # 🚀 注入時間滑桿拖動放大特效
     comp.inject_slider_animation()
