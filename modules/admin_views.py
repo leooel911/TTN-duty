@@ -762,7 +762,7 @@ def render_admin_panel() -> None:
                 </div>
                 <div class="admin-stat-card" style="flex: 1; border-color: rgba(251, 191, 36, 0.4);">
                     <div class="stat-val" style="color: #FBBF24;">{cnt_vip} <span style="font-size: 12px;">位</span></div>
-                    <div class="stat-lbl">VIP / 測試員 (TESTER)</div>
+                    <div class="stat-lbl">VIP / USER (TESTER)</div>
                 </div>
             </div>
             """,
