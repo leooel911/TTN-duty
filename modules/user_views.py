@@ -629,16 +629,19 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 測試環境公告欄
-    st.markdown(
-        """
-        <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 12px; padding: 12px; margin-bottom: 12px; text-align: center; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.2);">
-            <div style="font-size: 13px; font-weight: 900; color: #FDE68A; font-family: monospace; letter-spacing: 1px;">SYSTEM MAINTENANCE NOTICE // BETA ENVIRONMENT</div>
-            <div style="font-size: 11px; color: #FCD34D; margin-top: 4px;">目前為內部測試階段｜本頁末端可聯繫管理員</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # 測試環境公告欄（改為動態讀取後台設定）
+sys_config = load_system_config()
+announcement_text = sys_config.get("announcement", "目前為內部測試階段｜本頁面末端可聯繫管理者")
+
+st.markdown(
+    f"""
+    <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 12px; padding: 12px; margin-bottom: 12px; text-align: center;">
+        <div style="font-size: 13px; font-weight: 900; color: #FDE68A; font-family: monospace;">SYSTEM MAINTENANCE NOTICE // BETA ENVIRONMENT</div>
+        <div style="font-size: 11px; color: #FCD34D; margin-top: 4px;">{announcement_text}</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
     # 注入時間滑桿拖動放大特效
     comp.inject_slider_animation()
