@@ -634,7 +634,7 @@ def render_user_home() -> None:
         """
         <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 12px; padding: 12px; margin-bottom: 12px; text-align: center; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.2);">
             <div style="font-size: 13px; font-weight: 900; color: #FDE68A; font-family: monospace; letter-spacing: 1px;">SYSTEM MAINTENANCE NOTICE // BETA ENVIRONMENT</div>
-            <div style="font-size: 11px; color: #FCD34D; margin-top: 4px;">目前為內部測試階段｜本頁面未滿可聯繫管理員</div>
+            <div style="font-size: 11px; color: #FCD34D; margin-top: 4px;">目前為內部測試階段｜本頁末端可聯繫管理員</div>
         </div>
         """,
         unsafe_allow_html=True,
