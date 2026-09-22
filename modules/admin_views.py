@@ -1,3 +1,4 @@
+import base64
 import io
 import json
 import os
@@ -231,31 +232,111 @@ def create_backup_zip() -> io.BytesIO:
 
 @st.cache_data(ttl=60)
 def get_all_crew_options(unit_code: str) -> List[Dict[str, str]]:
-    """動態解析指定單位的各大表建立選單"""
-    unit_files = UNITS.get(unit_code, UNITS.get("TTN", {}))
+    """動態解析指定單位的各大表與後台白名單，進行聯集雙向整合"""
+    unit_files = UNITS.get(unit_code, {})
+    if not unit_files:
+        unit_files = {
+            "駕駛": os.path.join(DATA_DIR, f"{unit_code.lower()}_driver.xlsx"),
+            "列車長": os.path.join(DATA_DIR, f"{unit_code.lower()}_conductor.xlsx"),
+            "服勤員": os.path.join(DATA_DIR, f"{unit_code.lower()}_attendant.xlsx"),
+        }
+
     crew_options: List[Dict[str, str]] = []
     seen_uids = set()
 
-    for role_name in ["駕駛", "列車長", "服勤員"]:
-        file_path = unit_files.get(role_name, "")
+    # 1. 讀取 Excel 班表大表資料
+    for role_name, file_path in unit_files.items():
         if isinstance(file_path, str) and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             try:
                 df = safe_read_excel(file_path, header=3)
-                for _, row in df.iterrows():
-                    uid = str(row.iloc[0]).strip().upper()
-                    uname = str(row.iloc[1]).strip()
-                    if uid and uid not in ["NAN", "NONE", "", "員編", "代碼"]:
-                        if uid not in seen_uids:
-                            seen_uids.add(uid)
-                            label = f"{uid} - {uname} ({role_name})"
-                            crew_options.append({
-                                "label": label,
-                                "uid": uid,
-                                "name": uname,
-                            })
+                if df is not None and not df.empty:
+                    for _, row in df.iterrows():
+                        if len(row) >= 2:
+                            uid = str(row.iloc[0]).strip().upper()
+                            uname = str(row.iloc[1]).strip()
+                            invalid_vals = {"NAN", "NONE", "", "員編", "代碼", "員工編號", "姓名", "員工姓名"}
+                            if uid and uid not in invalid_vals and uname and uname not in invalid_vals:
+                                if uid not in seen_uids:
+                                    seen_uids.add(uid)
+                                    crew_options.append({
+                                        "label": f"{uid} - {uname} ({role_name})",
+                                        "uid": uid,
+                                        "name": uname,
+                                        "source": "excel",
+                                        "role": role_name
+                                    })
             except Exception:
                 pass
+
+    # 2. 讀取後台白名單 JSON 資料進行補充與聯集
+    whitelist_data = robust_load_whitelist(unit_code)
+    for uid, info in whitelist_data.items():
+        uid_upper = str(uid).strip().upper()
+        if uid_upper in ["NAN", "NONE", ""]:
+            continue
+        
+        if isinstance(info, dict):
+            uname = info.get("name", info.get("姓名", "未設定"))
+            role = info.get("role", info.get("身份", "VIP_USER"))
+        else:
+            uname = str(info)
+            role = "VIP_USER"
+
+        if uid_upper not in seen_uids:
+            # 若該員編不在 Excel 中，但存在於白名單，獨立新增
+            seen_uids.add(uid_upper)
+            crew_options.append({
+                "label": f"{uid_upper} - {uname} (白名單/{role})",
+                "uid": uid_upper,
+                "name": uname,
+                "source": "whitelist",
+                "role": role
+            })
+        else:
+            # 若兩邊同時存在，更新標籤以突顯其權限身分
+            for item in crew_options:
+                if item["uid"] == uid_upper:
+                    if role in ["ADMIN", "VIP_USER", "TESTER"]:
+                        item["label"] = f"{item['uid']} - {item['name']} ({item['role']} / {role})"
+                    break
+
     return crew_options
+
+
+def check_employee_exists_or_valid(unit_code: str, uid: str) -> bool:
+    """【新增】雙向驗證組員是否存在於後台白名單 JSON 或 Excel 班表大表中"""
+    target_uid = str(uid).strip().upper()
+    if not target_uid or target_uid in ["NAN", "NONE"]:
+        return False
+        
+    # 1. 優先檢查後台白名單 JSON
+    whitelist_data = robust_load_whitelist(unit_code)
+    if target_uid in whitelist_data:
+        return True
+        
+    # 2. 若白名單沒有，再檢查 Excel 班表大表
+    unit_files = UNITS.get(unit_code, {})
+    if not unit_files:
+        unit_files = {
+            "駕駛": os.path.join(DATA_DIR, f"{unit_code.lower()}_driver.xlsx"),
+            "列車長": os.path.join(DATA_DIR, f"{unit_code.lower()}_conductor.xlsx"),
+            "服勤員": os.path.join(DATA_DIR, f"{unit_code.lower()}_attendant.xlsx"),
+        }
+        
+    for role_name, file_path in unit_files.items():
+        if isinstance(file_path, str) and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+            try:
+                df = safe_read_excel(file_path, header=3)
+                if df is not None and not df.empty:
+                    for _, row in df.iterrows():
+                        if len(row) >= 2:
+                            excel_uid = str(row.iloc[0]).strip().upper()
+                            if excel_uid == target_uid:
+                                return True
+            except Exception:
+                pass
+                
+    return False
 
 
 def load_all_feedback_tickets() -> List[Dict[str, Any]]:
@@ -681,7 +762,7 @@ def render_admin_panel() -> None:
                 </div>
                 <div class="admin-stat-card" style="flex: 1; border-color: rgba(251, 191, 36, 0.4);">
                     <div class="stat-val" style="color: #FBBF24;">{cnt_vip} <span style="font-size: 12px;">位</span></div>
-                    <div class="stat-lbl">VIP / 測試員 (TESTER)</div>
+                    <div class="stat-lbl">VIP / USER (TESTER)</div>
                 </div>
             </div>
             """,
@@ -774,7 +855,7 @@ def render_admin_panel() -> None:
                         st.rerun()
 
             crew_options = get_all_crew_options(current_unit)
-            options_dict: Dict[str, Dict[str, str]] = {"-- 或點此快選大表組員帶入 --": {"uid": "", "name": ""}}
+            options_dict: Dict[str, Dict[str, str]] = {"-- 或點此快選大表組員/白名單帶入 --": {"uid": "", "name": ""}}
             for item in crew_options:
                 options_dict[item["label"]] = {"uid": item["uid"], "name": item["name"]}
 

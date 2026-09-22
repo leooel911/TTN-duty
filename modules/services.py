@@ -132,31 +132,42 @@ def save_system_config(cfg: Dict[str, Any]) -> None:
 
 
 def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
+    """【已修正】優先讀取獨立的單位白名單檔案 (whitelist_ttn.json)，並相容舊版共用檔"""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    unit_path = os.path.join(DATA_DIR, f"whitelist_{unit_code.lower()}.json")
+    if os.path.exists(unit_path):
+        try:
+            with open(unit_path, "r", encoding="utf-8") as f:
+                content = json.load(f)
+                if isinstance(content, dict):
+                    return content
+        except Exception:
+            pass
+
+    # 相容舊版共用白名單檔
     wl_path = os.path.join(DATA_DIR, WHITELIST_FILE)
     if os.path.exists(wl_path):
         try:
             with open(wl_path, "r", encoding="utf-8") as f:
                 all_wl = json.load(f)
-                return all_wl.get(unit_code, {})
+                if isinstance(all_wl, dict):
+                    if unit_code in all_wl:
+                        return all_wl.get(unit_code, {})
+                    return all_wl
         except Exception:
             pass
     return {}
 
 
 def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
+    """【已修正】直接儲存至該單位的獨立白名單檔案中"""
     os.makedirs(DATA_DIR, exist_ok=True)
-    wl_path = os.path.join(DATA_DIR, WHITELIST_FILE)
-    all_wl = {}
-    if os.path.exists(wl_path):
-        try:
-            with open(wl_path, "r", encoding="utf-8") as f:
-                all_wl = json.load(f)
-        except Exception:
-            all_wl = {}
-    
-    all_wl[unit_code] = unit_data
-    with open(wl_path, "w", encoding="utf-8") as f:
-        json.dump(all_wl, f, ensure_ascii=False, indent=2)
+    unit_path = os.path.join(DATA_DIR, f"whitelist_{unit_code.lower()}.json")
+    try:
+        with open(unit_path, "w", encoding="utf-8") as f:
+            json.dump(unit_data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"儲存白名單失敗: {e}")
     
     auto_git_push_data(f"Auto-update whitelist for {unit_code}")
 
@@ -283,7 +294,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     if not clean_id or clean_id == "A":
         return False, "一般組員請輸入正確員編（例如:A023300）！", {"reason": "INVALID_EMP_ID"}
 
-    # 💡 檢查 Excel 班表大表（預設全面開放：只要大表裡面有的員工，就是合法授權使用者！）
+    # 💡 檢查 Excel 班表大表與白名單雙重機制
     exists_in_excel, excel_name = check_excel_employee_exists(unit_code, clean_id)
     if not exists_in_excel and clean_id not in whitelist:
         return False, f"員編【{clean_id}】未在【{unit_code}】班表大表中找到，請核對所屬單位！", {"reason": "NOT_IN_EXCEL"}
