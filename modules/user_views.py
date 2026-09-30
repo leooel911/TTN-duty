@@ -314,36 +314,33 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    role_label_str = clean_role_label(user_role)
+    # 1. 極簡專業頂部標題 (無外框)
     st.markdown(
-        f"""
-        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 14px; text-align: center; margin-bottom: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);">
-            <div style="font-size: 18px; font-weight: 900; color: #F8FAFC; letter-spacing: 1.5px; font-family: monospace;">CREW DUTY ENGINE</div>
-            <div style="font-size: 10px; color: #38BDF8; font-family: monospace; letter-spacing: 0.8px; margin-top: 2px;">BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div>
-            <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
-                STATUS: ACTIVE | {current_unit_label} : {user_display_full}
-            </div>
+        """
+        <div style="text-align: center; margin-bottom: 8px; font-family: monospace;">
+            <div style="font-size: 16px; font-weight: 900; color: #F8FAFC; letter-spacing: 1.5px;">CREW DUTY ENGINE</div>
+            <div style="font-size: 9px; color: #38BDF8; letter-spacing: 0.8px; margin-top: 2px;">OPERATIONS MANAGEMENT SYSTEM // C.L.F EDITION</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    sys_config = load_system_config()
-    announcement_text = sys_config.get("announcement", "目前為內部測試階段｜本頁面末端可聯繫管理者")
-
-    st.markdown(
-        f"""
-        <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 12px; padding: 12px; margin-bottom: 12px; text-align: center;">
-            <div style="font-size: 13px; font-weight: 900; color: #FDE68A; font-family: monospace;">SYSTEM MAINTENANCE NOTICE // BETA ENVIRONMENT</div>
-            <div style="font-size: 11px; color: #FCD34D; margin-top: 4px;">{announcement_text}</div>
+    # 2. 全域三合一狀態列 (Flat Bar - 扁平化無巢狀設計)
+    sched_range = get_schedule_range()
+    status_bar_html = f"""
+    <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-family: monospace;">
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="color: #38BDF8; font-size: 11px; font-weight: 800; letter-spacing: 0.5px;">UNIT // {current_unit_label}</span>
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
+        <div style="text-align: right;">
+            <span style="font-size: 9px; color: #64748B; letter-spacing: 0.8px;">CYCLE: </span>
+            <span style="font-size: 11px; font-weight: 900; color: #F8FAFC; letter-spacing: 0.5px;">{sched_range}</span>
+        </div>
+    </div>
+    """
+    st.markdown(status_bar_html, unsafe_allow_html=True)
 
-    comp.inject_slider_animation()
-
-    # ==================== 月份選擇與切換列 (支援分月檔名與自動解析) ====================
+    # 3. 月份選擇下拉選單 (直接置於主流程，不加多餘容器)
     available_months = get_available_months()
     if "current_query_month" not in st.session_state:
         st.session_state["current_query_month"] = available_months[0]
@@ -356,7 +353,7 @@ def render_user_home() -> None:
         available_months,
         index=available_months.index(st.session_state["current_query_month"]),
         key="month_selector_box",
-        format_func=lambda x: f"{x.replace('-', '年')}月份班表",
+        format_func=lambda x: f"QUERY MONTH // {x}",
     )
 
     if st.session_state["current_query_month"] != selected_month:
@@ -430,30 +427,6 @@ def render_user_home() -> None:
     td_time = get_file_mtime_str(active_files.get("駕駛", ""))
     tm_time = get_file_mtime_str(active_files.get("列車長", ""))
     ta_time = get_file_mtime_str(active_files.get("服勤員", ""))
-    sched_range = get_schedule_range()
-
-    period_html = f"""
-    <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 !important;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="section-title" style="font-size: 13px !important;">[{current_unit_label}] 排班週期 ({selected_month})</span>
-            <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
-                {sched_range if len(missing_files) < 3 else "資料庫異常"}
-            </span>
-        </div>
-        <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
-            <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
-                <span>點擊檢視各大表更新時間</span>
-                <span style="font-size: 9px; color: #64748B;">▼</span>
-            </summary>
-            <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1);">
-                <div style="display: flex; justify-content: space-between;"><span>駕駛 (TD)</span><span>{td_time}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>列車長 (TM)</span><span>{tm_time}</span></div>
-                <div style="display: flex; justify-content: space-between;"><span>服勤員 (TA)</span><span>{ta_time}</span></div>
-            </div>
-        </details>
-    </div>
-    """
-    st.html(period_html)
 
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
