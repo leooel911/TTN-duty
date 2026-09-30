@@ -761,7 +761,7 @@ def render_user_home() -> None:
 
     comp.inject_slider_animation()
 
-    # 精準還原截圖設計：獨立「選擇查詢月份」選單區塊
+    # 選擇查詢月份選單區塊
     st.markdown('<div class="section-field-label">選擇查詢月份</div>', unsafe_allow_html=True)
 
     initial_files = get_current_role_files()
@@ -796,11 +796,20 @@ def render_user_home() -> None:
     except TypeError:
         active_files = get_current_role_files()
 
-    # 月份權限與開放狀態防護檢查
+    # 月份權限與開放狀態防護檢查 (精準拆解字典型態)
     monthly_controls = sys_config.get("monthly_controls", {})
-    is_month_enabled = monthly_controls.get(selected_global_month, True)
+    m_info = monthly_controls.get(selected_global_month, {})
+
+    if isinstance(m_info, dict):
+        is_month_enabled = m_info.get("enabled", True)
+        month_note = m_info.get("note", "").strip()
+    else:
+        is_month_enabled = bool(m_info)
+        month_note = ""
 
     if not is_month_enabled:
+        note_html = f"<div style='font-size: 12.5px; color: #FDE68A; margin-top: 6px; font-weight: 700;'>說明：{month_note}</div>" if month_note else ""
+
         if not is_admin_user:
             st.markdown(
                 f"""
@@ -812,6 +821,7 @@ def render_user_home() -> None:
                     <div style="font-size: 12px; color: #CBD5E1;">
                         管理員尚未開放【{selected_global_month}】之班表查詢與快篩功能，請選擇其他月份或稍後再試。
                     </div>
+                    {note_html}
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -821,7 +831,7 @@ def render_user_home() -> None:
             st.markdown(
                 f"""
                 <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                    <strong>【管理員維護預覽】</strong> 當前選取月份【{selected_global_month}】尚未對一般組員開放（一般組員已被阻擋），您正以管理員身分預覽測試。
+                    <strong>【管理員維護預覽】</strong> 當前選取月份【{selected_global_month}】尚未對一般組員開放（一般組員已被阻擋），您正以管理員身分預覽測試。{f"（備註: {month_note}）" if month_note else ""}
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -909,7 +919,6 @@ def render_user_home() -> None:
     except TypeError:
         sched_range = get_schedule_range()
 
-    # 精準還原截圖設計：資訊卡片（單位 // 最新發布班表區間 + 時間 + 下拉展開）
     period_html = f"""
     <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 12px 0 !important;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -938,7 +947,6 @@ def render_user_home() -> None:
     if "active_app_mode" not in st.session_state:
         st.session_state["active_app_mode"] = "個人月班表"
 
-    # ==================== 航太級 Command HUD 互動切換列 ====================
     col_hud1, col_hud2, col_hud3 = st.columns(3)
 
     with col_hud1:
