@@ -4,6 +4,7 @@ import re
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Tuple
 import subprocess
+import glob
 
 import pandas as pd
 import streamlit as st
@@ -27,9 +28,101 @@ def auto_git_push_data(commit_msg="Auto update data via admin panel"):
         print(f"Git auto-sync error: {e}")
 
 
-def get_current_role_files() -> Dict[str, str]:
+def get_available_months() -> List[str]:
+    """自動掃描 data/ 資料夾與 Excel 內部日期欄位，抓取所有可用的月份（格式: YYYY-MM）"""
     current_unit = st.session_state.get("current_unit", "TTN")
-    return UNITS.get(current_unit, UNITS.get("TTN", {}))
+    unit_files = UNITS.get(current_unit, UNITS.get("TTN", {}))
+    
+    months = set()
+    current_year = date.today().year
+    
+    # 1. 嘗試從檔名中解析月份代碼（支援 TTNTD09、TTN_202609 等格式）
+    all_files = glob.glob(os.path.join(DATA_DIR, f"{current_unit}*.xlsx"))
+    for f in all_files:
+        filename = os.path.basename(f)
+        match_6 = re.search(r"_(\d{6})_", filename)
+        if match_6:
+            ym = match_6.group(1)
+            months.add(f"{ym[:4]}-{ym[4:]}")
+            continue
+        match_2 = re.search(r"(\d{2})\.xlsx$", filename)
+        if match_2:
+            m_str = match_2.group(1)
+            if m_str.isdigit() and 1 <= int(m_str) <= 12:
+                months.add(f"{current_year}-{m_str}")
+                
+    # 2. 直接從 Excel 檔案內部日期欄位掃描（確保就算檔名沒寫月份，也能自動抓到內部資料的月份）
+    for role_name, default_path in unit_files.items():
+        pattern = os.path.join(DATA_DIR, f"{current_unit}*{role_name}*.xlsx")
+        matched_files = glob.glob(pattern)
+        if not matched_files and os.path.exists(default_path):
+            matched_files = [default_path]
+            
+        for f_path in matched_files:
+            if f_path and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
+                try:
+                    df = safe_read_excel(f_path, header=3)
+                    df.columns = [str(c).strip() for c in df.columns]
+                    for col in df.columns[2:]:
+                        norm_d = normalize_date_str(col)
+                        if norm_d and "/" in norm_d:
+                            parts = norm_d.split("/")
+                            if parts[0].isdigit():
+                                m = int(parts[0])
+                                months.add(f"{current_year}-{m:02d}")
+                except Exception:
+                    continue
+                    
+    sorted_months = sorted(list(months), reverse=True)
+    if not sorted_months:
+        current_ym = date.today().strftime("%Y-%m")
+        return [current_ym]
+    return sorted_months
+
+
+def get_current_role_files(target_month: Optional[str] = None) -> Dict[str, str]:
+    """根據當前單位與指定的月份，動態對應並回傳對應的職位班表檔案路徑"""
+    current_unit = st.session_state.get("current_unit", "TTN")
+    
+    if not target_month:
+        target_month = st.session_state.get("current_query_month")
+        if not target_month:
+            available = get_available_months()
+            target_month = available[0] if available else date.today().strftime("%Y-%m")
+            
+    clean_month = target_month.replace("-", "")
+    short_month = clean_month[-2:]
+    
+    default_files = UNITS.get(current_unit, UNITS.get("TTN", {}))
+    
+    result = {}
+    role_keywords = {"駕駛": ["TD", "駕駛"], "列車長": ["TM", "列車長"], "服勤員": ["TA", "服勤員"]}
+    
+    for role, default_path in default_files.items():
+        selected_path = ""
+        keywords = role_keywords.get(role, [role])
+        
+        for kw in keywords:
+            possible_patterns = [
+                os.path.join(DATA_DIR, f"{current_unit}{kw}{short_month}.xlsx"),
+                os.path.join(DATA_DIR, f"{current_unit}_{kw}_{short_month}.xlsx"),
+                os.path.join(DATA_DIR, f"{current_unit}_{clean_month}_{role}.xlsx"),
+                os.path.join(DATA_DIR, f"{current_unit}_{role}.xlsx"),
+            ]
+            for p in possible_patterns:
+                if os.path.exists(p) and os.path.getsize(p) > 0:
+                    selected_path = p
+                    break
+            if selected_path:
+                break
+                
+        if not selected_path:
+            if os.path.exists(default_path) and os.path.getsize(default_path) > 0:
+                selected_path = default_path
+                
+        result[role] = selected_path
+        
+    return result
 
 
 def get_schedule_range() -> str:
@@ -78,7 +171,7 @@ def process_file_data(emp_input: str) -> Tuple[datetime, List[str], str, str, Li
             break
 
     if target_row is None:
-        raise ValueError(f"在當前大表中找不到符合關鍵字【{emp_input}】的組員資料！")
+        raise ValueError(f"在當前選定月份的大表中找不到符合關鍵字【{emp_input}】的組員資料！")
 
     emp_id = str(target_row.iloc[0]).strip().upper()
     emp_name = str(target_row.iloc[1]).strip()
@@ -132,7 +225,7 @@ def save_system_config(cfg: Dict[str, Any]) -> None:
 
 
 def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
-    """【已修正】優先讀取獨立的單位白名單檔案 (whitelist_ttn.json)，並相容舊版共用檔"""
+    """優先讀取獨立的單位白名單檔案 (whitelist_ttn.json)，並相容舊版共用檔"""
     os.makedirs(DATA_DIR, exist_ok=True)
     unit_path = os.path.join(DATA_DIR, f"whitelist_{unit_code.lower()}.json")
     if os.path.exists(unit_path):
@@ -144,7 +237,6 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 相容舊版共用白名單檔
     wl_path = os.path.join(DATA_DIR, WHITELIST_FILE)
     if os.path.exists(wl_path):
         try:
@@ -160,7 +252,7 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
 
 
 def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
-    """【已修正】直接儲存至該單位的獨立白名單檔案中"""
+    """直接儲存至該單位的獨立白名單檔案中"""
     os.makedirs(DATA_DIR, exist_ok=True)
     unit_path = os.path.join(DATA_DIR, f"whitelist_{unit_code.lower()}.json")
     try:
@@ -177,7 +269,7 @@ def check_excel_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]
     if clean_id.isdigit() and len(clean_id) == 6:
         clean_id = f"A{clean_id}"
 
-    unit_files = UNITS.get(unit_code, {})
+    unit_files = get_current_role_files()
     for role_name in ["駕駛", "列車長", "服勤員"]:
         f_path = unit_files.get(role_name, "")
         if f_path and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
@@ -205,7 +297,6 @@ def verify_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]:
     strict_mode = sys_config.get("enable_strict_test_mode", False)
     allowed_list = sys_config.get("strict_allowed_employees", [])
 
-    # 如果開啟嚴格管制模式：非特許清單內的人直接判定不存在
     if strict_mode:
         if clean_id not in allowed_list and clean_id != "ADMIN":
             return False, ""
@@ -236,7 +327,6 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     default_vip_pwd = sys_config.get("vip_password", "0")
     user_pwd = sys_config.get("user_password", "09000")
 
-    # 取得後台設定的嚴格管制模式狀態與特許名單
     strict_mode = sys_config.get("enable_strict_test_mode", False)
     allowed_list = sys_config.get("strict_allowed_employees", [])
 
@@ -253,7 +343,6 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     elif isinstance(wl_info, str):
         wl_name = wl_info.strip()
 
-    # 管理員驗證
     if passcode == admin_pwd or wl_role == "ADMIN":
         if passcode != admin_pwd:
             return False, "管理員密碼錯誤！", {"reason": "WRONG_ADMIN_PASSWORD"}
@@ -265,7 +354,6 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
             "unit": unit_code,
         }
 
-    # 🔒 如果開啟了「測試嚴格管制模式」，檢查是否在特許名單內
     if strict_mode:
         if clean_id not in allowed_list and clean_id != "ADMIN":
             return False, "目前系統處於測試管制期間，您的員編尚未開放測試權限！", {"reason": "STRICT_MODE_BLOCKED"}
@@ -294,10 +382,9 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     if not clean_id or clean_id == "A":
         return False, "一般組員請輸入正確員編（例如:A023300）！", {"reason": "INVALID_EMP_ID"}
 
-    # 💡 檢查 Excel 班表大表與白名單雙重機制
     exists_in_excel, excel_name = check_excel_employee_exists(unit_code, clean_id)
     if not exists_in_excel and clean_id not in whitelist:
-        return False, f"員編【{clean_id}】未在【{unit_code}】班表大表中找到，請核對所屬單位！", {"reason": "NOT_IN_EXCEL"}
+        return False, f"員編【{clean_id}】未在【{unit_code}】目前選定月份的班表大表中找到，請核對所屬單位或切換查詢月份！", {"reason": "NOT_IN_EXCEL"}
 
     if passcode != user_pwd and passcode != "09000":
         return False, "授權碼無效！請再次確認:", {"reason": "WRONG_PASSCODE"}
