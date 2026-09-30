@@ -51,27 +51,30 @@ def get_available_months() -> List[str]:
             if m_str.isdigit() and 1 <= int(m_str) <= 12:
                 months.add(f"{current_year}-{m_str}")
                 
-    # 2. 直接從 Excel 檔案內部日期欄位掃描（確保就算檔名沒寫月份，也能自動抓到內部資料的月份）
-    for role_name, default_path in unit_files.items():
-        pattern = os.path.join(DATA_DIR, f"{current_unit}*{role_name}*.xlsx")
-        matched_files = glob.glob(pattern)
-        if not matched_files and os.path.exists(default_path):
-            matched_files = [default_path]
+    # 2. 直接從 Excel 檔案內部日期欄位掃描（增加型態防護，避免傳入 dict）
+    if isinstance(unit_files, dict):
+        for role_name, default_path in unit_files.items():
+            pattern = os.path.join(DATA_DIR, f"{current_unit}*{role_name}*.xlsx")
+            matched_files = glob.glob(pattern)
             
-        for f_path in matched_files:
-            if f_path and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
-                try:
-                    df = safe_read_excel(f_path, header=3)
-                    df.columns = [str(c).strip() for c in df.columns]
-                    for col in df.columns[2:]:
-                        norm_d = normalize_date_str(col)
-                        if norm_d and "/" in norm_d:
-                            parts = norm_d.split("/")
-                            if parts[0].isdigit():
-                                m = int(parts[0])
-                                months.add(f"{current_year}-{m:02d}")
-                except Exception:
-                    continue
+            # 確保 default_path 是字串才進行檢測
+            if not matched_files and isinstance(default_path, str) and default_path and os.path.exists(default_path):
+                matched_files = [default_path]
+                
+            for f_path in matched_files:
+                if f_path and isinstance(f_path, str) and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
+                    try:
+                        df = safe_read_excel(f_path, header=3)
+                        df.columns = [str(c).strip() for c in df.columns]
+                        for col in df.columns[2:]:
+                            norm_d = normalize_date_str(col)
+                            if norm_d and "/" in norm_d:
+                                parts = norm_d.split("/")
+                                if parts[0].isdigit():
+                                    m = int(parts[0])
+                                    months.add(f"{current_year}-{m:02d}")
+                    except Exception:
+                        continue
                     
     sorted_months = sorted(list(months), reverse=True)
     if not sorted_months:
@@ -117,7 +120,7 @@ def get_current_role_files(target_month: Optional[str] = None) -> Dict[str, str]
                 break
                 
         if not selected_path:
-            if os.path.exists(default_path) and os.path.getsize(default_path) > 0:
+            if isinstance(default_path, str) and os.path.exists(default_path) and os.path.getsize(default_path) > 0:
                 selected_path = default_path
                 
         result[role] = selected_path
@@ -129,7 +132,7 @@ def get_schedule_range() -> str:
     unit_files = get_current_role_files()
     for role_name in ["駕駛", "列車長", "服勤員"]:
         f_path = unit_files.get(role_name, "")
-        if f_path and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
+        if f_path and isinstance(f_path, str) and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
             try:
                 df = safe_read_excel(f_path, header=3)
                 df.columns = [str(c).strip() for c in df.columns]
@@ -154,7 +157,7 @@ def process_file_data(emp_input: str) -> Tuple[datetime, List[str], str, str, Li
     
     for role_name in ["駕駛", "列車長", "服勤員"]:
         f_path = unit_files.get(role_name, "")
-        if f_path and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
+        if f_path and isinstance(f_path, str) and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
             try:
                 df = safe_read_excel(f_path, header=3)
                 df.columns = [str(c).strip() for c in df.columns]
@@ -272,7 +275,7 @@ def check_excel_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]
     unit_files = get_current_role_files()
     for role_name in ["駕駛", "列車長", "服勤員"]:
         f_path = unit_files.get(role_name, "")
-        if f_path and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
+        if f_path and isinstance(f_path, str) and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
             try:
                 df = safe_read_excel(f_path, header=3)
                 for _, row in df.iterrows():
