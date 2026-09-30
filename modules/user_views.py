@@ -100,15 +100,42 @@ def parse_date_obj(d_str: str, default_year: int) -> Optional[date]:
     return None
 
 
-def load_role_merged_dataframe(role_name: str, active_files: Dict[str, Any]) -> Tuple[pd.DataFrame, List[str]]:
+def get_available_months_list(active_files: Dict[str, Any]) -> List[str]:
+    """動態分析系統中已存在的班表檔案月份/排班週期清單"""
+    months = []
+    for r_name, path_val in active_files.items():
+        file_paths = []
+        if isinstance(path_val, list):
+            file_paths = path_val
+        elif isinstance(path_val, str) and path_val:
+            file_paths = [p.strip() for p in re.split(r"[;,]", path_val) if p.strip()]
+
+        for p in file_paths:
+            if os.path.exists(p) and os.path.getsize(p) > 0:
+                # 嘗試從檔名或欄位讀取月份標籤
+                m_match = re.search(r"(\d{1,2}月|\d{4}-\d{2}|\d{2}月)", p)
+                if m_match:
+                    m_label = m_match.group(1)
+                    if m_label not in months:
+                        months.append(m_label)
+
+    if not months:
+        default_range = get_schedule_range()
+        months = [default_range] if default_range else ["當前月份週期"]
+    return months
+
+
+def load_role_merged_dataframe(
+    role_name: str, active_files: Dict[str, Any], selected_month: Optional[str] = None
+) -> Tuple[pd.DataFrame, List[str]]:
     """
     跨月份班表資料合併載入：
     讀取指定職位對應的所有月份班表 Excel（支援單檔或多月份檔案清單），
-    依員編與姓名進行欄位合併，產生跨多月份的完整 date_cols 與 DataFrame。
+    可依指定月份進行過濾或依員編與姓名進行跨月對齊與合併。
     """
     raw_target = active_files.get(role_name, "")
     file_paths = []
-    
+
     if isinstance(raw_target, list):
         file_paths = raw_target
     elif isinstance(raw_target, str) and raw_target:
@@ -117,6 +144,12 @@ def load_role_merged_dataframe(role_name: str, active_files: Dict[str, Any]) -> 
     valid_paths = [p for p in file_paths if os.path.exists(p) and os.path.getsize(p) > 0]
     if not valid_paths:
         return pd.DataFrame(), []
+
+    # 如果有指定的月份過濾器，僅載入匹配該月份的檔案
+    if selected_month and len(valid_paths) > 1:
+        matched = [p for p in valid_paths if selected_month in p]
+        if matched:
+            valid_paths = matched
 
     dfs = []
     for p in valid_paths:
@@ -127,7 +160,6 @@ def load_role_merged_dataframe(role_name: str, active_files: Dict[str, Any]) -> 
     if not dfs:
         return pd.DataFrame(), []
 
-    # 以第一張大表為基底進行跨月對齊與合併
     merged_df = dfs[0].copy()
     id_col = merged_df.columns[0]
     name_col = merged_df.columns[1]
@@ -137,16 +169,14 @@ def load_role_merged_dataframe(role_name: str, active_files: Dict[str, Any]) -> 
         next_name_col = next_df.columns[1]
         next_date_cols = list(next_df.columns[2:])
 
-        # 重命名非日期欄位以利 merge 對齊
         next_df_sub = next_df.rename(columns={next_id_col: id_col, next_name_col: name_col})
         merged_df = pd.merge(
             merged_df,
             next_df_sub[[id_col, name_col] + next_date_cols],
             on=[id_col, name_col],
-            how="outer"
+            how="outer",
         )
 
-    # 彙整所有跨月份的有效日期欄位
     all_date_cols = []
     for c in merged_df.columns[2:]:
         norm = normalize_date_str(c)
@@ -267,28 +297,26 @@ def render_user_home() -> None:
     """繪製使用者首頁主要介面與功能模組"""
 
     auth = get_auth_session()
-    
-    # 強固型登入者資料抓取（涵蓋 auth session 與各常用 st.session_state 鍵值）
+
     current_user_id = (
-        auth.get("emp_id") 
-        or st.session_state.get("emp_id") 
-        or st.session_state.get("user_id") 
+        auth.get("emp_id")
+        or st.session_state.get("emp_id")
+        or st.session_state.get("user_id")
         or ""
     )
     current_user_name = (
-        auth.get("emp_name") 
-        or st.session_state.get("emp_name") 
-        or st.session_state.get("user_name") 
-        or current_user_id 
+        auth.get("emp_name")
+        or st.session_state.get("emp_name")
+        or st.session_state.get("user_name")
+        or current_user_id
         or "GUEST"
     )
-    
+
     user_role = auth["role"]
     is_privileged = user_role in ["ADMIN", "VIP_USER"]
     is_admin_user = (user_role == "ADMIN") or st.session_state.get("admin_logged_in", False)
     current_unit_label = st.session_state.get("current_unit", auth.get("unit", "TTN"))
 
-    # 組合完整顯示字串：姓名 (員編)
     if current_user_id and current_user_id != current_user_name:
         user_display_full = f"{current_user_name} ({current_user_id})"
     else:
@@ -692,7 +720,7 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 頂部主標題框 (完整顯示姓名與員編)
+    # 頂部主標題框
     role_label_str = clean_role_label(user_role)
     st.markdown(
         f"""
@@ -707,7 +735,7 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 測試環境公告欄（改為動態讀取後台設定）
+    # 測試環境公告欄
     sys_config = load_system_config()
     announcement_text = sys_config.get("announcement", "目前為內部測試階段｜本頁面末端可聯繫管理者")
 
@@ -721,7 +749,6 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 注入時間滑桿拖動放大特效
     comp.inject_slider_animation()
 
     active_files = get_current_role_files()
@@ -773,7 +800,6 @@ def render_user_home() -> None:
 
         st.stop()
 
-    # 檢查是否有缺失的職位班表檔
     missing_files = []
     for role in ["駕駛", "列車長", "服勤員"]:
         f_val = active_files.get(role, "")
@@ -799,16 +825,33 @@ def render_user_home() -> None:
     td_time = get_role_mtime_label("駕駛")
     tm_time = get_role_mtime_label("列車長")
     ta_time = get_role_mtime_label("服勤員")
-    sched_range = get_schedule_range()
+
+    # 動態讀取系統中已上傳的所有月份週期選項
+    available_months = get_available_months_list(active_files)
+
+    st.markdown(
+        """
+        <div style="font-size: 13.5px; font-weight: 800; color: #38BDF8; margin-bottom: 4px; font-family: monospace;">
+            [TTN] 排班週期與查詢月份選擇
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    selected_global_month = st.selectbox(
+        "選擇查詢月份/週期",
+        options=available_months,
+        key="global_month_selector",
+        help="切換欲查詢或繪製的班表月份週期",
+    )
 
     period_html = f"""
     <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 !important;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="section-title" style="font-size: 13px !important;">[{current_unit_label}] 排班週期</span>
+            <span class="section-title" style="font-size: 13px !important;">[{current_unit_label}] 當前選擇週期</span>
             <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
-                {sched_range if len(missing_files) < 3 else "資料庫異常"}
+                {selected_global_month}
             </span>
-
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
@@ -907,6 +950,14 @@ def render_user_home() -> None:
         )
 
         with st.form(key="draw_schedule_form", border=False):
+            # 新增：選取欲繪製的班表月份選單
+            target_draw_month = st.selectbox(
+                "選擇繪製班表月份 / 週期",
+                options=available_months,
+                index=available_months.index(selected_global_month) if selected_global_month in available_months else 0,
+                key="draw_month_select",
+            )
+
             default_emp_val = current_user_id if current_user_id else st.session_state.get("draw_input_key", "")
             if "draw_input_key" not in st.session_state and default_emp_val:
                 st.session_state["draw_input_key"] = default_emp_val
@@ -934,10 +985,10 @@ def render_user_home() -> None:
                     )
                     log_activity(
                         "個人班表繪製",
-                        f"操作者:{current_user_id} | 單位:{current_unit_label} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
+                        f"操作者:{current_user_id} | 單位:{current_unit_label} | 選擇月份:{target_draw_month} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
                     )
 
-                    with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
+                    with st.spinner(f"正在繪製【{emp_name}】{target_draw_month} 的個人月班表，請稍候..."):
                         buf = render_schedule_figure(
                             start_dt,
                             dates,
@@ -947,14 +998,14 @@ def render_user_home() -> None:
                             current_unit_label,
                             badge_title="Producer | C.L.F",
                         )
-                    st.success(f"【{emp_name}】個人班表圖片生成成功！")
+                    st.success(f"【{emp_name}】{target_draw_month} 個人班表圖片生成成功！")
 
                     comp.render_zoomable_image(buf)
 
                     st.download_button(
                         "點此下載班表影像檔",
                         data=buf,
-                        file_name=f"{current_unit_label}_班表_{emp_name}.png",
+                        file_name=f"{current_unit_label}_班表_{emp_name}_{target_draw_month}.png",
                         mime="image/png",
                         use_container_width=True,
                     )
@@ -1043,12 +1094,11 @@ def render_user_home() -> None:
                     if not (h == 18 and m == 30)
                 ]
 
-                # 載入所有選取職位的跨月份併表資料
                 merged_role_dfs: Dict[str, pd.DataFrame] = {}
                 combined_date_cols: List[str] = []
 
                 for r_name in roles_to_query:
-                    df_r, dates_r = load_role_merged_dataframe(r_name, active_files)
+                    df_r, dates_r = load_role_merged_dataframe(r_name, active_files, selected_global_month)
                     if not df_r.empty:
                         merged_role_dfs[r_name] = df_r
                         for d_str in dates_r:
@@ -1057,7 +1107,7 @@ def render_user_home() -> None:
 
                 if not merged_role_dfs:
                     st.error(
-                        f"找不到【{current_unit_label}】所選職位的班表檔案，請先至管理員後台上傳"
+                        f"找不到【{current_unit_label}】所選職位在【{selected_global_month}】的班表檔案，請先至管理員後台上傳"
                     )
                 else:
                     date_cols = combined_date_cols
@@ -1086,11 +1136,10 @@ def render_user_home() -> None:
                                             break
                             default_win_idx = found_idx if found_idx is not None else 0
 
-                        # 取第一張 DF 作為國定假日與標籤參考
                         first_sample_df = list(merged_role_dfs.values())[0]
 
                         target_date = st.selectbox(
-                            "選擇換班日期",
+                            f"選擇【{selected_global_month}】換班日期",
                             date_cols,
                             index=default_win_idx,
                             format_func=lambda d: get_date_label(d, first_sample_df.columns),
@@ -1430,13 +1479,12 @@ def render_user_home() -> None:
         )
         st.session_state["saved_ex_role"] = selected_role
 
-        # 載入所選職位的跨月份班表資料
-        df_ex, date_cols = load_role_merged_dataframe(selected_role, active_files)
+        df_ex, date_cols = load_role_merged_dataframe(selected_role, active_files, selected_global_month)
 
         if df_ex.empty:
             st.error(
                 f"找不到【{current_unit_label} -"
-                f" {selected_role}】的班表檔案，請先至管理員後台上傳"
+                f" {selected_role}】在【{selected_global_month}】的班表檔案，請先至管理員後台上傳"
             )
         else:
             try:
@@ -1470,7 +1518,7 @@ def render_user_home() -> None:
 
                     with ex_date_col1:
                         target_date = st.selectbox(
-                            "選擇想休假日期",
+                            f"選擇【{selected_global_month}】想休假日期",
                             date_cols,
                             index=default_ex_idx,
                             format_func=lambda d: get_date_label(d, df_ex.columns),
@@ -1520,7 +1568,7 @@ def render_user_home() -> None:
 
                         with ex_date_col2:
                             return_date = st.selectbox(
-                                "選擇可還假日期",
+                                f"選擇【{selected_global_month}】可還假日期",
                                 return_date_options,
                                 index=return_date_idx,
                                 format_func=lambda d: get_date_label(d, df_ex.columns),
@@ -1757,7 +1805,7 @@ def render_user_home() -> None:
 
                             log_activity(
                                 "換假日期快篩",
-                                f"單位:{current_unit_label} | 職位:{selected_role} | 想休:{target_date} | "
+                                f"單位:{current_unit_label} | 職位:{selected_role} | 選擇月份:{selected_global_month} | 想休:{target_date} | "
                                 f"還假:{return_date} | 時間限制:{return_time_filter} | "
                                 f"排序:{sort_order} | 嚴格連六:{strict_limit} | 命中數:{len(filtered_candidates)}筆"
                             )
