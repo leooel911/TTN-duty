@@ -29,14 +29,23 @@ def auto_git_push_data(commit_msg="Auto update data via admin panel"):
 
 
 def get_available_months() -> List[str]:
-    """自動掃描 data/ 資料夾與 Excel 內部日期欄位，抓取所有可用的月份（格式: YYYY-MM）"""
+    """自動掃描 data/ 單位子資料夾下的「最新版班表」與內部欄位，抓取所有可用的月份（格式: YYYY-MM）"""
     current_unit = st.session_state.get("current_unit", "TTN")
     unit_files = UNITS.get(current_unit, UNITS.get("TTN", {}))
     
     months = set()
     current_year = date.today().year
     
-    # 1. 嘗試從檔名中解析月份代碼（支援 TTNTD09、TTN_202609 等格式）
+    # 1. 優先掃描新架構的資料夾：data/{current_unit}/最新版班表/{YYYY-MM}/
+    new_style_dir = os.path.join(DATA_DIR, current_unit, "最新版班表")
+    if os.path.exists(new_style_dir):
+        for sub_name in os.listdir(new_style_dir):
+            if re.match(r"^\d{4}-\d{2}$", sub_name):
+                sub_path = os.path.join(new_style_dir, sub_name)
+                if os.path.isdir(sub_path) and os.listdir(sub_path):
+                    months.add(sub_name)
+    
+    # 2. 相容舊版從檔名中解析月份代碼
     all_files = glob.glob(os.path.join(DATA_DIR, f"{current_unit}*.xlsx"))
     for f in all_files:
         filename = os.path.basename(f)
@@ -51,13 +60,12 @@ def get_available_months() -> List[str]:
             if m_str.isdigit() and 1 <= int(m_str) <= 12:
                 months.add(f"{current_year}-{m_str}")
                 
-    # 2. 直接從 Excel 檔案內部日期欄位掃描（增加型態防護，避免傳入 dict）
+    # 3. 從 Excel 檔案內部日期欄位掃描
     if isinstance(unit_files, dict):
         for role_name, default_path in unit_files.items():
             pattern = os.path.join(DATA_DIR, f"{current_unit}*{role_name}*.xlsx")
             matched_files = glob.glob(pattern)
             
-            # 確保 default_path 是字串才進行檢測
             if not matched_files and isinstance(default_path, str) and default_path and os.path.exists(default_path):
                 matched_files = [default_path]
                 
@@ -84,7 +92,7 @@ def get_available_months() -> List[str]:
 
 
 def get_current_role_files(target_month: Optional[str] = None) -> Dict[str, str]:
-    """根據當前單位與指定的月份，動態對應並回傳對應的職位班表檔案路徑"""
+    """根據當前單位與指定的月份，動態對應並回傳對應的職位班表檔案路徑（完整支援新舊資料夾架構）"""
     current_unit = st.session_state.get("current_unit", "TTN")
     
     if not target_month:
@@ -93,32 +101,40 @@ def get_current_role_files(target_month: Optional[str] = None) -> Dict[str, str]
             available = get_available_months()
             target_month = available[0] if available else date.today().strftime("%Y-%m")
             
-    clean_month = target_month.replace("-", "")
-    short_month = clean_month[-2:]
-    
+    role_to_pos = {"駕駛": "TD", "列車長": "TM", "服勤員": "TA"}
     default_files = UNITS.get(current_unit, UNITS.get("TTN", {}))
     
     result = {}
-    role_keywords = {"駕駛": ["TD", "駕駛"], "列車長": ["TM", "列車長"], "服勤員": ["TA", "服勤員"]}
-    
     for role, default_path in default_files.items():
         selected_path = ""
-        keywords = role_keywords.get(role, [role])
+        pos = role_to_pos.get(role, "")
         
-        for kw in keywords:
-            possible_patterns = [
-                os.path.join(DATA_DIR, f"{current_unit}{kw}{short_month}.xlsx"),
-                os.path.join(DATA_DIR, f"{current_unit}_{kw}_{short_month}.xlsx"),
-                os.path.join(DATA_DIR, f"{current_unit}_{clean_month}_{role}.xlsx"),
-                os.path.join(DATA_DIR, f"{current_unit}_{role}.xlsx"),
-            ]
-            for p in possible_patterns:
-                if os.path.exists(p) and os.path.getsize(p) > 0:
-                    selected_path = p
-                    break
-            if selected_path:
-                break
+        # 1. 優先尋找新架構路徑：data/{current_unit}/最新版班表/{target_month}/{current_unit}_{pos}.xlsx
+        if pos:
+            new_path = os.path.join(DATA_DIR, current_unit, "最新版班表", target_month, f"{current_unit}_{pos}.xlsx")
+            if os.path.exists(new_path) and os.path.getsize(new_path) > 0:
+                selected_path = new_path
                 
+        # 2. 若找不到，嘗試舊版命名規則與備用路徑
+        if not selected_path:
+            clean_month = target_month.replace("-", "")
+            short_month = clean_month[-2:]
+            keywords = [pos, role] if pos else [role]
+            
+            for kw in keywords:
+                possible_patterns = [
+                    os.path.join(DATA_DIR, f"{current_unit}{kw}{short_month}.xlsx"),
+                    os.path.join(DATA_DIR, f"{current_unit}_{kw}_{short_month}.xlsx"),
+                    os.path.join(DATA_DIR, f"{current_unit}_{clean_month}_{role}.xlsx"),
+                    os.path.join(DATA_DIR, f"{current_unit}_{role}.xlsx"),
+                ]
+                for p in possible_patterns:
+                    if os.path.exists(p) and os.path.getsize(p) > 0:
+                        selected_path = p
+                        break
+                if selected_path:
+                    break
+                    
         if not selected_path:
             if isinstance(default_path, str) and os.path.exists(default_path) and os.path.getsize(default_path) > 0:
                 selected_path = default_path
