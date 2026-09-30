@@ -9,25 +9,19 @@ import streamlit as st
 import modules.components as comp
 from config import LEAVE_CODES, NATIONAL_HOLIDAYS
 from modules.drawing import render_schedule_figure
-from modules.utils import (
-    calculate_consecutive_work_days,
-    check_week_has_holiday,
-    get_file_mtime_str,
-    is_cell_off_day,  
-    is_module_maintenance,
-    is_overtime,
-    is_town_shift,
-    log_activity,
-    normalize_date_str,
-    parse_cell,
-    safe_read_excel,
-    set_simulated_cell,
-    translate_train_code,
+from modules.services import (
+    authenticate_user,
+    get_available_months,
+    get_current_role_files,
+    get_schedule_range,
+    load_system_config,
+    process_file_data,
 )
 from modules.utils import (
     calculate_consecutive_work_days,
     check_week_has_holiday,
     get_file_mtime_str,
+    is_cell_off_day,
     is_module_maintenance,
     is_overtime,
     is_town_shift,
@@ -381,7 +375,7 @@ def render_user_home() -> None:
         st.markdown(
             f"""
             <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #EF4444; border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; text-align: center;">
-                <div style="font-size: 14px; font-weight: 900; color: #FCA5A5; font-family: monospace;"> 【{selected_month}】月份資料查詢已暫時關閉</div>
+                <div style="font-size: 14px; font-weight: 900; color: #FCA5A5; font-family: monospace;">🔒 【{selected_month}】月份資料查詢已暫時關閉</div>
                 <div style="font-size: 11.5px; color: #FEE2E2; margin-top: 4px;">說明：{month_note if month_note else '目前該月份班表尚未正式發布或維護中，暫不開放查詢。'}</div>
             </div>
             """,
