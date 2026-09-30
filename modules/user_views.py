@@ -817,8 +817,40 @@ def render_user_home() -> None:
                         clean_train = str(r.get("車次", "")).replace("\n", " ").strip()
                         clean_signin = str(r.get("Sign-In", "--:--")).replace("\n", " ").strip()
                         clean_signout = str(r.get("Sign-Out", "--:--")).replace("\n", " ").strip()
-                        
-                        st.info(f"**{clean_name} ({clean_id})**\n車次: {clean_train} | In: {clean_signin} / Out: {clean_signout}")
+                        do_tag = str(r.get("出勤標記", "")).strip()
+                        is_long = r.get("長班", False)
+                        is_non_line = r.get("非正線", False)
+                        is_leave = r.get("請假", False)
+
+                        badges_html = ""
+                        if is_long:
+                            badges_html += "<span style='font-size: 9px; font-weight: 800; color: #FBBF24; background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.4); padding: 1px 6px; border-radius: 6px;'>🔥 長班</span>"
+                        if is_non_line:
+                            badges_html += "<span style='font-size: 9px; font-weight: 800; color: #C084FC; background: rgba(192,132,252,0.15); border: 1px solid rgba(192,132,252,0.4); padding: 1px 6px; border-radius: 6px;'>🟣 非正線</span>"
+                        if is_leave:
+                            badges_html += "<span style='font-size: 9px; font-weight: 800; color: #F43F5E; background: rgba(244,63,94,0.15); border: 1px solid rgba(244,63,94,0.4); padding: 1px 6px; border-radius: 6px;'>🔴 請假</span>"
+                        if do_tag:
+                            badges_html += f"<span style='font-size: 9px; font-weight: 800; color: #34D399; background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.4); padding: 1px 6px; border-radius: 6px;'>🟢 {do_tag}</span>"
+
+                        st.markdown(
+                            f"""
+                            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%); border: 1.5px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 12px; margin-bottom: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <div>
+                                        <span style="font-size: 15px; font-weight: 900; color: #F8FAFC;">{clean_name}</span>
+                                        <span style="font-size: 11px; font-weight: 700; color: #38BDF8; font-family: monospace; margin-left: 6px;">({clean_id})</span>
+                                    </div>
+                                    <div style="display: flex; gap: 4px; flex-wrap: wrap;">{badges_html}</div>
+                                </div>
+                                <div style="font-size: 11.5px; color: #CBD5E1; font-family: monospace; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px;">
+                                    <div>車次: <strong style="color: #38BDF8;">{clean_train}</strong></div>
+                                    <div>In: <strong style="color: #34D399;">{clean_signin}</strong></div>
+                                    <div>Out: <strong style="color: #FBBF24;">{clean_signout}</strong></div>
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
                         if st.button(f"檢視 {clean_name} 完整班表 ➔", key=f"win_btn_{clean_id}_{i+idx_in_batch}", use_container_width=True):
                             st.session_state["inspect_emp_target"] = clean_id
                             st.rerun()
