@@ -9,13 +9,25 @@ import streamlit as st
 import modules.components as comp
 from config import LEAVE_CODES, NATIONAL_HOLIDAYS
 from modules.drawing import render_schedule_figure
-from modules.services import (
-    authenticate_user,
-    get_current_role_files,
-    get_schedule_range,
-    load_system_config,
-    process_file_data,
-)
+try:
+    from modules.services import (
+        authenticate_user,
+        get_available_months,
+        get_current_role_files,
+        get_schedule_range,
+        load_system_config,
+        process_file_data,
+    )
+except ImportError:
+    from modules.services import (
+        authenticate_user,
+        get_current_role_files,
+        get_schedule_range,
+        load_system_config,
+        process_file_data,
+    )
+    get_available_months = None
+
 from modules.utils import (
     calculate_consecutive_work_days,
     check_week_has_holiday,
@@ -321,22 +333,22 @@ def render_user_home() -> None:
         user_display_full = current_user_name
 
     st.markdown(
-        f"""
+        """
         <style>
         html, body, .stApp, [data-testid="stAppViewContainer"], .main,
-        [data-testid="stMainBlockContainer"], .block-container {{
+        [data-testid="stMainBlockContainer"], .block-container {
             max-width: 100vw !important;
             overflow-x: hidden !important;
             box-sizing: border-box !important;
-        }}
+        }
 
-        [data-testid="stMainBlockContainer"], .block-container {{
+        [data-testid="stMainBlockContainer"], .block-container {
             padding-left: 0.4rem !important;
             padding-right: 0.4rem !important;
             padding-top: 0.6rem !important;
-        }}
+        }
 
-        .section-field-label {{
+        .section-field-label {
             font-size: 15px !important;
             font-weight: 800 !important;
             color: #F8FAFC !important;
@@ -344,47 +356,47 @@ def render_user_home() -> None:
             margin-bottom: 8px !important;
             letter-spacing: 0.3px !important;
             line-height: 1.3 !important;
-        }}
+        }
 
-        div[data-testid="stContainer"] {{
+        div[data-testid="stContainer"] {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
             border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
             border-radius: 16px !important;
             padding: 14px 14px 6px 14px !important;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.4) !important;
             margin-bottom: 12px !important;
-        }}
+        }
 
-        div[data-testid="stSlider"] {{
+        div[data-testid="stSlider"] {
             background: rgba(7, 11, 20, 0.85) !important;
             border: 1px solid rgba(56, 189, 248, 0.3) !important;
             border-radius: 12px !important;
             padding: 12px 14px 6px 14px !important;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3) !important;
             margin-bottom: 8px !important;
-        }}
+        }
 
         div[data-testid="stSliderTickBarMin"],
         div[data-testid="stSliderTickBarMax"],
         div[data-testid="stWidgetLabel"] + div [data-testid="stMarkdownContainer"] p,
-        div[data-baseweb="slider"] div[role="slider"] + div {{
+        div[data-baseweb="slider"] div[role="slider"] + div {
             font-size: 15px !important;
             font-weight: 900 !important;
             color: #38BDF8 !important;
             font-family: monospace !important;
-        }}
+        }
 
         div[data-testid="stWidgetLabel"] p,
         div[data-testid="stWidgetLabel"] label,
-        label[data-testid="stWidgetLabel"] p {{
+        label[data-testid="stWidgetLabel"] p {
             font-size: 14.5px !important;
             font-weight: 800 !important;
             color: #F8FAFC !important;
             letter-spacing: 0.3px !important;
             margin-bottom: 4px !important;
-        }}
+        }
 
-        div[data-testid="stCheckbox"] {{
+        div[data-testid="stCheckbox"] {
             background: rgba(15, 23, 42, 0.6) !important;
             border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
             border-radius: 10px !important;
@@ -392,37 +404,37 @@ def render_user_home() -> None:
             transition: all 0.25s ease-in-out !important;
             box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3) !important;
             margin-bottom: 6px !important;
-        }}
+        }
 
-        div[data-testid="stCheckbox"]:hover {{
+        div[data-testid="stCheckbox"]:hover {
             background: rgba(30, 41, 59, 0.8) !important;
             border-color: rgba(56, 189, 248, 0.4) !important;
-        }}
+        }
 
-        div[data-testid="stCheckbox"]:has(input:checked) {{
+        div[data-testid="stCheckbox"]:has(input:checked) {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(2, 132, 199, 0.25) 100%) !important;
             border-color: #38BDF8 !important;
             box-shadow: 0 0 14px rgba(56, 189, 248, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.2) !important;
-        }}
+        }
 
-        div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div {{
+        div[data-testid="stCheckbox"] input[type="checkbox"]:checked + div {
             background-color: #00A3FF !important;
             border-color: #38BDF8 !important;
-        }}
+        }
 
-        div[data-testid="stCheckbox"] label p {{
+        div[data-testid="stCheckbox"] label p {
             font-size: 13.5px !important;
             font-weight: 700 !important;
             color: #94A3B8 !important;
             transition: color 0.2s ease !important;
-        }}
+        }
 
-        div[data-testid="stCheckbox"]:has(input:checked) label p {{
+        div[data-testid="stCheckbox"]:has(input:checked) label p {
             color: #F8FAFC !important;
             font-weight: 800 !important;
-        }}
+        }
 
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {{
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -436,18 +448,18 @@ def render_user_home() -> None:
             box-sizing: border-box !important;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 2px 8px rgba(0, 0, 0, 0.7) !important;
             margin-bottom: 12px !important;
-        }}
+        }
 
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) > div[data-testid="column"] {{
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) > div[data-testid="column"] {
             flex: 0 0 33.33% !important;
             width: 33.33% !important;
             max-width: 33.33% !important;
             min-width: 0 !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
-        }}
+        }
 
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {{
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] {
             background: transparent !important;
             border: 1.5px solid transparent !important;
             box-shadow: none !important;
@@ -455,12 +467,12 @@ def render_user_home() -> None:
             border-radius: 10px !important;
             width: 100% !important;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        }}
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"]:hover {{
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"]:hover {
             background: rgba(255, 255, 255, 0.05) !important;
             border-color: rgba(56, 189, 248, 0.3) !important;
-        }}
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] p {{
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-secondary"] p {
             color: #64748B !important;
             font-size: 12.5px !important;
             font-weight: 700 !important;
@@ -468,18 +480,18 @@ def render_user_home() -> None:
             overflow: hidden !important;
             text-overflow: ellipsis !important;
             margin: 0 !important;
-        }}
+        }
 
         div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"],
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {{
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] {
             background: linear-gradient(135deg, rgba(2, 132, 199, 0.4) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
             border: 1.5px solid #38BDF8 !important;
             border-radius: 10px !important;
             padding: 9px 2px !important;
             width: 100% !important;
             box-shadow: 0 0 16px rgba(56, 189, 248, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.35) !important;
-        }}
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"] p {{
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"] p {
             color: #38BDF8 !important;
             font-size: 13px !important;
             font-weight: 900 !important;
@@ -488,10 +500,10 @@ def render_user_home() -> None:
             text-overflow: ellipsis !important;
             margin: 0 !important;
             text-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
-        }}
+        }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated),
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {{
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -499,25 +511,25 @@ def render_user_home() -> None:
             max-width: 100% !important;
             gap: 6px !important;
             box-sizing: border-box !important;
-        }}
+        }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) > div[data-testid="column"],
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {{
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) > div[data-testid="column"] {
             width: calc(50% - 3px) !important;
             max-width: calc(50% - 3px) !important;
             min-width: 0 !important;
             flex: 0 0 calc(50% - 3px) !important;
             box-sizing: border-box !important;
             overflow: hidden !important;
-        }}
+        }
 
         div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated) *,
-        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) * {{
+        div[data-testid="stHorizontalBlock"]:has(.crew-card-integrated-warn) * {
             min-width: 0 !important;
             box-sizing: border-box !important;
-        }}
+        }
 
-        .crew-card-integrated, .crew-card-integrated-warn {{
+        .crew-card-integrated, .crew-card-integrated-warn {
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
             border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
             border-bottom: none !important;
@@ -530,57 +542,57 @@ def render_user_home() -> None:
             width: 100% !important;
             overflow: hidden !important;
             transition: all 0.25s ease-in-out !important;
-        }}
+        }
 
-        .crew-card-integrated-warn {{
+        .crew-card-integrated-warn {
             border-color: #F43F5E !important;
             box-shadow: 0 4px 14px rgba(244, 63, 94, 0.3) !important;
-        }}
+        }
 
-        .card-theme-0 {{
+        .card-theme-0 {
             border-color: rgba(56, 189, 248, 0.65) !important;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(14, 116, 144, 0.2) 100%) !important;
             box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15) !important;
-        }}
-        .card-theme-0 .train-code-text {{ color: #38BDF8 !important; }}
+        }
+        .card-theme-0 .train-code-text { color: #38BDF8 !important; }
 
-        .card-theme-1 {{
+        .card-theme-1 {
             border-color: rgba(52, 211, 153, 0.65) !important;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(6, 95, 70, 0.2) 100%) !important;
             box-shadow: 0 4px 12px rgba(52, 211, 153, 0.15) !important;
-        }}
-        .card-theme-1 .train-code-text {{ color: #34D399 !important; }}
+        }
+        .card-theme-1 .train-code-text { color: #34D399 !important; }
 
-        .card-theme-2 {{
+        .card-theme-2 {
             border-color: rgba(251, 191, 36, 0.65) !important;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(120, 53, 15, 0.2) 100%) !important;
             box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15) !important;
-        }}
-        .card-theme-2 .train-code-text {{ color: #FBBF24 !important; }}
+        }
+        .card-theme-2 .train-code-text { color: #FBBF24 !important; }
 
-        .card-theme-3 {{
+        .card-theme-3 {
             border-color: rgba(192, 132, 252, 0.65) !important;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(88, 28, 135, 0.2) 100%) !important;
             box-shadow: 0 4px 12px rgba(192, 132, 252, 0.15) !important;
-        }}
-        .card-theme-3 .train-code-text {{ color: #C084FC !important; }}
+        }
+        .card-theme-3 .train-code-text { color: #C084FC !important; }
 
-        .card-theme-4 {{
+        .card-theme-4 {
             border-color: rgba(251, 146, 60, 0.65) !important;
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(124, 45, 18, 0.2) 100%) !important;
             box-shadow: 0 4px 12px rgba(251, 146, 60, 0.15) !important;
-        }}
-        .card-theme-4 .train-code-text {{ color: #FB923C !important; }}
+        }
+        .card-theme-4 .train-code-text { color: #FB923C !important; }
 
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"],
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {{
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] {
             width: 100% !important;
             max-width: 100% !important;
             box-sizing: border-box !important;
-        }}
+        }
 
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button,
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {{
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
             width: 100% !important;
             min-width: 0 !important;
             max-width: 100% !important;
@@ -600,10 +612,10 @@ def render_user_home() -> None:
             text-overflow: ellipsis !important;
             background-color: rgba(15, 23, 42, 0.95) !important;
             transition: all 0.2s ease-in-out !important;
-        }}
+        }
 
         div[data-testid="stElementContainer"]:has(.crew-card-integrated) + div[data-testid="stElementContainer"] button p,
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button p {{
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button p {
             font-size: 10.5px !important;
             white-space: nowrap !important;
             overflow: hidden !important;
@@ -611,19 +623,19 @@ def render_user_home() -> None:
             width: 100% !important;
             margin: 0 !important;
             line-height: 1.2 !important;
-        }}
+        }
 
-        div[data-testid="stElementContainer"]:has(.card-theme-0) + div[data-testid="stElementContainer"] button {{ border: 1.5px solid rgba(56, 189, 248, 0.65) !important; border-top: 1px dashed rgba(56, 189, 248, 0.3) !important; color: #38BDF8 !important; }}
-        div[data-testid="stElementContainer"]:has(.card-theme-1) + div[data-testid="stElementContainer"] button {{ border: 1.5px solid rgba(52, 211, 153, 0.65) !important; border-top: 1px dashed rgba(52, 211, 153, 0.3) !important; color: #34D399 !important; }}
-        div[data-testid="stElementContainer"]:has(.card-theme-2) + div[data-testid="stElementContainer"] button {{ border: 1.5px solid rgba(251, 191, 36, 0.65) !important; border-top: 1px dashed rgba(251, 191, 36, 0.3) !important; color: #FBBF24 !important; }}
-        div[data-testid="stElementContainer"]:has(.card-theme-3) + div[data-testid="stElementContainer"] button {{ border: 1.5px solid rgba(192, 132, 252, 0.65) !important; border-top: 1px dashed rgba(192, 132, 252, 0.3) !important; color: #C084FC !important; }}
-        div[data-testid="stElementContainer"]:has(.card-theme-4) + div[data-testid="stElementContainer"] button {{ border: 1.5px solid rgba(251, 146, 60, 0.65) !important; border-top: 1px dashed rgba(251, 146, 60, 0.3) !important; color: #FB923C !important; }}
+        div[data-testid="stElementContainer"]:has(.card-theme-0) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(56, 189, 248, 0.65) !important; border-top: 1px dashed rgba(56, 189, 248, 0.3) !important; color: #38BDF8 !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-1) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(52, 211, 153, 0.65) !important; border-top: 1px dashed rgba(52, 211, 153, 0.3) !important; color: #34D399 !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-2) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(251, 191, 36, 0.65) !important; border-top: 1px dashed rgba(251, 191, 36, 0.3) !important; color: #FBBF24 !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-3) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(192, 132, 252, 0.65) !important; border-top: 1px dashed rgba(192, 132, 252, 0.3) !important; color: #C084FC !important; }
+        div[data-testid="stElementContainer"]:has(.card-theme-4) + div[data-testid="stElementContainer"] button { border: 1.5px solid rgba(251, 146, 60, 0.65) !important; border-top: 1px dashed rgba(251, 146, 60, 0.3) !important; color: #FB923C !important; }
 
-        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {{
+        div[data-testid="stElementContainer"]:has(.crew-card-integrated-warn) + div[data-testid="stElementContainer"] button {
             border: 1.5px solid #F43F5E !important;
             border-top: 1px dashed rgba(244, 63, 94, 0.3) !important;
             color: #FDA4AF !important;
-        }}
+        }
 
         button[data-testid="stBaseButton-primary"],
         button[data-testid="stBaseButton-primaryFormSubmit"],
@@ -632,7 +644,7 @@ def render_user_home() -> None:
         div[data-testid="stFormSubmitButton"] > button[kind="primary"],
         div[data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"],
         div[data-testid="stButton"] > button[kind="primary"],
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"] {{
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"] {
             background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 100%) !important;
             color: #FFFFFF !important;
             border: 1.5px solid #38BDF8 !important;
@@ -643,7 +655,7 @@ def render_user_home() -> None:
             margin-top: 6px !important;
             margin-bottom: 6px !important;
             width: 100% !important;
-        }}
+        }
 
         button[data-testid="stBaseButton-primary"]:hover,
         button[data-testid="stBaseButton-primaryFormSubmit"]:hover,
@@ -652,27 +664,27 @@ def render_user_home() -> None:
         div[data-testid="stFormSubmitButton"] > button[kind="primary"]:hover,
         div[data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"]:hover,
         div[data-testid="stButton"] > button[kind="primary"]:hover,
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"]:hover {{
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-primary"]:hover {
             background: linear-gradient(135deg, #0369A1 0%, #1E40AF 100%) !important;
             border-color: #38BDF8 !important;
             box-shadow: 0 6px 24px rgba(56, 189, 248, 0.8) !important;
             transform: translateY(-1px) !important;
-        }}
+        }
 
         button[data-testid="stBaseButton-primary"] p,
         button[data-testid="stBaseButton-primaryFormSubmit"] p,
         button[kind="primary"] p,
-        button[kind="primaryFormSubmit"] p {{
+        button[kind="primaryFormSubmit"] p {
             font-size: 15px !important;
             font-weight: 800 !important;
             color: #FFFFFF !important;
             letter-spacing: 0.6px !important;
-        }}
+        }
 
         button[data-testid="stBaseButton-secondary"],
         button[kind="secondary"],
         div[data-testid="stButton"] > button[kind="secondary"],
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] {{
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] {
             background: rgba(15, 23, 42, 0.6) !important;
             color: #94A3B8 !important;
             border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
@@ -680,39 +692,39 @@ def render_user_home() -> None:
             border-radius: 10px !important;
             padding: 8px 12px !important;
             transition: all 0.2s ease-in-out !important;
-        }}
+        }
 
         button[data-testid="stBaseButton-secondary"]:hover,
         button[kind="secondary"]:hover,
         div[data-testid="stButton"] > button[kind="secondary"]:hover,
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"]:hover {{
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"]:hover {
             background: rgba(255, 255, 255, 0.08) !important;
             color: #F1F5F9 !important;
             border-color: rgba(56, 189, 248, 0.4) !important;
-        }}
+        }
 
         button[data-testid="stBaseButton-secondary"] p,
         button[kind="secondary"] p,
         div[data-testid="stButton"] > button[kind="secondary"] p,
-        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] p {{
+        div[data-testid="stButton"] > button[data-testid="stBaseButton-secondary"] p {
             color: #94A3B8 !important;
             font-size: 14px !important;
             font-weight: 600 !important;
-        }}
+        }
 
-        .badge-group {{
+        .badge-group {
             display: flex;
             gap: 2px;
             align-items: center;
             justify-content: flex-end;
             flex-wrap: nowrap;
-        }}
-        .role-badge-driver {{ font-size: 8.5px; font-weight: 800; color: #38BDF8; background: rgba(56, 189, 248, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }}
-        .role-badge-conductor {{ font-size: 8.5px; font-weight: 800; color: #34D399; background: rgba(52, 211, 153, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }}
-        .role-badge-crew {{ font-size: 8.5px; font-weight: 800; color: #FBBF24; background: rgba(251, 191, 36, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }}
-        .non-line-badge {{ font-size: 8.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }}
-        .long-badge {{ font-size: 8.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }}
-        .do2w-badge {{ font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }}
+        }
+        .role-badge-driver { font-size: 8.5px; font-weight: 800; color: #38BDF8; background: rgba(56, 189, 248, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .role-badge-conductor { font-size: 8.5px; font-weight: 800; color: #34D399; background: rgba(52, 211, 153, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .role-badge-crew { font-size: 8.5px; font-weight: 800; color: #FBBF24; background: rgba(251, 191, 36, 0.2); padding: 1px 4px; border-radius: 3px; white-space: nowrap; font-family: monospace; }
+        .non-line-badge { font-size: 8.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+        .long-badge { font-size: 8.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+        .do2w-badge { font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -749,7 +761,71 @@ def render_user_home() -> None:
 
     comp.inject_slider_animation()
 
-    active_files = get_current_role_files()
+    # 精準還原截圖設計：獨立「選擇查詢月份」選單區塊
+    st.markdown('<div class="section-field-label">選擇查詢月份</div>', unsafe_allow_html=True)
+
+    initial_files = get_current_role_files()
+    months_from_service = []
+    if get_available_months is not None:
+        try:
+            months_from_service = get_available_months()
+        except Exception:
+            months_from_service = []
+
+    if months_from_service:
+        available_months = months_from_service
+    else:
+        available_months = get_available_months_list(initial_files)
+
+    def handle_month_change():
+        reset_win_search()
+        reset_ex_search()
+
+    selected_global_month = st.selectbox(
+        "選擇查詢月份",
+        options=available_months,
+        format_func=lambda m: f"QUERY MONTH // {m}",
+        key="global_month_selector",
+        on_change=handle_month_change,
+        label_visibility="collapsed",
+    )
+
+    # 依選取月份動態載入該月份專屬檔案對應表
+    try:
+        active_files = get_current_role_files(selected_global_month)
+    except TypeError:
+        active_files = get_current_role_files()
+
+    # 月份權限與開放狀態防護檢查
+    monthly_controls = sys_config.get("monthly_controls", {})
+    is_month_enabled = monthly_controls.get(selected_global_month, True)
+
+    if not is_month_enabled:
+        if not is_admin_user:
+            st.markdown(
+                f"""
+                <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #EF4444; border-radius: 10px; padding: 16px; margin-bottom: 16px; text-align: center;">
+                    <div style="font-size: 16px; font-weight: 900; color: #FCA5A5; font-family: monospace;">MONTHLY ACCESS CONTROL // 月份未開放</div>
+                    <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
+                        【{selected_global_month}】班表查詢暫未開放
+                    </div>
+                    <div style="font-size: 12px; color: #CBD5E1;">
+                        管理員尚未開放【{selected_global_month}】之班表查詢與快篩功能，請選擇其他月份或稍後再試。
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.stop()
+        else:
+            st.markdown(
+                f"""
+                <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
+                    <strong>【管理員維護預覽】</strong> 當前選取月份【{selected_global_month}】尚未對一般組員開放（一般組員已被阻擋），您正以管理員身分預覽測試。
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
     inspect_emp_id = st.session_state.get("inspect_emp_target")
@@ -771,8 +847,12 @@ def render_user_home() -> None:
             st.rerun()
 
         try:
-            start_dt, dates, emp_id, emp_name, cells = process_file_data(inspect_emp_id)
-            with st.spinner(f"正在讀取【{emp_name}】完整班表，請稍候..."):
+            try:
+                start_dt, dates, emp_id, emp_name, cells = process_file_data(inspect_emp_id, selected_global_month)
+            except TypeError:
+                start_dt, dates, emp_id, emp_name, cells = process_file_data(inspect_emp_id)
+
+            with st.spinner(f"正在讀取【{emp_name}】{selected_global_month} 完整班表，請稍候..."):
                 buf = render_schedule_figure(
                     start_dt,
                     dates,
@@ -789,7 +869,7 @@ def render_user_home() -> None:
             st.download_button(
                 "點此下載班表影像檔",
                 data=buf,
-                file_name=f"{current_unit_label}_班表_{emp_name}.png",
+                file_name=f"{current_unit_label}_班表_{emp_name}_{selected_global_month}.png",
                 mime="image/png",
                 use_container_width=True,
             )
@@ -823,20 +903,11 @@ def render_user_home() -> None:
     td_time = get_role_mtime_label("駕駛")
     tm_time = get_role_mtime_label("列車長")
     ta_time = get_role_mtime_label("服勤員")
-    sched_range = get_schedule_range()
 
-    # 精準還原截圖設計：獨立「選擇查詢月份」選單區塊
-    st.markdown('<div class="section-field-label">選擇查詢月份</div>', unsafe_allow_html=True)
-
-    available_months = get_available_months_list(active_files)
-
-    selected_global_month = st.selectbox(
-        "選擇查詢月份",
-        options=available_months,
-        format_func=lambda m: f"QUERY MONTH // {m}",
-        key="global_month_selector",
-        label_visibility="collapsed",
-    )
+    try:
+        sched_range = get_schedule_range(selected_global_month)
+    except TypeError:
+        sched_range = get_schedule_range()
 
     # 精準還原截圖設計：資訊卡片（單位 // 最新發布班表區間 + 時間 + 下拉展開）
     period_html = f"""
@@ -966,9 +1037,15 @@ def render_user_home() -> None:
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
             else:
                 try:
-                    start_dt, dates, emp_id, emp_name, cells = process_file_data(
-                        current_input
-                    )
+                    try:
+                        start_dt, dates, emp_id, emp_name, cells = process_file_data(
+                            current_input, selected_global_month
+                        )
+                    except TypeError:
+                        start_dt, dates, emp_id, emp_name, cells = process_file_data(
+                            current_input
+                        )
+
                     log_activity(
                         "個人班表繪製",
                         f"操作者:{current_user_id} | 單位:{current_unit_label} | 選擇月份:{selected_global_month} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
@@ -1299,7 +1376,7 @@ def render_user_home() -> None:
 
             log_activity(
                 "換班日期快篩",
-                f"單位:{current_unit_label} | 選擇職位:{'/'.join(roles_to_query)} | 日期:{target_date} | "
+                f"單位:{current_unit_label} | 選擇職位:{'/'.join(roles_to_query)} | 選擇月份:{selected_global_month} | 日期:{target_date} | "
                 f"時段:{min_time}~{max_time_sel} | 僅正線:{only_main_line} | "
                 f"僅長班:{only_long_shift} | 命中數:{len(filtered_results)}筆"
             )
