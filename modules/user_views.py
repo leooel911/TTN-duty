@@ -343,26 +343,13 @@ def render_user_home() -> None:
 
     comp.inject_slider_animation()
 
-    # ==================== 扁平化全域狀態列與月份選擇 ====================
+    # ==================== 月份選擇與全域整合狀態列 ====================
     available_months = get_available_months()
     if "current_query_month" not in st.session_state:
         st.session_state["current_query_month"] = available_months[0]
 
     if st.session_state["current_query_month"] not in available_months:
         st.session_state["current_query_month"] = available_months[0]
-
-    sched_range = get_schedule_range()
-    
-    # 全域三合一狀態列 (Flat Bar) - 顯示單位與最新發布班表區間
-    status_bar_html = f"""
-    <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 6px 12px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; font-family: monospace;">
-        <div style="color: #38BDF8; font-size: 11px; font-weight: 800; letter-spacing: 0.5px;">{current_unit_label} // 最新發布班表區間</div>
-        <div style="text-align: right;">
-            <span style="font-size: 11px; font-weight: 900; color: #F8FAFC; letter-spacing: 0.5px;">{sched_range}</span>
-        </div>
-    </div>
-    """
-    st.markdown(status_bar_html, unsafe_allow_html=True)
 
     selected_month = st.selectbox(
         "選擇查詢月份",
@@ -379,6 +366,33 @@ def render_user_home() -> None:
         st.rerun()
 
     active_files = get_current_role_files(selected_month)
+    sched_range = get_schedule_range()
+
+    td_time = get_file_mtime_str(active_files.get("駕駛", ""))
+    tm_time = get_file_mtime_str(active_files.get("列車長", ""))
+    ta_time = get_file_mtime_str(active_files.get("服勤員", ""))
+
+    # 整合型全域狀態列 (包含最新發布班表區間與各職位大表更新時間折疊)
+    status_bar_html = f"""
+    <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; font-family: monospace;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="color: #38BDF8; font-size: 11px; font-weight: 800; letter-spacing: 0.5px;">{current_unit_label} // 最新發布班表區間</div>
+            <div style="font-size: 11px; font-weight: 900; color: #F8FAFC; letter-spacing: 0.5px;">{sched_range}</div>
+        </div>
+        <details style="margin-top: 6px; font-size: 10px; color: #94A3B8; cursor: pointer; border-top: 1px dashed rgba(56,189,248,0.2); padding-top: 6px;">
+            <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                <span>點擊展開各職位大表檔案更新時間 ({selected_month})</span>
+                <span style="font-size: 9px; color: #64748B;">▼</span>
+            </summary>
+            <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding: 6px 8px; background: rgba(7,11,20,0.8); border-radius: 6px; border: 1px solid rgba(56,189,248,0.2);">
+                <div style="display: flex; justify-content: space-between;"><span>駕駛 (TD)</span><span style="color: #F8FAFC;">{td_time}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>列車長 (TM)</span><span style="color: #F8FAFC;">{tm_time}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>服勤員 (TA)</span><span style="color: #F8FAFC;">{ta_time}</span></div>
+            </div>
+        </details>
+    </div>
+    """
+    st.markdown(status_bar_html, unsafe_allow_html=True)
 
     # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
     inspect_emp_id = st.session_state.get("inspect_emp_target")
@@ -439,26 +453,6 @@ def render_user_home() -> None:
         st.error(
             f"【{current_unit_label}】所選月份（{selected_month}）資料庫異常或尚無檔案：請洽管理員上傳！"
         )
-
-    td_time = get_file_mtime_str(active_files.get("駕駛", ""))
-    tm_time = get_file_mtime_str(active_files.get("列車長", ""))
-    ta_time = get_file_mtime_str(active_files.get("服勤員", ""))
-
-    # 隱藏式更新時間細節 (維持乾淨折疊)
-    details_html = f"""
-    <details style="margin: 4px 0 8px 0; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
-        <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; background: rgba(15,23,42,0.5); padding: 4px 8px; border-radius: 6px;">
-            <span>[{current_unit_label}] 點擊檢視各大表更新時間 ({selected_month})</span>
-            <span style="font-size: 9px; color: #64748B;">▼</span>
-        </summary>
-        <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 4px; padding: 6px 8px; background: rgba(15,23,42,0.8); border-radius: 6px; border: 1px solid rgba(56,189,248,0.2);">
-            <div style="display: flex; justify-content: space-between;"><span>駕駛 (TD)</span><span>{td_time}</span></div>
-            <div style="display: flex; justify-content: space-between;"><span>列車長 (TM)</span><span>{tm_time}</span></div>
-            <div style="display: flex; justify-content: space-between;"><span>服勤員 (TA)</span><span>{ta_time}</span></div>
-        </div>
-    </details>
-    """
-    st.html(details_html)
 
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
 
