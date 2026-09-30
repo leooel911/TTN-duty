@@ -374,8 +374,8 @@ def render_user_home() -> None:
         st.markdown(
             f"""
             <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #EF4444; border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; text-align: center;">
-                <div style="font-size: 14px; font-weight: 900; color: #FCA5A5; font-family: monospace;">🔒 【{selected_month}】月份資料查詢已暫時關閉</div>
-                <div style="font-size: 11.5px; color: #FEE2E2; margin-top: 4px;">管理員備註說明：{month_note if month_note else '目前該月份班表尚未正式發布或維護中，暫不開放查詢。'}</div>
+                <div style="font-size: 14px; font-weight: 900; color: #FCA5A5; font-family: monospace;"> 【{selected_month}】月份資料查詢已暫時關閉</div>
+                <div style="font-size: 11.5px; color: #FEE2E2; margin-top: 4px;">說明：{month_note if month_note else '目前該月份班表尚未正式發布或維護中，暫不開放查詢。'}</div>
             </div>
             """,
             unsafe_allow_html=True,
