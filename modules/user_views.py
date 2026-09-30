@@ -94,6 +94,22 @@ def get_shift_group_num(code_str: str) -> int:
     return 999999
 
 
+def get_group_border_color(train_code: str) -> str:
+    """根據班別群組對應一致的外框邊框色彩 (同組別外框同色)"""
+    group_key = get_shift_group_key(train_code)
+    colors = [
+        "rgba(56, 189, 248, 0.55)",   # Sky Blue
+        "rgba(129, 140, 248, 0.55)",  # Indigo
+        "rgba(52, 211, 153, 0.55)",   # Emerald
+        "rgba(251, 191, 36, 0.55)",   # Amber
+        "rgba(244, 63, 94, 0.55)",    # Rose
+        "rgba(192, 132, 252, 0.55)",  # Purple
+        "rgba(45, 212, 191, 0.55)",   # Teal
+    ]
+    h = sum(ord(c) for c in group_key)
+    return colors[h % len(colors)]
+
+
 def find_date_column_index(columns: Any, target_date: str) -> int:
     """精準匹配日期欄位索引，避免 substring 誤判與年份格式不符"""
     if columns is None:
@@ -806,7 +822,46 @@ def render_user_home() -> None:
                 ),
             )
 
+            # 1. 頂部 3 大統計方框 (符合資格人數、含 DO2W 標記、長班 (>8.5h))
+            total_count = len(filtered_results)
+            d02w_count = sum(1 for r in filtered_results if r.get("出勤標記"))
+            long_count = sum(1 for r in filtered_results if r.get("長班"))
+
+            met_col1, met_col2, met_col3 = st.columns(3)
+            with met_col1:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(15, 23, 42, 0.95); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 12px; padding: 10px; text-align: center; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+                        <div style="font-size: 10px; color: #94A3B8; font-family: monospace; letter-spacing: 0.5px;">符合資格人數</div>
+                        <div style="font-size: 18px; font-weight: 900; color: #38BDF8; font-family: monospace; margin-top: 2px;">{total_count} 位</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            with met_col2:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(15, 23, 42, 0.95); border: 1.5px solid rgba(251, 191, 36, 0.45); border-radius: 12px; padding: 10px; text-align: center; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+                        <div style="font-size: 10px; color: #94A3B8; font-family: monospace; letter-spacing: 0.5px;">含 DO2W 標記</div>
+                        <div style="font-size: 18px; font-weight: 900; color: #FBBF24; font-family: monospace; margin-top: 2px;">{d02w_count} 人</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            with met_col3:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(15, 23, 42, 0.95); border: 1.5px solid rgba(244, 63, 94, 0.45); border-radius: 12px; padding: 10px; text-align: center; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+                        <div style="font-size: 10px; color: #94A3B8; font-family: monospace; letter-spacing: 0.5px;">長班 (>8.5h)</div>
+                        <div style="font-size: 18px; font-weight: 900; color: #F43F5E; font-family: monospace; margin-top: 2px;">{long_count} 人</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
             st.markdown(f"### 換班可選人員名單（共符合 {len(filtered_results)} 筆）")
+
+            # 2. 雙欄式完美對稱卡片清單 (同組別外框同色)
             for i in range(0, len(filtered_results), 2):
                 batch = filtered_results[i : i + 2]
                 cols = st.columns(2)
@@ -817,36 +872,44 @@ def render_user_home() -> None:
                         clean_train = str(r.get("車次", "")).replace("\n", " ").strip()
                         clean_signin = str(r.get("Sign-In", "--:--")).replace("\n", " ").strip()
                         clean_signout = str(r.get("Sign-Out", "--:--")).replace("\n", " ").strip()
-                        do_tag = str(r.get("出勤標記", "")).strip()
-                        is_long = r.get("長班", False)
-                        is_non_line = r.get("非正線", False)
-                        is_leave = r.get("請假", False)
+                        work_hours = str(r.get("工時", "")).strip()
+                        if work_hours and not work_hours.startswith("("):
+                            work_hours = f"({work_hours})"
 
-                        # 使用原汁原味的小顆燈號 (LED indicator dot) 取代 Emoji
-                        badges_html = ""
+                        next_si = str(r.get("隔日Sign-In", "無")).strip()
+                        is_long = r.get("長班", False)
+                        do_tag = str(r.get("出勤標記", "")).strip()
+
+                        # 根據車次/班別群組對應外框邊框色彩 (同組別外框同色)
+                        border_color = get_group_border_color(clean_train)
+
+                        tag_badges = ""
                         if is_long:
-                            badges_html += "<span style='display:inline-block; width:7px; height:7px; background-color:#FBBF24; border-radius:50%; margin-right:3px; box-shadow:0 0 6px #FBBF24;'></span><span style='font-size: 9px; font-weight: 700; color: #FBBF24; margin-right:8px;'>長班</span>"
-                        if is_non_line:
-                            badges_html += "<span style='display:inline-block; width:7px; height:7px; background-color:#C084FC; border-radius:50%; margin-right:3px; box-shadow:0 0 6px #C084FC;'></span><span style='font-size: 9px; font-weight: 700; color: #C084FC; margin-right:8px;'>非正線</span>"
-                        if is_leave:
-                            badges_html += "<span style='display:inline-block; width:7px; height:7px; background-color:#F43F5E; border-radius:50%; margin-right:3px; box-shadow:0 0 6px #F43F5E;'></span><span style='font-size: 9px; font-weight: 700; color: #F43F5E; margin-right:8px;'>請假</span>"
+                            tag_badges += "<span style='background: rgba(225, 29, 72, 0.25); border: 1px solid #F43F5E; color: #FDA4AF; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; font-family: monospace;'>長班</span>"
                         if do_tag:
-                            badges_html += f"<span style='display:inline-block; width:7px; height:7px; background-color:#34D399; border-radius:50%; margin-right:3px; box-shadow:0 0 6px #34D399;'></span><span style='font-size: 9px; font-weight: 700; color: #34D399; margin-right:8px;'>{do_tag}</span>"
+                            tag_badges += f"<span style='background: rgba(52, 211, 153, 0.2); border: 1px solid #34D399; color: #6EE7B7; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; font-family: monospace;'>{do_tag}</span>"
 
                         st.markdown(
                             f"""
-                            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.5);">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid {border_color}; border-radius: 12px; padding: 14px; margin-bottom: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.5);">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                     <div>
-                                        <span style="font-size: 15px; font-weight: 900; color: #F8FAFC;">{clean_name}</span>
-                                        <span style="font-size: 11px; font-weight: 700; color: #38BDF8; font-family: monospace; margin-left: 6px;">({clean_id})</span>
+                                        <div style="font-size: 15px; font-weight: 900; color: #F8FAFC;">{clean_name} <span style="font-size: 11px; font-weight: 700; color: #38BDF8; font-family: monospace;">({clean_id})</span></div>
+                                        <div style="font-size: 12px; font-weight: 700; color: #38BDF8; font-family: monospace; margin-top: 4px;">班別 : {clean_train}</div>
                                     </div>
-                                    <div style="display: flex; align-items: center; gap: 2px;">{badges_html}</div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 13px; font-weight: 900; color: #34D399; font-family: monospace;">Sign-In <span style="font-size: 14px;">{clean_signin}</span></div>
+                                        <div style="font-size: 13px; font-weight: 900; color: #34D399; font-family: monospace;">Sign-Out <span style="font-size: 14px;">{clean_signout}</span></div>
+                                        <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace; margin-top: 1px;">{work_hours}</div>
+                                    </div>
                                 </div>
-                                <div style="font-size: 11.5px; color: #CBD5E1; font-family: monospace; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 6px; margin-bottom: 8px;">
-                                    <div>車次: <strong style="color: #38BDF8;">{clean_train}</strong></div>
-                                    <div>In: <strong style="color: #34D399;">{clean_signin}</strong></div>
-                                    <div>Out: <strong style="color: #FBBF24;">{clean_signout}</strong></div>
+                                <div style="border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 8px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="font-size: 11px; color: #CBD5E1; font-family: monospace;">
+                                        隔日 Sign-In : <strong style="color: #F8FAFC;">{next_si}</strong>
+                                    </div>
+                                    <div style="display: flex; gap: 4px;">
+                                        {tag_badges}
+                                    </div>
                                 </div>
                             </div>
                             """,
@@ -918,7 +981,12 @@ def render_user_home() -> None:
                                     target_off = is_cell_off_day(cell_target) or bool(parsed_target.get("is_off"))
                                     return_off = is_cell_off_day(cell_return) or bool(parsed_return.get("is_off"))
 
+                                    # 換假對配條件：想休當天為休假 (target_off) 且 還假當天為上班 (not return_off)
                                     if target_off and not return_off:
+                                        work_hours = str(parsed_return.get("hours", "")).strip()
+                                        if work_hours and not work_hours.startswith("("):
+                                            work_hours = f"({work_hours})"
+
                                         ex_candidates.append({
                                             "員編": emp_id,
                                             "姓名": emp_name,
@@ -927,6 +995,7 @@ def render_user_home() -> None:
                                             "還假當日車次": translate_train_code(parsed_return["train"]),
                                             "還假當日In": parsed_return["start"] if parsed_return["start"] else "--:--",
                                             "還假當日Out": parsed_return["end"] if parsed_return["end"] else "--:--",
+                                            "還假當日工時": work_hours,
                                         })
 
                         st.session_state["ex_raw_candidates"] = ex_candidates
@@ -934,6 +1003,18 @@ def render_user_home() -> None:
 
                     if st.session_state.get("ex_search_performed", False):
                         ex_results = st.session_state.get("ex_raw_candidates", [])
+                        
+                        # 換假結果頂部統計方框
+                        st.markdown(
+                            f"""
+                            <div style="background: rgba(15, 23, 42, 0.95); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 12px; padding: 10px; text-align: center; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+                                <div style="font-size: 10px; color: #94A3B8; font-family: monospace; letter-spacing: 0.5px;">符合換假資格人數</div>
+                                <div style="font-size: 18px; font-weight: 900; color: #38BDF8; font-family: monospace; margin-top: 2px;">{len(ex_results)} 位</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+
                         st.markdown(f"### 換假可選人員名單（共符合 {len(ex_results)} 筆）")
 
                         if not ex_results:
@@ -949,24 +1030,30 @@ def render_user_home() -> None:
                                         clean_train = str(r.get("還假當日車次", "")).strip()
                                         clean_in = str(r.get("還假當日In", "")).strip()
                                         clean_out = str(r.get("還假當日Out", "")).strip()
+                                        work_hours = str(r.get("還假當日工時", "")).strip()
+                                        border_color = get_group_border_color(clean_train)
 
                                         st.markdown(
                                             f"""
-                                            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.5);">
-                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid {border_color}; border-radius: 12px; padding: 14px; margin-bottom: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.5);">
+                                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                                     <div>
-                                                        <span style="font-size: 15px; font-weight: 900; color: #F8FAFC;">{clean_name}</span>
-                                                        <span style="font-size: 11px; font-weight: 700; color: #38BDF8; font-family: monospace; margin-left: 6px;">({clean_id})</span>
+                                                        <div style="font-size: 15px; font-weight: 900; color: #F8FAFC;">{clean_name} <span style="font-size: 11px; font-weight: 700; color: #38BDF8; font-family: monospace;">({clean_id})</span></div>
+                                                        <div style="font-size: 12px; font-weight: 700; color: #38BDF8; font-family: monospace; margin-top: 4px;">還假班別 : {clean_train}</div>
                                                     </div>
-                                                    <div>
-                                                        <span style="display:inline-block; width:7px; height:7px; background-color:#34D399; border-radius:50%; margin-right:3px; box-shadow:0 0 6px #34D399;"></span>
-                                                        <span style="font-size: 9px; font-weight: 700; color: #34D399;">可換假</span>
+                                                    <div style="text-align: right;">
+                                                        <div style="font-size: 13px; font-weight: 900; color: #34D399; font-family: monospace;">Sign-In <span style="font-size: 14px;">{clean_in}</span></div>
+                                                        <div style="font-size: 13px; font-weight: 900; color: #34D399; font-family: monospace;">Sign-Out <span style="font-size: 14px;">{clean_out}</span></div>
+                                                        <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace; margin-top: 1px;">{work_hours}</div>
                                                     </div>
                                                 </div>
-                                                <div style="font-size: 11.5px; color: #CBD5E1; font-family: monospace; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 6px; margin-bottom: 8px;">
-                                                    <div>還假車次: <strong style="color: #38BDF8;">{clean_train}</strong></div>
-                                                    <div>In: <strong style="color: #34D399;">{clean_in}</strong></div>
-                                                    <div>Out: <strong style="color: #FBBF24;">{clean_out}</strong></div>
+                                                <div style="border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 8px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                                    <div style="font-size: 11px; color: #CBD5E1; font-family: monospace;">
+                                                        換假狀態 : <strong style="color: #34D399;">可還假</strong>
+                                                    </div>
+                                                    <div>
+                                                        <span style='background: rgba(52, 211, 153, 0.2); border: 1px solid #34D399; color: #6EE7B7; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; font-family: monospace;'>可換假</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                             """,
