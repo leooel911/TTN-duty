@@ -73,7 +73,7 @@ def clean_role_label(role: str) -> str:
 
 
 # =============================================================================
-# 2. 資料處理與工具函式
+# 2. 資料處理與多月份工具函式
 # =============================================================================
 
 def format_time_hhmm(time_str: Any) -> str:
@@ -98,6 +98,62 @@ def parse_date_obj(d_str: str, default_year: int) -> Optional[date]:
     except Exception:
         pass
     return None
+
+
+def load_role_merged_dataframe(role_name: str, active_files: Dict[str, Any]) -> Tuple[pd.DataFrame, List[str]]:
+    """
+    跨月份班表資料合併載入：
+    讀取指定職位對應的所有月份班表 Excel（支援單檔或多月份檔案清單），
+    依員編與姓名進行欄位合併，產生跨多月份的完整 date_cols 與 DataFrame。
+    """
+    raw_target = active_files.get(role_name, "")
+    file_paths = []
+    
+    if isinstance(raw_target, list):
+        file_paths = raw_target
+    elif isinstance(raw_target, str) and raw_target:
+        file_paths = [p.strip() for p in re.split(r"[;,]", raw_target) if p.strip()]
+
+    valid_paths = [p for p in file_paths if os.path.exists(p) and os.path.getsize(p) > 0]
+    if not valid_paths:
+        return pd.DataFrame(), []
+
+    dfs = []
+    for p in valid_paths:
+        df = safe_read_excel(p, header=3)
+        df.columns = [str(c).strip() for c in df.columns]
+        dfs.append(df)
+
+    if not dfs:
+        return pd.DataFrame(), []
+
+    # 以第一張大表為基底進行跨月對齊與合併
+    merged_df = dfs[0].copy()
+    id_col = merged_df.columns[0]
+    name_col = merged_df.columns[1]
+
+    for next_df in dfs[1:]:
+        next_id_col = next_df.columns[0]
+        next_name_col = next_df.columns[1]
+        next_date_cols = list(next_df.columns[2:])
+
+        # 重命名非日期欄位以利 merge 對齊
+        next_df_sub = next_df.rename(columns={next_id_col: id_col, next_name_col: name_col})
+        merged_df = pd.merge(
+            merged_df,
+            next_df_sub[[id_col, name_col] + next_date_cols],
+            on=[id_col, name_col],
+            how="outer"
+        )
+
+    # 彙整所有跨月份的有效日期欄位
+    all_date_cols = []
+    for c in merged_df.columns[2:]:
+        norm = normalize_date_str(c)
+        if norm and norm not in all_date_cols:
+            all_date_cols.append(norm)
+
+    return merged_df, all_date_cols
 
 
 def get_shift_group_key(code_str: str) -> str:
@@ -717,21 +773,32 @@ def render_user_home() -> None:
 
         st.stop()
 
-    missing_files = [
-        role
-        for role in ["駕駛", "列車長", "服勤員"]
-        if not os.path.exists(active_files.get(role, ""))
-        or os.path.getsize(active_files.get(role, "")) == 0
-    ]
+    # 檢查是否有缺失的職位班表檔
+    missing_files = []
+    for role in ["駕駛", "列車長", "服勤員"]:
+        f_val = active_files.get(role, "")
+        if not f_val:
+            missing_files.append(role)
+        elif isinstance(f_val, str) and (not os.path.exists(f_val) or os.path.getsize(f_val) == 0):
+            missing_files.append(role)
 
     if missing_files:
         st.error(
             f"【{current_unit_label}】資料庫異常或尚無檔案：請洽管理員上傳！"
         )
 
-    td_time = get_file_mtime_str(active_files.get("駕駛", ""))
-    tm_time = get_file_mtime_str(active_files.get("列車長", ""))
-    ta_time = get_file_mtime_str(active_files.get("服勤員", ""))
+    def get_role_mtime_label(r_name: str) -> str:
+        f_val = active_files.get(r_name, "")
+        if isinstance(f_val, list) and f_val:
+            return get_file_mtime_str(f_val[-1])
+        elif isinstance(f_val, str) and f_val:
+            first_p = f_val.split(";")[0].strip()
+            return get_file_mtime_str(first_p)
+        return "無檔案"
+
+    td_time = get_role_mtime_label("駕駛")
+    tm_time = get_role_mtime_label("列車長")
+    ta_time = get_role_mtime_label("服勤員")
     sched_range = get_schedule_range()
 
     period_html = f"""
@@ -894,7 +961,7 @@ def render_user_home() -> None:
                 except Exception as e:
                     st.error(f"繪製班表時發生錯誤：{e}")
 
-    # ==================== 模式二：換班查詢 ====================
+    # ==================== 模式二：換班查詢 (多月份跨月併表) ====================
     elif app_mode == "換班查詢":
         if is_module_maintenance(current_unit_label, "window_filter"):
             if not is_admin_user:
@@ -976,25 +1043,24 @@ def render_user_home() -> None:
                     if not (h == 18 and m == 30)
                 ]
 
-                valid_paths = {}
-                for r_name in roles_to_query:
-                    p = active_files.get(r_name, "")
-                    if p and os.path.exists(p) and os.path.getsize(p) > 0:
-                        valid_paths[r_name] = p
+                # 載入所有選取職位的跨月份併表資料
+                merged_role_dfs: Dict[str, pd.DataFrame] = {}
+                combined_date_cols: List[str] = []
 
-                if not valid_paths:
+                for r_name in roles_to_query:
+                    df_r, dates_r = load_role_merged_dataframe(r_name, active_files)
+                    if not df_r.empty:
+                        merged_role_dfs[r_name] = df_r
+                        for d_str in dates_r:
+                            if d_str not in combined_date_cols:
+                                combined_date_cols.append(d_str)
+
+                if not merged_role_dfs:
                     st.error(
                         f"找不到【{current_unit_label}】所選職位的班表檔案，請先至管理員後台上傳"
                     )
                 else:
-                    first_role, first_path = list(valid_paths.items())[0]
-                    df_search_sample = safe_read_excel(first_path, header=3)
-                    df_search_sample.columns = [str(c).strip() for c in df_search_sample.columns]
-                    date_cols = [
-                        normalize_date_str(col)
-                        for col in df_search_sample.columns[2:]
-                        if normalize_date_str(col)
-                    ]
+                    date_cols = combined_date_cols
 
                     if date_cols:
                         default_win_idx = 0
@@ -1020,21 +1086,24 @@ def render_user_home() -> None:
                                             break
                             default_win_idx = found_idx if found_idx is not None else 0
 
+                        # 取第一張 DF 作為國定假日與標籤參考
+                        first_sample_df = list(merged_role_dfs.values())[0]
+
                         target_date = st.selectbox(
                             "選擇換班日期",
                             date_cols,
                             index=default_win_idx,
-                            format_func=lambda d: get_date_label(d, df_search_sample.columns),
+                            format_func=lambda d: get_date_label(d, first_sample_df.columns),
                             key="win_target_date",
                             on_change=reset_win_search,
                         )
                         st.session_state["saved_win_target_date"] = target_date
 
                         win_week_holidays = get_week_holidays(
-                            target_date, date_cols, df_search_sample.columns
+                            target_date, date_cols, first_sample_df.columns
                         )
                         _, win_week_str = check_week_has_holiday(
-                            target_date, date_cols, df_search_sample.columns
+                            target_date, date_cols, first_sample_df.columns
                         )
 
                         comp.show_holiday_notice(win_week_holidays, win_week_str)
@@ -1095,9 +1164,7 @@ def render_user_home() -> None:
             raw_candidates = []
             search_min_time, search_max_time = slider_val
 
-            for r_name, p_path in valid_paths.items():
-                df_search = safe_read_excel(p_path, header=3)
-                df_search.columns = [str(c).strip() for c in df_search.columns]
+            for r_name, df_search in merged_role_dfs.items():
                 target_col_idx = find_date_column_index(df_search.columns, target_date)
 
                 if target_col_idx != -1:
@@ -1303,7 +1370,7 @@ def render_user_home() -> None:
             else:
                 st.info("在指定條件內，找不到符合的人員")
 
-    # ==================== 模式三：換假查詢 ====================
+    # ==================== 模式三：換假查詢 (多月份跨月併表) ====================
     elif app_mode == "換假查詢":
         if is_module_maintenance(current_unit_label, "exchange_filter"):
             if not is_admin_user:
@@ -1363,23 +1430,16 @@ def render_user_home() -> None:
         )
         st.session_state["saved_ex_role"] = selected_role
 
-        sample_path = active_files.get(selected_role, "")
+        # 載入所選職位的跨月份班表資料
+        df_ex, date_cols = load_role_merged_dataframe(selected_role, active_files)
 
-        if not sample_path or not os.path.exists(sample_path):
+        if df_ex.empty:
             st.error(
                 f"找不到【{current_unit_label} -"
                 f" {selected_role}】的班表檔案，請先至管理員後台上傳"
             )
         else:
             try:
-                df_ex = safe_read_excel(sample_path, header=3)
-                df_ex.columns = [str(c).strip() for c in df_ex.columns]
-                date_cols = [
-                    normalize_date_str(c)
-                    for c in df_ex.columns[2:]
-                    if normalize_date_str(c)
-                ]
-
                 if not date_cols:
                     st.warning("目前的班表檔案中無法解析出有效的日期欄位。")
                 else:
