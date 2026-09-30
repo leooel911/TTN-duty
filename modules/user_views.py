@@ -834,7 +834,7 @@ def render_user_home() -> None:
 
                         st.markdown(
                             f"""
-                            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.8) 100%); border: 1.5px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 12px; margin-bottom: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+                            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.5);">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                                     <div>
                                         <span style="font-size: 15px; font-weight: 900; color: #F8FAFC;">{clean_name}</span>
@@ -842,7 +842,7 @@ def render_user_home() -> None:
                                     </div>
                                     <div style="display: flex; gap: 4px; flex-wrap: wrap;">{badges_html}</div>
                                 </div>
-                                <div style="font-size: 11.5px; color: #CBD5E1; font-family: monospace; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px;">
+                                <div style="font-size: 11.5px; color: #CBD5E1; font-family: monospace; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 6px; margin-bottom: 8px;">
                                     <div>車次: <strong style="color: #38BDF8;">{clean_train}</strong></div>
                                     <div>In: <strong style="color: #34D399;">{clean_signin}</strong></div>
                                     <div>Out: <strong style="color: #FBBF24;">{clean_signout}</strong></div>
@@ -890,8 +890,88 @@ def render_user_home() -> None:
                     with ex_date_col2:
                         return_date = st.selectbox("選擇可還假日期", date_cols, key="ex_return_date", on_change=reset_ex_search)
 
+                    if "ex_search_performed" not in st.session_state:
+                        st.session_state["ex_search_performed"] = False
+
                     if st.button("搜尋可換假組員名單", key="btn_ex_search", type="primary", use_container_width=True):
-                        st.success("搜尋完成！")
+                        st.session_state["ex_search_performed"] = True
+                        
+                        ex_candidates = []
+                        target_col_idx = find_date_column_index(df_ex.columns, target_date)
+                        return_col_idx = find_date_column_index(df_ex.columns, return_date)
+
+                        if target_col_idx != -1 and return_col_idx != -1:
+                            for _, row in df_ex.iterrows():
+                                emp_id = str(row.iloc[0]).strip()
+                                emp_name = str(row.iloc[1]).strip()
+                                if not emp_id or emp_id.upper() in ["NAN", "NONE", ""]:
+                                    continue
+
+                                if target_col_idx < len(row) and return_col_idx < len(row):
+                                    cell_target = row.iloc[target_col_idx]
+                                    cell_return = row.iloc[return_col_idx]
+
+                                    parsed_target = parse_cell(cell_target)
+                                    parsed_return = parse_cell(cell_return)
+
+                                    target_off = is_cell_off_day(cell_target) or bool(parsed_target.get("is_off"))
+                                    return_off = is_cell_off_day(cell_return) or bool(parsed_return.get("is_off"))
+
+                                    if target_off and not return_off:
+                                        ex_candidates.append({
+                                            "員編": emp_id,
+                                            "姓名": emp_name,
+                                            "想休日期": target_date,
+                                            "可還日期": return_date,
+                                            "還假當日車次": translate_train_code(parsed_return["train"]),
+                                            "還假當日In": parsed_return["start"] if parsed_return["start"] else "--:--",
+                                            "還假當日Out": parsed_return["end"] if parsed_return["end"] else "--:--",
+                                        })
+
+                        st.session_state["ex_raw_candidates"] = ex_candidates
+                        st.rerun()
+
+                    if st.session_state.get("ex_search_performed", False):
+                        ex_results = st.session_state.get("ex_raw_candidates", [])
+                        st.markdown(f"### 換假可選人員名單（共符合 {len(ex_results)} 筆）")
+
+                        if not ex_results:
+                            st.info("在指定的日期區間內，沒有找到符合「想休當天為休假，還假當天為上班」的組員。")
+                        else:
+                            for i in range(0, len(ex_results), 2):
+                                batch = ex_results[i : i + 2]
+                                cols = st.columns(2)
+                                for idx_in_batch, r in enumerate(batch):
+                                    with cols[idx_in_batch]:
+                                        clean_name = str(r.get("姓名", "")).strip()
+                                        clean_id = str(r.get("員編", "")).strip()
+                                        clean_train = str(r.get("還假當日車次", "")).strip()
+                                        clean_in = str(r.get("還假當日In", "")).strip()
+                                        clean_out = str(r.get("還假當日Out", "")).strip()
+
+                                        st.markdown(
+                                            f"""
+                                            <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.5);">
+                                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                    <div>
+                                                        <span style="font-size: 15px; font-weight: 900; color: #F8FAFC;">{clean_name}</span>
+                                                        <span style="font-size: 11px; font-weight: 700; color: #38BDF8; font-family: monospace; margin-left: 6px;">({clean_id})</span>
+                                                    </div>
+                                                    <span style="font-size: 9px; font-weight: 800; color: #34D399; background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.4); padding: 1px 6px; border-radius: 6px;">🟢 可換假</span>
+                                                </div>
+                                                <div style="font-size: 11.5px; color: #CBD5E1; font-family: monospace; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 6px; margin-bottom: 8px;">
+                                                    <div>還假車次: <strong style="color: #38BDF8;">{clean_train}</strong></div>
+                                                    <div>In: <strong style="color: #34D399;">{clean_in}</strong></div>
+                                                    <div>Out: <strong style="color: #FBBF24;">{clean_out}</strong></div>
+                                                </div>
+                                            </div>
+                                            """,
+                                            unsafe_allow_html=True,
+                                        )
+                                        if st.button(f"檢視 {clean_name} 完整班表 ➔", key=f"ex_btn_{clean_id}_{i+idx_in_batch}", use_container_width=True):
+                                            st.session_state["inspect_emp_target"] = clean_id
+                                            st.rerun()
+
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
 
