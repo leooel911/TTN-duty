@@ -355,10 +355,9 @@ def render_user_home() -> None:
     
     # 全域三合一狀態列 (Flat Bar)
     status_bar_html = f"""
-    <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 6px 12px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; font-family: monospace;">
-        <div style="color: #38BDF8; font-size: 11px; font-weight: 800; letter-spacing: 0.5px;">UNIT // {current_unit_label}</div>
+    <div style="background: rgba(15, 23, 42, 0.9); border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 6px 12px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; font-family: monospace;">
+        <div style="color: #38BDF8; font-size: 11px; font-weight: 800; letter-spacing: 0.5px;">{current_unit_label} // 最新發布班表區間</div>
         <div style="text-align: right;">
-            <span style="font-size: 9px; color: #64748B; letter-spacing: 0.8px;">CYCLE: </span>
             <span style="font-size: 11px; font-weight: 900; color: #F8FAFC; letter-spacing: 0.5px;">{sched_range}</span>
         </div>
     </div>
