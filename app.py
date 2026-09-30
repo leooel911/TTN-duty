@@ -257,7 +257,6 @@ div[data-testid="stContainer"]:has(.login-card-marker) {
             success, message, user_session = authenticate_user(selected_unit, entered_emp, entered_key)
             
             if success:
-                # 【關鍵修正】將驗證回傳的完整 user_session 寫入集中管理的 Session 內！
                 st.session_state["CURRENT_AUTH_SESSION"] = user_session
                 
                 role = user_session.get("role", "USER")
@@ -393,7 +392,6 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                     st.session_state["current_user_id"] = f"ADMIN ({curr_op})"
                     st.session_state["login_user_id"] = admin_uid
                     
-                    # 同步設定 ADMIN 的 Auth Session
                     st.session_state["CURRENT_AUTH_SESSION"] = {
                         "authenticated": True,
                         "emp_id": admin_uid,
@@ -431,7 +429,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 頁尾：左側為互動式浮動彈出面板，右側為 ADMIN PANEL
 col_f1, col_f2 = st.columns(2)
 
 with col_f1:
