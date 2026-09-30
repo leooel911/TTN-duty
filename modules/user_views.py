@@ -822,15 +822,16 @@ def render_user_home() -> None:
                         is_non_line = r.get("非正線", False)
                         is_leave = r.get("請假", False)
 
+                        # 使用原汁原味的小顆燈號 (LED indicator dot) 取代 Emoji
                         badges_html = ""
                         if is_long:
-                            badges_html += "<span style='font-size: 9px; font-weight: 800; color: #FBBF24; background: rgba(251,191,36,0.15); border: 1px solid rgba(251,191,36,0.4); padding: 1px 6px; border-radius: 6px;'>🔥 長班</span>"
+                            badges_html += "<span style='display:inline-block; width:7px; height:7px; background-color:#FBBF24; border-radius:50%; margin-right:3px; box-shadow:0 0 6px #FBBF24;'></span><span style='font-size: 9px; font-weight: 700; color: #FBBF24; margin-right:8px;'>長班</span>"
                         if is_non_line:
-                            badges_html += "<span style='font-size: 9px; font-weight: 800; color: #C084FC; background: rgba(192,132,252,0.15); border: 1px solid rgba(192,132,252,0.4); padding: 1px 6px; border-radius: 6px;'>🟣 非正線</span>"
+                            badges_html += "<span style='display:inline-block; width:7px; height:7px; background-color:#C084FC; border-radius:50%; margin-right:3px; box-shadow:0 0 6px #C084FC;'></span><span style='font-size: 9px; font-weight: 700; color: #C084FC; margin-right:8px;'>非正線</span>"
                         if is_leave:
-                            badges_html += "<span style='font-size: 9px; font-weight: 800; color: #F43F5E; background: rgba(244,63,94,0.15); border: 1px solid rgba(244,63,94,0.4); padding: 1px 6px; border-radius: 6px;'>🔴 請假</span>"
+                            badges_html += "<span style='display:inline-block; width:7px; height:7px; background-color:#F43F5E; border-radius:50%; margin-right:3px; box-shadow:0 0 6px #F43F5E;'></span><span style='font-size: 9px; font-weight: 700; color: #F43F5E; margin-right:8px;'>請假</span>"
                         if do_tag:
-                            badges_html += f"<span style='font-size: 9px; font-weight: 800; color: #34D399; background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.4); padding: 1px 6px; border-radius: 6px;'>🟢 {do_tag}</span>"
+                            badges_html += f"<span style='display:inline-block; width:7px; height:7px; background-color:#34D399; border-radius:50%; margin-right:3px; box-shadow:0 0 6px #34D399;'></span><span style='font-size: 9px; font-weight: 700; color: #34D399; margin-right:8px;'>{do_tag}</span>"
 
                         st.markdown(
                             f"""
@@ -840,7 +841,7 @@ def render_user_home() -> None:
                                         <span style="font-size: 15px; font-weight: 900; color: #F8FAFC;">{clean_name}</span>
                                         <span style="font-size: 11px; font-weight: 700; color: #38BDF8; font-family: monospace; margin-left: 6px;">({clean_id})</span>
                                     </div>
-                                    <div style="display: flex; gap: 4px; flex-wrap: wrap;">{badges_html}</div>
+                                    <div style="display: flex; align-items: center; gap: 2px;">{badges_html}</div>
                                 </div>
                                 <div style="font-size: 11.5px; color: #CBD5E1; font-family: monospace; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 6px; margin-bottom: 8px;">
                                     <div>車次: <strong style="color: #38BDF8;">{clean_train}</strong></div>
@@ -957,7 +958,10 @@ def render_user_home() -> None:
                                                         <span style="font-size: 15px; font-weight: 900; color: #F8FAFC;">{clean_name}</span>
                                                         <span style="font-size: 11px; font-weight: 700; color: #38BDF8; font-family: monospace; margin-left: 6px;">({clean_id})</span>
                                                     </div>
-                                                    <span style="font-size: 9px; font-weight: 800; color: #34D399; background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.4); padding: 1px 6px; border-radius: 6px;">🟢 可換假</span>
+                                                    <div>
+                                                        <span style="display:inline-block; width:7px; height:7px; background-color:#34D399; border-radius:50%; margin-right:3px; box-shadow:0 0 6px #34D399;"></span>
+                                                        <span style="font-size: 9px; font-weight: 700; color: #34D399;">可換假</span>
+                                                    </div>
                                                 </div>
                                                 <div style="font-size: 11.5px; color: #CBD5E1; font-family: monospace; display: flex; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 6px; margin-bottom: 8px;">
                                                     <div>還假車次: <strong style="color: #38BDF8;">{clean_train}</strong></div>
