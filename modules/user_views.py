@@ -356,7 +356,7 @@ def render_user_home() -> None:
         available_months,
         index=available_months.index(st.session_state["current_query_month"]),
         key="month_selector_box",
-        format_func=lambda x: f"📅 {x.replace('-', '年')} 月份班表",
+        format_func=lambda x: f"{x.replace('-', '年')}月份班表",
     )
 
     if st.session_state["current_query_month"] != selected_month:
