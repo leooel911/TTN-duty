@@ -112,8 +112,7 @@ def get_available_months_list(active_files: Dict[str, Any]) -> List[str]:
 
         for p in file_paths:
             if os.path.exists(p) and os.path.getsize(p) > 0:
-                # 嘗試從檔名或欄位讀取月份標籤
-                m_match = re.search(r"(\d{1,2}月|\d{4}-\d{2}|\d{2}月)", p)
+                m_match = re.search(r"(\d{4}-\d{2}|\d{1,2}月|\d{2}月)", p)
                 if m_match:
                     m_label = m_match.group(1)
                     if m_label not in months:
@@ -121,7 +120,7 @@ def get_available_months_list(active_files: Dict[str, Any]) -> List[str]:
 
     if not months:
         default_range = get_schedule_range()
-        months = [default_range] if default_range else ["當前月份週期"]
+        months = ["2026-10"] if not default_range else [default_range]
     return months
 
 
@@ -145,7 +144,6 @@ def load_role_merged_dataframe(
     if not valid_paths:
         return pd.DataFrame(), []
 
-    # 如果有指定的月份過濾器，僅載入匹配該月份的檔案
     if selected_month and len(valid_paths) > 1:
         matched = [p for p in valid_paths if selected_month in p]
         if matched:
@@ -825,37 +823,33 @@ def render_user_home() -> None:
     td_time = get_role_mtime_label("駕駛")
     tm_time = get_role_mtime_label("列車長")
     ta_time = get_role_mtime_label("服勤員")
+    sched_range = get_schedule_range()
 
-    # 動態讀取系統中已上傳的所有月份週期選項
+    # 精準還原截圖設計：獨立「選擇查詢月份」選單區塊
+    st.markdown('<div class="section-field-label">選擇查詢月份</div>', unsafe_allow_html=True)
+
     available_months = get_available_months_list(active_files)
 
-    st.markdown(
-        """
-        <div style="font-size: 13.5px; font-weight: 800; color: #38BDF8; margin-bottom: 4px; font-family: monospace;">
-            [TTN] 排班週期與查詢月份選擇
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     selected_global_month = st.selectbox(
-        "選擇查詢月份/週期",
+        "選擇查詢月份",
         options=available_months,
+        format_func=lambda m: f"QUERY MONTH // {m}",
         key="global_month_selector",
-        help="切換欲查詢或繪製的班表月份週期",
+        label_visibility="collapsed",
     )
 
+    # 精準還原截圖設計：資訊卡片（單位 // 最新發布班表區間 + 時間 + 下拉展開）
     period_html = f"""
-    <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 !important;">
+    <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 12px 0 !important;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="section-title" style="font-size: 13px !important;">[{current_unit_label}] 當前選擇週期</span>
+            <span class="section-title" style="font-size: 13px !important;">{current_unit_label} // 最新發布班表區間</span>
             <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
-                {selected_global_month}
+                {sched_range if len(missing_files) < 3 else "資料庫異常"}
             </span>
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
-                <span>點擊檢視各大表更新時間</span>
+                <span>點擊展開各職位大表檔案更新時間 ({selected_global_month})</span>
                 <span style="font-size: 9px; color: #64748B;">▼</span>
             </summary>
             <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1);">
@@ -950,14 +944,6 @@ def render_user_home() -> None:
         )
 
         with st.form(key="draw_schedule_form", border=False):
-            # 新增：選取欲繪製的班表月份選單
-            target_draw_month = st.selectbox(
-                "選擇繪製班表月份 / 週期",
-                options=available_months,
-                index=available_months.index(selected_global_month) if selected_global_month in available_months else 0,
-                key="draw_month_select",
-            )
-
             default_emp_val = current_user_id if current_user_id else st.session_state.get("draw_input_key", "")
             if "draw_input_key" not in st.session_state and default_emp_val:
                 st.session_state["draw_input_key"] = default_emp_val
@@ -985,10 +971,10 @@ def render_user_home() -> None:
                     )
                     log_activity(
                         "個人班表繪製",
-                        f"操作者:{current_user_id} | 單位:{current_unit_label} | 選擇月份:{target_draw_month} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
+                        f"操作者:{current_user_id} | 單位:{current_unit_label} | 選擇月份:{selected_global_month} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
                     )
 
-                    with st.spinner(f"正在繪製【{emp_name}】{target_draw_month} 的個人月班表，請稍候..."):
+                    with st.spinner(f"正在繪製【{emp_name}】{selected_global_month} 的個人月班表，請稍候..."):
                         buf = render_schedule_figure(
                             start_dt,
                             dates,
@@ -998,14 +984,14 @@ def render_user_home() -> None:
                             current_unit_label,
                             badge_title="Producer | C.L.F",
                         )
-                    st.success(f"【{emp_name}】{target_draw_month} 個人班表圖片生成成功！")
+                    st.success(f"【{emp_name}】{selected_global_month} 個人班表圖片生成成功！")
 
                     comp.render_zoomable_image(buf)
 
                     st.download_button(
                         "點此下載班表影像檔",
                         data=buf,
-                        file_name=f"{current_unit_label}_班表_{emp_name}_{target_draw_month}.png",
+                        file_name=f"{current_unit_label}_班表_{emp_name}_{selected_global_month}.png",
                         mime="image/png",
                         use_container_width=True,
                     )
@@ -1139,7 +1125,7 @@ def render_user_home() -> None:
                         first_sample_df = list(merged_role_dfs.values())[0]
 
                         target_date = st.selectbox(
-                            f"選擇【{selected_global_month}】換班日期",
+                            f"選擇換班日期",
                             date_cols,
                             index=default_win_idx,
                             format_func=lambda d: get_date_label(d, first_sample_df.columns),
@@ -1518,7 +1504,7 @@ def render_user_home() -> None:
 
                     with ex_date_col1:
                         target_date = st.selectbox(
-                            f"選擇【{selected_global_month}】想休假日期",
+                            "選擇想休假日期",
                             date_cols,
                             index=default_ex_idx,
                             format_func=lambda d: get_date_label(d, df_ex.columns),
@@ -1568,7 +1554,7 @@ def render_user_home() -> None:
 
                         with ex_date_col2:
                             return_date = st.selectbox(
-                                f"選擇【{selected_global_month}】可還假日期",
+                                "選擇可還假日期",
                                 return_date_options,
                                 index=return_date_idx,
                                 format_func=lambda d: get_date_label(d, df_ex.columns),
