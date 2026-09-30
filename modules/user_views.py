@@ -368,9 +368,15 @@ def render_user_home() -> None:
     active_files = get_current_role_files(selected_month)
     sched_range = get_schedule_range()
 
-    td_time = get_file_mtime_str(active_files.get("駕駛", ""))
-    tm_time = get_file_mtime_str(active_files.get("列車長", ""))
-    ta_time = get_file_mtime_str(active_files.get("服勤員", ""))
+    # 檢查各職位檔案狀態，若存在則抓取 mtime，否則顯示尚無檔案
+    def check_file_status(f_path):
+        if f_path and isinstance(f_path, str) and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
+            return get_file_mtime_str(f_path)
+        return "尚無檔案"
+
+    td_time = check_file_status(active_files.get("駕駛", ""))
+    tm_time = check_file_status(active_files.get("列車長", ""))
+    ta_time = check_file_status(active_files.get("服勤員", ""))
 
     # 整合型全域狀態列 (包含最新發布班表區間與各職位大表更新時間折疊)
     status_bar_html = f"""
@@ -441,7 +447,9 @@ def render_user_home() -> None:
 
         st.stop()
 
-    missing_files = [
+    # 彈性檢查：允許部分職位缺漏，僅在完全無任何檔案時顯示紅字，部分缺漏時顯示溫馨提示但不阻擋正常職位運作
+    role_map_name = {"駕駛": "駕駛 (TD)", "列車長": "列車長 (TM)", "服勤員": "服勤員 (TA)"}
+    missing_roles = [
         role
         for role in ["駕駛", "列車長", "服勤員"]
         if not isinstance(active_files.get(role, ""), str)
@@ -449,9 +457,14 @@ def render_user_home() -> None:
         or os.path.getsize(active_files.get(role, "")) == 0
     ]
 
-    if missing_files:
+    if len(missing_roles) == 3:
         st.error(
-            f"【{current_unit_label}】所選月份（{selected_month}）資料庫異常或尚無檔案：請洽管理員上傳！"
+            f"【{current_unit_label}】所選月份（{selected_month}）所有職位皆尚無檔案：請洽管理員上傳！"
+        )
+    elif len(missing_roles) > 0:
+        missing_names = [role_map_name[r] for r in missing_roles]
+        st.warning(
+            f"【{current_unit_label}】所選月份（{selected_month}）部分職位尚無檔案（缺少：{'、'.join(missing_names)}）。已上傳的職位可正常獨立運作查詢！"
         )
 
     st.markdown('<div class="section-field-label">選擇系統操作模式</div>', unsafe_allow_html=True)
@@ -631,7 +644,7 @@ def render_user_home() -> None:
                     valid_paths[r_name] = p
 
             if not valid_paths:
-                st.error(f"找不到【{current_unit_label}】所選月份的班表檔案，請先確認檔案是否存在")
+                st.error(f"找不到【{current_unit_label}】所選月份已上傳的班表檔案，請先確認檔案是否存在")
             else:
                 first_role, first_path = list(valid_paths.items())[0]
                 df_search_sample = safe_read_excel(first_path, header=3)
@@ -811,8 +824,8 @@ def render_user_home() -> None:
         selected_role = st.selectbox("選擇職位類別", ["服勤員", "駕駛", "列車長"], key="ex_role_select", on_change=reset_ex_search)
         sample_path = active_files.get(selected_role, "")
 
-        if not sample_path or not isinstance(sample_path, str) or not os.path.exists(sample_path):
-            st.error(f"找不到【{current_unit_label} - {selected_role}】的班表檔案")
+        if not sample_path or not isinstance(sample_path, str) or not os.path.exists(sample_path) or os.path.getsize(sample_path) == 0:
+            st.warning(f"找不到【{current_unit_label} - {selected_role}】的班表檔案，該職位目前無法進行換假查詢。")
         else:
             try:
                 df_ex = safe_read_excel(sample_path, header=3)
