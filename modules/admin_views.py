@@ -11,7 +11,12 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 import streamlit as st
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 自動定位專案根目錄 (若本檔位在根目錄或 modules/ 子目錄均可精準錨定)
+CURRENT_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+if os.path.exists(os.path.join(CURRENT_FILE_DIR, "config.py")) or os.path.exists(os.path.join(CURRENT_FILE_DIR, "data")):
+    BASE_DIR = CURRENT_FILE_DIR
+else:
+    BASE_DIR = os.path.dirname(CURRENT_FILE_DIR)
 
 # -----------------------------------------------------------------------------
 # 1. 安全載入設定檔與工具模組 (具備防崩潰安全降級機制與實體路徑保證)
@@ -22,7 +27,7 @@ except Exception:
     DATA_DIR = "data"
     FEEDBACK_IMG_DIR = "feedback"
     LOG_FILE = "activity.log"
-    UNITS = {"TTN": {}, "KSH": {}, "TCH": {}}
+    UNITS = {"TTN": {}, "TTC": {}, "TTS": {}}
     WHITELIST_FILE = "whitelist.json"
 
 try:
@@ -76,8 +81,11 @@ except Exception:
 # 2. GitHub API 自動同步與白名單強固讀寫機制
 # =============================================================================
 def _get_unit_whitelist_path(unit_code: str) -> str:
+    unit_code_clean = unit_code.upper().strip()
+    if unit_code_clean not in ["TTN", "TTC", "TTS"]:
+        unit_code_clean = "TTN"
     os.makedirs(DATA_DIR, exist_ok=True)
-    return os.path.join(DATA_DIR, f"whitelist_{unit_code.lower()}.json")
+    return os.path.join(DATA_DIR, f"whitelist_{unit_code_clean.lower()}.json")
 
 def sync_file_to_github(file_path_in_repo: str, content_str: str, commit_msg: str) -> bool:
     """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫"""
@@ -117,15 +125,18 @@ def sync_file_to_github(file_path_in_repo: str, content_str: str, commit_msg: st
         return False
 
 def robust_load_whitelist(unit_code: str) -> Dict[str, Any]:
+    unit_code_clean = unit_code.upper().strip()
+    if unit_code_clean not in ["TTN", "TTC", "TTS"]:
+        unit_code_clean = "TTN"
     data = {}
     try:
-        res = load_whitelist(unit_code)
+        res = load_whitelist(unit_code_clean)
         if isinstance(res, dict) and res:
             data = res
     except Exception:
         pass
 
-    path = _get_unit_whitelist_path(unit_code)
+    path = _get_unit_whitelist_path(unit_code_clean)
     if not data and os.path.exists(path):
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -137,7 +148,10 @@ def robust_load_whitelist(unit_code: str) -> Dict[str, Any]:
     return data
 
 def robust_save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> bool:
-    path = _get_unit_whitelist_path(unit_code)
+    unit_code_clean = unit_code.upper().strip()
+    if unit_code_clean not in ["TTN", "TTC", "TTS"]:
+        unit_code_clean = "TTN"
+    path = _get_unit_whitelist_path(unit_code_clean)
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
         json_str = json.dumps(unit_data, ensure_ascii=False, indent=2)
@@ -151,29 +165,38 @@ def robust_save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> bool:
     sync_file_to_github(
         file_path_in_repo=rel_path,
         content_str=json.dumps(unit_data, ensure_ascii=False, indent=2),
-        commit_msg=f"Auto-update whitelist for {unit_code} via Admin Panel"
+        commit_msg=f"Auto-update whitelist for {unit_code_clean} via Admin Panel"
     )
     return True
 
 
 # =============================================================================
-# 每月份資料控制開關輔助函式
+# 每月份資料控制開關輔助函式 (支援營運單位獨立隔離)
 # =============================================================================
-def get_monthly_controls() -> Dict[str, Any]:
-    """取得系統中各月份的開放與控制開關設定"""
+def get_monthly_controls(unit_code: str = "TTN") -> Dict[str, Any]:
+    """取得特定單位各月份的開放與控制開關設定"""
     sys_cfg = load_system_config()
     controls = sys_cfg.get("monthly_controls", {})
     if not isinstance(controls, dict):
         controls = {}
+    
+    unit_code_clean = unit_code.upper().strip()
+    if unit_code_clean in controls and isinstance(controls[unit_code_clean], dict):
+        return controls[unit_code_clean]
+    
     return controls
 
-def set_monthly_control(month_str: str, is_enabled: bool, note: str = "") -> None:
-    """設定特定月份的開關狀態與備註"""
+def set_monthly_control(unit_code: str, month_str: str, is_enabled: bool, note: str = "") -> None:
+    """設定特定單位特定月份的開關狀態與備註"""
     sys_cfg = load_system_config()
     if "monthly_controls" not in sys_cfg or not isinstance(sys_cfg["monthly_controls"], dict):
         sys_cfg["monthly_controls"] = {}
     
-    sys_cfg["monthly_controls"][month_str] = {
+    unit_code_clean = unit_code.upper().strip()
+    if unit_code_clean not in sys_cfg["monthly_controls"] or not isinstance(sys_cfg["monthly_controls"][unit_code_clean], dict):
+        sys_cfg["monthly_controls"][unit_code_clean] = {}
+        
+    sys_cfg["monthly_controls"][unit_code_clean][month_str] = {
         "enabled": is_enabled,
         "note": note,
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -205,7 +228,7 @@ def clear_logs() -> None:
     st.cache_data.clear()
 
 
-@st.dialog("⚠️️ 確定要清空全站系統日誌嗎？")
+@st.dialog("確定要清空全站系統日誌嗎？")
 def show_confirm_clear_logs_modal() -> None:
     st.warning("此動作將徹底清除所有歷史操作與稽核紀錄，且無法恢復！")
     st.markdown("請確認是否繼續？")
@@ -252,46 +275,88 @@ def create_backup_zip() -> io.BytesIO:
 
 @st.cache_data(ttl=60)
 def get_all_crew_options(unit_code: str) -> List[Dict[str, str]]:
-    unit_files = UNITS.get(unit_code, {})
-    if not unit_files:
-        unit_files = {
-            "駕駛": os.path.join(DATA_DIR, f"{unit_code.lower()}_driver.xlsx"),
-            "列車長": os.path.join(DATA_DIR, f"{unit_code.lower()}_conductor.xlsx"),
-            "服勤員": os.path.join(DATA_DIR, f"{unit_code.lower()}_attendant.xlsx"),
-        }
+    unit_code_clean = unit_code.upper().strip()
+    if unit_code_clean not in ["TTN", "TTC", "TTS"]:
+        unit_code_clean = "TTN"
 
     crew_options: List[Dict[str, str]] = []
     seen_uids = set()
 
-    for role_name, file_path in unit_files.items():
-        if isinstance(file_path, str) and os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-            try:
-                df = safe_read_excel(file_path, header=3)
-                if df is not None and not df.empty:
-                    for _, row in df.iterrows():
-                        if len(row) >= 2:
-                            uid = str(row.iloc[0]).strip().upper()
-                            uname = str(row.iloc[1]).strip()
-                            invalid_vals = {"NAN", "NONE", "", "員編", "代碼", "員工編號", "姓名", "員工姓名"}
-                            if uid and uid not in invalid_vals and uname and uname not in invalid_vals:
-                                if uid not in seen_uids:
-                                    seen_uids.add(uid)
-                                    crew_options.append({
-                                        "label": f"{uid} - {uname} ({role_name})",
-                                        "uid": uid,
-                                        "name": uname,
-                                        "source": "excel",
-                                        "role": role_name
-                                    })
-            except Exception:
-                pass
+    possible_file_map = {
+        "駕駛": [
+            os.path.join(DATA_DIR, f"{unit_code_clean.lower()}_driver.xlsx"),
+            os.path.join(DATA_DIR, unit_code_clean, f"{unit_code_clean}_TD.xlsx"),
+            os.path.join(DATA_DIR, unit_code_clean, "20號大表", f"{unit_code_clean}_TD.xlsx"),
+        ],
+        "列車長": [
+            os.path.join(DATA_DIR, f"{unit_code_clean.lower()}_conductor.xlsx"),
+            os.path.join(DATA_DIR, unit_code_clean, f"{unit_code_clean}_TM.xlsx"),
+            os.path.join(DATA_DIR, unit_code_clean, "20號大表", f"{unit_code_clean}_TM.xlsx"),
+        ],
+        "服勤員": [
+            os.path.join(DATA_DIR, f"{unit_code_clean.lower()}_attendant.xlsx"),
+            os.path.join(DATA_DIR, unit_code_clean, f"{unit_code_clean}_TA.xlsx"),
+            os.path.join(DATA_DIR, unit_code_clean, "20號大表", f"{unit_code_clean}_TA.xlsx"),
+        ],
+    }
 
-    whitelist_data = robust_load_whitelist(unit_code)
+    latest_schedule_dir = os.path.join(DATA_DIR, unit_code_clean, "最新版班表")
+    if os.path.exists(latest_schedule_dir):
+        for sub_dir in os.listdir(latest_schedule_dir):
+            full_sub_p = os.path.join(latest_schedule_dir, sub_dir)
+            if os.path.isdir(full_sub_p):
+                possible_file_map["駕駛"].append(os.path.join(full_sub_p, f"{unit_code_clean}_TD.xlsx"))
+                possible_file_map["列車長"].append(os.path.join(full_sub_p, f"{unit_code_clean}_TM.xlsx"))
+                possible_file_map["服勤員"].append(os.path.join(full_sub_p, f"{unit_code_clean}_TA.xlsx"))
+
+    if isinstance(UNITS, dict) and unit_code_clean in UNITS and UNITS[unit_code_clean]:
+        for role, p in UNITS[unit_code_clean].items():
+            if p:
+                possible_file_map[role] = [p] + possible_file_map.get(role, [])
+
+    for role_name, paths in possible_file_map.items():
+        target_path = None
+        for p in paths:
+            if isinstance(p, str) and os.path.exists(p) and os.path.getsize(p) > 0:
+                target_path = p
+                break
+
+        if target_path:
+            for header_idx in [3, 0]:
+                try:
+                    df = safe_read_excel(target_path, header=header_idx)
+                    if df is not None and not df.empty:
+                        for _, row in df.iterrows():
+                            if len(row) >= 2:
+                                raw_uid = str(row.iloc[0]).strip().upper()
+                                uname = str(row.iloc[1]).strip()
+                                invalid_vals = {"NAN", "NONE", "", "員編", "代碼", "員工編號", "姓名", "員工姓名"}
+
+                                digits = re.findall(r'\d+', raw_uid)
+                                if digits and uname and uname not in invalid_vals:
+                                    clean_uid = digits[0].zfill(6)
+                                    if clean_uid not in seen_uids:
+                                        seen_uids.add(clean_uid)
+                                        crew_options.append({
+                                            "label": f"{clean_uid} - {uname} ({role_name})",
+                                            "uid": clean_uid,
+                                            "name": uname,
+                                            "source": "excel",
+                                            "role": role_name
+                                        })
+                        if crew_options:
+                            break
+                except Exception:
+                    pass
+
+    whitelist_data = robust_load_whitelist(unit_code_clean)
     for uid, info in whitelist_data.items():
-        uid_upper = str(uid).strip().upper()
-        if uid_upper in ["NAN", "NONE", ""]:
+        digits = re.findall(r'\d+', str(uid).strip())
+        uid_clean = digits[0].zfill(6) if digits else str(uid).strip().upper()
+
+        if uid_clean in ["NAN", "NONE", ""]:
             continue
-        
+
         if isinstance(info, dict):
             uname = info.get("name", info.get("姓名", "未設定"))
             role = info.get("role", info.get("身份", "VIP_USER"))
@@ -299,18 +364,18 @@ def get_all_crew_options(unit_code: str) -> List[Dict[str, str]]:
             uname = str(info)
             role = "VIP_USER"
 
-        if uid_upper not in seen_uids:
-            seen_uids.add(uid_upper)
+        if uid_clean not in seen_uids:
+            seen_uids.add(uid_clean)
             crew_options.append({
-                "label": f"{uid_upper} - {uname} (白名單/{role})",
-                "uid": uid_upper,
+                "label": f"{uid_clean} - {uname} (白名單/{role})",
+                "uid": uid_clean,
                 "name": uname,
                 "source": "whitelist",
                 "role": role
             })
         else:
             for item in crew_options:
-                if item["uid"] == uid_upper:
+                if item["uid"] == uid_clean:
                     if role in ["ADMIN", "VIP_USER", "TESTER"]:
                         item["label"] = f"{item['uid']} - {item['name']} ({item['role']} / {role})"
                     break
@@ -405,7 +470,7 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
     INVALID_USERS = {
         "系統/訪客", "訪客", "", "NONE", "NAN", "由早至晚", 
         "依 SIGN-IN 時間", "依 SIGN-IN 時間 (由早至晚)", "服勤員", "列車長", 
-        "駕駛", "TTN", "KHH", "TXG", "TNA", "全站", "未命名"
+        "駕駛", "TTN", "TTC", "TTS", "TCH", "KSH", "KHH", "TXG", "TNA", "全站", "未命名"
     }
 
     if isinstance(raw_log, dict):
@@ -492,7 +557,7 @@ def extract_device_info(detail_str: str) -> str:
 
 
 # =============================================================================
-# 3. 後台主畫面 UI (擴增為 7 大完整分頁，包含每月份資料控制開關)
+# 3. 後台主畫面 UI (擴增為 7 大完整分頁，完全移除 Emoji)
 # =============================================================================
 def render_admin_panel() -> None:
     """系統管理員後台控制台"""
@@ -545,6 +610,8 @@ def render_admin_panel() -> None:
     )
 
     current_unit = st.session_state.get("current_unit", "TTN")
+    if current_unit not in ["TTN", "TTC", "TTS"]:
+        current_unit = "TTN"
 
     col_head_title, col_head_unit, col_head_btn = st.columns([2.2, 1.2, 1])
 
@@ -552,7 +619,7 @@ def render_admin_panel() -> None:
         st.markdown(
             """
             <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 24px; font-weight: 900; color: #38BDF8; letter-spacing: 0.5px;">⚙️ 系統管理後台</span>
+                <span style="font-size: 24px; font-weight: 900; color: #38BDF8; letter-spacing: 0.5px;">系統管理後台</span>
                 <span style="font-size: 10px; font-weight: 800; color: #000; background: #38BDF8; padding: 2px 8px; border-radius: 12px; font-family: monospace;">ADMIN CONSOLE</span>
             </div>
             """,
@@ -560,7 +627,7 @@ def render_admin_panel() -> None:
         )
 
     with col_head_unit:
-        unit_options = list(UNITS.keys()) if isinstance(UNITS, dict) and UNITS else ["TTN", "KSH", "TCH"]
+        unit_options = list(UNITS.keys()) if isinstance(UNITS, dict) and UNITS else ["TTN", "TTC", "TTS"]
         selected_u = st.selectbox(
             "切換營運單位",
             options=unit_options,
@@ -576,7 +643,7 @@ def render_admin_panel() -> None:
     with col_head_btn:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
         if st.button(
-            "🚪 返回前台首頁",
+            "返回前台首頁",
             key="btn_top_return_home",
             type="primary",
             use_container_width=True,
@@ -586,22 +653,27 @@ def render_admin_panel() -> None:
 
     st.markdown("---")
 
-    # 擴增為 7 大完整分頁，包含每月份資料控制與開放開關
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-        "📊 大表上傳與管理",
-        "📅 每月份資料控制",
-        "🛠️ 模組維護模式",
-        "👥 白名單與組員權限",
-        "⚙️️ 全域系統參數",
-        "📜 系統日誌與備份",
-        "🎫 工單與問題回報",
+        "大表上傳與管理",
+        "每月份資料控制",
+        "模組維護模式",
+        "白名單與組員權限",
+        "全域系統參數",
+        "系統日誌與備份",
+        "工單與問題回報",
     ])
 
     # ==================== Tab 1 ====================
     with tab1:
-        st.markdown(f"### 📊 [{current_unit}] 班表大表 Excel 上傳與管理")
+        st.markdown(f"### [{current_unit}] 班表大表 Excel 上傳與管理")
         st.caption("即時監控各大表 Excel 檔案狀態，並提供直接覆蓋更新功能。")
-        unit_files = UNITS.get(current_unit, UNITS.get("TTN", {})) if isinstance(UNITS, dict) else {}
+        
+        unit_files = UNITS.get(current_unit, {}) if isinstance(UNITS, dict) else {}
+        default_role_paths = {
+            "駕駛": os.path.join(DATA_DIR, f"{current_unit.lower()}_driver.xlsx"),
+            "列車長": os.path.join(DATA_DIR, f"{current_unit.lower()}_conductor.xlsx"),
+            "服勤員": os.path.join(DATA_DIR, f"{current_unit.lower()}_attendant.xlsx"),
+        }
 
         col_u1, col_u2, col_u3 = st.columns(3)
         roles = [
@@ -612,15 +684,15 @@ def render_admin_panel() -> None:
 
         for role_name, role_code, col in roles:
             with col:
-                target_path = unit_files.get(role_name, "")
+                target_path = unit_files.get(role_name, "") or default_role_paths[role_name]
                 exists = os.path.exists(target_path) and os.path.getsize(target_path) > 0 if target_path else False
                 f_size_kb = round(os.path.getsize(target_path) / 1024, 1) if exists else 0
                 mtime_str = get_file_mtime_str(target_path) if exists else "檔案不存在"
 
                 status_pill = (
-                    "<span style='color:#34D399; font-weight:800;'>🟢 檔案正常</span>"
+                    "<span style='color:#34D399; font-weight:800;'>[檔案正常]</span>"
                     if exists
-                    else "<span style='color:#EF4444; font-weight:800;'>🔴 缺失 / 異常</span>"
+                    else "<span style='color:#EF4444; font-weight:800;'>[缺失 / 異常]</span>"
                 )
 
                 st.markdown(
@@ -665,11 +737,11 @@ def render_admin_panel() -> None:
 
     # ==================== Tab 2: 每月份資料控制與開放開關 ====================
     with tab2:
-        st.markdown(f"### 📅 [{current_unit}] 每月份資料控制與開放開關")
-        st.info("💡 在此可以針對系統中各個月份（如 2026-09、2026-10 等）設定開關。關閉特定月份後，前台組員切換該月份時將會收到維護或暫不開放提示。")
+        st.markdown(f"### [{current_unit}] 每月份資料控制與開放開關")
+        st.info(f"在此可以針對【{current_unit}】單位設定各個月份（如 2026-09、2026-10 等）開關。關閉特定月份後，該單位組員切換該月份時將收到提示。")
 
         available_months = get_available_months()
-        monthly_controls = get_monthly_controls()
+        monthly_controls = get_monthly_controls(current_unit)
 
         for m_str in available_months:
             m_info = monthly_controls.get(m_str, {"enabled": True, "note": ""})
@@ -677,13 +749,13 @@ def render_admin_panel() -> None:
             curr_note = m_info.get("note", "")
 
             border_c = "#34D399" if is_enabled else "#EF4444"
-            status_text = "<span style='color:#34D399; font-weight:800;'>🟢 正常開放查詢</span>" if is_enabled else "<span style='color:#EF4444; font-weight:800;'>🔴 暫時關閉 / 鎖定</span>"
+            status_text = "<span style='color:#34D399; font-weight:800;'>[正常開放查詢]</span>" if is_enabled else "<span style='color:#EF4444; font-weight:800;'>[暫時關閉 / 鎖定]</span>"
 
             st.markdown(
                 f"""
                 <div style="background: rgba(15, 23, 42, 0.8); border: 1.5px solid {border_c}; border-radius: 12px; padding: 14px; margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 16px; font-weight: 800; color: #F8FAFC; font-family: monospace;">查詢月份：{m_str}</span>
+                        <span style="font-size: 16px; font-weight: 800; color: #F8FAFC; font-family: monospace;">[{current_unit}] 查詢月份：{m_str}</span>
                         {status_text}
                     </div>
                 </div>
@@ -708,9 +780,9 @@ def render_admin_panel() -> None:
             with col_mc3:
                 st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
                 if st.button(f"儲存 {m_str} 設定", key=f"btn_save_month_{current_unit}_{m_str}", use_container_width=True):
-                    set_monthly_control(m_str, new_en, new_note)
-                    log_activity("月份控制開關", f"管理員設定月份 {m_str} 狀態為: {'開放' if new_en else '關閉'} (備註: {new_note})")
-                    st.success(f"月份 {m_str} 狀態已更新！")
+                    set_monthly_control(current_unit, m_str, new_en, new_note)
+                    log_activity("月份控制開關", f"管理員設定 [{current_unit}] 月份 {m_str} 狀態為: {'開放' if new_en else '關閉'} (備註: {new_note})")
+                    st.success(f"[{current_unit}] 月份 {m_str} 狀態已更新！")
                     st.cache_data.clear()
                     st.rerun()
 
@@ -718,8 +790,8 @@ def render_admin_panel() -> None:
 
     # ==================== Tab 3 ====================
     with tab3:
-        st.markdown(f"### 🛠️ [{current_unit}] 系統模組維護開關")
-        st.info("💡 開啟維護後，一般組員將無法存取該功能，管理員仍可登入後台預覽測試。")
+        st.markdown(f"### [{current_unit}] 系統模組維護開關")
+        st.info("開啟維護後，一般組員將無法存取該功能，管理員仍可登入後台預覽測試。")
 
         modules_def = [
             ("producer", "個人月班表圖檔生成系統", "負責生成個人高解析度月班表圖片與圖檔下載"),
@@ -733,9 +805,9 @@ def render_admin_panel() -> None:
                 is_maint = is_module_maintenance(current_unit, m_key)
                 border_color = "#EF4444" if is_maint else "#34D399"
                 status_html = (
-                    "<span style='color:#EF4444; font-weight:900;'>🔴 維護中</span>"
+                    "<span style='color:#EF4444; font-weight:900;'>[維護中]</span>"
                     if is_maint
-                    else "<span style='color:#34D399; font-weight:900;'>🟢 正常開放中</span>"
+                    else "<span style='color:#34D399; font-weight:900;'>[正常開放中]</span>"
                 )
 
                 st.markdown(
@@ -770,7 +842,7 @@ def render_admin_panel() -> None:
 
     # ==================== Tab 4 ====================
     with tab4:
-        st.markdown(f"### 👥 白名單與組員權限管理 [{current_unit}]")
+        st.markdown(f"### 白名單與組員權限管理 [{current_unit}]")
         st.caption("透過後台直接新增或調整白名單人員與獨立授權碼，異動後全站將自動寫入 JSON 檔並即時生效。")
         
         whitelist_data = robust_load_whitelist(current_unit)
@@ -868,6 +940,16 @@ def render_admin_panel() -> None:
             else:
                 st.info(f"目前【{current_unit}】尚無匹配的白名單人員紀錄。")
 
+        if selected_row_data:
+            sel_uid = str(selected_row_data["員編/帳號"]).strip().upper()
+            if st.session_state.get(f"last_selected_wl_uid_{current_unit}") != sel_uid:
+                st.session_state[f"last_selected_wl_uid_{current_unit}"] = sel_uid
+                st.session_state[f"input_wl_uid_{current_unit}"] = sel_uid
+                st.session_state[f"input_wl_uname_{current_unit}"] = str(selected_row_data["姓名"])
+                st.session_state[f"input_wl_role_{current_unit}"] = str(selected_row_data["身份權限"])
+                st.session_state[f"input_wl_passcode_{current_unit}"] = "" if str(selected_row_data["獨立授權碼"]) == "-" else str(selected_row_data["獨立授權碼"])
+                st.session_state[f"input_wl_note_{current_unit}"] = "" if str(selected_row_data["備註"]) == "-" else str(selected_row_data["備註"])
+
         with col_wl_right:
             st.markdown("#### 權限維護與快速編輯")
 
@@ -882,6 +964,11 @@ def render_admin_panel() -> None:
                 if selected_row_data:
                     if st.button("切換新增", key=f"btn_reset_add_{current_unit}", use_container_width=True):
                         st.session_state[ver_key] += 1
+                        st.session_state.pop(f"last_selected_wl_uid_{current_unit}", None)
+                        st.session_state[f"input_wl_uid_{current_unit}"] = ""
+                        st.session_state[f"input_wl_uname_{current_unit}"] = ""
+                        st.session_state[f"input_wl_passcode_{current_unit}"] = ""
+                        st.session_state[f"input_wl_note_{current_unit}"] = ""
                         st.rerun()
 
             crew_options = get_all_crew_options(current_unit)
@@ -973,6 +1060,7 @@ def render_admin_panel() -> None:
                         )
                         st.cache_data.clear()
                         st.session_state[ver_key] += 1
+                        st.session_state.pop(f"last_selected_wl_uid_{current_unit}", None)
                         st.success(f"已成功儲存/更新【{current_unit}】權限：{target_uid} (已自動同步至 GitHub)")
                         st.rerun()
                     else:
@@ -996,6 +1084,7 @@ def render_admin_panel() -> None:
                             )
                             st.cache_data.clear()
                             st.session_state[ver_key] += 1
+                            st.session_state.pop(f"last_selected_wl_uid_{current_unit}", None)
                             st.success(f"已成功移除【{current_unit}】權限：{target_uid} (已同步至 GitHub)")
                             st.rerun()
                 else:
@@ -1003,7 +1092,7 @@ def render_admin_panel() -> None:
 
     # ==================== Tab 5 ====================
     with tab5:
-        st.markdown("### ⚙️ 全域系統參數與 GitHub 自動同步設定")
+        st.markdown("### 全域系統參數與 GitHub 自動同步設定")
         st.caption("在此設定 GitHub 憑證，以確保後台新增的白名單在伺服器重啟時不會遺失。")
 
         if "cfg_toast" in st.session_state:
@@ -1020,7 +1109,7 @@ def render_admin_panel() -> None:
             col_p1, col_p2 = st.columns(2)
 
             with col_p1:
-                st.markdown("#### 🔐 通行授權碼設定")
+                st.markdown("#### 通行授權碼設定")
 
                 new_user_pwd = st.text_input("設定新 一般組員授權碼", type="password", placeholder="留空則保持原授權碼不變", key="user_pwd_input")
                 confirm_user_pwd = st.text_input("確認新 一般組員授權碼", type="password", placeholder="再次輸入新一般組員授權碼", key="user_pwd_confirm")
@@ -1034,13 +1123,13 @@ def render_admin_panel() -> None:
                 confirm_admin_pwd = st.text_input("確認新 管理員解鎖密碼", type="password", placeholder="再次輸入新管理員密碼", key="admin_pwd_confirm")
 
                 st.markdown("---")
-                st.markdown("#### 🐙 GitHub API 自動同步設定")
+                st.markdown("#### GitHub API 自動同步設定")
                 git_token = st.text_input("GitHub Personal Access Token", value=str(sys_config.get("github_token", "")), type="password", placeholder="例如: ghp_xxxxxxxxxxxx", help="需具有 repo 或 contents:write 權限")
                 git_repo = st.text_input("GitHub 倉庫名稱 (Repo)", value=str(sys_config.get("github_repo", "")), placeholder="例如: your-username/your-repo-name")
                 git_branch = st.text_input("GitHub 分支名稱 (Branch)", value=str(sys_config.get("github_branch", "main")), placeholder="例如: main")
 
             with col_p2:
-                st.markdown("#### ⚠️ 換假嚴格過濾天數門檻")
+                st.markdown("#### 換假嚴格過濾天數門檻")
                 streak_threshold = st.number_input(
                     "連續上班天數警戒門檻（預設 6 天）",
                     min_value=3,
@@ -1050,7 +1139,7 @@ def render_admin_panel() -> None:
                 )
 
                 st.markdown("---")
-                st.markdown("#### 🔒 測試期間嚴格管制開關")
+                st.markdown("#### 測試期間嚴格管制開關")
                 enable_strict_test = st.checkbox(
                     "啟用測試嚴格管制模式（暫停全面開放，僅限指定特許員編登入）",
                     value=bool(sys_config.get("enable_strict_test_mode", False)),
@@ -1064,7 +1153,7 @@ def render_admin_panel() -> None:
                 )
 
                 st.markdown("---")
-                st.markdown("#### 📢 前台公告與橫幅標語設定")
+                st.markdown("#### 前台公告與橫幅標語設定")
                 announce_text = st.text_area(
                     "前台頂部公告文字",
                     value=str(sys_config.get("announcement", "目前為內部測試階段｜本頁面可聯繫後台管理者")),
@@ -1139,7 +1228,7 @@ def render_admin_panel() -> None:
 
     # ==================== Tab 6 ====================
     with tab6:
-        st.markdown("### 📜 全站系統操作日誌與數據稽核儀表板")
+        st.markdown("### 全站系統操作日誌與數據稽核儀表板")
 
         raw_logs = load_activity_logs()
         parsed_logs = [parse_structured_log(entry) for entry in raw_logs]
@@ -1194,7 +1283,7 @@ def render_admin_panel() -> None:
             unsafe_allow_html=True,
         )
 
-        with st.expander("🔍 展開 / 收合 日誌進階篩選條件", expanded=True):
+        with st.expander("展開 / 收合 日誌進階篩選條件", expanded=True):
             f_col1, f_col2, f_col3 = st.columns(3)
 
             with f_col1:
@@ -1202,7 +1291,7 @@ def render_admin_panel() -> None:
                 sel_unit = st.selectbox("依單位過濾", all_units, key="log_unit_filter")
 
             with f_col2:
-                all_cats = ["全部分類", "換班快篩", "換假快篩", "月班表繪製", "管理員操作", "帳號登入", "權限與白名單變更", "系統授權碼變更", "問題與申請", "一般操作"]
+                all_cats = ["全部分類", "換班快篩", "換假快篩", "月班表繪製", "管理員操作", "帳號登入", "權限與白名單變更", "系統授權碼變更", "問題與申請", "系統操作", "一般操作"]
                 sel_cat = st.selectbox("依操作類別過濾", all_cats, key="log_cat_filter")
 
             with f_col3:
@@ -1247,10 +1336,10 @@ def render_admin_panel() -> None:
         col_log_header, col_log_actions = st.columns([3, 1])
 
         with col_log_header:
-            st.markdown(f"##### 📋 查詢結果（共 {len(df_filtered_logs)} 筆紀錄）")
+            st.markdown(f"##### 查詢結果（共 {len(df_filtered_logs)} 筆紀錄）")
 
         with col_log_actions:
-            if st.button("🗑️ 清空全站日誌", key="btn_clear_activity_logs", type="secondary", use_container_width=True):
+            if st.button("清空全站日誌", key="btn_clear_activity_logs", type="secondary", use_container_width=True):
                 show_confirm_clear_logs_modal()
 
         if not df_filtered_logs.empty:
@@ -1279,7 +1368,7 @@ def render_admin_panel() -> None:
 
             csv_data = display_df.to_csv(index=False).encode("utf-8-sig")
             st.download_button(
-                "📥 下載篩選出的日誌檔 (.CSV)",
+                "下載篩選出的日誌檔 (.CSV)",
                 data=csv_data,
                 file_name=f"audit_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv",
@@ -1290,13 +1379,13 @@ def render_admin_panel() -> None:
 
         st.markdown("---")
 
-        st.markdown("#### 📦 一鍵備份全站數據與設定檔")
-        st.caption("備份內容包含：`data/` 底下所有 Excel 大表、日誌檔與白名單等。")
+        st.markdown("#### 一鍵備份全站數據與設定檔")
+        st.caption("備份內容包含：data/ 底下所有 Excel 大表、日誌檔與白名單等。")
 
         zip_buf = create_backup_zip()
         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         st.download_button(
-            "💾 打包下載全站備份檔 (.ZIP)",
+            "打包下載全站備份檔 (.ZIP)",
             data=zip_buf,
             file_name=f"system_backup_{now_str}.zip",
             mime="application/zip",
@@ -1306,7 +1395,7 @@ def render_admin_panel() -> None:
 
     # ==================== Tab 7 ====================
     with tab7:
-        st.markdown("### 🎫 工單與問題回報管理")
+        st.markdown("### 工單與問題回報管理")
 
         all_tickets = load_all_feedback_tickets()
 
@@ -1360,9 +1449,9 @@ def render_admin_panel() -> None:
                 unit = str(t.get("單位", ""))
 
                 status_badge = (
-                    "🔴 [待處理]" if curr_status == "待處理"
-                    else ("🟡 [處理中]" if curr_status == "處理中"
-                          else ("🟢 [已完成]" if curr_status in ["已完成", "已解決"] else "⚪ [已不處理]"))
+                    "[待處理]" if curr_status == "待處理"
+                    else ("[處理中]" if curr_status == "處理中"
+                          else ("[已完成]" if curr_status in ["已完成", "已解決"] else "[已不處理]"))
                 )
 
                 expander_title = f"{status_badge} 單號：{ticket_id} ｜ [{unit}] {category} ({reporter} - {time_str})"
@@ -1377,10 +1466,11 @@ def render_admin_panel() -> None:
                     if img_path and os.path.exists(img_path):
                         st.markdown("附加螢幕截圖：")
                         if st.button(f"點此查看/下載截圖附件", key=f"btn_view_img_{ticket_id}_{idx}"):
-                            if callable(view_feedback_img_modal):
-                                view_feedback_img_modal(img_path, ticket_id, reporter)
-                            else:
-                                st.image(img_path, caption=f"工單 {ticket_id} 截圖附件 ({reporter})")
+                            st.session_state["active_feedback_img"] = {
+                                "path": img_path,
+                                "ticket_id": ticket_id,
+                                "reporter": reporter
+                            }
 
                     c1, c2 = st.columns([1, 2])
                     with c1:
@@ -1421,6 +1511,18 @@ def render_admin_panel() -> None:
                             log_activity("問題工單刪除", f"管理員刪除工單 [{ticket_id}]")
                             st.success(f"已成功刪除工單 `{ticket_id}`！")
                             st.rerun()
+
+    # 渲染 Modal/截圖預覽 (獨立外層判定)
+    if "active_feedback_img" in st.session_state and st.session_state["active_feedback_img"]:
+        img_info = st.session_state["active_feedback_img"]
+        if callable(view_feedback_img_modal):
+            view_feedback_img_modal(img_info["path"], img_info["ticket_id"], img_info["reporter"])
+        else:
+            with st.expander("截圖預覽", expanded=True):
+                st.image(img_info["path"], caption=f"工單 {img_info['ticket_id']} 截圖附件 ({img_info['reporter']})")
+                if st.button("關閉截圖", key="btn_close_active_img"):
+                    st.session_state.pop("active_feedback_img", None)
+                    st.rerun()
 
 
 render_admin_home = render_admin_panel
