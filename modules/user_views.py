@@ -142,7 +142,7 @@ def load_role_merged_dataframe(
     """
     跨月份班表資料合併載入：
     讀取指定職位對應的所有月份班表 Excel（支援單檔或多月份檔案清單），
-    可依指定月份進行過濾或依員編與姓名進行跨月對齊與合併。
+    支援 10月與 2026-10 格式正規化比對，並依員編與姓名進行跨月對齊與合併。
     """
     raw_target = active_files.get(role_name, "")
     file_paths = []
@@ -156,16 +156,24 @@ def load_role_merged_dataframe(
     if not valid_paths:
         return pd.DataFrame(), []
 
-    if selected_month and len(valid_paths) > 1:
-        matched = [p for p in valid_paths if selected_month in p]
-        if matched:
-            valid_paths = matched
+    # 當指定查詢月份時，精準與相容過濾實體檔案路徑 (相容 2026-10、10月、10 等表達方式)
+    if selected_month:
+        month_digits = re.findall(r"\d+", selected_month)
+        if month_digits:
+            target_m_num = month_digits[-1].zfill(2)  # 取得兩位數月份字串 (如 "10")
+            matched = []
+            for p in valid_paths:
+                if f"2026-{target_m_num}" in p or f"{int(target_m_num)}月" in p or f"{target_m_num}月" in p or f"/{target_m_num}/" in p:
+                    matched.append(p)
+            if matched:
+                valid_paths = matched
 
     dfs = []
     for p in valid_paths:
         df = safe_read_excel(p, header=3)
-        df.columns = [str(c).strip() for c in df.columns]
-        dfs.append(df)
+        if df is not None and not df.empty:
+            df.columns = [str(c).strip() for c in df.columns]
+            dfs.append(df)
 
     if not dfs:
         return pd.DataFrame(), []
