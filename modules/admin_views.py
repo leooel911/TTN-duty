@@ -22,7 +22,7 @@ except Exception:
     DATA_DIR = "data"
     FEEDBACK_IMG_DIR = "feedback"
     LOG_FILE = "activity.log"
-    UNITS = {"TTN": {}, "KSH": {}, "TCH": {}}
+    UNITS = {"TTN": {}, "TTC": {}, "TTS": {}}
     WHITELIST_FILE = "whitelist.json"
 
 try:
