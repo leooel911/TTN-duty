@@ -88,6 +88,59 @@ def clean_role_label(role: str) -> str:
 # 2. 資料處理與多月份工具函式
 # =============================================================================
 
+ROLE_CODE_MAP = {
+    "駕駛": ("TD", "driver"),
+    "列車長": ("TM", "conductor"),
+    "服勤員": ("TA", "attendant"),
+}
+
+
+def get_candidate_file_paths(role_name: str, unit_label: str = "TTN", selected_month: Optional[str] = None) -> List[str]:
+    """
+    全路徑動態自動檢測機制：
+    自動相容「最新版班表/YYYY-MM/」、「20號大表」、與根目錄備援檔案，
+    確保自動更新腳本產出之檔案不論放在哪一個子目錄均能被系統自動搜尋並載入。
+    """
+    unit_upper = (unit_label or "TTN").upper().strip()
+    unit_lower = unit_upper.lower()
+
+    code_info = ROLE_CODE_MAP.get(role_name, (role_name, role_name.lower()))
+    role_code, role_eng = code_info[0], code_info[1]
+
+    candidates = []
+    data_dir = os.path.join(os.getcwd(), "data")
+
+    # 1. 優先匹配特定月份之最新版班表目錄
+    if selected_month:
+        m_digits = re.findall(r"\d+", str(selected_month))
+        if m_digits:
+            m_num = m_digits[-1].zfill(2)
+            candidates.append(os.path.join(data_dir, unit_upper, "最新版班表", f"2026-{m_num}", f"{unit_upper}_{role_code}.xlsx"))
+            candidates.append(os.path.join(data_dir, unit_upper, "最新版班表", f"{int(m_num)}月", f"{unit_upper}_{role_code}.xlsx"))
+            candidates.append(os.path.join(data_dir, unit_upper, "最新版班表", f"{m_num}月", f"{unit_upper}_{role_code}.xlsx"))
+            candidates.append(os.path.join(data_dir, unit_upper, "最新版班表", str(selected_month), f"{unit_upper}_{role_code}.xlsx"))
+
+    # 2. 自動動態搜尋「最新版班表」目錄下所有子資料夾
+    latest_base = os.path.join(data_dir, unit_upper, "最新版班表")
+    if os.path.exists(latest_base) and os.path.isdir(latest_base):
+        subdirs = sorted(os.listdir(latest_base), reverse=True)
+        for sd in subdirs:
+            p = os.path.join(latest_base, sd, f"{unit_upper}_{role_code}.xlsx")
+            if p not in candidates:
+                candidates.append(p)
+
+    # 3. 標準單位與根目錄檔案備援
+    candidates.extend([
+        os.path.join(data_dir, unit_upper, f"{unit_upper}_{role_code}.xlsx"),
+        os.path.join(data_dir, f"{unit_lower}_{role_eng}.xlsx"),
+        os.path.join(data_dir, unit_upper, "20號大表", f"{unit_upper}_{role_code}.xlsx"),
+        os.path.join(data_dir, f"{unit_upper}{role_code}大表.xls"),
+        os.path.join(data_dir, f"{unit_upper}_{role_code}大表.xlsx"),
+    ])
+
+    return [p for p in candidates if os.path.exists(p) and os.path.getsize(p) > 0]
+
+
 def format_time_hhmm(time_str: Any) -> str:
     """將時間字串統一格式化為 HH:MM 規範 (例如 5:30 -> 05:30) 以利正確進行字串比較"""
     s = str(time_str).strip()
@@ -113,8 +166,10 @@ def parse_date_obj(d_str: str, default_year: int) -> Optional[date]:
 
 
 def get_available_months_list(active_files: Dict[str, Any]) -> List[str]:
-    """動態分析系統中已存在的班表檔案月份/排班週期清單"""
+    """動態分析系統中已存在的班表檔案月份/排班週期清單 (含實體目錄自動偵測)"""
     months = []
+    
+    # 掃描 active_files
     for r_name, path_val in active_files.items():
         file_paths = []
         if isinstance(path_val, list):
@@ -130,6 +185,14 @@ def get_available_months_list(active_files: Dict[str, Any]) -> List[str]:
                     if m_label not in months:
                         months.append(m_label)
 
+    # 掃描實體「最新版班表」目錄
+    current_unit = st.session_state.get("current_unit", "TTN").upper()
+    latest_dir = os.path.join(os.getcwd(), "data", current_unit, "最新版班表")
+    if os.path.exists(latest_dir) and os.path.isdir(latest_dir):
+        for sub in sorted(os.listdir(latest_dir), reverse=True):
+            if re.match(r"^\d{4}-\d{2}$", sub) and sub not in months:
+                months.append(sub)
+
     if not months:
         default_range = get_schedule_range()
         months = ["2026-10"] if not default_range else [default_range]
@@ -141,16 +204,23 @@ def load_role_merged_dataframe(
 ) -> Tuple[pd.DataFrame, List[str]]:
     """
     跨月份班表資料合併載入：
-    讀取指定職位對應的所有月份班表 Excel（支援單檔或多月份檔案清單），
+    讀取指定職位對應的所有月份班表 Excel（支援單檔、多月份檔案清單及自動候選路徑），
     支援 10月與 2026-10 格式正規化比對，並依員編與姓名進行跨月對齊與合併。
     """
+    current_unit = st.session_state.get("current_unit", "TTN")
     raw_target = active_files.get(role_name, "")
     file_paths = []
 
     if isinstance(raw_target, list):
-        file_paths = raw_target
+        file_paths = list(raw_target)
     elif isinstance(raw_target, str) and raw_target:
         file_paths = [p.strip() for p in re.split(r"[;,]", raw_target) if p.strip()]
+
+    # 加入全路徑備援搜尋結果
+    candidate_paths = get_candidate_file_paths(role_name, current_unit, selected_month)
+    for cp in candidate_paths:
+        if cp not in file_paths:
+            file_paths.append(cp)
 
     valid_paths = [p for p in file_paths if os.path.exists(p) and os.path.getsize(p) > 0]
     if not valid_paths:
@@ -898,10 +968,17 @@ def render_user_home() -> None:
 
     missing_files = []
     for role in ["駕駛", "列車長", "服勤員"]:
+        cands = get_candidate_file_paths(role, current_unit_label, selected_global_month)
         f_val = active_files.get(role, "")
-        if not f_val:
-            missing_files.append(role)
-        elif isinstance(f_val, str) and (not os.path.exists(f_val) or os.path.getsize(f_val) == 0):
+        
+        has_file = len(cands) > 0
+        if not has_file:
+            if isinstance(f_val, list):
+                has_file = any(os.path.exists(p) and os.path.getsize(p) > 0 for p in f_val)
+            elif isinstance(f_val, str) and f_val:
+                has_file = any(os.path.exists(p.strip()) and os.path.getsize(p.strip()) > 0 for p in f_val.split(";") if p.strip())
+
+        if not has_file:
             missing_files.append(role)
 
     if missing_files:
@@ -910,12 +987,20 @@ def render_user_home() -> None:
         )
 
     def get_role_mtime_label(r_name: str) -> str:
+        cands = get_candidate_file_paths(r_name, current_unit_label, selected_global_month)
+        if cands:
+            return get_file_mtime_str(cands[0])
+            
         f_val = active_files.get(r_name, "")
         if isinstance(f_val, list) and f_val:
-            return get_file_mtime_str(f_val[-1])
+            valid = [p for p in f_val if os.path.exists(p)]
+            if valid:
+                return get_file_mtime_str(valid[-1])
         elif isinstance(f_val, str) and f_val:
-            first_p = f_val.split(";")[0].strip()
-            return get_file_mtime_str(first_p)
+            for p in re.split(r"[;,]", f_val):
+                p_clean = p.strip()
+                if os.path.exists(p_clean):
+                    return get_file_mtime_str(p_clean)
         return "無檔案"
 
     td_time = get_role_mtime_label("駕駛")
