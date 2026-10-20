@@ -12,6 +12,18 @@ from config import DATA_DIR, UNITS, WHITELIST_FILE
 from modules.utils import normalize_date_str, parse_cell, safe_read_excel
 
 
+def _clean_emp_id(val: Any) -> str:
+    """員編規格化：自動消除 NaN、浮點數 .0、前後空白，並為 6 位純數字補上 'A' 前綴"""
+    if val is None or pd.isna(val):
+        return ""
+    s = str(val).strip().upper()
+    if s.endswith(".0"):
+        s = s[:-2]
+    if s.isdigit() and len(s) == 6:
+        s = f"A{s}"
+    return s
+
+
 def auto_git_push_data(commit_msg: str = "Auto update data via admin panel") -> None:
     """自動將 data/ 變更推送至雙重 GitHub 專案，防止雲端重置清空"""
     try:
@@ -172,7 +184,8 @@ def get_schedule_range(unit_code: Optional[str] = None) -> str:
 
 
 def process_file_data(emp_input: str, unit_code: Optional[str] = None) -> Tuple[datetime, List[str], str, str, List[Dict[str, Any]]]:
-    clean_keyword = emp_input.strip().upper()
+    clean_keyword = _clean_emp_id(emp_input)
+    raw_keyword = emp_input.strip().upper()
     unit_files = get_current_role_files(unit_code=unit_code)
 
     target_row = None
@@ -185,9 +198,9 @@ def process_file_data(emp_input: str, unit_code: Optional[str] = None) -> Tuple[
                 df = safe_read_excel(f_path, header=3)
                 df.columns = [str(c).strip() for c in df.columns]
                 for _, row in df.iterrows():
-                    row_id = str(row.iloc[0]).strip().upper()
+                    row_id = _clean_emp_id(row.iloc[0])
                     row_name = str(row.iloc[1]).strip()
-                    if clean_keyword in [row_id, row_name, f"A{clean_keyword}"]:
+                    if (clean_keyword and clean_keyword == row_id) or (raw_keyword and raw_keyword == row_name):
                         target_row = row
                         target_columns = df.columns
                         break
@@ -199,7 +212,7 @@ def process_file_data(emp_input: str, unit_code: Optional[str] = None) -> Tuple[
     if target_row is None:
         raise ValueError(f"在當前選定月份的大表中找不到符合關鍵字【{emp_input}】的組員資料！")
 
-    emp_id = str(target_row.iloc[0]).strip().upper()
+    emp_id = _clean_emp_id(target_row.iloc[0]) or str(target_row.iloc[0]).strip().upper()
     emp_name = str(target_row.iloc[1]).strip()
 
     dates = []
@@ -216,8 +229,16 @@ def process_file_data(emp_input: str, unit_code: Optional[str] = None) -> Tuple[
         parsed = parse_cell(cell_val)
         cells.append(parsed)
 
-    first_m, first_d = map(int, dates[0].split("/"))
-    start_dt = datetime(current_year, first_m, first_d)
+    if not dates:
+        raise ValueError(f"組員【{emp_name}】的排班資料中找不到有效日期欄位！")
+
+    parts = [p.strip() for p in dates[0].split("/") if p.strip()]
+    if len(parts) == 3:
+        start_dt = datetime(int(parts[0]), int(parts[1]), int(parts[2]))
+    elif len(parts) == 2:
+        start_dt = datetime(current_year, int(parts[0]), int(parts[1]))
+    else:
+        start_dt = datetime(current_year, 1, 1)
 
     return start_dt, dates, emp_id, emp_name, cells
 
@@ -299,9 +320,9 @@ def save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> None:
 
 
 def check_excel_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]:
-    clean_id = emp_id.strip().upper()
-    if clean_id.isdigit() and len(clean_id) == 6:
-        clean_id = f"A{clean_id}"
+    clean_id = _clean_emp_id(emp_id)
+    if not clean_id:
+        return False, ""
 
     unit_files = get_current_role_files(unit_code=unit_code)
     for role_name in ["駕駛", "列車長", "服勤員"]:
@@ -310,7 +331,7 @@ def check_excel_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]
             try:
                 df = safe_read_excel(f_path, header=3)
                 for _, row in df.iterrows():
-                    row_id = str(row.iloc[0]).strip().upper()
+                    row_id = _clean_emp_id(row.iloc[0])
                     if row_id == clean_id:
                         row_name = str(row.iloc[1]).strip()
                         return True, row_name
@@ -320,12 +341,9 @@ def check_excel_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]
 
 
 def verify_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]:
-    clean_id = emp_id.strip().upper()
+    clean_id = _clean_emp_id(emp_id)
     if not clean_id or clean_id == "A":
         return False, ""
-
-    if clean_id.isdigit() and len(clean_id) == 6:
-        clean_id = f"A{clean_id}"
 
     sys_config = load_system_config()
     strict_mode = sys_config.get("enable_strict_test_mode", False)
@@ -350,10 +368,8 @@ def get_employee_name(unit_code: str, emp_id: str) -> str:
 
 
 def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) -> Tuple[bool, str, Dict[str, Any]]:
-    clean_id = emp_id_input.strip().upper()
-    if clean_id.isdigit() and len(clean_id) == 6:
-        clean_id = f"A{clean_id}"
-
+    clean_id = _clean_emp_id(emp_id_input)
+    raw_id = emp_id_input.strip().upper()
     passcode = passcode_input.strip()
 
     sys_config = load_system_config()
@@ -365,7 +381,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     allowed_list = sys_config.get("strict_allowed_employees", [])
 
     whitelist = load_whitelist(unit_code)
-    wl_info = whitelist.get(clean_id, {})
+    wl_info = whitelist.get(clean_id, {}) or whitelist.get(raw_id, {})
     wl_name = ""
     wl_role = "USER"
     custom_pass = ""
@@ -392,7 +408,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
         if clean_id not in allowed_list and clean_id != "ADMIN":
             return False, "目前系統處於測試管制期間，您的員編尚未開放測試權限！", {"reason": "STRICT_MODE_BLOCKED"}
 
-    if clean_id in whitelist and wl_role in ["VIP_USER", "TESTER"]:
+    if (clean_id in whitelist or raw_id in whitelist) and wl_role in ["VIP_USER", "TESTER"]:
         if custom_pass and custom_pass != "-":
             if passcode == custom_pass:
                 return True, f"歡迎 VIP 組員【{wl_name}】！", {
@@ -408,7 +424,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
         else:
             return False, "授權碼無效！請再次確認:", {"reason": "WRONG_PASSCODE"}
 
-    if clean_id == "A" and (passcode in [default_vip_pwd, "0", user_pwd, "09000"]):
+    if (clean_id == "A" or raw_id == "A") and (passcode in [default_vip_pwd, "0", user_pwd, "09000"]):
         return True, "歡迎 VIP 測試員！", {
             "authenticated": True, "emp_id": "VIP001", "emp_name": "VIP 測試員", "role": "VIP_USER", "unit": unit_code,
         }
