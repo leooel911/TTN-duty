@@ -19,7 +19,7 @@ else:
     BASE_DIR = os.path.dirname(CURRENT_FILE_DIR)
 
 # -----------------------------------------------------------------------------
-# 1. 安全載入設定檔與工具模組 (具備防崩潰安全降級機制)
+# 1. 安全載入設定檔與工具模組
 # -----------------------------------------------------------------------------
 try:
     from config import DATA_DIR, FEEDBACK_IMG_DIR, LOG_FILE, UNITS, WHITELIST_FILE
@@ -88,7 +88,7 @@ def _get_unit_whitelist_path(unit_code: str) -> str:
     return os.path.join(DATA_DIR, f"whitelist_{unit_code_clean.lower()}.json")
 
 def sync_file_to_github(file_path_in_repo: str, content_str: str, commit_msg: str) -> bool:
-    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫，避免 Streamlit Cloud 重開還原"""
+    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫"""
     sys_cfg = load_system_config()
     token = sys_cfg.get("github_token", "").strip() or st.secrets.get("GITHUB_TOKEN", "")
     repo = sys_cfg.get("github_repo", "").strip() or st.secrets.get("GITHUB_REPO", "") 
