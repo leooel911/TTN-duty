@@ -1377,7 +1377,7 @@ def render_admin_panel() -> None:
                 sel_cat = st.selectbox("依操作類別過濾", all_cats, key="log_cat_filter")
 
             with f_col3:
-                all_devs = ["全部裝置"] + sorted(list(df_logs["裝置 (Device)"] .unique())) if not df_logs.empty else ["全部裝置"]
+                all_devs = ["全部裝置"] + sorted(list(df_logs["裝置 (Device)"].unique())) if not df_logs.empty else ["全部裝置"]
                 sel_dev = st.selectbox("依裝置 / 載具過濾", all_devs, key="log_dev_filter")
 
             f_col4, f_col5 = st.columns([1.2, 1.8])
