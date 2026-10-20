@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 import streamlit as st
 
-# 自動定位專案根目錄 (若本檔位在根目錄或 modules/ 子目錄均可精準錨定)
+# 自動定位專案根目錄
 CURRENT_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 if os.path.exists(os.path.join(CURRENT_FILE_DIR, "config.py")) or os.path.exists(os.path.join(CURRENT_FILE_DIR, "data")):
     BASE_DIR = CURRENT_FILE_DIR
@@ -19,7 +19,7 @@ else:
     BASE_DIR = os.path.dirname(CURRENT_FILE_DIR)
 
 # -----------------------------------------------------------------------------
-# 1. 安全載入設定檔與工具模組 (具備防崩潰安全降級機制與實體路徑保證)
+# 1. 安全載入設定檔與工具模組 (具備防崩潰安全降級機制)
 # -----------------------------------------------------------------------------
 try:
     from config import DATA_DIR, FEEDBACK_IMG_DIR, LOG_FILE, UNITS, WHITELIST_FILE
@@ -171,7 +171,7 @@ def robust_save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> bool:
 
 
 # =============================================================================
-# 每月份資料控制開關輔助函式 (支援營運單位獨立隔離與 GitHub 同步)
+# 每月份資料控制開關輔助函式
 # =============================================================================
 def get_monthly_controls(unit_code: str = "TTN") -> Dict[str, Any]:
     """取得特定單位各月份的開放與控制開關設定"""
@@ -203,7 +203,6 @@ def set_monthly_control(unit_code: str, month_str: str, is_enabled: bool, note: 
     }
     save_system_config(sys_cfg)
     
-    # 同步 system_config.json 至 GitHub
     cfg_path = os.path.join(DATA_DIR, "system_config.json")
     if not os.path.exists(cfg_path):
         cfg_path = "system_config.json"
@@ -573,10 +572,10 @@ def extract_device_info(detail_str: str) -> str:
 
 
 # =============================================================================
-# 3. 後台主畫面 UI (擴增為 7 大完整分頁，完全移除 Emoji)
+# 3. 後台主畫面 UI
 # =============================================================================
 def render_admin_panel() -> None:
-    """系統管理員後台控制台"""
+    """系統管理員後台控制台主進入點"""
     try:
         from modules.components import view_feedback_img_modal
     except ImportError:
@@ -751,10 +750,10 @@ def render_admin_panel() -> None:
                         except Exception as e:
                             st.error(f"檔案寫入失敗：{e}")
 
-    # ==================== Tab 2: 每月份資料控制與開放開關 ====================
+    # ==================== Tab 2 ====================
     with tab2:
         st.markdown(f"### [{current_unit}] 每月份資料控制與開放開關")
-        st.info(f"在此可以針對【{current_unit}】單位設定各個月份（如 2026-09、2026-10 等）開關。關閉特定月份後，該單位組員切換該月份時將收到提示。")
+        st.info(f"在此可以針對【{current_unit}】單位設定各個月份開關。關閉特定月份後，該單位組員切換該月份時將收到提示。")
 
         available_months = get_available_months()
         monthly_controls = get_monthly_controls(current_unit)
@@ -850,7 +849,6 @@ def render_admin_panel() -> None:
                 if new_state != is_maint:
                     set_module_maintenance(current_unit, m_key, new_state)
                     
-                    # 確保 maintenance.json 即時寫入並同步至 GitHub
                     maint_path = os.path.join(DATA_DIR, "maintenance.json")
                     if os.path.exists(maint_path):
                         try:
@@ -1253,7 +1251,6 @@ def render_admin_panel() -> None:
 
                     save_system_config(sys_config)
                     
-                    # 同步更新至 GitHub
                     cfg_path = os.path.join(DATA_DIR, "system_config.json")
                     if not os.path.exists(cfg_path):
                         cfg_path = "system_config.json"
@@ -1562,7 +1559,7 @@ def render_admin_panel() -> None:
                             st.success(f"已成功刪除工單 `{ticket_id}`！")
                             st.rerun()
 
-    # 渲染 Modal/截圖預覽 (獨立外層判定)
+    # 渲染 Modal / 截圖預覽
     if "active_feedback_img" in st.session_state and st.session_state["active_feedback_img"]:
         img_info = st.session_state["active_feedback_img"]
         if callable(view_feedback_img_modal):
@@ -1574,5 +1571,5 @@ def render_admin_panel() -> None:
                     st.session_state.pop("active_feedback_img", None)
                     st.rerun()
 
-
+# 導出別名相容性
 render_admin_home = render_admin_panel
