@@ -568,8 +568,18 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
 
     if user_info.upper() in INVALID_USERS or user_info in INVALID_USERS:
         emp_code_match = re.search(r"\b([A-Za-z]\d{6})\b", action_detail)
-        login_match = re.search(r"使用者登入系統[:：]\s*([^\s\(]+)", action_detail) crew_match = re.search(r"(?:組員\vert{}目標組員\vert{}解析組員\vert{}操作者\vert{}員編)[:：]\s*([^\s\Vert{},\(\)]+)", action_detail)
-
+        login_match = re.search(r"使用者登入系統[:：]\s*([^\s\(]+)", action_detail)
+        crew_match = re.search(r"(?:組員|目標組員|解析組員|操作者|員編)[:：]\s*([^\s\|,\(\)]+)", action_detail)
+        if emp_code_match:
+            user_info = emp_code_match.group(1).upper()
+        elif login_match and login_match.group(1).strip().upper() not in INVALID_USERS:
+            user_info = login_match.group(1).strip().upper()
+        elif crew_match and crew_match.group(1).strip().upper() not in INVALID_USERS:
+            user_info = crew_match.group(1).strip()
+        elif "管理員" in action_detail:
+            user_info = "ADMIN (管理員)"
+        else:
+            user_info = "系統/訪客"
         if emp_code_match:
             user_info = emp_code_match.group(1).upper()
         elif login_match and login_match.group(1).strip().upper() not in INVALID_USERS:
