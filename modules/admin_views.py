@@ -1,14 +1,16 @@
 import base64
+import glob
 import io
 import json
 import os
 import re
+import subprocess
 import zipfile
-import requests
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
+import requests
 import streamlit as st
 
 # 自動定位專案根目錄
@@ -39,7 +41,7 @@ try:
         save_whitelist,
     )
 except Exception:
-    def get_available_months() -> List[str]:
+    def get_available_months(unit_code: Optional[str] = None) -> List[str]:
         return ["2026-09", "2026-10", "2026-11"]
     def load_system_config() -> Dict[str, Any]:
         return {}
@@ -57,6 +59,8 @@ try:
         is_module_maintenance,
         load_activity_logs,
         log_activity,
+        normalize_date_str,
+        parse_cell,
         safe_read_excel,
         set_module_maintenance,
     )
@@ -75,6 +79,37 @@ except Exception:
         pass
     def safe_read_excel(path: str, header: int = 0) -> pd.DataFrame:
         return pd.DataFrame()
+    def normalize_date_str(val: Any) -> str:
+        return str(val)
+    def parse_cell(val: Any) -> Any:
+        return val
+
+
+def _clean_emp_id(val: Any) -> str:
+    """員編規格化：自動消除 NaN、浮點數 .0、前後空白，並為 6 位純數字補上 'A' 前綴"""
+    if val is None or pd.isna(val):
+        return ""
+    s = str(val).strip().upper()
+    if s.endswith(".0"):
+        s = s[:-2]
+    if s.isdigit() and len(s) == 6:
+        s = f"A{s}"
+    return s
+
+
+def auto_git_push_data(commit_msg: str = "Auto update data via admin panel") -> None:
+    """自動將 data/ 變更推送至 Git 倉庫"""
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        if "modules" in script_dir:
+            script_dir = os.path.dirname(script_dir)
+        os.chdir(script_dir)
+
+        subprocess.run(["git", "add", "data/"], check=True)
+        subprocess.run(["git", "commit", "-m", commit_msg], check=False)
+        subprocess.run(["git", "push", "origin", "main"], check=True)
+    except Exception as e:
+        print(f"Git auto-sync error: {e}")
 
 
 # =============================================================================
@@ -1342,7 +1377,7 @@ def render_admin_panel() -> None:
                 sel_cat = st.selectbox("依操作類別過濾", all_cats, key="log_cat_filter")
 
             with f_col3:
-                all_devs = ["全部裝置"] + sorted(list(df_logs["裝置 (Device)"].unique())) if not df_logs.empty else ["全部裝置"]
+                all_devs = ["全部裝置"] + sorted(list(df_logs["裝置 (Device)"] .unique())) if not df_logs.empty else ["全部裝置"]
                 sel_dev = st.selectbox("依裝置 / 載具過濾", all_devs, key="log_dev_filter")
 
             f_col4, f_col5 = st.columns([1.2, 1.8])
