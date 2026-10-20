@@ -78,7 +78,7 @@ except Exception:
 
 
 # =============================================================================
-# 2. GitHub API 自動同步與白名單強固讀寫機制
+# 2. GitHub API 自動同步與檔案強固讀寫機制
 # =============================================================================
 def _get_unit_whitelist_path(unit_code: str) -> str:
     unit_code_clean = unit_code.upper().strip()
@@ -88,7 +88,7 @@ def _get_unit_whitelist_path(unit_code: str) -> str:
     return os.path.join(DATA_DIR, f"whitelist_{unit_code_clean.lower()}.json")
 
 def sync_file_to_github(file_path_in_repo: str, content_str: str, commit_msg: str) -> bool:
-    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫"""
+    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫，避免 Streamlit Cloud 重開還原"""
     sys_cfg = load_system_config()
     token = sys_cfg.get("github_token", "").strip() or st.secrets.get("GITHUB_TOKEN", "")
     repo = sys_cfg.get("github_repo", "").strip() or st.secrets.get("GITHUB_REPO", "") 
@@ -171,7 +171,7 @@ def robust_save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> bool:
 
 
 # =============================================================================
-# 每月份資料控制開關輔助函式 (支援營運單位獨立隔離)
+# 每月份資料控制開關輔助函式 (支援營運單位獨立隔離與 GitHub 同步)
 # =============================================================================
 def get_monthly_controls(unit_code: str = "TTN") -> Dict[str, Any]:
     """取得特定單位各月份的開放與控制開關設定"""
@@ -187,7 +187,7 @@ def get_monthly_controls(unit_code: str = "TTN") -> Dict[str, Any]:
     return controls
 
 def set_monthly_control(unit_code: str, month_str: str, is_enabled: bool, note: str = "") -> None:
-    """設定特定單位特定月份的開關狀態與備註"""
+    """設定特定單位特定月份的開關狀態與備註，並同步寫入 GitHub"""
     sys_cfg = load_system_config()
     if "monthly_controls" not in sys_cfg or not isinstance(sys_cfg["monthly_controls"], dict):
         sys_cfg["monthly_controls"] = {}
@@ -202,6 +202,23 @@ def set_monthly_control(unit_code: str, month_str: str, is_enabled: bool, note: 
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     save_system_config(sys_cfg)
+    
+    # 同步 system_config.json 至 GitHub
+    cfg_path = os.path.join(DATA_DIR, "system_config.json")
+    if not os.path.exists(cfg_path):
+        cfg_path = "system_config.json"
+    if os.path.exists(cfg_path):
+        try:
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                content_str = f.read()
+            rel_path = os.path.relpath(cfg_path, start=BASE_DIR).replace("\\", "/")
+            sync_file_to_github(
+                file_path_in_repo=rel_path,
+                content_str=content_str,
+                commit_msg=f"Auto-update monthly control for {unit_code_clean} - {month_str}"
+            )
+        except Exception as e:
+            print(f"system_config.json 同步 GitHub 失敗: {e}")
 
 
 def clear_logs() -> None:
@@ -517,8 +534,7 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
 
     if user_info.upper() in INVALID_USERS or user_info in INVALID_USERS:
         emp_code_match = re.search(r"\b([A-Za-z]\d{6})\b", action_detail)
-        login_match = re.search(r"使用者登入系統[:：]\s*([^\s\(]+)", action_detail)
-        crew_match = re.search(r"(?:組員|目標組員|解析組員|操作者|員編)[:：]\s*([^\s\|,\(\)]+)", action_detail)
+        login_match = re.search(r"使用者登入系統[:：]\s*([^\s\(]+)", action_detail) crew_match = re.search(r"(?:組員\vert{}目標組員\vert{}解析組員\vert{}操作者\vert{}員編)[:：]\s*([^\s\Vert{},\(\)]+)", action_detail)
 
         if emp_code_match:
             user_info = emp_code_match.group(1).upper()
@@ -782,7 +798,7 @@ def render_admin_panel() -> None:
                 if st.button(f"儲存 {m_str} 設定", key=f"btn_save_month_{current_unit}_{m_str}", use_container_width=True):
                     set_monthly_control(current_unit, m_str, new_en, new_note)
                     log_activity("月份控制開關", f"管理員設定 [{current_unit}] 月份 {m_str} 狀態為: {'開放' if new_en else '關閉'} (備註: {new_note})")
-                    st.success(f"[{current_unit}] 月份 {m_str} 狀態已更新！")
+                    st.success(f"[{current_unit}] 月份 {m_str} 狀態已更新並完成 GitHub 同步！")
                     st.cache_data.clear()
                     st.rerun()
 
@@ -791,7 +807,7 @@ def render_admin_panel() -> None:
     # ==================== Tab 3 ====================
     with tab3:
         st.markdown(f"### [{current_unit}] 系統模組維護開關")
-        st.info("開啟維護後，一般組員將無法存取該功能，管理員仍可登入後台預覽測試。")
+        st.info("開啟維護後，一般組員將無法存取該功能，管理員仍可登入後台預覽測試。變更將自動同步至 GitHub 設定檔。")
 
         modules_def = [
             ("producer", "個人月班表圖檔生成系統", "負責生成個人高解析度月班表圖片與圖檔下載"),
@@ -833,6 +849,22 @@ def render_admin_panel() -> None:
                 )
                 if new_state != is_maint:
                     set_module_maintenance(current_unit, m_key, new_state)
+                    
+                    # 確保 maintenance.json 即時寫入並同步至 GitHub
+                    maint_path = os.path.join(DATA_DIR, "maintenance.json")
+                    if os.path.exists(maint_path):
+                        try:
+                            with open(maint_path, "r", encoding="utf-8") as f:
+                                maint_json_str = f.read()
+                            rel_maint_path = os.path.relpath(maint_path, start=BASE_DIR).replace("\\", "/")
+                            sync_file_to_github(
+                                file_path_in_repo=rel_maint_path,
+                                content_str=maint_json_str,
+                                commit_msg=f"Auto-update maintenance mode for {current_unit} - {m_key}: {new_state}"
+                            )
+                        except Exception as e:
+                            print(f"maintenance.json GitHub 同步失敗: {e}")
+
                     state_str = "開啟" if new_state else "關閉"
                     log_activity(
                         "維護模式開關",
@@ -1093,7 +1125,7 @@ def render_admin_panel() -> None:
     # ==================== Tab 5 ====================
     with tab5:
         st.markdown("### 全域系統參數與 GitHub 自動同步設定")
-        st.caption("在此設定 GitHub 憑證，以確保後台新增的白名單在伺服器重啟時不會遺失。")
+        st.caption("在此設定 GitHub 憑證，以確保後台新增的白名單與設定檔在伺服器重啟時不會遺失。")
 
         if "cfg_toast" in st.session_state:
             t_type, t_msg = st.session_state["cfg_toast"]
@@ -1220,6 +1252,24 @@ def render_admin_panel() -> None:
                     sys_config["strict_allowed_employees"] = clean_allowed_list
 
                     save_system_config(sys_config)
+                    
+                    # 同步更新至 GitHub
+                    cfg_path = os.path.join(DATA_DIR, "system_config.json")
+                    if not os.path.exists(cfg_path):
+                        cfg_path = "system_config.json"
+                    if os.path.exists(cfg_path):
+                        try:
+                            with open(cfg_path, "r", encoding="utf-8") as f:
+                                cfg_content = f.read()
+                            rel_cfg_path = os.path.relpath(cfg_path, start=BASE_DIR).replace("\\", "/")
+                            sync_file_to_github(
+                                file_path_in_repo=rel_cfg_path,
+                                content_str=cfg_content,
+                                commit_msg="Auto-update system_config.json via Admin Panel"
+                            )
+                        except Exception as e:
+                            print(f"system_config.json GitHub 同步失敗: {e}")
+
                     log_activity("系統授權碼變更", "管理員更新全域系統設定與 GitHub 同步憑證")
 
                     st.cache_data.clear()
