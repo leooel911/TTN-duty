@@ -122,8 +122,8 @@ def _get_unit_whitelist_path(unit_code: str) -> str:
     os.makedirs(DATA_DIR, exist_ok=True)
     return os.path.join(DATA_DIR, f"whitelist_{unit_code_clean.lower()}.json")
 
-def sync_file_to_github(file_path_in_repo: str, content_str: str, commit_msg: str) -> bool:
-    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫"""
+def sync_file_to_github(file_path_in_repo: str, content_data: Union[str, bytes], commit_msg: str) -> bool:
+    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫 (支援文字檔與二進位 Excel 檔)"""
     sys_cfg = load_system_config()
     token = sys_cfg.get("github_token", "").strip() or st.secrets.get("GITHUB_TOKEN", "")
     repo = sys_cfg.get("github_repo", "").strip() or st.secrets.get("GITHUB_REPO", "") 
@@ -140,11 +140,15 @@ def sync_file_to_github(file_path_in_repo: str, content_str: str, commit_msg: st
     
     try:
         sha = None
-        resp = requests.get(url, headers=headers, params={"branch": branch}, timeout=10)
+        resp = requests.get(url, headers=headers, params={"ref": branch}, timeout=10)
         if resp.status_code == 200:
             sha = resp.json().get("sha")
             
-        encoded_content = base64.b64encode(content_str.encode("utf-8")).decode("utf-8")
+        if isinstance(content_data, bytes):
+            encoded_content = base64.b64encode(content_data).decode("utf-8")
+        else:
+            encoded_content = base64.b64encode(str(content_data).encode("utf-8")).decode("utf-8")
+
         payload = {
             "message": commit_msg,
             "content": encoded_content,
@@ -153,7 +157,7 @@ def sync_file_to_github(file_path_in_repo: str, content_str: str, commit_msg: st
         if sha:
             payload["sha"] = sha
             
-        put_resp = requests.put(url, headers=headers, json=payload, timeout=10)
+        put_resp = requests.put(url, headers=headers, json=payload, timeout=15)
         return put_resp.status_code in [200, 201]
     except Exception as e:
         print(f"GitHub API 同步失敗: {e}")
@@ -199,7 +203,7 @@ def robust_save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> bool:
     rel_path = os.path.relpath(path, start=BASE_DIR).replace("\\", "/")
     sync_file_to_github(
         file_path_in_repo=rel_path,
-        content_str=json.dumps(unit_data, ensure_ascii=False, indent=2),
+        content_data=json.dumps(unit_data, ensure_ascii=False, indent=2),
         commit_msg=f"Auto-update whitelist for {unit_code_clean} via Admin Panel"
     )
     return True
@@ -248,7 +252,7 @@ def set_monthly_control(unit_code: str, month_str: str, is_enabled: bool, note: 
             rel_path = os.path.relpath(cfg_path, start=BASE_DIR).replace("\\", "/")
             sync_file_to_github(
                 file_path_in_repo=rel_path,
-                content_str=content_str,
+                content_data=content_str,
                 commit_msg=f"Auto-update monthly control for {unit_code_clean} - {month_str}"
             )
         except Exception as e:
@@ -580,16 +584,6 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
             user_info = "ADMIN (管理員)"
         else:
             user_info = "系統/訪客"
-        if emp_code_match:
-            user_info = emp_code_match.group(1).upper()
-        elif login_match and login_match.group(1).strip().upper() not in INVALID_USERS:
-            user_info = login_match.group(1).strip().upper()
-        elif crew_match and crew_match.group(1).strip().upper() not in INVALID_USERS:
-            user_info = crew_match.group(1).strip()
-        elif "管理員" in action_detail:
-            user_info = "ADMIN (管理員)"
-        else:
-            user_info = "系統/訪客"
 
     emp_match = re.search(r"\b([A-Za-z]\d{6})\b", user_info)
     if emp_match:
@@ -673,7 +667,7 @@ def render_admin_panel() -> None:
     if current_unit not in ["TTN", "TTC", "TTS"]:
         current_unit = "TTN"
 
-    col_head_title, col_head_unit, col_head_btn = st.columns([2.2, 1.2, 1])
+    col_head_title, col_head_unit, col_head_btn = st.columns([2.0, 1.1, 1.3])
 
     with col_head_title:
         st.markdown(
@@ -702,14 +696,33 @@ def render_admin_panel() -> None:
 
     with col_head_btn:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button(
-            "返回前台首頁",
-            key="btn_top_return_home",
-            type="primary",
-            use_container_width=True,
-        ):
-            st.session_state["admin_logged_in"] = False
-            st.rerun()
+        b_col1, b_col2 = st.columns(2)
+        with b_col1:
+            if st.button(
+                "返回前台",
+                key="btn_top_return_home",
+                type="primary",
+                use_container_width=True,
+                help="切回組員查詢首頁（保留管理員快捷切換權限）",
+            ):
+                st.session_state["nav_mode"] = "home"
+                st.session_state["page"] = "user"
+                st.rerun()
+        with b_col2:
+            if st.button(
+                "安全登出",
+                key="btn_top_admin_logout",
+                type="secondary",
+                use_container_width=True,
+                help="徹底清除管理員權限並退回登入畫面",
+            ):
+                st.session_state["authenticated"] = False
+                st.session_state["admin_logged_in"] = False
+                st.session_state["show_admin_login"] = False
+                st.session_state["nav_mode"] = "home"
+                st.session_state["page"] = "user"
+                st.query_params.clear()
+                st.rerun()
 
     st.markdown("---")
 
@@ -726,7 +739,7 @@ def render_admin_panel() -> None:
     # ==================== Tab 1 ====================
     with tab1:
         st.markdown(f"### [{current_unit}] 班表大表 Excel 上傳與管理")
-        st.caption("即時監控各大表 Excel 檔案狀態，並提供直接覆蓋更新功能。")
+        st.caption("即時監控各大表 Excel 檔案狀態，並提供直接覆蓋更新與 GitHub 永久同步功能。")
         
         unit_files = UNITS.get(current_unit, {}) if isinstance(UNITS, dict) else {}
         default_role_paths = {
@@ -786,10 +799,23 @@ def render_admin_panel() -> None:
                     ):
                         try:
                             os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                            file_bytes = uploaded_file.getbuffer().tobytes()
                             with open(target_path, "wb") as f:
-                                f.write(uploaded_file.getbuffer())
-                            st.success(f"[{current_unit}] {role_name} 班表大表已成功更新！")
-                            log_activity("班表大表上傳", f"單位:{current_unit} | 職位:{role_name}")
+                                f.write(file_bytes)
+
+                            rel_excel_path = os.path.relpath(target_path, start=BASE_DIR).replace("\\", "/")
+                            synced = sync_file_to_github(
+                                file_path_in_repo=rel_excel_path,
+                                content_data=file_bytes,
+                                commit_msg=f"Auto-update {current_unit} {role_name} schedule ({os.path.basename(target_path)})"
+                            )
+
+                            if synced:
+                                st.success(f"[{current_unit}] {role_name} 班表大表已更新並永久同步至 GitHub！")
+                            else:
+                                st.warning(f"[{current_unit}] {role_name} 大表已暫存於本機，但 GitHub 同步未成功（請確認 Secrets 中的 GITHUB_TOKEN 與 GITHUB_REPO）。")
+
+                            log_activity("班表大表上傳", f"單位:{current_unit} | 職位:{role_name} | GitHub同步:{synced}")
                             st.cache_data.clear()
                             st.rerun()
                         except Exception as e:
@@ -902,7 +928,7 @@ def render_admin_panel() -> None:
                             rel_maint_path = os.path.relpath(maint_path, start=BASE_DIR).replace("\\", "/")
                             sync_file_to_github(
                                 file_path_in_repo=rel_maint_path,
-                                content_str=maint_json_str,
+                                content_data=maint_json_str,
                                 commit_msg=f"Auto-update maintenance mode for {current_unit} - {m_key}: {new_state}"
                             )
                         except Exception as e:
@@ -1306,7 +1332,7 @@ def render_admin_panel() -> None:
                             rel_cfg_path = os.path.relpath(cfg_path, start=BASE_DIR).replace("\\", "/")
                             sync_file_to_github(
                                 file_path_in_repo=rel_cfg_path,
-                                content_str=cfg_content,
+                                content_data=cfg_content,
                                 commit_msg="Auto-update system_config.json via Admin Panel"
                             )
                         except Exception as e:
