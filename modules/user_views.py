@@ -1,5 +1,6 @@
 import os
 import re
+import traceback
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -844,7 +845,7 @@ def render_user_home() -> None:
     for role in ["駕駛", "列車長", "服勤員"]:
         cands = get_candidate_file_paths(role, current_unit_label)
         f_val = active_files.get(role, "")
-        
+
         has_file = len(cands) > 0
         if not has_file:
             if isinstance(f_val, list):
@@ -864,7 +865,7 @@ def render_user_home() -> None:
         cands = get_candidate_file_paths(r_name, current_unit_label)
         if cands:
             return get_file_mtime_str(cands[0])
-            
+
         f_val = active_files.get(r_name, "")
         if isinstance(f_val, list) and f_val:
             valid = [p for p in f_val if os.path.exists(p)]
@@ -1159,19 +1160,17 @@ def render_user_home() -> None:
                             tomorrow_dt = date.today() + timedelta(days=1)
                             found_idx = None
                             for idx, d_str in enumerate(date_cols):
-                                parts = d_str.split("/")
-                                if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                                    if int(parts[0]) == tomorrow_dt.month and int(parts[1]) == tomorrow_dt.day:
-                                        found_idx = idx
-                                        break
+                                dt_obj = parse_date_obj(d_str, date.today().year)
+                                if dt_obj and dt_obj.month == tomorrow_dt.month and dt_obj.day == tomorrow_dt.day:
+                                    found_idx = idx
+                                    break
                             if found_idx is None:
                                 today_dt = date.today()
                                 for idx, d_str in enumerate(date_cols):
-                                    parts = d_str.split("/")
-                                    if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                                        if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
-                                            found_idx = idx
-                                            break
+                                    dt_obj = parse_date_obj(d_str, date.today().year)
+                                    if dt_obj and dt_obj.month == today_dt.month and dt_obj.day == today_dt.day:
+                                        found_idx = idx
+                                        break
                             default_win_idx = found_idx if found_idx is not None else 0
 
                         first_sample_df = list(merged_role_dfs.values())[0]
@@ -1538,19 +1537,17 @@ def render_user_home() -> None:
                         tomorrow_dt = date.today() + timedelta(days=1)
                         found_idx = None
                         for idx, d_str in enumerate(date_cols):
-                            parts = d_str.split("/")
-                            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                                if int(parts[0]) == tomorrow_dt.month and int(parts[1]) == tomorrow_dt.day:
-                                    found_idx = idx
-                                    break
+                            dt_obj = parse_date_obj(d_str, date.today().year)
+                            if dt_obj and dt_obj.month == tomorrow_dt.month and dt_obj.day == tomorrow_dt.day:
+                                found_idx = idx
+                                break
                         if found_idx is None:
                             today_dt = date.today()
                             for idx, d_str in enumerate(date_cols):
-                                parts = d_str.split("/")
-                                if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                                    if int(parts[0]) == today_dt.month and int(parts[1]) == today_dt.day:
-                                        found_idx = idx
-                                        break
+                                dt_obj = parse_date_obj(d_str, date.today().year)
+                                if dt_obj and dt_obj.month == today_dt.month and dt_obj.day == today_dt.day:
+                                    found_idx = idx
+                                    break
                         default_ex_idx = found_idx if found_idx is not None else 0
 
                     with ex_date_col1:
@@ -1940,7 +1937,7 @@ def render_user_home() -> None:
                                                 use_container_width=True,
                                             ):
                                                 log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
-                                                st.session_state["inspect_emp_target"] = clean_id
+                                                st.session_state["inspect_emp_target"] = clean_cand_id
                                                 st.rerun()
                             else:
                                 st.info(
@@ -1949,6 +1946,7 @@ def render_user_home() -> None:
                                 )
             except Exception as e:
                 st.error(f"讀取換假資料時發生錯誤：{e}")
+                st.code(traceback.format_exc())
 
 
 if __name__ == "__main__":
