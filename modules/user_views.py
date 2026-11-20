@@ -85,7 +85,7 @@ def clean_role_label(role: str) -> str:
 
 
 # =============================================================================
-# 2. 資料處理與多月份工具函式
+# 2. 資料處理與路徑工具函式
 # =============================================================================
 
 ROLE_CODE_MAP = {
@@ -95,11 +95,31 @@ ROLE_CODE_MAP = {
 }
 
 
-def get_candidate_file_paths(role_name: str, unit_label: str = "TTN", selected_month: Optional[str] = None) -> List[str]:
+def _smart_read_excel_df(p: str) -> pd.DataFrame:
+    """智慧讀取各基地班表 Excel，自動相容不同表頭起始列 (header=3, 0, 2, 1, 4)"""
+    for h_idx in [3, 0, 2, 1, 4]:
+        try:
+            df = safe_read_excel(p, header=h_idx)
+            if df is None or df.empty or len(df.columns) < 3:
+                continue
+            df.columns = [str(c).strip() for c in df.columns]
+            sample_ids = [str(v).strip().upper() for v in df.iloc[:15, 0].tolist()]
+            has_emp_id = any(re.match(r"^[A-Z]?\d{5,6}$", sid) for sid in sample_ids)
+            has_date_col = any(normalize_date_str(c) for c in df.columns[2:10])
+            if has_emp_id or has_date_col:
+                return df
+        except Exception:
+            continue
+    df_fb = safe_read_excel(p, header=3)
+    if df_fb is not None and not df_fb.empty:
+        df_fb.columns = [str(c).strip() for c in df_fb.columns]
+    return df_fb
+
+
+def get_candidate_file_paths(role_name: str, unit_label: str = "TTN") -> List[str]:
     """
     全路徑動態自動檢測機制：
-    自動相容「最新版班表/YYYY-MM/」、「20號大表」、與根目錄備援檔案，
-    確保自動更新腳本產出之檔案不論放在哪一個子目錄均能被系統自動搜尋並載入。
+    優先讀取管理後台最新覆蓋上傳之大表，並相容子目錄與根目錄備援檔案。
     """
     unit_upper = (unit_label or "TTN").upper().strip()
     unit_lower = unit_upper.lower()
@@ -107,29 +127,23 @@ def get_candidate_file_paths(role_name: str, unit_label: str = "TTN", selected_m
     code_info = ROLE_CODE_MAP.get(role_name, (role_name, role_name.lower()))
     role_code, role_eng = code_info[0], code_info[1]
 
-    candidates = []
     data_dir = os.path.join(os.getcwd(), "data")
+    candidates = [
+        os.path.join(data_dir, unit_upper, "最新版班表", f"{unit_upper}_{role_code}.xlsx"),
+    ]
 
-    # 1. 優先匹配特定月份之最新版班表目錄
-    if selected_month:
-        m_digits = re.findall(r"\d+", str(selected_month))
-        if m_digits:
-            m_num = m_digits[-1].zfill(2)
-            candidates.append(os.path.join(data_dir, unit_upper, "最新版班表", f"2026-{m_num}", f"{unit_upper}_{role_code}.xlsx"))
-            candidates.append(os.path.join(data_dir, unit_upper, "最新版班表", f"{int(m_num)}月", f"{unit_upper}_{role_code}.xlsx"))
-            candidates.append(os.path.join(data_dir, unit_upper, "最新版班表", f"{m_num}月", f"{unit_upper}_{role_code}.xlsx"))
-            candidates.append(os.path.join(data_dir, unit_upper, "最新版班表", str(selected_month), f"{unit_upper}_{role_code}.xlsx"))
-
-    # 2. 自動動態搜尋「最新版班表」目錄下所有子資料夾
+    # 搜尋「最新版班表」目錄下所有子資料夾（若透過資料夾結構存放）
     latest_base = os.path.join(data_dir, unit_upper, "最新版班表")
     if os.path.exists(latest_base) and os.path.isdir(latest_base):
         subdirs = sorted(os.listdir(latest_base), reverse=True)
         for sd in subdirs:
-            p = os.path.join(latest_base, sd, f"{unit_upper}_{role_code}.xlsx")
-            if p not in candidates:
-                candidates.append(p)
+            sub_dir_path = os.path.join(latest_base, sd)
+            if os.path.isdir(sub_dir_path):
+                p = os.path.join(sub_dir_path, f"{unit_upper}_{role_code}.xlsx")
+                if p not in candidates:
+                    candidates.append(p)
 
-    # 3. 標準單位與根目錄檔案備援
+    # 標準單位與根目錄檔案備援
     candidates.extend([
         os.path.join(data_dir, unit_upper, f"{unit_upper}_{role_code}.xlsx"),
         os.path.join(data_dir, f"{unit_lower}_{role_eng}.xlsx"),
@@ -165,49 +179,12 @@ def parse_date_obj(d_str: str, default_year: int) -> Optional[date]:
     return None
 
 
-def get_available_months_list(active_files: Dict[str, Any]) -> List[str]:
-    """動態分析系統中已存在的班表檔案月份/排班週期清單 (含實體目錄自動偵測)"""
-    months = []
-    
-    # 掃描 active_files
-    for r_name, path_val in active_files.items():
-        file_paths = []
-        if isinstance(path_val, list):
-            file_paths = path_val
-        elif isinstance(path_val, str) and path_val:
-            file_paths = [p.strip() for p in re.split(r"[;,]", path_val) if p.strip()]
-
-        for p in file_paths:
-            if os.path.exists(p) and os.path.getsize(p) > 0:
-                m_match = re.search(r"(\d{4}-\d{2}|\d{1,2}月|\d{2}月)", p)
-                if m_match:
-                    m_label = m_match.group(1)
-                    if m_label not in months:
-                        months.append(m_label)
-
-    # 掃描實體「最新版班表」目錄
-    current_unit = st.session_state.get("current_unit", "TTN").upper()
-    latest_dir = os.path.join(os.getcwd(), "data", current_unit, "最新版班表")
-    if os.path.exists(latest_dir) and os.path.isdir(latest_dir):
-        for sub in sorted(os.listdir(latest_dir), reverse=True):
-            if re.match(r"^\d{4}-\d{2}$", sub) and sub not in months:
-                months.append(sub)
-
-    if not months:
-        default_range = get_schedule_range()
-        months = ["2026-10"] if not default_range else [default_range]
-    return months
-
-
 def load_role_merged_dataframe(
-    role_name: str, active_files: Dict[str, Any], selected_month: Optional[str] = None
+    role_name: str, active_files: Dict[str, Any], unit_label: str = "TTN"
 ) -> Tuple[pd.DataFrame, List[str]]:
     """
-    跨月份班表資料合併載入：
-    讀取指定職位對應的所有月份班表 Excel（支援單檔、多月份檔案清單及自動候選路徑），
-    支援 10月與 2026-10 格式正規化比對，並依員編與姓名進行跨月對齊與合併。
+    載入指定職位最新覆蓋上傳之班表大表 Excel，並解析出所有有效日期欄位。
     """
-    current_unit = st.session_state.get("current_unit", "TTN")
     raw_target = active_files.get(role_name, "")
     file_paths = []
 
@@ -217,7 +194,7 @@ def load_role_merged_dataframe(
         file_paths = [p.strip() for p in re.split(r"[;,]", raw_target) if p.strip()]
 
     # 加入全路徑備援搜尋結果
-    candidate_paths = get_candidate_file_paths(role_name, current_unit, selected_month)
+    candidate_paths = get_candidate_file_paths(role_name, unit_label)
     for cp in candidate_paths:
         if cp not in file_paths:
             file_paths.append(cp)
@@ -226,52 +203,19 @@ def load_role_merged_dataframe(
     if not valid_paths:
         return pd.DataFrame(), []
 
-    # 當指定查詢月份時，精準與相容過濾實體檔案路徑 (相容 2026-10、10月、10 等表達方式)
-    if selected_month:
-        month_digits = re.findall(r"\d+", selected_month)
-        if month_digits:
-            target_m_num = month_digits[-1].zfill(2)  # 取得兩位數月份字串 (如 "10")
-            matched = []
-            for p in valid_paths:
-                if f"2026-{target_m_num}" in p or f"{int(target_m_num)}月" in p or f"{target_m_num}月" in p or f"/{target_m_num}/" in p:
-                    matched.append(p)
-            if matched:
-                valid_paths = matched
-
-    dfs = []
-    for p in valid_paths:
-        df = safe_read_excel(p, header=3)
-        if df is not None and not df.empty:
-            df.columns = [str(c).strip() for c in df.columns]
-            dfs.append(df)
-
-    if not dfs:
+    # 直接讀取最新對應的那份單一覆蓋大表檔案
+    target_path = valid_paths[0]
+    df = _smart_read_excel_df(target_path)
+    if df is None or df.empty:
         return pd.DataFrame(), []
 
-    merged_df = dfs[0].copy()
-    id_col = merged_df.columns[0]
-    name_col = merged_df.columns[1]
-
-    for next_df in dfs[1:]:
-        next_id_col = next_df.columns[0]
-        next_name_col = next_df.columns[1]
-        next_date_cols = list(next_df.columns[2:])
-
-        next_df_sub = next_df.rename(columns={next_id_col: id_col, next_name_col: name_col})
-        merged_df = pd.merge(
-            merged_df,
-            next_df_sub[[id_col, name_col] + next_date_cols],
-            on=[id_col, name_col],
-            how="outer",
-        )
-
     all_date_cols = []
-    for c in merged_df.columns[2:]:
+    for c in df.columns[2:]:
         norm = normalize_date_str(c)
         if norm and norm not in all_date_cols:
             all_date_cols.append(norm)
 
-    return merged_df, all_date_cols
+    return df, all_date_cols
 
 
 def get_shift_group_key(code_str: str) -> str:
@@ -401,7 +345,6 @@ def render_user_home() -> None:
     )
 
     user_role = auth["role"]
-    is_privileged = user_role in ["ADMIN", "VIP_USER"]
     is_admin_user = (user_role == "ADMIN") or st.session_state.get("admin_logged_in", False)
     current_unit_label = st.session_state.get("current_unit", auth.get("unit", "TTN"))
 
@@ -809,7 +752,6 @@ def render_user_home() -> None:
     )
 
     # 頂部主標題框
-    role_label_str = clean_role_label(user_role)
     st.markdown(
         f"""
         <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 14px; text-align: center; margin-bottom: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);">
@@ -839,81 +781,11 @@ def render_user_home() -> None:
 
     comp.inject_slider_animation()
 
-    # 選擇查詢月份選單區塊
-    st.markdown('<div class="section-field-label">選擇查詢月份</div>', unsafe_allow_html=True)
-
-    initial_files = get_current_role_files()
-    months_from_service = []
-    if get_available_months is not None:
-        try:
-            months_from_service = get_available_months()
-        except Exception:
-            months_from_service = []
-
-    if months_from_service:
-        available_months = months_from_service
-    else:
-        available_months = get_available_months_list(initial_files)
-
-    def handle_month_change():
-        reset_win_search()
-        reset_ex_search()
-
-    selected_global_month = st.selectbox(
-        "選擇查詢月份",
-        options=available_months,
-        format_func=lambda m: f"QUERY MONTH // {m}",
-        key="global_month_selector",
-        on_change=handle_month_change,
-        label_visibility="collapsed",
-    )
-
-    # 依選取月份動態載入該月份專屬檔案對應表
+    # 直接載入該單位最新上傳覆蓋的班表檔案
     try:
-        active_files = get_current_role_files(selected_global_month)
+        active_files = get_current_role_files(unit_code=current_unit_label)
     except TypeError:
         active_files = get_current_role_files()
-
-    # 月份權限與開放狀態防護檢查 (精準拆解字典型態)
-    monthly_controls = sys_config.get("monthly_controls", {})
-    m_info = monthly_controls.get(selected_global_month, {})
-
-    if isinstance(m_info, dict):
-        is_month_enabled = m_info.get("enabled", True)
-        month_note = m_info.get("note", "").strip()
-    else:
-        is_month_enabled = bool(m_info)
-        month_note = ""
-
-    if not is_month_enabled:
-        note_html = f"<div style='font-size: 12.5px; color: #FDE68A; margin-top: 6px; font-weight: 700;'>說明：{month_note}</div>" if month_note else ""
-
-        if not is_admin_user:
-            st.markdown(
-                f"""
-                <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #EF4444; border-radius: 10px; padding: 16px; margin-bottom: 16px; text-align: center;">
-                    <div style="font-size: 16px; font-weight: 900; color: #FCA5A5; font-family: monospace;">MONTHLY ACCESS CONTROL // 月份未開放</div>
-                    <div style="font-size: 15px; font-weight: 800; color: #FDE68A; margin: 8px 0;">
-                        【{selected_global_month}】班表查詢暫未開放
-                    </div>
-                    <div style="font-size: 12px; color: #CBD5E1;">
-                        管理員尚未開放【{selected_global_month}】之班表查詢與快篩功能，請選擇其他月份或稍後再試。
-                    </div>
-                    {note_html}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.stop()
-        else:
-            st.markdown(
-                f"""
-                <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; color: #FDE68A;">
-                    <strong>【管理員維護預覽】</strong> 當前選取月份【{selected_global_month}】尚未對一般組員開放（一般組員已被阻擋），您正以管理員身分預覽測試。{f"（備註: {month_note}）" if month_note else ""}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
 
     # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
     inspect_emp_id = st.session_state.get("inspect_emp_target")
@@ -936,11 +808,13 @@ def render_user_home() -> None:
 
         try:
             try:
-                start_dt, dates, emp_id, emp_name, cells = process_file_data(inspect_emp_id, selected_global_month)
+                start_dt, dates, emp_id, emp_name, cells = process_file_data(
+                    inspect_emp_id, unit_code=current_unit_label
+                )
             except TypeError:
                 start_dt, dates, emp_id, emp_name, cells = process_file_data(inspect_emp_id)
 
-            with st.spinner(f"正在讀取【{emp_name}】{selected_global_month} 完整班表，請稍候..."):
+            with st.spinner(f"正在讀取【{emp_name}】完整班表，請稍候..."):
                 buf = render_schedule_figure(
                     start_dt,
                     dates,
@@ -957,7 +831,7 @@ def render_user_home() -> None:
             st.download_button(
                 "點此下載班表影像檔",
                 data=buf,
-                file_name=f"{current_unit_label}_班表_{emp_name}_{selected_global_month}.png",
+                file_name=f"{current_unit_label}_班表_{emp_name}.png",
                 mime="image/png",
                 use_container_width=True,
             )
@@ -968,7 +842,7 @@ def render_user_home() -> None:
 
     missing_files = []
     for role in ["駕駛", "列車長", "服勤員"]:
-        cands = get_candidate_file_paths(role, current_unit_label, selected_global_month)
+        cands = get_candidate_file_paths(role, current_unit_label)
         f_val = active_files.get(role, "")
         
         has_file = len(cands) > 0
@@ -983,11 +857,11 @@ def render_user_home() -> None:
 
     if missing_files:
         st.error(
-            f"【{current_unit_label}】資料庫異常或尚無檔案：請洽管理員上傳！"
+            f"【{current_unit_label}】資料庫異常或尚無檔案（缺：{', '.join(missing_files)}）：請洽管理員上傳！"
         )
 
     def get_role_mtime_label(r_name: str) -> str:
-        cands = get_candidate_file_paths(r_name, current_unit_label, selected_global_month)
+        cands = get_candidate_file_paths(r_name, current_unit_label)
         if cands:
             return get_file_mtime_str(cands[0])
             
@@ -1008,7 +882,7 @@ def render_user_home() -> None:
     ta_time = get_role_mtime_label("服勤員")
 
     try:
-        sched_range = get_schedule_range(selected_global_month)
+        sched_range = get_schedule_range(unit_code=current_unit_label)
     except TypeError:
         sched_range = get_schedule_range()
 
@@ -1016,13 +890,13 @@ def render_user_home() -> None:
     <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 12px 0 !important;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span class="section-title" style="font-size: 13px !important;">{current_unit_label} // 最新發布班表區間</span>
-            <span style="font-size: 14px; color: {"#EF4444" if missing_files else "#60A5FA"}; font-weight: 800; font-family: monospace;">
+            <span style="font-size: 14px; color: {"#EF4444" if len(missing_files) == 3 else "#60A5FA"}; font-weight: 800; font-family: monospace;">
                 {sched_range if len(missing_files) < 3 else "資料庫異常"}
             </span>
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
-                <span>點擊展開各職位大表檔案更新時間 ({selected_global_month})</span>
+                <span>點擊展開各職位大表檔案更新時間</span>
                 <span style="font-size: 9px; color: #64748B;">▼</span>
             </summary>
             <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1);">
@@ -1140,7 +1014,7 @@ def render_user_home() -> None:
                 try:
                     try:
                         start_dt, dates, emp_id, emp_name, cells = process_file_data(
-                            current_input, selected_global_month
+                            current_input, unit_code=current_unit_label
                         )
                     except TypeError:
                         start_dt, dates, emp_id, emp_name, cells = process_file_data(
@@ -1149,10 +1023,10 @@ def render_user_home() -> None:
 
                     log_activity(
                         "個人班表繪製",
-                        f"操作者:{current_user_id} | 單位:{current_unit_label} | 選擇月份:{selected_global_month} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
+                        f"操作者:{current_user_id} | 單位:{current_unit_label} | 查詢關鍵字:{current_input} | 成功解析組員:{emp_name}({emp_id})"
                     )
 
-                    with st.spinner(f"正在繪製【{emp_name}】{selected_global_month} 的個人月班表，請稍候..."):
+                    with st.spinner(f"正在繪製【{emp_name}】的個人月班表，請稍候..."):
                         buf = render_schedule_figure(
                             start_dt,
                             dates,
@@ -1162,21 +1036,21 @@ def render_user_home() -> None:
                             current_unit_label,
                             badge_title="Producer | C.L.F",
                         )
-                    st.success(f"【{emp_name}】{selected_global_month} 個人班表圖片生成成功！")
+                    st.success(f"【{emp_name}】個人班表圖片生成成功！")
 
                     comp.render_zoomable_image(buf)
 
                     st.download_button(
                         "點此下載班表影像檔",
                         data=buf,
-                        file_name=f"{current_unit_label}_班表_{emp_name}_{selected_global_month}.png",
+                        file_name=f"{current_unit_label}_班表_{emp_name}.png",
                         mime="image/png",
                         use_container_width=True,
                     )
                 except Exception as e:
                     st.error(f"繪製班表時發生錯誤：{e}")
 
-    # ==================== 模式二：換班查詢 (多月份跨月併表) ====================
+    # ==================== 模式二：換班查詢 ====================
     elif app_mode == "換班查詢":
         if is_module_maintenance(current_unit_label, "window_filter"):
             if not is_admin_user:
@@ -1262,7 +1136,7 @@ def render_user_home() -> None:
                 combined_date_cols: List[str] = []
 
                 for r_name in roles_to_query:
-                    df_r, dates_r = load_role_merged_dataframe(r_name, active_files, selected_global_month)
+                    df_r, dates_r = load_role_merged_dataframe(r_name, active_files, current_unit_label)
                     if not df_r.empty:
                         merged_role_dfs[r_name] = df_r
                         for d_str in dates_r:
@@ -1271,7 +1145,7 @@ def render_user_home() -> None:
 
                 if not merged_role_dfs:
                     st.error(
-                        f"找不到【{current_unit_label}】所選職位在【{selected_global_month}】的班表檔案，請先至管理員後台上傳"
+                        f"找不到【{current_unit_label}】所選職位的班表檔案，請先至管理員後台上傳"
                     )
                 else:
                     date_cols = combined_date_cols
@@ -1303,7 +1177,7 @@ def render_user_home() -> None:
                         first_sample_df = list(merged_role_dfs.values())[0]
 
                         target_date = st.selectbox(
-                            f"選擇換班日期",
+                            "選擇換班日期",
                             date_cols,
                             index=default_win_idx,
                             format_func=lambda d: get_date_label(d, first_sample_df.columns),
@@ -1477,7 +1351,7 @@ def render_user_home() -> None:
 
             log_activity(
                 "換班日期快篩",
-                f"單位:{current_unit_label} | 選擇職位:{'/'.join(roles_to_query)} | 選擇月份:{selected_global_month} | 日期:{target_date} | "
+                f"單位:{current_unit_label} | 選擇職位:{'/'.join(roles_to_query)} | 日期:{target_date} | "
                 f"時段:{min_time}~{max_time_sel} | 僅正線:{only_main_line} | "
                 f"僅長班:{only_long_shift} | 命中數:{len(filtered_results)}筆"
             )
@@ -1583,7 +1457,7 @@ def render_user_home() -> None:
             else:
                 st.info("在指定條件內，找不到符合的人員")
 
-    # ==================== 模式三：換假查詢 (多月份跨月併表) ====================
+    # ==================== 模式三：換假查詢 ====================
     elif app_mode == "換假查詢":
         if is_module_maintenance(current_unit_label, "exchange_filter"):
             if not is_admin_user:
@@ -1643,12 +1517,11 @@ def render_user_home() -> None:
         )
         st.session_state["saved_ex_role"] = selected_role
 
-        df_ex, date_cols = load_role_merged_dataframe(selected_role, active_files, selected_global_month)
+        df_ex, date_cols = load_role_merged_dataframe(selected_role, active_files, current_unit_label)
 
         if df_ex.empty:
             st.error(
-                f"找不到【{current_unit_label} -"
-                f" {selected_role}】在【{selected_global_month}】的班表檔案，請先至管理員後台上傳"
+                f"找不到【{current_unit_label} - {selected_role}】的班表檔案，請先至管理員後台上傳"
             )
         else:
             try:
@@ -1969,7 +1842,7 @@ def render_user_home() -> None:
 
                             log_activity(
                                 "換假日期快篩",
-                                f"單位:{current_unit_label} | 職位:{selected_role} | 選擇月份:{selected_global_month} | 想休:{target_date} | "
+                                f"單位:{current_unit_label} | 職位:{selected_role} | 想休:{target_date} | "
                                 f"還假:{return_date} | 時間限制:{return_time_filter} | "
                                 f"排序:{sort_order} | 嚴格連六:{strict_limit} | 命中數:{len(filtered_candidates)}筆"
                             )
@@ -2067,7 +1940,7 @@ def render_user_home() -> None:
                                                 use_container_width=True,
                                             ):
                                                 log_activity("快篩彈窗檢視班表", f"單位:{current_unit_label} | 目標組員:{clean_cand_name}({clean_cand_id})")
-                                                st.session_state["inspect_emp_target"] = clean_cand_id
+                                                st.session_state["inspect_emp_target"] = clean_id
                                                 st.rerun()
                             else:
                                 st.info(
