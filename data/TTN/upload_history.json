@@ -1,0 +1,30 @@
+{
+  "latest_by_role": {
+    "駕駛": {
+      "unit": "TTN",
+      "role_name": "駕駛",
+      "role_code": "TD",
+      "original_filename": "TTN Train Driver Roster_2026_1206_2027_0109_V00.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TD.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TD_20261120_043007_TTN Train Driver Roster_2026_1206_2027_0109_V00.xls",
+      "size_kb": 83.5,
+      "uploaded_at": "2026-11-20 04:30:07",
+      "operator": "ADMIN"
+    }
+  },
+  "records": [
+    {
+      "unit": "TTN",
+      "role_name": "駕駛",
+      "role_code": "TD",
+      "original_filename": "TTN Train Driver Roster_2026_1206_2027_0109_V00.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TD.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TD_20261120_043007_TTN Train Driver Roster_2026_1206_2027_0109_V00.xls",
+      "size_kb": 83.5,
+      "uploaded_at": "2026-11-20 04:30:07",
+      "operator": "ADMIN"
+    }
+  ]
+}
