@@ -339,7 +339,13 @@ if st.session_state.get("inspect_emp_target") is not None:
         st.rerun()
 
     try:
-        start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
+        try:
+            start_dt, dates, emp_id, emp_name, cells = process_file_data(
+                target_emp, unit_code=current_unit
+            )
+        except TypeError:
+            start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
+
         with st.spinner(f"正在載入【{emp_name}】的完整月班表資料..."):
             buf = render_schedule_figure(
                 start_dt,
@@ -456,7 +462,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-col_f1, col_f2 = st.columns(2)
+col_f1, col_f2, col_f3 = st.columns(3)
 
 with col_f1:
     render_feedback_hub_popover(
@@ -483,4 +489,48 @@ with col_f2:
                 st.session_state["page"] = "admin"
         else:
             st.session_state["show_admin_login"] = True
+        st.rerun()
+
+with col_f3:
+    if st.button(
+        "LOGOUT // 登出切換",
+        key="btn_logout_footer",
+        use_container_width=True,
+        help="登出目前帳號並返回登入畫面以切換單位或員編",
+    ):
+        curr_uid = st.session_state.get("login_user_id", "")
+        curr_unit = st.session_state.get("current_unit", "TTN")
+        log_activity(
+            action="使用者登出",
+            detail=f"使用者主動登出系統 ({curr_uid})",
+            user=curr_uid,
+            unit=curr_unit,
+        )
+        st.session_state["CURRENT_AUTH_SESSION"] = {
+            "authenticated": False,
+            "emp_id": "",
+            "emp_name": "",
+            "role": "GUEST",
+            "unit": "TTN",
+        }
+        for k in [
+            "authenticated",
+            "admin_logged_in",
+            "show_admin_login",
+            "emp_id",
+            "emp_name",
+            "user_id",
+            "user_name",
+            "draw_input_key",
+            "inspect_emp_target",
+            "win_raw_candidates",
+            "ex_raw_candidates",
+        ]:
+            st.session_state.pop(k, None)
+        st.session_state["ex_search_performed"] = False
+        st.session_state["nav_mode"] = "home"
+        st.session_state["page"] = "user"
+        st.session_state["current_user_id"] = DEFAULT_EMP_ID
+        st.session_state["login_user_id"] = DEFAULT_EMP_ID
+        st.query_params.clear()
         st.rerun()
