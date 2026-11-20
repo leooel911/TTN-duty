@@ -32,7 +32,6 @@ def _smart_read_schedule_excel(f_path: str) -> pd.DataFrame:
             if df is None or df.empty or len(df.columns) < 3:
                 continue
             df.columns = [str(c).strip() for c in df.columns]
-            # 檢查前 15 列是否有符合員編格式的資料，或欄位名稱包含日期/員編特徵
             sample_ids = [_clean_emp_id(v) for v in df.iloc[:15, 0].tolist()]
             has_emp_id = any(re.match(r"^[A-Z]\d{5,6}$", sid) for sid in sample_ids)
             has_date_col = any(normalize_date_str(c) for c in df.columns[2:10])
@@ -40,7 +39,6 @@ def _smart_read_schedule_excel(f_path: str) -> pd.DataFrame:
                 return df
         except Exception:
             continue
-    # 保底回傳 header=3
     df_fallback = safe_read_excel(f_path, header=3)
     if df_fallback is not None and not df_fallback.empty:
         df_fallback.columns = [str(c).strip() for c in df_fallback.columns]
@@ -75,7 +73,6 @@ def get_available_months(unit_code: Optional[str] = None) -> List[str]:
     months = set()
     current_year = date.today().year
 
-    # 1. 優先掃描新架構的資料夾：data/{current_unit}/最新版班表/{YYYY-MM}/
     new_style_dir = os.path.join(DATA_DIR, current_unit, "最新版班表")
     if os.path.exists(new_style_dir):
         for sub_name in os.listdir(new_style_dir):
@@ -84,7 +81,6 @@ def get_available_months(unit_code: Optional[str] = None) -> List[str]:
                 if os.path.isdir(sub_path) and os.listdir(sub_path):
                     months.add(sub_name)
 
-    # 2. 相容舊版從檔名中解析月份代碼
     all_files = glob.glob(os.path.join(DATA_DIR, f"{current_unit}*.xlsx"))
     for f in all_files:
         filename = os.path.basename(f)
@@ -99,7 +95,6 @@ def get_available_months(unit_code: Optional[str] = None) -> List[str]:
             if m_str.isdigit() and 1 <= int(m_str) <= 12:
                 months.add(f"{current_year}-{m_str}")
 
-    # 3. 從 Excel 檔案內部日期欄位掃描（若尚未掃到月份資料夾）
     if not months and isinstance(unit_files, dict):
         for role_name, default_path in unit_files.items():
             if role_name == "mapping":
@@ -115,7 +110,6 @@ def get_available_months(unit_code: Optional[str] = None) -> List[str]:
                     try:
                         df = _smart_read_schedule_excel(f_path)
                         if df is not None and not df.empty:
-                            # 取日期區間的第一天所屬月份作為主月份（避免 11/1~12/5 誤判成 12 月）
                             valid_months = []
                             for col in df.columns[2:]:
                                 norm_d = normalize_date_str(col)
@@ -192,6 +186,16 @@ def get_current_role_files(target_month: Optional[str] = None, unit_code: Option
         result[role] = selected_path
 
     return result
+
+
+def has_any_unit_schedule_file(unit_code: str) -> bool:
+    """嚴格檢查該單位目前是否至少有一份有效的班表大表檔案"""
+    unit_files = get_current_role_files(unit_code=unit_code)
+    for role_name in ["駕駛", "列車長", "服勤員"]:
+        f_path = unit_files.get(role_name, "")
+        if f_path and isinstance(f_path, str) and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
+            return True
+    return False
 
 
 def get_schedule_range(unit_code: Optional[str] = None) -> str:
@@ -311,7 +315,7 @@ def save_system_config(cfg: Dict[str, Any]) -> None:
 
 
 def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
-    """優先讀取獨立的單位白名單檔案 (whitelist_ttn.json)，並相容舊版共用檔"""
+    """嚴格隔離讀取該單位專屬白名單檔案 (whitelist_{unit}.json)，防止跨基地誤讀"""
     os.makedirs(DATA_DIR, exist_ok=True)
     unit_code_clean = unit_code.upper().strip()
     if unit_code_clean not in ["TTN", "TTC", "TTS"]:
@@ -327,15 +331,15 @@ def load_whitelist(unit_code: str = "TTN") -> Dict[str, Any]:
         except Exception:
             pass
 
+    # 若尚無獨立檔案，僅從舊版共用檔中讀取明確標示該單位鍵值的區塊
     wl_path = os.path.join(DATA_DIR, WHITELIST_FILE)
     if os.path.exists(wl_path):
         try:
             with open(wl_path, "r", encoding="utf-8") as f:
                 all_wl = json.load(f)
-                if isinstance(all_wl, dict):
-                    if unit_code_clean in all_wl:
-                        return all_wl.get(unit_code_clean, {})
-                    return all_wl
+                if isinstance(all_wl, dict) and unit_code_clean in all_wl:
+                    unit_sub = all_wl.get(unit_code_clean, {})
+                    return unit_sub if isinstance(unit_sub, dict) else {}
         except Exception:
             pass
     return {}
@@ -411,6 +415,7 @@ def get_employee_name(unit_code: str, emp_id: str) -> str:
 
 
 def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) -> Tuple[bool, str, Dict[str, Any]]:
+    unit_clean = (unit_code or "TTN").upper().strip()
     clean_id = _clean_emp_id(emp_id_input)
     raw_id = emp_id_input.strip().upper()
     passcode = passcode_input.strip()
@@ -423,7 +428,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     strict_mode = sys_config.get("enable_strict_test_mode", False)
     allowed_list = sys_config.get("strict_allowed_employees", [])
 
-    whitelist = load_whitelist(unit_code)
+    whitelist = load_whitelist(unit_clean)
     wl_info = whitelist.get(clean_id, {}) or whitelist.get(raw_id, {})
     wl_name = ""
     wl_role = "USER"
@@ -436,6 +441,7 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
     elif isinstance(wl_info, str):
         wl_name = wl_info.strip()
 
+    # 1. 管理員驗證（不受單位大表限制，方便管理員隨時進入建置資料）
     if passcode == admin_pwd or wl_role == "ADMIN":
         if passcode != admin_pwd:
             return False, "管理員密碼錯誤！", {"reason": "WRONG_ADMIN_PASSWORD"}
@@ -444,47 +450,53 @@ def authenticate_user(unit_code: str, emp_id_input: str, passcode_input: str) ->
             "emp_id": clean_id if clean_id and clean_id != "A" else "ADMIN",
             "emp_name": wl_name or "系統管理員",
             "role": "ADMIN",
-            "unit": unit_code,
+            "unit": unit_clean,
         }
+
+    # 2. 檢查該營運單位是否已建置班表資料庫
+    if not has_any_unit_schedule_file(unit_clean):
+        return False, f"【{unit_clean}】目前尚未建置班表資料庫，暫不開放組員登入查詢！", {"reason": "UNIT_NO_DATA"}
 
     if strict_mode:
         if clean_id not in allowed_list and clean_id != "ADMIN":
             return False, "目前系統處於測試管制期間，您的員編尚未開放測試權限！", {"reason": "STRICT_MODE_BLOCKED"}
 
+    # 3. 該單位專屬 VIP / TESTER 白名單驗證
     if (clean_id in whitelist or raw_id in whitelist) and wl_role in ["VIP_USER", "TESTER"]:
         if custom_pass and custom_pass != "-":
             if passcode == custom_pass:
                 return True, f"歡迎 VIP 組員【{wl_name}】！", {
-                    "authenticated": True, "emp_id": clean_id, "emp_name": wl_name, "role": wl_role, "unit": unit_code,
+                    "authenticated": True, "emp_id": clean_id, "emp_name": wl_name, "role": wl_role, "unit": unit_clean,
                 }
             else:
                 return False, "授權碼無效！請再次確認:", {"reason": "WRONG_VIP_PASSCODE"}
 
         if passcode == default_vip_pwd or passcode == "0" or passcode == user_pwd or passcode == "09000":
             return True, f"歡迎 VIP 組員【{wl_name}】！", {
-                "authenticated": True, "emp_id": clean_id, "emp_name": wl_name, "role": wl_role, "unit": unit_code,
+                "authenticated": True, "emp_id": clean_id, "emp_name": wl_name, "role": wl_role, "unit": unit_clean,
             }
         else:
             return False, "授權碼無效！請再次確認:", {"reason": "WRONG_PASSCODE"}
 
     if (clean_id == "A" or raw_id == "A") and (passcode in [default_vip_pwd, "0", user_pwd, "09000"]):
         return True, "歡迎 VIP 測試員！", {
-            "authenticated": True, "emp_id": "VIP001", "emp_name": "VIP 測試員", "role": "VIP_USER", "unit": unit_code,
+            "authenticated": True, "emp_id": "VIP001", "emp_name": "VIP 測試員", "role": "VIP_USER", "unit": unit_clean,
         }
 
     if not clean_id or clean_id == "A":
         return False, "一般組員請輸入正確員編（例如:A023300）！", {"reason": "INVALID_EMP_ID"}
 
-    exists_in_excel, excel_name = check_excel_employee_exists(unit_code, clean_id)
+    # 4. 一般組員必須在該單位的大表或該單位白名單中確實存在
+    exists_in_excel, excel_name = check_excel_employee_exists(unit_clean, clean_id)
     if not exists_in_excel and clean_id not in whitelist:
-        return False, f"員編【{clean_id}】未在【{unit_code}】目前選定月份的班表大表中找到，請核對所屬單位或切換查詢月份！", {"reason": "NOT_IN_EXCEL"}
+        return False, f"員編【{clean_id}】未在【{unit_clean}】目前選定月份的班表大表中找到，請核對所屬單位！", {"reason": "NOT_IN_EXCEL"}
 
     if passcode != user_pwd and passcode != "09000":
         return False, "授權碼無效！請再次確認:", {"reason": "WRONG_PASSCODE"}
 
     final_name = wl_name if wl_name else excel_name
     return True, f"歡迎！{final_name}", {
-        "authenticated": True, "emp_id": clean_id, "emp_name": final_name, "role": "USER", "unit": unit_code,
+        "authenticated": True, "emp_id": clean_id, "emp_name": final_name, "role": "USER", "unit": unit_clean,
     }
 
 
