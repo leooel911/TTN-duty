@@ -369,70 +369,6 @@ def render_user_home() -> None:
             padding-top: 0.6rem !important;
         }
 
-        /* 頂部狀態卡片與整合式低調登出膠囊按鈕樣式 */
-        .top-status-hud-card {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%);
-            border: 1.5px solid rgba(56, 189, 248, 0.5);
-            border-bottom: none;
-            border-top-left-radius: 16px;
-            border-top-right-radius: 16px;
-            padding: 14px 14px 10px 14px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-        }
-
-        div[data-testid="stElementContainer"]:has(.top-status-hud-card) + div[data-testid="stElementContainer"] {
-            margin-top: -16px !important;
-            margin-bottom: 12px !important;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%) !important;
-            border: 1.5px solid rgba(56, 189, 248, 0.5) !important;
-            border-top: 1px dashed rgba(255, 255, 255, 0.12) !important;
-            border-bottom-left-radius: 16px !important;
-            border-bottom-right-radius: 16px !important;
-            padding: 8px 14px 10px 14px !important;
-            display: flex !important;
-            justify-content: center !important;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.top-status-hud-card) + div[data-testid="stElementContainer"] div[data-testid="stButton"] {
-            width: auto !important;
-            display: flex !important;
-            justify-content: center !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.top-status-hud-card) + div[data-testid="stElementContainer"] button {
-            width: auto !important;
-            min-width: 190px !important;
-            background: rgba(15, 23, 42, 0.65) !important;
-            color: #94A3B8 !important;
-            border: 1px solid rgba(148, 163, 184, 0.35) !important;
-            border-radius: 8px !important;
-            padding: 4px 16px !important;
-            box-shadow: none !important;
-            margin: 0 !important;
-            transition: all 0.2s ease !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.top-status-hud-card) + div[data-testid="stElementContainer"] button:hover {
-            background: rgba(30, 41, 59, 0.9) !important;
-            color: #F8FAFC !important;
-            border-color: rgba(56, 189, 248, 0.55) !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.top-status-hud-card) + div[data-testid="stElementContainer"] button p {
-            font-size: 11px !important;
-            font-weight: 700 !important;
-            color: #94A3B8 !important;
-            letter-spacing: 0.5px !important;
-            font-family: monospace !important;
-            margin: 0 !important;
-        }
-
-        div[data-testid="stElementContainer"]:has(.top-status-hud-card) + div[data-testid="stElementContainer"] button:hover p {
-            color: #F8FAFC !important;
-        }
-
         .section-field-label {
             font-size: 15px !important;
             font-weight: 800 !important;
@@ -815,55 +751,19 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 頂部主標題與狀態框（上方卡片區塊）
+    # 頂部主標題框（純淨狀態卡片）
     st.markdown(
         f"""
-        <div class="top-status-hud-card">
+        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 14px; text-align: center; margin-bottom: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);">
             <div style="font-size: 18px; font-weight: 900; color: #F8FAFC; letter-spacing: 1.5px; font-family: monospace;">CREW DUTY ENGINE</div>
             <div style="font-size: 10px; color: #38BDF8; font-family: monospace; letter-spacing: 0.8px; margin-top: 2px;">BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div>
-            <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace; margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                <span class="online-dot" style="margin: 0;"></span>
-                <span>STATUS: ACTIVE | {current_unit_label} : {user_display_full}</span>
+            <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
+                STATUS: ACTIVE | {current_unit_label} : {user_display_full}
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-
-    # 緊接在狀態列下方的低調膠囊次要登出按鈕
-    if st.button(
-        "LOGOUT // 登出切換帳號",
-        key="btn_user_top_logout",
-        type="secondary",
-        help="登出目前帳號並返回登入畫面以切換單位或員編",
-    ):
-        log_activity("使用者登出", f"組員主動登出系統：{user_display_full} ({current_unit_label})")
-        st.session_state[AUTH_SESSION_KEY] = {
-            "authenticated": False,
-            "emp_id": "",
-            "emp_name": "",
-            "role": "GUEST",
-            "unit": "TTN",
-        }
-        for k in [
-            "authenticated",
-            "emp_id",
-            "emp_name",
-            "user_id",
-            "user_name",
-            "admin_logged_in",
-            "show_admin_login",
-            "draw_input_key",
-            "inspect_emp_target",
-            "win_raw_candidates",
-            "ex_raw_candidates",
-        ]:
-            st.session_state.pop(k, None)
-        st.session_state["ex_search_performed"] = False
-        st.session_state["nav_mode"] = "home"
-        st.session_state["page"] = "user"
-        st.query_params.clear()
-        st.rerun()
 
     # 測試環境公告欄
     sys_config = load_system_config()
