@@ -963,7 +963,6 @@ def render_admin_panel() -> None:
                             safe_stem = re.sub(r'[\\/:*?"<>|]+', "_", stem_name).strip() or f"{current_unit}_{role_code}"
                             ext_clean = ext_name.lower() if ext_name.lower() in [".xlsx", ".xls"] else ".xlsx"
 
-                            # 僅建立並寫入選定目標資料夾（不再額外寫入最新版班表）
                             os.makedirs(dest_dir, exist_ok=True)
 
                             file_bytes = uploaded_file.getbuffer().tobytes()
@@ -1835,6 +1834,7 @@ def render_admin_panel() -> None:
                             t["狀態"] = new_status
                             t["管理員回覆"] = new_reply
                             save_feedback_ticket(t)
+                            auto_git_push_data(f"Update feedback ticket {ticket_id}")
                             log_activity("問題工單維護", f"管理員更新工單 [{ticket_id}] 狀態為：{new_status}")
                             st.success(f"工單 `{ticket_id}` 狀態已成功更新！")
                             st.rerun()
@@ -1847,6 +1847,7 @@ def render_admin_panel() -> None:
                             img_p = t.get("_img_path")
                             if img_p and os.path.exists(img_p):
                                 os.remove(img_p)
+                            auto_git_push_data(f"Delete feedback ticket {ticket_id}")
                             log_activity("問題工單刪除", f"管理員刪除工單 [{ticket_id}]")
                             st.success(f"已成功刪除工單 `{ticket_id}`！")
                             st.rerun()
