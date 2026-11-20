@@ -203,46 +203,66 @@ def record_upload_history(
     return hist
 
 
-def sync_file_to_github(file_path_in_repo: str, content_data: Union[str, bytes], commit_msg: str) -> bool:
-    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫 (支援文字檔與二進位 Excel 檔)"""
+def sync_file_to_github_with_detail(
+    file_path_in_repo: str, content_data: Union[str, bytes], commit_msg: str
+) -> Tuple[bool, str]:
+    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫，並回傳詳細狀態說明"""
     sys_cfg = load_system_config()
-    token = sys_cfg.get("github_token", "").strip() or st.secrets.get("GITHUB_TOKEN", "")
-    repo = sys_cfg.get("github_repo", "").strip() or st.secrets.get("GITHUB_REPO", "") 
-    branch = sys_cfg.get("github_branch", "main").strip() or st.secrets.get("GITHUB_BRANCH", "main")
-    
+    token = str(sys_cfg.get("github_token", "") or st.secrets.get("GITHUB_TOKEN", "")).strip()
+    repo = str(sys_cfg.get("github_repo", "") or st.secrets.get("GITHUB_REPO", "")).strip()
+    branch = str(sys_cfg.get("github_branch", "") or st.secrets.get("GITHUB_BRANCH", "main")).strip() or "main"
+
     if not token or not repo:
-        return False 
-        
+        missing = []
+        if not token:
+            missing.append("GITHUB_TOKEN")
+        if not repo:
+            missing.append("GITHUB_REPO")
+        return False, f"缺少設定：{', '.join(missing)}"
+
     url = f"https://api.github.com/repos/{repo}/contents/{file_path_in_repo}"
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json"
+        "Accept": "application/vnd.github+json",
     }
-    
+
     try:
         sha = None
         resp = requests.get(url, headers=headers, params={"ref": branch}, timeout=10)
         if resp.status_code == 200:
             sha = resp.json().get("sha")
-            
+        elif resp.status_code not in [200, 404]:
+            err_txt = resp.text[:160].replace("\n", " ")
+            return False, f"讀取檔案狀態失敗 (HTTP {resp.status_code})：{err_txt}"
+
         if isinstance(content_data, bytes):
             encoded_content = base64.b64encode(content_data).decode("utf-8")
         else:
             encoded_content = base64.b64encode(str(content_data).encode("utf-8")).decode("utf-8")
 
-        payload = {
+        payload: Dict[str, Any] = {
             "message": commit_msg,
             "content": encoded_content,
-            "branch": branch
+            "branch": branch,
         }
         if sha:
             payload["sha"] = sha
-            
+
         put_resp = requests.put(url, headers=headers, json=payload, timeout=15)
-        return put_resp.status_code in [200, 201]
+        if put_resp.status_code in [200, 201]:
+            return True, f"HTTP {put_resp.status_code} ({repo}@{branch})"
+        err_txt = put_resp.text[:160].replace("\n", " ")
+        return False, f"HTTP {put_resp.status_code}：{err_txt}"
     except Exception as e:
-        print(f"GitHub API 同步失敗: {e}")
-        return False
+        return False, f"連線例外：{e}"
+
+
+def sync_file_to_github(file_path_in_repo: str, content_data: Union[str, bytes], commit_msg: str) -> bool:
+    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫 (支援文字檔與二進位 Excel 檔)"""
+    ok, detail = sync_file_to_github_with_detail(file_path_in_repo, content_data, commit_msg)
+    if not ok:
+        print(f"GitHub API 同步失敗 ({file_path_in_repo}): {detail}")
+    return ok
 
 
 def robust_load_whitelist(unit_code: str) -> Dict[str, Any]:
@@ -823,14 +843,24 @@ def render_admin_panel() -> None:
     # ==================== Tab 1 ====================
     with tab1:
         st.markdown(f"### [{current_unit}] 班表大表 Excel 上傳與管理")
-        st.caption("上傳後自動建立目標資料夾與時間戳備份檔，並自動記錄原始檔名、上傳時間與同步至 GitHub。")
+        st.caption("上傳後自動建立選定目標資料夾與時間戳備份檔，並自動記錄原始檔名、上傳時間與同步至 GitHub。")
 
-        unit_files = UNITS.get(current_unit, {}) if isinstance(UNITS, dict) else {}
-        default_role_paths = {
-            "駕駛": os.path.join(DATA_DIR, current_unit, "最新版班表", f"{current_unit}_TD.xlsx"),
-            "列車長": os.path.join(DATA_DIR, current_unit, "最新版班表", f"{current_unit}_TM.xlsx"),
-            "服勤員": os.path.join(DATA_DIR, current_unit, "最新版班表", f"{current_unit}_TA.xlsx"),
-        }
+        if "upload_feedback_msg" in st.session_state and st.session_state["upload_feedback_msg"]:
+            fb = st.session_state["upload_feedback_msg"]
+            fb_type = fb.get("type", "info")
+            fb_text = fb.get("text", "")
+            col_fb_msg, col_fb_btn = st.columns([6, 1])
+            with col_fb_msg:
+                if fb_type == "success":
+                    st.success(fb_text)
+                elif fb_type == "warning":
+                    st.warning(fb_text)
+                else:
+                    st.info(fb_text)
+            with col_fb_btn:
+                if st.button("清除提示", key="btn_clear_upload_fb", use_container_width=True):
+                    st.session_state.pop("upload_feedback_msg", None)
+                    st.rerun()
 
         upload_hist = load_upload_history(current_unit)
         latest_by_role = upload_hist.get("latest_by_role", {}) if isinstance(upload_hist, dict) else {}
@@ -874,20 +904,18 @@ def render_admin_panel() -> None:
 
         for role_name, role_code, col in roles:
             with col:
-                standard_path = unit_files.get(role_name, "") or default_role_paths[role_name]
                 if selected_sub_month:
                     dest_dir = os.path.join(DATA_DIR, current_unit, target_folder_type, selected_sub_month)
                 else:
                     dest_dir = os.path.join(DATA_DIR, current_unit, target_folder_type)
                 dest_path = os.path.join(dest_dir, f"{current_unit}_{role_code}.xlsx")
 
-                status_check_path = dest_path if (os.path.exists(dest_path) and os.path.getsize(dest_path) > 0) else standard_path
-                exists = os.path.exists(status_check_path) and os.path.getsize(status_check_path) > 0 if status_check_path else False
-                f_size_kb = round(os.path.getsize(status_check_path) / 1024, 1) if exists else 0
+                exists = os.path.exists(dest_path) and os.path.getsize(dest_path) > 0
+                f_size_kb = round(os.path.getsize(dest_path) / 1024, 1) if exists else 0
 
                 role_hist = latest_by_role.get(role_name, {}) if isinstance(latest_by_role, dict) else {}
-                orig_name_disp = role_hist.get("original_filename") or (os.path.basename(status_check_path) if exists else "尚無紀錄")
-                mtime_str = role_hist.get("uploaded_at") or (get_file_mtime_str(status_check_path) if exists else "檔案不存在")
+                orig_name_disp = role_hist.get("original_filename") or (os.path.basename(dest_path) if exists else "尚無紀錄")
+                mtime_str = role_hist.get("uploaded_at") or (get_file_mtime_str(dest_path) if exists else "檔案不存在")
 
                 status_pill = (
                     "<span style='color:#34D399; font-weight:800;'>[檔案正常]</span>"
@@ -935,13 +963,12 @@ def render_admin_panel() -> None:
                             safe_stem = re.sub(r'[\\/:*?"<>|]+', "_", stem_name).strip() or f"{current_unit}_{role_code}"
                             ext_clean = ext_name.lower() if ext_name.lower() in [".xlsx", ".xls"] else ".xlsx"
 
+                            # 僅建立並寫入選定目標資料夾（不再額外寫入最新版班表）
                             os.makedirs(dest_dir, exist_ok=True)
-                            os.makedirs(os.path.dirname(standard_path), exist_ok=True)
 
                             file_bytes = uploaded_file.getbuffer().tobytes()
                             actual_size_kb = round(len(file_bytes) / 1024, 1)
 
-                            # 1. 寫入目標資料夾標準檔與時間戳備註檔
                             with open(dest_path, "wb") as f:
                                 f.write(file_bytes)
 
@@ -950,24 +977,19 @@ def render_admin_panel() -> None:
                             with open(archive_path, "wb") as f:
                                 f.write(file_bytes)
 
-                            # 2. 同步更新主標準路徑（若不同路徑），確保前台與狀態卡一致
-                            if os.path.abspath(standard_path) != os.path.abspath(dest_path):
-                                with open(standard_path, "wb") as f:
-                                    f.write(file_bytes)
-
-                            # 3. 同步推送至 GitHub
-                            synced_targets = []
-                            for p_item in {dest_path, archive_path, standard_path}:
+                            sync_errors: List[str] = []
+                            for p_item in [dest_path, archive_path]:
                                 rel_p = os.path.relpath(p_item, start=BASE_DIR).replace("\\", "/")
-                                ok = sync_file_to_github(
+                                ok, detail = sync_file_to_github_with_detail(
                                     file_path_in_repo=rel_p,
                                     content_data=file_bytes,
                                     commit_msg=f"Upload {current_unit} {role_name}: {raw_orig_name} ({uploaded_at_str})",
                                 )
-                                synced_targets.append(ok)
-                            synced = all(synced_targets) if synced_targets else False
+                                if not ok:
+                                    sync_errors.append(f"{os.path.basename(p_item)}: {detail}")
 
-                            # 4. 記錄原檔名與上傳時間
+                            synced = len(sync_errors) == 0
+
                             record_upload_history(
                                 unit_code=current_unit,
                                 role_name=role_name,
@@ -981,9 +1003,16 @@ def render_admin_panel() -> None:
                             )
 
                             if synced:
-                                st.success(f"[{current_unit}] {role_name}（{raw_orig_name}）已存入 {folder_label} 並同步至 GitHub！")
+                                st.session_state["upload_feedback_msg"] = {
+                                    "type": "success",
+                                    "text": f"[{current_unit}] {role_name}（{raw_orig_name}）已存入 {folder_label} 並同步至 GitHub！",
+                                }
                             else:
-                                st.warning(f"[{current_unit}] {role_name}（{raw_orig_name}）已存入 {folder_label}，請確認 GitHub Token/Repo 設定以完成雲端同步。")
+                                err_summary = "；".join(sync_errors)
+                                st.session_state["upload_feedback_msg"] = {
+                                    "type": "warning",
+                                    "text": f"[{current_unit}] {role_name}（{raw_orig_name}）已存入本機 {folder_label}，但 GitHub 同步未成功 → {err_summary}",
+                                }
 
                             log_activity(
                                 "班表大表上傳",
@@ -992,7 +1021,11 @@ def render_admin_panel() -> None:
                             st.cache_data.clear()
                             st.rerun()
                         except Exception as e:
-                            st.error(f"檔案寫入失敗：{e}")
+                            st.session_state["upload_feedback_msg"] = {
+                                "type": "warning",
+                                "text": f"檔案寫入失敗：{e}",
+                            }
+                            st.rerun()
 
         hist_records = upload_hist.get("records", []) if isinstance(upload_hist, dict) else []
         if hist_records:
