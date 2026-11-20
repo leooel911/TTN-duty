@@ -19,13 +19,25 @@
       "original_filename": "公告2026年12月份（20261206-20270109）TTS列車長勤務輪值表(Ver.0).xlsx",
       "folder_label": "最新版班表",
       "saved_path": "data/TTS/最新版班表/TTS_TM.xlsx",
-      "archive_path": "data/TTS/最新版班表/TTS_TM_20261120_042656_公告2026年12月份（20261206-20270109）TTS列車長勤務輪值表(Ver.0).xlsx",
+      "archive_path": "data/TTS/最新版班表/TTS_TM_20261120_042701_公告2026年12月份（20261206-20270109）TTS列車長勤務輪值表(Ver.0).xlsx",
       "size_kb": 26.7,
-      "uploaded_at": "2026-11-20 04:26:56",
+      "uploaded_at": "2026-11-20 04:27:01",
       "operator": "ADMIN"
     }
   },
   "records": [
+    {
+      "unit": "TTS",
+      "role_name": "列車長",
+      "role_code": "TM",
+      "original_filename": "公告2026年12月份（20261206-20270109）TTS列車長勤務輪值表(Ver.0).xlsx",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTS/最新版班表/TTS_TM.xlsx",
+      "archive_path": "data/TTS/最新版班表/TTS_TM_20261120_042701_公告2026年12月份（20261206-20270109）TTS列車長勤務輪值表(Ver.0).xlsx",
+      "size_kb": 26.7,
+      "uploaded_at": "2026-11-20 04:27:01",
+      "operator": "ADMIN"
+    },
     {
       "unit": "TTS",
       "role_name": "列車長",
