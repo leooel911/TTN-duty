@@ -24,6 +24,29 @@ def _clean_emp_id(val: Any) -> str:
     return s
 
 
+def _smart_read_schedule_excel(f_path: str) -> pd.DataFrame:
+    """智慧讀取各基地班表 Excel，自動偵測標題列位置（相容 header=0, 1, 2, 3, 4）"""
+    for h_idx in [3, 0, 2, 1, 4]:
+        try:
+            df = safe_read_excel(f_path, header=h_idx)
+            if df is None or df.empty or len(df.columns) < 3:
+                continue
+            df.columns = [str(c).strip() for c in df.columns]
+            # 檢查前 15 列是否有符合員編格式的資料，或欄位名稱包含日期/員編特徵
+            sample_ids = [_clean_emp_id(v) for v in df.iloc[:15, 0].tolist()]
+            has_emp_id = any(re.match(r"^[A-Z]\d{5,6}$", sid) for sid in sample_ids)
+            has_date_col = any(normalize_date_str(c) for c in df.columns[2:10])
+            if has_emp_id or has_date_col:
+                return df
+        except Exception:
+            continue
+    # 保底回傳 header=3
+    df_fallback = safe_read_excel(f_path, header=3)
+    if df_fallback is not None and not df_fallback.empty:
+        df_fallback.columns = [str(c).strip() for c in df_fallback.columns]
+    return df_fallback
+
+
 def auto_git_push_data(commit_msg: str = "Auto update data via admin panel") -> None:
     """自動將 data/ 變更推送至雙重 GitHub 專案，防止雲端重置清空"""
     try:
@@ -76,9 +99,11 @@ def get_available_months(unit_code: Optional[str] = None) -> List[str]:
             if m_str.isdigit() and 1 <= int(m_str) <= 12:
                 months.add(f"{current_year}-{m_str}")
 
-    # 3. 從 Excel 檔案內部日期欄位掃描
-    if isinstance(unit_files, dict):
+    # 3. 從 Excel 檔案內部日期欄位掃描（若尚未掃到月份資料夾）
+    if not months and isinstance(unit_files, dict):
         for role_name, default_path in unit_files.items():
+            if role_name == "mapping":
+                continue
             pattern = os.path.join(DATA_DIR, f"{current_unit}*{role_name}*.xlsx")
             matched_files = glob.glob(pattern)
 
@@ -88,15 +113,18 @@ def get_available_months(unit_code: Optional[str] = None) -> List[str]:
             for f_path in matched_files:
                 if f_path and isinstance(f_path, str) and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
                     try:
-                        df = safe_read_excel(f_path, header=3)
-                        df.columns = [str(c).strip() for c in df.columns]
-                        for col in df.columns[2:]:
-                            norm_d = normalize_date_str(col)
-                            if norm_d and "/" in norm_d:
-                                parts = norm_d.split("/")
-                                if parts[0].isdigit():
-                                    m = int(parts[0])
-                                    months.add(f"{current_year}-{m:02d}")
+                        df = _smart_read_schedule_excel(f_path)
+                        if df is not None and not df.empty:
+                            # 取日期區間的第一天所屬月份作為主月份（避免 11/1~12/5 誤判成 12 月）
+                            valid_months = []
+                            for col in df.columns[2:]:
+                                norm_d = normalize_date_str(col)
+                                if norm_d and "/" in norm_d:
+                                    parts = norm_d.split("/")
+                                    if parts[0].isdigit():
+                                        valid_months.append(int(parts[0]))
+                            if valid_months:
+                                months.add(f"{current_year}-{valid_months[0]:02d}")
                     except Exception:
                         continue
 
@@ -124,17 +152,23 @@ def get_current_role_files(target_month: Optional[str] = None, unit_code: Option
     default_files = UNITS.get(current_unit, UNITS.get("TTN", {}))
 
     result = {}
-    for role, default_path in default_files.items():
+    for role in ["駕駛", "列車長", "服勤員"]:
+        default_path = default_files.get(role, "") if isinstance(default_files, dict) else ""
         selected_path = ""
         pos = role_to_pos.get(role, "")
 
-        # 1. 優先尋找新架構路徑：data/{current_unit}/最新版班表/{target_month}/{current_unit}_{pos}.xlsx
+        # 1. 優先尋找新架構月份資料夾：data/{current_unit}/最新版班表/{target_month}/{current_unit}_{pos}.xlsx
         if pos:
             new_path = os.path.join(DATA_DIR, current_unit, "最新版班表", target_month, f"{current_unit}_{pos}.xlsx")
             if os.path.exists(new_path) and os.path.getsize(new_path) > 0:
                 selected_path = new_path
 
-        # 2. 若找不到，嘗試舊版命名規則與備用路徑
+        # 2. 尋找新架構主目錄（管理後台直接覆蓋上傳的位置）：data/{current_unit}/最新版班表/{current_unit}_{pos}.xlsx
+        if not selected_path and isinstance(default_path, str) and default_path:
+            if os.path.exists(default_path) and os.path.getsize(default_path) > 0:
+                selected_path = default_path
+
+        # 3. 嘗試舊版命名規則與 data 根目錄備用路徑
         if not selected_path:
             clean_month = target_month.replace("-", "")
             short_month = clean_month[-2:]
@@ -146,6 +180,7 @@ def get_current_role_files(target_month: Optional[str] = None, unit_code: Option
                     os.path.join(DATA_DIR, f"{current_unit}_{kw}_{short_month}.xlsx"),
                     os.path.join(DATA_DIR, f"{current_unit}_{clean_month}_{role}.xlsx"),
                     os.path.join(DATA_DIR, f"{current_unit}_{role}.xlsx"),
+                    os.path.join(DATA_DIR, f"{current_unit.lower()}_{'driver' if pos=='TD' else ('conductor' if pos=='TM' else 'attendant')}.xlsx"),
                 ]
                 for p in possible_patterns:
                     if os.path.exists(p) and os.path.getsize(p) > 0:
@@ -153,10 +188,6 @@ def get_current_role_files(target_month: Optional[str] = None, unit_code: Option
                         break
                 if selected_path:
                     break
-
-        if not selected_path:
-            if isinstance(default_path, str) and os.path.exists(default_path) and os.path.getsize(default_path) > 0:
-                selected_path = default_path
 
         result[role] = selected_path
 
@@ -169,37 +200,43 @@ def get_schedule_range(unit_code: Optional[str] = None) -> str:
         f_path = unit_files.get(role_name, "")
         if f_path and isinstance(f_path, str) and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
             try:
-                df = safe_read_excel(f_path, header=3)
-                df.columns = [str(c).strip() for c in df.columns]
-                date_cols = [
-                    normalize_date_str(col)
-                    for col in df.columns[2:]
-                    if normalize_date_str(col)
-                ]
-                if date_cols:
-                    return f"{date_cols[0]} ~ {date_cols[-1]}"
+                df = _smart_read_schedule_excel(f_path)
+                if df is not None and not df.empty:
+                    date_cols = [
+                        normalize_date_str(col)
+                        for col in df.columns[2:]
+                        if normalize_date_str(col)
+                    ]
+                    if date_cols:
+                        return f"{date_cols[0]} ~ {date_cols[-1]}"
             except Exception:
                 continue
     return "無有效日期數據"
 
 
 def process_file_data(emp_input: str, unit_code: Optional[str] = None) -> Tuple[datetime, List[str], str, str, List[Dict[str, Any]]]:
+    active_unit = unit_code if unit_code else st.session_state.get("current_unit", "TTN")
     clean_keyword = _clean_emp_id(emp_input)
     raw_keyword = emp_input.strip().upper()
-    unit_files = get_current_role_files(unit_code=unit_code)
+    unit_files = get_current_role_files(unit_code=active_unit)
 
     target_row = None
     target_columns = None
+    loaded_files_count = 0
 
     for role_name in ["駕駛", "列車長", "服勤員"]:
         f_path = unit_files.get(role_name, "")
         if f_path and isinstance(f_path, str) and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
+            loaded_files_count += 1
             try:
-                df = safe_read_excel(f_path, header=3)
-                df.columns = [str(c).strip() for c in df.columns]
+                df = _smart_read_schedule_excel(f_path)
+                if df is None or df.empty:
+                    continue
                 for _, row in df.iterrows():
+                    if len(row) < 2:
+                        continue
                     row_id = _clean_emp_id(row.iloc[0])
-                    row_name = str(row.iloc[1]).strip()
+                    row_name = str(row.iloc[1]).strip().upper()
                     if (clean_keyword and clean_keyword == row_id) or (raw_keyword and raw_keyword == row_name):
                         target_row = row
                         target_columns = df.columns
@@ -210,7 +247,9 @@ def process_file_data(emp_input: str, unit_code: Optional[str] = None) -> Tuple[
             break
 
     if target_row is None:
-        raise ValueError(f"在當前選定月份的大表中找不到符合關鍵字【{emp_input}】的組員資料！")
+        if loaded_files_count == 0:
+            raise ValueError(f"【{active_unit}】目前尚未上傳任何大表檔案，請管理員至後台確認大表狀態！")
+        raise ValueError(f"在【{active_unit}】當前選定月份的大表中找不到符合關鍵字【{emp_input}】的組員資料！")
 
     emp_id = _clean_emp_id(target_row.iloc[0]) or str(target_row.iloc[0]).strip().upper()
     emp_name = str(target_row.iloc[1]).strip()
@@ -329,8 +368,12 @@ def check_excel_employee_exists(unit_code: str, emp_id: str) -> Tuple[bool, str]
         f_path = unit_files.get(role_name, "")
         if f_path and isinstance(f_path, str) and os.path.exists(f_path) and os.path.getsize(f_path) > 0:
             try:
-                df = safe_read_excel(f_path, header=3)
+                df = _smart_read_schedule_excel(f_path)
+                if df is None or df.empty:
+                    continue
                 for _, row in df.iterrows():
+                    if len(row) < 2:
+                        continue
                     row_id = _clean_emp_id(row.iloc[0])
                     if row_id == clean_id:
                         row_name = str(row.iloc[1]).strip()
