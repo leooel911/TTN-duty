@@ -23,9 +23,33 @@
       "size_kb": 58.5,
       "uploaded_at": "2026-11-20 05:26:08",
       "operator": "ADMIN"
+    },
+    "服勤員": {
+      "unit": "TTC",
+      "role_name": "服勤員",
+      "role_code": "TA",
+      "original_filename": "2026年12月份(20261206-20270109)TTC服勤員勤務輪值表(Ver.0).xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTC/最新版班表/TTC_TA.xlsx",
+      "archive_path": "data/TTC/最新版班表/TTC_TA_20261120_052625_2026年12月份(20261206-20270109)TTC服勤員勤務輪值表(Ver.0).xls",
+      "size_kb": 96.0,
+      "uploaded_at": "2026-11-20 05:26:25",
+      "operator": "ADMIN"
     }
   },
   "records": [
+    {
+      "unit": "TTC",
+      "role_name": "服勤員",
+      "role_code": "TA",
+      "original_filename": "2026年12月份(20261206-20270109)TTC服勤員勤務輪值表(Ver.0).xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTC/最新版班表/TTC_TA.xlsx",
+      "archive_path": "data/TTC/最新版班表/TTC_TA_20261120_052625_2026年12月份(20261206-20270109)TTC服勤員勤務輪值表(Ver.0).xls",
+      "size_kb": 96.0,
+      "uploaded_at": "2026-11-20 05:26:25",
+      "operator": "ADMIN"
+    },
     {
       "unit": "TTC",
       "role_name": "列車長",
