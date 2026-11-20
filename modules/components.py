@@ -96,7 +96,7 @@ def render_zoomable_image(image_bytes: Any, height: int = 380) -> None:
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.css">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.11.6/viewer.min.js"></script>
         <style>
-            * {{ box-sizing: border-box; }}
+- {{ box-sizing: border-box; }}
             html, body {{
                 margin: 0 !important; padding: 0 !important;
                 background: transparent;
@@ -179,24 +179,59 @@ def view_feedback_img_modal(img_path: str, ticket_id: str, reporter: str) -> Non
         st.error("找不到該截圖檔案，可能已被移除。")
 
 
+def _sync_feedback_to_git(ticket_id: str) -> None:
+    """若 services 模組提供 Git 同步函式，嘗試將工單檔案同步至儲存庫"""
+    try:
+        from modules import services as svc
+        push_fn = getattr(svc, "auto_git_push_data", None)
+        if callable(push_fn):
+            try:
+                push_fn(f"Add feedback ticket {ticket_id}")
+            except TypeError:
+                push_fn()
+    except Exception as git_err:
+        print(f"工單 Git 同步略過或失敗: {git_err}")
+
+
 def render_feedback_hub_popover(unit_label: str = "TTN", user_id: str = "", is_admin: bool = False) -> None:
     """使用 st.popover 呈現精緻的浮動互動中心，完美結合提交與查詢且絕不重複彈出"""
+    if "fb_form_nonce" not in st.session_state:
+        st.session_state["fb_form_nonce"] = 0
+
     with st.popover("系統問題回報與進度查詢中心", use_container_width=True):
-        
-        # 檢查是否有剛才提交成功的暫存訊息，直接顯示成功提示（無貼圖符號）
         if "feedback_last_success" in st.session_state:
             succ_id = st.session_state.pop("feedback_last_success")
-            st.success(f"問題回報提交成功。您的工單編號為：{succ_id}，管理員將盡快處理。")
+            st.success(
+                f"問題回報提交成功。您的工單編號為：{succ_id}，管理員將盡快處理。"
+                "（表單已重置，可至「查詢我的回報進度」查看狀態或直接收合視窗）"
+            )
 
         tab_submit, tab_query = st.tabs(["提交新回報", "查詢我的回報進度"])
-        
+
         with tab_submit:
             st.markdown(f"#### 系統問題與建議回報 [{unit_label}]")
-            with st.form(key="feedback_form_popover", clear_on_submit=True):
-                fb_category = st.selectbox("問題 / 建議類型", ["系統 Bug 回報", "排班資料疑義", "功能改善建議", "其他"], key="fb_pop_cat")
-                fb_reporter = st.text_input("回報者員編 / 姓名", value=user_id if user_id else "", key="fb_pop_rep")
-                fb_desc = st.text_area("詳細說明內容", height=120, key="fb_pop_desc")
-                uploaded_img = st.file_uploader("上傳問題畫面截圖 (選填)", type=["png", "jpg", "jpeg"], key="fb_pop_img")
+            nonce = st.session_state["fb_form_nonce"]
+            with st.form(key=f"feedback_form_popover_{nonce}", clear_on_submit=True):
+                fb_category = st.selectbox(
+                    "問題 / 建議類型",
+                    ["系統 Bug 回報", "排班資料疑義", "功能改善建議", "其他"],
+                    key=f"fb_pop_cat_{nonce}",
+                )
+                fb_reporter = st.text_input(
+                    "回報者員編 / 姓名",
+                    value=user_id if user_id else "",
+                    key=f"fb_pop_rep_{nonce}",
+                )
+                fb_desc = st.text_area(
+                    "詳細說明內容",
+                    height=120,
+                    key=f"fb_pop_desc_{nonce}",
+                )
+                uploaded_img = st.file_uploader(
+                    "上傳問題畫面截圖 (選填)",
+                    type=["png", "jpg", "jpeg"],
+                    key=f"fb_pop_img_{nonce}",
+                )
                 submit_fb = st.form_submit_button("確認提交回報", type="primary", use_container_width=True)
 
             if submit_fb:
@@ -219,8 +254,9 @@ def render_feedback_hub_popover(unit_label: str = "TTN", user_id: str = "", is_a
                         )
                         with open(os.path.join(FEEDBACK_IMG_DIR, f"{ticket_id}.txt"), "w", encoding="utf-8") as f:
                             f.write(content)
-                        
+
                         log_activity("提交問題回報工單", f"單位:{unit_label} | 單號:{ticket_id}")
+                        _sync_feedback_to_git(ticket_id)
 
                         try:
                             email_subject = f"【新工單與問題回報】單號: {ticket_id}"
@@ -229,7 +265,7 @@ def render_feedback_hub_popover(unit_label: str = "TTN", user_id: str = "", is_a
                         except Exception as mail_err:
                             print(f"工單通知信發送失敗: {mail_err}")
 
-                        # 將成功單號存入 session_state 後重新整理，確保成功訊息穩定顯示
+                        st.session_state["fb_form_nonce"] = nonce + 1
                         st.session_state["feedback_last_success"] = ticket_id
                         st.rerun()
                     except Exception as e:
@@ -245,19 +281,19 @@ def render_feedback_hub_popover(unit_label: str = "TTN", user_id: str = "", is_a
             if not os.path.exists(FEEDBACK_IMG_DIR):
                 st.info("目前尚無任何回報紀錄。")
                 return
-                
+
             txt_files = [f for f in os.listdir(FEEDBACK_IMG_DIR) if f.endswith(".txt")]
             if not txt_files:
                 st.info("目前尚無任何回報紀錄。")
                 return
-                
+
             tickets = []
             for file_name in sorted(txt_files, reverse=True):
                 file_path = os.path.join(FEEDBACK_IMG_DIR, file_name)
                 try:
                     with open(file_path, "r", encoding="utf-8") as f:
                         content = f.read()
-                        
+
                     ticket_info = {"raw_content": content, "filename": file_name}
                     for line in content.split("\n"):
                         if ":" in line:
@@ -266,11 +302,11 @@ def render_feedback_hub_popover(unit_label: str = "TTN", user_id: str = "", is_a
                     tickets.append(ticket_info)
                 except Exception:
                     continue
-            
+
             if not is_admin:
                 u_clean = user_id.strip().upper()
                 filtered_tickets = [
-                    t for t in tickets 
+                    t for t in tickets
                     if u_clean in t.get("回報者", "").upper()
                 ]
             else:
@@ -278,7 +314,7 @@ def render_feedback_hub_popover(unit_label: str = "TTN", user_id: str = "", is_a
                 if search_query.strip():
                     q = search_query.strip().upper()
                     filtered_tickets = [
-                        t for t in tickets 
+                        t for t in tickets
                         if q in t.get("處理編號", "").upper() or q in t.get("回報者", "").upper()
                     ]
                 else:
@@ -295,13 +331,13 @@ def render_feedback_hub_popover(unit_label: str = "TTN", user_id: str = "", is_a
                     reporter = t.get("回報者", "未提供")
                     time_str = t.get("時間", "未知時間")
                     admin_reply = t.get("管理員回覆", "尚無回覆")
-                    
+
                     with st.expander(f"單號: {ticket_id} | 狀態: {status} | 類別: {category} ({time_str})"):
                         st.markdown(f"**回報者**：{reporter}")
                         st.markdown(f"**提交時間**：{time_str}")
                         st.markdown(f"**目前狀態**：{status}")
                         st.markdown(f"**管理員回覆**：\n> {admin_reply}")
-                        
+
                         base_id = ticket_id.split()[0]
                         img_path_found = None
                         for ext in [".png", ".jpg", ".jpeg"]:
