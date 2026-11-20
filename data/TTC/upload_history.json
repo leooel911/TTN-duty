@@ -1,0 +1,78 @@
+{
+  "latest_by_role": {
+    "駕駛": {
+      "unit": "TTC",
+      "role_name": "駕駛",
+      "role_code": "TD",
+      "original_filename": "TTC Train Driver Roster_2026_1206_2027_0109_Rv0.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTC/最新版班表/TTC_TD.xlsx",
+      "archive_path": "data/TTC/最新版班表/TTC_TD_20261120_035911_TTC Train Driver Roster_2026_1206_2027_0109_Rv0.xls",
+      "size_kb": 68.5,
+      "uploaded_at": "2026-11-20 03:59:11",
+      "operator": "ADMIN"
+    },
+    "列車長": {
+      "unit": "TTC",
+      "role_name": "列車長",
+      "role_code": "TM",
+      "original_filename": "2026年12月份(20261206-20270109)TTC列車長勤務輪值表(Ver.0).xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTC/最新版班表/TTC_TM.xlsx",
+      "archive_path": "data/TTC/最新版班表/TTC_TM_20261120_052608_2026年12月份(20261206-20270109)TTC列車長勤務輪值表(Ver.0).xls",
+      "size_kb": 58.5,
+      "uploaded_at": "2026-11-20 05:26:08",
+      "operator": "ADMIN"
+    }
+  },
+  "records": [
+    {
+      "unit": "TTC",
+      "role_name": "列車長",
+      "role_code": "TM",
+      "original_filename": "2026年12月份(20261206-20270109)TTC列車長勤務輪值表(Ver.0).xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTC/最新版班表/TTC_TM.xlsx",
+      "archive_path": "data/TTC/最新版班表/TTC_TM_20261120_052608_2026年12月份(20261206-20270109)TTC列車長勤務輪值表(Ver.0).xls",
+      "size_kb": 58.5,
+      "uploaded_at": "2026-11-20 05:26:08",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTC",
+      "role_name": "駕駛",
+      "role_code": "TD",
+      "original_filename": "TTC Train Driver Roster_2026_1206_2027_0109_Rv0.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTC/最新版班表/TTC_TD.xlsx",
+      "archive_path": "data/TTC/最新版班表/TTC_TD_20261120_035911_TTC Train Driver Roster_2026_1206_2027_0109_Rv0.xls",
+      "size_kb": 68.5,
+      "uploaded_at": "2026-11-20 03:59:11",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTC",
+      "role_name": "駕駛",
+      "role_code": "TD",
+      "original_filename": "TTC Train Driver Roster_2026_1206_2027_0109_Rv0.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTC/最新版班表/TTC_TD.xlsx",
+      "archive_path": "data/TTC/最新版班表/TTC_TD_20261120_035908_TTC Train Driver Roster_2026_1206_2027_0109_Rv0.xls",
+      "size_kb": 68.5,
+      "uploaded_at": "2026-11-20 03:59:08",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTC",
+      "role_name": "駕駛",
+      "role_code": "TD",
+      "original_filename": "TTC Train Driver Roster_2026_1206_2027_0109_Rv0.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTC/最新版班表/TTC_TD.xlsx",
+      "archive_path": "data/TTC/最新版班表/TTC_TD_20261120_035904_TTC Train Driver Roster_2026_1206_2027_0109_Rv0.xls",
+      "size_kb": 68.5,
+      "uploaded_at": "2026-11-20 03:59:04",
+      "operator": "ADMIN"
+    }
+  ]
+}
