@@ -949,10 +949,10 @@ def render_user_home() -> None:
                 </span>
                 <div class="tcms-link-group">
                     <a class="tcms-inline-link-btn" href="{TCMS_PORTAL_URL}" target="_blank" rel="noopener noreferrer">
-                        外網入口驗證
+                        企業首頁連結
                     </a>
                     <a class="tcms-inline-link-btn-direct" href="{TCMS_DIRECT_URL}" target="_blank" rel="noopener noreferrer">
-                        直達TCMS
+                        TCMS系統
                     </a>
                 </div>
             </div>
