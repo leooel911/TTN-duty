@@ -770,7 +770,6 @@ def render_user_home() -> None:
             font-weight: 700;
             font-family: monospace;
             white-space: nowrap;
-            cursor: pointer;
             transition: all 0.2s ease;
         }
         .tcms-inline-link-btn:hover {
@@ -791,7 +790,6 @@ def render_user_home() -> None:
             font-weight: 800;
             font-family: monospace;
             white-space: nowrap;
-            cursor: pointer;
             transition: all 0.2s ease;
         }
         .tcms-inline-link-btn-direct:hover {
@@ -950,10 +948,10 @@ def render_user_home() -> None:
                     {range_display_text}
                 </span>
                 <div class="tcms-link-group">
-                    <a class="tcms-inline-link-btn" href="{TCMS_PORTAL_URL}" target="thsrc_tcms_session" rel="noopener noreferrer">
+                    <a class="tcms-inline-link-btn" href="{TCMS_PORTAL_URL}" target="_blank" rel="noopener noreferrer">
                         企業首頁連結
                     </a>
-                    <a class="tcms-inline-link-btn-direct" href="{TCMS_DIRECT_URL}" target="thsrc_tcms_session" rel="noopener noreferrer">
+                    <a class="tcms-inline-link-btn-direct" href="{TCMS_DIRECT_URL}" target="_blank" rel="noopener noreferrer">
                         TCMS系統
                     </a>
                 </div>
@@ -2015,3 +2013,4 @@ def render_user_home() -> None:
 
 if __name__ == "__main__":
     render_user_home()
+
