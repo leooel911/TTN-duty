@@ -516,7 +516,8 @@ def render_user_home() -> None:
             width: 100% !important;
             box-shadow: 0 0 16px rgba(56, 189, 248, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.35) !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"] p {
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[data-testid="stBaseButton-primary"] p,
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)):not(:has(div[data-testid="column"]:nth-child(4))) button[kind="primary"] p {
             color: #38BDF8 !important;
             font-size: 13px !important;
             font-weight: 900 !important;
@@ -770,6 +771,7 @@ def render_user_home() -> None:
             font-weight: 700;
             font-family: monospace;
             white-space: nowrap;
+            cursor: pointer;
             transition: all 0.2s ease;
         }
         .tcms-inline-link-btn:hover {
@@ -790,6 +792,7 @@ def render_user_home() -> None:
             font-weight: 800;
             font-family: monospace;
             white-space: nowrap;
+            cursor: pointer;
             transition: all 0.2s ease;
         }
         .tcms-inline-link-btn-direct:hover {
@@ -2013,4 +2016,3 @@ def render_user_home() -> None:
 
 if __name__ == "__main__":
     render_user_home()
-
