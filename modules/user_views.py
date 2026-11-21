@@ -45,6 +45,8 @@ from modules.utils import (
     translate_train_code,
 )
 
+TCMS_SYSTEM_URL = "https://tcms.thsrc.com.tw:8443/tcms/index.jsp"
+
 
 # =============================================================================
 # 1. 安全會話與身份授權輔助函式
@@ -747,6 +749,27 @@ def render_user_home() -> None:
         .non-line-badge { font-size: 8.5px; font-weight: 700; color: #C084FC; background: rgba(168, 85, 247, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
         .long-badge { font-size: 8.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
         .do2w-badge { font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
+
+        .tcms-inline-link-btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 7px;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(56, 189, 248, 0.45);
+            color: #E2E8F0 !important;
+            text-decoration: none !important;
+            font-size: 11.5px;
+            font-weight: 700;
+            font-family: monospace;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+        .tcms-inline-link-btn:hover {
+            border-color: #38BDF8;
+            background: rgba(56, 189, 248, 0.16);
+            color: #38BDF8 !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -887,13 +910,21 @@ def render_user_home() -> None:
     except TypeError:
         sched_range = get_schedule_range()
 
+    range_display_text = sched_range if len(missing_files) < 3 else "資料庫異常"
+    range_text_color = "#EF4444" if len(missing_files) == 3 else "#60A5FA"
+
     period_html = f"""
     <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 12px 0 !important;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
             <span class="section-title" style="font-size: 13px !important;">{current_unit_label} // 最新發布班表區間</span>
-            <span style="font-size: 14px; color: {"#EF4444" if len(missing_files) == 3 else "#60A5FA"}; font-weight: 800; font-family: monospace;">
-                {sched_range if len(missing_files) < 3 else "資料庫異常"}
-            </span>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 14px; color: {range_text_color}; font-weight: 800; font-family: monospace;">
+                    {range_display_text}
+                </span>
+                <a class="tcms-inline-link-btn" href="{TCMS_SYSTEM_URL}" target="_blank" rel="noopener noreferrer">
+                    進入TCMS系統
+                </a>
+            </div>
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
             <summary style="outline: none; color: #38BDF8; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
