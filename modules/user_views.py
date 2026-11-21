@@ -781,7 +781,7 @@ def render_user_home() -> None:
         .tcms-inline-link-btn-direct {
             display: inline-flex;
             align-items: center;
-            padding: 4px 9px;
+            padding: 5px 10px;
             border-radius: 7px;
             background: rgba(2, 132, 199, 0.22);
             border: 1px solid #38BDF8;
@@ -806,10 +806,10 @@ def render_user_home() -> None:
     # 頂部主標題框（純淨狀態卡片）
     st.markdown(
         f"""
-        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 14px; text-align: center; margin-bottom: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);">
+        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%); border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 16px; padding: 12px 14px; text-align: center; margin-bottom: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);">
             <div style="font-size: 18px; font-weight: 900; color: #F8FAFC; letter-spacing: 1.5px; font-family: monospace;">CREW DUTY ENGINE</div>
             <div style="font-size: 10px; color: #38BDF8; font-family: monospace; letter-spacing: 0.8px; margin-top: 2px;">BUSY DOING NOTHING PRODUCTIVE // C.L.F EDITION</div>
-            <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace; margin-top: 6px;">
+            <div style="font-size: 10.5px; color: #94A3B8; font-family: monospace; margin-top: 5px;">
                 STATUS: ACTIVE | {current_unit_label} : {user_display_full}
             </div>
         </div>
@@ -817,15 +817,15 @@ def render_user_home() -> None:
         unsafe_allow_html=True,
     )
 
-    # 測試環境公告欄
+    # 測試環境公告欄（微調留白，保持視覺一致並提升首屏聚焦度）
     sys_config = load_system_config()
     announcement_text = sys_config.get("announcement", "目前為內部測試階段｜本頁面末端可聯繫管理者")
 
     st.markdown(
         f"""
-        <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 12px; padding: 12px; margin-bottom: 12px; text-align: center;">
-            <div style="font-size: 13px; font-weight: 900; color: #FDE68A; font-family: monospace;">SYSTEM MAINTENANCE NOTICE // BETA ENVIRONMENT</div>
-            <div style="font-size: 11px; color: #FCD34D; margin-top: 4px;">{announcement_text}</div>
+        <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #F59E0B; border-radius: 12px; padding: 9px 12px; margin-bottom: 10px; text-align: center;">
+            <div style="font-size: 12.5px; font-weight: 900; color: #FDE68A; font-family: monospace;">SYSTEM MAINTENANCE NOTICE // BETA ENVIRONMENT</div>
+            <div style="font-size: 11px; color: #FCD34D; margin-top: 2px;">{announcement_text}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -942,10 +942,10 @@ def render_user_home() -> None:
     range_text_color = "#EF4444" if len(missing_files) == 3 else "#60A5FA"
 
     period_html = f"""
-    <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 12px 0 !important;">
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+    <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 10px 0 !important;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
             <span class="section-title" style="font-size: 13px !important;">{current_unit_label} // 最新發布班表區間</span>
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <span style="font-size: 14px; color: {range_text_color}; font-weight: 800; font-family: monospace;">
                     {range_display_text}
                 </span>
@@ -1052,9 +1052,9 @@ def render_user_home() -> None:
         )
 
         with st.form(key="draw_schedule_form", border=False):
-            default_emp_val = current_user_id if current_user_id else st.session_state.get("draw_input_key", "")
-            if "draw_input_key" not in st.session_state and default_emp_val:
-                st.session_state["draw_input_key"] = default_emp_val
+            prefill_id = "" if current_user_id.upper().startswith("VIP") else current_user_id
+            if "draw_input_key" not in st.session_state:
+                st.session_state["draw_input_key"] = prefill_id
 
             draw_field_label = "請輸入您的員編或姓名 (例如: A023300)"
 
@@ -1068,7 +1068,7 @@ def render_user_home() -> None:
             )
 
         if submit_btn:
-            current_input = user_input_val.strip() if user_input_val else current_user_id
+            current_input = user_input_val.strip() if user_input_val else ""
 
             if not current_input or current_input.upper() == "A":
                 st.warning("請輸入有效的員編或姓名（例如: A023300）")
