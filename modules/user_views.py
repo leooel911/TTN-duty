@@ -45,7 +45,8 @@ from modules.utils import (
     translate_train_code,
 )
 
-TCMS_SYSTEM_URL = "https://eip.thsrc.com.tw/f5-w-68747470733a2f2f6569702e74687372632e636f6d2e7477$$/"
+TCMS_PORTAL_URL = "https://eip.thsrc.com.tw/f5-w-68747470733a2f2f6569702e74687372632e636f6d2e7477$$/"
+TCMS_DIRECT_URL = "https://eip.thsrc.com.tw/f5-w-68747470733a2f2f74636d732e74687372632e636f6d2e74773a38343433$$/tcms/login.jsp"
 
 
 # =============================================================================
@@ -750,16 +751,22 @@ def render_user_home() -> None:
         .long-badge { font-size: 8.5px; font-weight: 700; color: #FB7185; background: rgba(244, 63, 94, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
         .do2w-badge { font-size: 8.5px; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.2); padding: 1px 3px; border-radius: 3px; white-space: nowrap; }
 
+        .tcms-link-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
         .tcms-inline-link-btn {
             display: inline-flex;
             align-items: center;
-            padding: 4px 10px;
+            padding: 4px 9px;
             border-radius: 7px;
             background: rgba(15, 23, 42, 0.92);
             border: 1px solid rgba(56, 189, 248, 0.45);
             color: #E2E8F0 !important;
             text-decoration: none !important;
-            font-size: 11.5px;
+            font-size: 11px;
             font-weight: 700;
             font-family: monospace;
             white-space: nowrap;
@@ -769,6 +776,25 @@ def render_user_home() -> None:
             border-color: #38BDF8;
             background: rgba(56, 189, 248, 0.16);
             color: #38BDF8 !important;
+        }
+        .tcms-inline-link-btn-direct {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 9px;
+            border-radius: 7px;
+            background: rgba(2, 132, 199, 0.22);
+            border: 1px solid #38BDF8;
+            color: #38BDF8 !important;
+            text-decoration: none !important;
+            font-size: 11px;
+            font-weight: 800;
+            font-family: monospace;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+        .tcms-inline-link-btn-direct:hover {
+            background: rgba(2, 132, 199, 0.38);
+            color: #F8FAFC !important;
         }
         </style>
         """,
@@ -921,9 +947,14 @@ def render_user_home() -> None:
                 <span style="font-size: 14px; color: {range_text_color}; font-weight: 800; font-family: monospace;">
                     {range_display_text}
                 </span>
-                <a class="tcms-inline-link-btn" href="{TCMS_SYSTEM_URL}" target="_blank" rel="noopener noreferrer">
-                    進入TCMS系統
-                </a>
+                <div class="tcms-link-group">
+                    <a class="tcms-inline-link-btn" href="{TCMS_PORTAL_URL}" target="_blank" rel="noopener noreferrer">
+                        外網入口驗證
+                    </a>
+                    <a class="tcms-inline-link-btn-direct" href="{TCMS_DIRECT_URL}" target="_blank" rel="noopener noreferrer">
+                        直達TCMS
+                    </a>
+                </div>
             </div>
         </div>
         <details style="margin-top: 4px; font-size: 10px; color: #94A3B8; font-family: monospace; cursor: pointer;">
