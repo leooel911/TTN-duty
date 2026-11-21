@@ -45,7 +45,7 @@ from modules.utils import (
     translate_train_code,
 )
 
-TCMS_SYSTEM_URL = "https://tcms.thsrc.com.tw:8443/tcms/login.jsp"
+TCMS_SYSTEM_URL = "https://eip.thsrc.com.tw/f5-w-68747470733a2f2f6569702e74687372632e636f6d2e7477$$/"
 
 
 # =============================================================================
