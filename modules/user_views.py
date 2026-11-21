@@ -46,7 +46,6 @@ from modules.utils import (
 )
 
 TCMS_PORTAL_URL = "https://eip.thsrc.com.tw/f5-w-68747470733a2f2f6569702e74687372632e636f6d2e7477$$/"
-TCMS_DIRECT_URL = "https://eip.thsrc.com.tw/f5-w-68747470733a2f2f74636d732e74687372632e636f6d2e74773a38343433$$/tcms/login.jsp"
 
 
 # =============================================================================
@@ -951,11 +950,8 @@ def render_user_home() -> None:
                     {range_display_text}
                 </span>
                 <div class="tcms-link-group">
-                    <a class="tcms-inline-link-btn" href="{TCMS_PORTAL_URL}" target="_blank" rel="noopener noreferrer">
-                        企業首頁連結
-                    </a>
-                    <a class="tcms-inline-link-btn-direct" href="{TCMS_DIRECT_URL}" target="_blank" rel="noopener noreferrer">
-                        TCMS系統
+                    <a class="tcms-inline-link-btn-direct" href="{TCMS_PORTAL_URL}" target="_blank" rel="noopener noreferrer">
+                        企業首頁連結／TCMS系統
                     </a>
                 </div>
             </div>
