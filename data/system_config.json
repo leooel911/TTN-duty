@@ -8,6 +8,6 @@
   "enable_strict_test_mode": false,
   "strict_allowed_employees": [],
   "enabled_td_by_unit": {
-    "TTN": true
+    "TTN": false
   }
 }
