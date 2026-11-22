@@ -313,6 +313,39 @@ def get_week_holidays(target_date: str, date_cols: List[str], columns: Optional[
     return holidays_found
 
 
+def _is_td_enabled_for_unit(sys_config: Dict[str, Any], unit_label: str) -> bool:
+    """
+    判斷指定單位是否啟用「駕駛 (TD)」職位。
+    支援 `enabled_td_by_unit` 字典設定與 `enable_td` 布林設定，預設為 False（停用）。
+    """
+    unit_upper = (unit_label or "TTN").upper().strip()
+    if isinstance(sys_config, dict):
+        td_by_unit = sys_config.get("enabled_td_by_unit")
+        if isinstance(td_by_unit, dict) and unit_upper in td_by_unit:
+            return bool(td_by_unit[unit_upper])
+        if "enable_td" in sys_config:
+            return bool(sys_config.get("enable_td"))
+    return False
+
+
+def _has_role_schedule_file(role_name: str, unit_label: str, active_files: Dict[str, Any]) -> bool:
+    """檢查指定單位與職位目前是否有有效的班表檔案"""
+    cands = get_candidate_file_paths(role_name, unit_label)
+    if len(cands) > 0:
+        return True
+
+    f_val = active_files.get(role_name, "")
+    if isinstance(f_val, list):
+        return any(os.path.exists(p) and os.path.getsize(p) > 0 for p in f_val)
+    if isinstance(f_val, str) and f_val:
+        return any(
+            os.path.exists(p.strip()) and os.path.getsize(p.strip()) > 0
+            for p in re.split(r"[;,]", f_val)
+            if p.strip()
+        )
+    return False
+
+
 def reset_win_search() -> None:
     """重置換班快篩的快取資料"""
     st.session_state.pop("win_raw_candidates", None)
@@ -819,7 +852,10 @@ def render_user_home() -> None:
 
     # 測試環境公告欄（微調留白，保持視覺一致並提升首屏聚焦度）
     sys_config = load_system_config()
+    if not isinstance(sys_config, dict):
+        sys_config = {}
     announcement_text = sys_config.get("announcement", "目前為內部測試階段｜本頁面末端可聯繫管理者")
+    td_enabled = _is_td_enabled_for_unit(sys_config, current_unit_label)
 
     st.markdown(
         f"""
@@ -838,6 +874,8 @@ def render_user_home() -> None:
         active_files = get_current_role_files(unit_code=current_unit_label)
     except TypeError:
         active_files = get_current_role_files()
+    if not isinstance(active_files, dict):
+        active_files = {}
 
     # ==================== 大表/完整班表檢視模式 (INSPECTION MODE) ====================
     inspect_emp_id = st.session_state.get("inspect_emp_target")
@@ -892,20 +930,14 @@ def render_user_home() -> None:
 
         st.stop()
 
-    missing_files = []
-    for role in ["駕駛", "列車長", "服勤員"]:
-        cands = get_candidate_file_paths(role, current_unit_label)
-        f_val = active_files.get(role, "")
+    # 僅檢查「已啟用」職位（駕駛 TD 依開關控制，停用時不列入缺檔警告）
+    enabled_check_roles = ["列車長", "服勤員"]
+    if td_enabled:
+        enabled_check_roles.insert(0, "駕駛")
 
-        has_file = len(cands) > 0
-        if not has_file:
-            if isinstance(f_val, list):
-                has_file = any(os.path.exists(p) and os.path.getsize(p) > 0 for p in f_val)
-            elif isinstance(f_val, str) and f_val:
-                has_file = any(os.path.exists(p.strip()) and os.path.getsize(p.strip()) > 0 for p in f_val.split(";") if p.strip())
-
-        if not has_file:
-            missing_files.append(role)
+    missing_files = [
+        role for role in enabled_check_roles if not _has_role_schedule_file(role, current_unit_label, active_files)
+    ]
 
     if missing_files:
         st.error(
@@ -929,7 +961,7 @@ def render_user_home() -> None:
                     return get_file_mtime_str(p_clean)
         return "無檔案"
 
-    td_time = get_role_mtime_label("駕駛")
+    td_time = get_role_mtime_label("駕駛") if td_enabled else "未啟用"
     tm_time = get_role_mtime_label("列車長")
     ta_time = get_role_mtime_label("服勤員")
 
@@ -938,8 +970,14 @@ def render_user_home() -> None:
     except TypeError:
         sched_range = get_schedule_range()
 
-    range_display_text = sched_range if len(missing_files) < 3 else "資料庫異常"
-    range_text_color = "#EF4444" if len(missing_files) == 3 else "#60A5FA"
+    range_display_text = sched_range if len(missing_files) < len(enabled_check_roles) else "資料庫異常"
+    range_text_color = "#EF4444" if len(missing_files) == len(enabled_check_roles) else "#60A5FA"
+
+    td_mtime_row = (
+        f'<div style="display: flex; justify-content: space-between;"><span>駕駛 (TD)</span><span>{td_time}</span></div>'
+        if td_enabled
+        else ""
+    )
 
     period_html = f"""
     <div class="section-header-box" style="border-left-color: #60A5FA; padding: 8px 12px !important; margin: 6px 0 10px 0 !important;">
@@ -962,7 +1000,7 @@ def render_user_home() -> None:
                 <span style="font-size: 9px; color: #64748B;">▼</span>
             </summary>
             <div style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.1);">
-                <div style="display: flex; justify-content: space-between;"><span>駕駛 (TD)</span><span>{td_time}</span></div>
+                {td_mtime_row}
                 <div style="display: flex; justify-content: space-between;"><span>列車長 (TM)</span><span>{tm_time}</span></div>
                 <div style="display: flex; justify-content: space-between;"><span>服勤員 (TA)</span><span>{ta_time}</span></div>
             </div>
@@ -1154,14 +1192,19 @@ def render_user_home() -> None:
 
             st.markdown('<div class="section-field-label">點擊選擇查詢職位</div>', unsafe_allow_html=True)
 
+            available_win_roles = ["服勤員", "列車長"] + (["駕駛"] if td_enabled else [])
             if "saved_win_roles" not in st.session_state:
                 st.session_state["saved_win_roles"] = ["服勤員"]
+            sanitized_win_roles = [r for r in st.session_state["saved_win_roles"] if r in available_win_roles]
+            if not sanitized_win_roles:
+                sanitized_win_roles = ["服勤員"]
+            st.session_state["saved_win_roles"] = sanitized_win_roles
 
             if hasattr(st, "segmented_control"):
                 selected_roles = st.segmented_control(
                     "點擊選擇查詢職位",
-                    options=["服勤員", "列車長", "駕駛"],
-                    default=st.session_state["saved_win_roles"],
+                    options=available_win_roles,
+                    default=sanitized_win_roles,
                     selection_mode="multi",
                     label_visibility="collapsed",
                     key="win_seg_roles",
@@ -1170,21 +1213,21 @@ def render_user_home() -> None:
             else:
                 selected_roles = st.multiselect(
                     "點擊選擇查詢職位",
-                    options=["服勤員", "列車長", "駕駛"],
-                    default=st.session_state["saved_win_roles"],
+                    options=available_win_roles,
+                    default=sanitized_win_roles,
                     label_visibility="collapsed",
                     key="win_multi_roles",
                     on_change=reset_win_search,
                 )
 
-            roles_to_query = list(selected_roles) if selected_roles else []
+            roles_to_query = [r for r in (selected_roles or []) if r in available_win_roles]
             if roles_to_query:
                 st.session_state["saved_win_roles"] = roles_to_query
 
             if not roles_to_query:
                 st.warning("請至少選取一個職位以進行查詢")
             else:
-                has_driver = "駕駛" in roles_to_query
+                has_driver = "駕駛" in roles_to_query and td_enabled
                 start_h = 3 if has_driver else 5
 
                 TIME_OPTIONS = [
@@ -1562,11 +1605,12 @@ def render_user_home() -> None:
         if "saved_ex_role" not in st.session_state:
             st.session_state["saved_ex_role"] = "服勤員"
 
-        ex_roles = ["服勤員", "駕駛", "列車長"]
-        try:
-            ex_role_idx = ex_roles.index(st.session_state["saved_ex_role"])
-        except ValueError:
-            ex_role_idx = 0
+        ex_roles = ["服勤員", "列車長"] + (["駕駛"] if td_enabled else [])
+        saved_ex_role_val = st.session_state["saved_ex_role"]
+        if saved_ex_role_val not in ex_roles:
+            saved_ex_role_val = "服勤員"
+            st.session_state["saved_ex_role"] = saved_ex_role_val
+        ex_role_idx = ex_roles.index(saved_ex_role_val)
 
         selected_role = st.selectbox(
             "選擇職位類別",
