@@ -28,16 +28,28 @@
       "unit": "TTN",
       "role_name": "服勤員",
       "role_code": "TA",
-      "original_filename": "ttnta.xls",
+      "original_filename": "TTN_TA.xlsx",
       "folder_label": "最新版班表",
       "saved_path": "data/TTN/最新版班表/TTN_TA.xlsx",
-      "archive_path": "data/TTN/最新版班表/TTN_TA_20261122_055508_ttnta.xls",
-      "size_kb": 133.0,
-      "uploaded_at": "2026-11-22 05:55:08",
+      "archive_path": "data/TTN/最新版班表/TTN_TA_20261122_060102_TTN_TA.xlsx",
+      "size_kb": 44.1,
+      "uploaded_at": "2026-11-22 06:01:02",
       "operator": "ADMIN"
     }
   },
   "records": [
+    {
+      "unit": "TTN",
+      "role_name": "服勤員",
+      "role_code": "TA",
+      "original_filename": "TTN_TA.xlsx",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TA.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TA_20261122_060102_TTN_TA.xlsx",
+      "size_kb": 44.1,
+      "uploaded_at": "2026-11-22 06:01:02",
+      "operator": "ADMIN"
+    },
     {
       "unit": "TTN",
       "role_name": "列車長",
