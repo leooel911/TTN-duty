@@ -1,17 +1,19 @@
 import base64
+import glob
 import io
 import json
 import os
 import re
+import subprocess
 import zipfile
-import requests
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
+import requests
 import streamlit as st
 
-# 自動定位專案根目錄 (若本檔位在根目錄或 modules/ 子目錄均可精準錨定)
+# 自動定位專案根目錄
 CURRENT_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 if os.path.exists(os.path.join(CURRENT_FILE_DIR, "config.py")) or os.path.exists(os.path.join(CURRENT_FILE_DIR, "data")):
     BASE_DIR = CURRENT_FILE_DIR
@@ -19,7 +21,7 @@ else:
     BASE_DIR = os.path.dirname(CURRENT_FILE_DIR)
 
 # -----------------------------------------------------------------------------
-# 1. 安全載入設定檔與工具模組 (具備防崩潰安全降級機制與實體路徑保證)
+# 1. 安全載入設定檔與工具模組
 # -----------------------------------------------------------------------------
 try:
     from config import DATA_DIR, FEEDBACK_IMG_DIR, LOG_FILE, UNITS, WHITELIST_FILE
@@ -39,7 +41,7 @@ try:
         save_whitelist,
     )
 except Exception:
-    def get_available_months() -> List[str]:
+    def get_available_months(unit_code: Optional[str] = None) -> List[str]:
         return ["2026-09", "2026-10", "2026-11"]
     def load_system_config() -> Dict[str, Any]:
         return {}
@@ -57,6 +59,8 @@ try:
         is_module_maintenance,
         load_activity_logs,
         log_activity,
+        normalize_date_str,
+        parse_cell,
         safe_read_excel,
         set_module_maintenance,
     )
@@ -75,10 +79,41 @@ except Exception:
         pass
     def safe_read_excel(path: str, header: int = 0) -> pd.DataFrame:
         return pd.DataFrame()
+    def normalize_date_str(val: Any) -> str:
+        return str(val)
+    def parse_cell(val: Any) -> Any:
+        return val
+
+
+def _clean_emp_id(val: Any) -> str:
+    """員編規格化：自動消除 NaN、浮點數 .0、前後空白，並為 6 位純數字補上 'A' 前綴"""
+    if val is None or pd.isna(val):
+        return ""
+    s = str(val).strip().upper()
+    if s.endswith(".0"):
+        s = s[:-2]
+    if s.isdigit() and len(s) == 6:
+        s = f"A{s}"
+    return s
+
+
+def auto_git_push_data(commit_msg: str = "Auto update data via admin panel") -> None:
+    """自動將 data/ 變更推送至 Git 倉庫"""
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        if "modules" in script_dir:
+            script_dir = os.path.dirname(script_dir)
+        os.chdir(script_dir)
+
+        subprocess.run(["git", "add", "data/"], check=True)
+        subprocess.run(["git", "commit", "-m", commit_msg], check=False)
+        subprocess.run(["git", "push", "origin", "main"], check=True)
+    except Exception as e:
+        print(f"Git auto-sync error: {e}")
 
 
 # =============================================================================
-# 2. GitHub API 自動同步與白名單強固讀寫機制
+# 2. GitHub API 自動同步與檔案強固讀寫機制
 # =============================================================================
 def _get_unit_whitelist_path(unit_code: str) -> str:
     unit_code_clean = unit_code.upper().strip()
@@ -87,42 +122,148 @@ def _get_unit_whitelist_path(unit_code: str) -> str:
     os.makedirs(DATA_DIR, exist_ok=True)
     return os.path.join(DATA_DIR, f"whitelist_{unit_code_clean.lower()}.json")
 
-def sync_file_to_github(file_path_in_repo: str, content_str: str, commit_msg: str) -> bool:
-    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫"""
+
+def _get_upload_history_path(unit_code: str) -> str:
+    unit_clean = (unit_code or "TTN").upper().strip()
+    if unit_clean not in ["TTN", "TTC", "TTS"]:
+        unit_clean = "TTN"
+    unit_dir = os.path.join(DATA_DIR, unit_clean)
+    os.makedirs(unit_dir, exist_ok=True)
+    return os.path.join(unit_dir, "upload_history.json")
+
+
+def load_upload_history(unit_code: str) -> Dict[str, Any]:
+    """讀取單位班表上傳紀錄（含各職位最新原檔名與上傳時間、歷史清單）"""
+    hist_path = _get_upload_history_path(unit_code)
+    default_data: Dict[str, Any] = {
+        "latest_by_role": {},
+        "records": [],
+    }
+    if os.path.exists(hist_path):
+        try:
+            with open(hist_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    data.setdefault("latest_by_role", {})
+                    data.setdefault("records", [])
+                    return data
+        except Exception:
+            pass
+    return default_data
+
+
+def record_upload_history(
+    unit_code: str,
+    role_name: str,
+    role_code: str,
+    original_filename: str,
+    saved_path: str,
+    archive_path: str,
+    folder_label: str,
+    file_size_kb: float,
+    uploaded_at: str,
+) -> Dict[str, Any]:
+    """寫入原檔名與上傳時間至單位上傳紀錄檔，並同步至 GitHub"""
+    unit_clean = (unit_code or "TTN").upper().strip()
+    if unit_clean not in ["TTN", "TTC", "TTS"]:
+        unit_clean = "TTN"
+
+    hist = load_upload_history(unit_clean)
+    operator = str(st.session_state.get("emp_name") or st.session_state.get("emp_id") or "ADMIN").strip()
+
+    entry = {
+        "unit": unit_clean,
+        "role_name": role_name,
+        "role_code": role_code,
+        "original_filename": original_filename,
+        "folder_label": folder_label,
+        "saved_path": os.path.relpath(saved_path, start=BASE_DIR).replace("\\", "/"),
+        "archive_path": os.path.relpath(archive_path, start=BASE_DIR).replace("\\", "/"),
+        "size_kb": file_size_kb,
+        "uploaded_at": uploaded_at,
+        "operator": operator,
+    }
+
+    hist["latest_by_role"][role_name] = entry
+    records = hist.get("records", [])
+    records.insert(0, entry)
+    hist["records"] = records[:50]
+
+    hist_path = _get_upload_history_path(unit_clean)
+    json_str = json.dumps(hist, ensure_ascii=False, indent=2)
+    with open(hist_path, "w", encoding="utf-8") as f:
+        f.write(json_str)
+
+    rel_hist_path = os.path.relpath(hist_path, start=BASE_DIR).replace("\\", "/")
+    sync_file_to_github(
+        file_path_in_repo=rel_hist_path,
+        content_data=json_str,
+        commit_msg=f"Record upload history for {unit_clean} {role_name}: {original_filename} ({uploaded_at})",
+    )
+    return hist
+
+
+def sync_file_to_github_with_detail(
+    file_path_in_repo: str, content_data: Union[str, bytes], commit_msg: str
+) -> Tuple[bool, str]:
+    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫，並回傳詳細狀態說明"""
     sys_cfg = load_system_config()
-    token = sys_cfg.get("github_token", "").strip() or st.secrets.get("GITHUB_TOKEN", "")
-    repo = sys_cfg.get("github_repo", "").strip() or st.secrets.get("GITHUB_REPO", "") 
-    branch = sys_cfg.get("github_branch", "main").strip() or st.secrets.get("GITHUB_BRANCH", "main")
-    
+    token = str(sys_cfg.get("github_token", "") or st.secrets.get("GITHUB_TOKEN", "")).strip()
+    repo = str(sys_cfg.get("github_repo", "") or st.secrets.get("GITHUB_REPO", "")).strip()
+    branch = str(sys_cfg.get("github_branch", "") or st.secrets.get("GITHUB_BRANCH", "main")).strip() or "main"
+
     if not token or not repo:
-        return False 
-        
+        missing = []
+        if not token:
+            missing.append("GITHUB_TOKEN")
+        if not repo:
+            missing.append("GITHUB_REPO")
+        return False, f"缺少設定：{', '.join(missing)}"
+
     url = f"https://api.github.com/repos/{repo}/contents/{file_path_in_repo}"
     headers = {
         "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json"
+        "Accept": "application/vnd.github+json",
     }
-    
+
     try:
         sha = None
-        resp = requests.get(url, headers=headers, params={"branch": branch}, timeout=10)
+        resp = requests.get(url, headers=headers, params={"ref": branch}, timeout=10)
         if resp.status_code == 200:
             sha = resp.json().get("sha")
-            
-        encoded_content = base64.b64encode(content_str.encode("utf-8")).decode("utf-8")
-        payload = {
+        elif resp.status_code not in [200, 404]:
+            err_txt = resp.text[:160].replace("\n", " ")
+            return False, f"讀取檔案狀態失敗 (HTTP {resp.status_code})：{err_txt}"
+
+        if isinstance(content_data, bytes):
+            encoded_content = base64.b64encode(content_data).decode("utf-8")
+        else:
+            encoded_content = base64.b64encode(str(content_data).encode("utf-8")).decode("utf-8")
+
+        payload: Dict[str, Any] = {
             "message": commit_msg,
             "content": encoded_content,
-            "branch": branch
+            "branch": branch,
         }
         if sha:
             payload["sha"] = sha
-            
-        put_resp = requests.put(url, headers=headers, json=payload, timeout=10)
-        return put_resp.status_code in [200, 201]
+
+        put_resp = requests.put(url, headers=headers, json=payload, timeout=15)
+        if put_resp.status_code in [200, 201]:
+            return True, f"HTTP {put_resp.status_code} ({repo}@{branch})"
+        err_txt = put_resp.text[:160].replace("\n", " ")
+        return False, f"HTTP {put_resp.status_code}：{err_txt}"
     except Exception as e:
-        print(f"GitHub API 同步失敗: {e}")
-        return False
+        return False, f"連線例外：{e}"
+
+
+def sync_file_to_github(file_path_in_repo: str, content_data: Union[str, bytes], commit_msg: str) -> bool:
+    """透過 GitHub REST API 自動將變更寫回 GitHub 倉庫 (支援文字檔與二進位 Excel 檔)"""
+    ok, detail = sync_file_to_github_with_detail(file_path_in_repo, content_data, commit_msg)
+    if not ok:
+        print(f"GitHub API 同步失敗 ({file_path_in_repo}): {detail}")
+    return ok
+
 
 def robust_load_whitelist(unit_code: str) -> Dict[str, Any]:
     unit_code_clean = unit_code.upper().strip()
@@ -147,6 +288,7 @@ def robust_load_whitelist(unit_code: str) -> Dict[str, Any]:
             pass
     return data
 
+
 def robust_save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> bool:
     unit_code_clean = unit_code.upper().strip()
     if unit_code_clean not in ["TTN", "TTC", "TTS"]:
@@ -164,14 +306,14 @@ def robust_save_whitelist(unit_code: str, unit_data: Dict[str, Any]) -> bool:
     rel_path = os.path.relpath(path, start=BASE_DIR).replace("\\", "/")
     sync_file_to_github(
         file_path_in_repo=rel_path,
-        content_str=json.dumps(unit_data, ensure_ascii=False, indent=2),
+        content_data=json.dumps(unit_data, ensure_ascii=False, indent=2),
         commit_msg=f"Auto-update whitelist for {unit_code_clean} via Admin Panel"
     )
     return True
 
 
 # =============================================================================
-# 每月份資料控制開關輔助函式 (支援營運單位獨立隔離)
+# 每月份資料控制開關輔助函式
 # =============================================================================
 def get_monthly_controls(unit_code: str = "TTN") -> Dict[str, Any]:
     """取得特定單位各月份的開放與控制開關設定"""
@@ -186,8 +328,9 @@ def get_monthly_controls(unit_code: str = "TTN") -> Dict[str, Any]:
     
     return controls
 
+
 def set_monthly_control(unit_code: str, month_str: str, is_enabled: bool, note: str = "") -> None:
-    """設定特定單位特定月份的開關狀態與備註"""
+    """設定特定單位特定月份的開關狀態與備註，並同步寫入 GitHub"""
     sys_cfg = load_system_config()
     if "monthly_controls" not in sys_cfg or not isinstance(sys_cfg["monthly_controls"], dict):
         sys_cfg["monthly_controls"] = {}
@@ -202,6 +345,22 @@ def set_monthly_control(unit_code: str, month_str: str, is_enabled: bool, note: 
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     save_system_config(sys_cfg)
+    
+    cfg_path = os.path.join(DATA_DIR, "system_config.json")
+    if not os.path.exists(cfg_path):
+        cfg_path = "system_config.json"
+    if os.path.exists(cfg_path):
+        try:
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                content_str = f.read()
+            rel_path = os.path.relpath(cfg_path, start=BASE_DIR).replace("\\", "/")
+            sync_file_to_github(
+                file_path_in_repo=rel_path,
+                content_data=content_str,
+                commit_msg=f"Auto-update monthly control for {unit_code_clean} - {month_str}"
+            )
+        except Exception as e:
+            print(f"system_config.json 同步 GitHub 失敗: {e}")
 
 
 def clear_logs() -> None:
@@ -519,7 +678,6 @@ def parse_structured_log(raw_log: Any) -> Dict[str, str]:
         emp_code_match = re.search(r"\b([A-Za-z]\d{6})\b", action_detail)
         login_match = re.search(r"使用者登入系統[:：]\s*([^\s\(]+)", action_detail)
         crew_match = re.search(r"(?:組員|目標組員|解析組員|操作者|員編)[:：]\s*([^\s\|,\(\)]+)", action_detail)
-
         if emp_code_match:
             user_info = emp_code_match.group(1).upper()
         elif login_match and login_match.group(1).strip().upper() not in INVALID_USERS:
@@ -557,10 +715,10 @@ def extract_device_info(detail_str: str) -> str:
 
 
 # =============================================================================
-# 3. 後台主畫面 UI (擴增為 7 大完整分頁，完全移除 Emoji)
+# 3. 後台主畫面 UI
 # =============================================================================
 def render_admin_panel() -> None:
-    """系統管理員後台控制台"""
+    """系統管理員後台控制台主進入點"""
     try:
         from modules.components import view_feedback_img_modal
     except ImportError:
@@ -613,7 +771,7 @@ def render_admin_panel() -> None:
     if current_unit not in ["TTN", "TTC", "TTS"]:
         current_unit = "TTN"
 
-    col_head_title, col_head_unit, col_head_btn = st.columns([2.2, 1.2, 1])
+    col_head_title, col_head_unit, col_head_btn = st.columns([2.0, 1.1, 1.3])
 
     with col_head_title:
         st.markdown(
@@ -642,14 +800,33 @@ def render_admin_panel() -> None:
 
     with col_head_btn:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button(
-            "返回前台首頁",
-            key="btn_top_return_home",
-            type="primary",
-            use_container_width=True,
-        ):
-            st.session_state["admin_logged_in"] = False
-            st.rerun()
+        b_col1, b_col2 = st.columns(2)
+        with b_col1:
+            if st.button(
+                "返回前台",
+                key="btn_top_return_home",
+                type="primary",
+                use_container_width=True,
+                help="切回組員查詢首頁（保留管理員快捷切換權限）",
+            ):
+                st.session_state["nav_mode"] = "home"
+                st.session_state["page"] = "user"
+                st.rerun()
+        with b_col2:
+            if st.button(
+                "安全登出",
+                key="btn_top_admin_logout",
+                type="secondary",
+                use_container_width=True,
+                help="徹底清除管理員權限並退回登入畫面",
+            ):
+                st.session_state["authenticated"] = False
+                st.session_state["admin_logged_in"] = False
+                st.session_state["show_admin_login"] = False
+                st.session_state["nav_mode"] = "home"
+                st.session_state["page"] = "user"
+                st.query_params.clear()
+                st.rerun()
 
     st.markdown("---")
 
@@ -666,14 +843,57 @@ def render_admin_panel() -> None:
     # ==================== Tab 1 ====================
     with tab1:
         st.markdown(f"### [{current_unit}] 班表大表 Excel 上傳與管理")
-        st.caption("即時監控各大表 Excel 檔案狀態，並提供直接覆蓋更新功能。")
-        
-        unit_files = UNITS.get(current_unit, {}) if isinstance(UNITS, dict) else {}
-        default_role_paths = {
-            "駕駛": os.path.join(DATA_DIR, f"{current_unit.lower()}_driver.xlsx"),
-            "列車長": os.path.join(DATA_DIR, f"{current_unit.lower()}_conductor.xlsx"),
-            "服勤員": os.path.join(DATA_DIR, f"{current_unit.lower()}_attendant.xlsx"),
-        }
+        st.caption("上傳後自動建立選定目標資料夾與時間戳備份檔，並自動記錄原始檔名、上傳時間與同步至 GitHub。")
+
+        if "upload_feedback_msg" in st.session_state and st.session_state["upload_feedback_msg"]:
+            fb = st.session_state["upload_feedback_msg"]
+            fb_type = fb.get("type", "info")
+            fb_text = fb.get("text", "")
+            col_fb_msg, col_fb_btn = st.columns([6, 1])
+            with col_fb_msg:
+                if fb_type == "success":
+                    st.success(fb_text)
+                elif fb_type == "warning":
+                    st.warning(fb_text)
+                else:
+                    st.info(fb_text)
+            with col_fb_btn:
+                if st.button("清除提示", key="btn_clear_upload_fb", use_container_width=True):
+                    st.session_state.pop("upload_feedback_msg", None)
+                    st.rerun()
+
+        upload_hist = load_upload_history(current_unit)
+        latest_by_role = upload_hist.get("latest_by_role", {}) if isinstance(upload_hist, dict) else {}
+
+        col_opt1, col_opt2 = st.columns([1.2, 1.8])
+        with col_opt1:
+            target_folder_type = st.selectbox(
+                "存入資料夾分類",
+                options=["最新版班表", "每月20號大表", "每日下載更新檔"],
+                key=f"upload_folder_type_{current_unit}",
+            )
+        with col_opt2:
+            month_sub_mode = st.selectbox(
+                "月份子資料夾（自動建立）",
+                options=["不建月份子資料夾（直接存入分類）", "2026-11", "2026-12", "自訂月份"],
+                key=f"upload_month_mode_{current_unit}",
+            )
+
+        custom_month_str = ""
+        if month_sub_mode == "自訂月份":
+            custom_month_str = st.text_input(
+                "輸入月份資料夾名稱（例如：2026-12）",
+                value=date.today().strftime("%Y-%m"),
+                key=f"upload_custom_month_{current_unit}",
+            ).strip()
+
+        selected_sub_month = ""
+        if month_sub_mode in ["2026-11", "2026-12"]:
+            selected_sub_month = month_sub_mode
+        elif month_sub_mode == "自訂月份" and custom_month_str:
+            selected_sub_month = custom_month_str
+
+        folder_label = f"{target_folder_type}/{selected_sub_month}" if selected_sub_month else target_folder_type
 
         col_u1, col_u2, col_u3 = st.columns(3)
         roles = [
@@ -684,10 +904,18 @@ def render_admin_panel() -> None:
 
         for role_name, role_code, col in roles:
             with col:
-                target_path = unit_files.get(role_name, "") or default_role_paths[role_name]
-                exists = os.path.exists(target_path) and os.path.getsize(target_path) > 0 if target_path else False
-                f_size_kb = round(os.path.getsize(target_path) / 1024, 1) if exists else 0
-                mtime_str = get_file_mtime_str(target_path) if exists else "檔案不存在"
+                if selected_sub_month:
+                    dest_dir = os.path.join(DATA_DIR, current_unit, target_folder_type, selected_sub_month)
+                else:
+                    dest_dir = os.path.join(DATA_DIR, current_unit, target_folder_type)
+                dest_path = os.path.join(dest_dir, f"{current_unit}_{role_code}.xlsx")
+
+                exists = os.path.exists(dest_path) and os.path.getsize(dest_path) > 0
+                f_size_kb = round(os.path.getsize(dest_path) / 1024, 1) if exists else 0
+
+                role_hist = latest_by_role.get(role_name, {}) if isinstance(latest_by_role, dict) else {}
+                orig_name_disp = role_hist.get("original_filename") or (os.path.basename(dest_path) if exists else "尚無紀錄")
+                mtime_str = role_hist.get("uploaded_at") or (get_file_mtime_str(dest_path) if exists else "檔案不存在")
 
                 status_pill = (
                     "<span style='color:#34D399; font-weight:800;'>[檔案正常]</span>"
@@ -703,8 +931,9 @@ def render_admin_panel() -> None:
                             {status_pill}
                         </div>
                         <div style="font-size: 11px; color: #94A3B8; font-family: monospace; display: flex; flex-direction: column; gap: 3px;">
+                            <div>原檔名：<strong style="color:#38BDF8;">{orig_name_disp}</strong></div>
                             <div>檔案大小：<strong style="color:#CBD5E1;">{f_size_kb} KB</strong></div>
-                            <div>更新時間：<strong style="color:#CBD5E1;">{mtime_str}</strong></div>
+                            <div>上傳時間：<strong style="color:#CBD5E1;">{mtime_str}</strong></div>
                         </div>
                     </div>
                     """,
@@ -717,28 +946,105 @@ def render_admin_panel() -> None:
                     key=f"upload_{current_unit}_{role_code}",
                 )
 
-                if uploaded_file is not None and target_path:
+                if uploaded_file is not None:
                     if st.button(
-                        f"確認覆蓋上傳 {role_name} 大表",
-                        key=f"btn_save_{role_code}",
+                        f"確認上傳 {role_name} 大表",
+                        key=f"btn_save_{current_unit}_{role_code}",
                         type="primary",
                         use_container_width=True,
                     ):
                         try:
-                            os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                            with open(target_path, "wb") as f:
-                                f.write(uploaded_file.getbuffer())
-                            st.success(f"[{current_unit}] {role_name} 班表大表已成功更新！")
-                            log_activity("班表大表上傳", f"單位:{current_unit} | 職位:{role_name}")
+                            now_dt = datetime.now()
+                            uploaded_at_str = now_dt.strftime("%Y-%m-%d %H:%M:%S")
+                            ts_compact = now_dt.strftime("%Y%m%d_%H%M%S")
+
+                            raw_orig_name = os.path.basename(uploaded_file.name)
+                            stem_name, ext_name = os.path.splitext(raw_orig_name)
+                            safe_stem = re.sub(r'[\\/:*?"<>|]+', "_", stem_name).strip() or f"{current_unit}_{role_code}"
+                            ext_clean = ext_name.lower() if ext_name.lower() in [".xlsx", ".xls"] else ".xlsx"
+
+                            os.makedirs(dest_dir, exist_ok=True)
+
+                            file_bytes = uploaded_file.getbuffer().tobytes()
+                            actual_size_kb = round(len(file_bytes) / 1024, 1)
+
+                            with open(dest_path, "wb") as f:
+                                f.write(file_bytes)
+
+                            archive_filename = f"{current_unit}_{role_code}_{ts_compact}_{safe_stem}{ext_clean}"
+                            archive_path = os.path.join(dest_dir, archive_filename)
+                            with open(archive_path, "wb") as f:
+                                f.write(file_bytes)
+
+                            sync_errors: List[str] = []
+                            for p_item in [dest_path, archive_path]:
+                                rel_p = os.path.relpath(p_item, start=BASE_DIR).replace("\\", "/")
+                                ok, detail = sync_file_to_github_with_detail(
+                                    file_path_in_repo=rel_p,
+                                    content_data=file_bytes,
+                                    commit_msg=f"Upload {current_unit} {role_name}: {raw_orig_name} ({uploaded_at_str})",
+                                )
+                                if not ok:
+                                    sync_errors.append(f"{os.path.basename(p_item)}: {detail}")
+
+                            synced = len(sync_errors) == 0
+
+                            record_upload_history(
+                                unit_code=current_unit,
+                                role_name=role_name,
+                                role_code=role_code,
+                                original_filename=raw_orig_name,
+                                saved_path=dest_path,
+                                archive_path=archive_path,
+                                folder_label=folder_label,
+                                file_size_kb=actual_size_kb,
+                                uploaded_at=uploaded_at_str,
+                            )
+
+                            if synced:
+                                st.session_state["upload_feedback_msg"] = {
+                                    "type": "success",
+                                    "text": f"[{current_unit}] {role_name}（{raw_orig_name}）已存入 {folder_label} 並同步至 GitHub！",
+                                }
+                            else:
+                                err_summary = "；".join(sync_errors)
+                                st.session_state["upload_feedback_msg"] = {
+                                    "type": "warning",
+                                    "text": f"[{current_unit}] {role_name}（{raw_orig_name}）已存入本機 {folder_label}，但 GitHub 同步未成功 → {err_summary}",
+                                }
+
+                            log_activity(
+                                "班表大表上傳",
+                                f"單位:{current_unit} | 職位:{role_name} | 原檔名:{raw_orig_name} | 資料夾:{folder_label} | 時間:{uploaded_at_str} | GitHub同步:{synced}",
+                            )
                             st.cache_data.clear()
                             st.rerun()
                         except Exception as e:
-                            st.error(f"檔案寫入失敗：{e}")
+                            st.session_state["upload_feedback_msg"] = {
+                                "type": "warning",
+                                "text": f"檔案寫入失敗：{e}",
+                            }
+                            st.rerun()
 
-    # ==================== Tab 2: 每月份資料控制與開放開關 ====================
+        hist_records = upload_hist.get("records", []) if isinstance(upload_hist, dict) else []
+        if hist_records:
+            with st.expander(f"[{current_unit}] 最近上傳紀錄明細（原檔名 / 上傳時間 / 存入資料夾）", expanded=False):
+                df_hist = pd.DataFrame(hist_records)[
+                    ["uploaded_at", "role_name", "original_filename", "folder_label", "size_kb", "operator"]
+                ].rename(columns={
+                    "uploaded_at": "上傳時間",
+                    "role_name": "職位",
+                    "original_filename": "原始檔名",
+                    "folder_label": "存入資料夾",
+                    "size_kb": "大小 (KB)",
+                    "operator": "操作者",
+                })
+                st.dataframe(df_hist, use_container_width=True, hide_index=True)
+
+    # ==================== Tab 2 ====================
     with tab2:
         st.markdown(f"### [{current_unit}] 每月份資料控制與開放開關")
-        st.info(f"在此可以針對【{current_unit}】單位設定各個月份（如 2026-09、2026-10 等）開關。關閉特定月份後，該單位組員切換該月份時將收到提示。")
+        st.info(f"在此可以針對【{current_unit}】單位設定各個月份開關。關閉特定月份後，該單位組員切換該月份時將收到提示。")
 
         available_months = get_available_months()
         monthly_controls = get_monthly_controls(current_unit)
@@ -782,7 +1088,7 @@ def render_admin_panel() -> None:
                 if st.button(f"儲存 {m_str} 設定", key=f"btn_save_month_{current_unit}_{m_str}", use_container_width=True):
                     set_monthly_control(current_unit, m_str, new_en, new_note)
                     log_activity("月份控制開關", f"管理員設定 [{current_unit}] 月份 {m_str} 狀態為: {'開放' if new_en else '關閉'} (備註: {new_note})")
-                    st.success(f"[{current_unit}] 月份 {m_str} 狀態已更新！")
+                    st.success(f"[{current_unit}] 月份 {m_str} 狀態已更新並完成 GitHub 同步！")
                     st.cache_data.clear()
                     st.rerun()
 
@@ -791,7 +1097,7 @@ def render_admin_panel() -> None:
     # ==================== Tab 3 ====================
     with tab3:
         st.markdown(f"### [{current_unit}] 系統模組維護開關")
-        st.info("開啟維護後，一般組員將無法存取該功能，管理員仍可登入後台預覽測試。")
+        st.info("開啟維護後，一般組員將無法存取該功能，管理員仍可登入後台預覽測試。變更將自動同步至 GitHub 設定檔。")
 
         modules_def = [
             ("producer", "個人月班表圖檔生成系統", "負責生成個人高解析度月班表圖片與圖檔下載"),
@@ -833,6 +1139,21 @@ def render_admin_panel() -> None:
                 )
                 if new_state != is_maint:
                     set_module_maintenance(current_unit, m_key, new_state)
+                    
+                    maint_path = os.path.join(DATA_DIR, "maintenance.json")
+                    if os.path.exists(maint_path):
+                        try:
+                            with open(maint_path, "r", encoding="utf-8") as f:
+                                maint_json_str = f.read()
+                            rel_maint_path = os.path.relpath(maint_path, start=BASE_DIR).replace("\\", "/")
+                            sync_file_to_github(
+                                file_path_in_repo=rel_maint_path,
+                                content_data=maint_json_str,
+                                commit_msg=f"Auto-update maintenance mode for {current_unit} - {m_key}: {new_state}"
+                            )
+                        except Exception as e:
+                            print(f"maintenance.json GitHub 同步失敗: {e}")
+
                     state_str = "開啟" if new_state else "關閉"
                     log_activity(
                         "維護模式開關",
@@ -1093,7 +1414,7 @@ def render_admin_panel() -> None:
     # ==================== Tab 5 ====================
     with tab5:
         st.markdown("### 全域系統參數與 GitHub 自動同步設定")
-        st.caption("在此設定 GitHub 憑證，以確保後台新增的白名單在伺服器重啟時不會遺失。")
+        st.caption("在此設定 GitHub 憑證，以確保後台新增的白名單與設定檔在伺服器重啟時不會遺失。")
 
         if "cfg_toast" in st.session_state:
             t_type, t_msg = st.session_state["cfg_toast"]
@@ -1220,6 +1541,23 @@ def render_admin_panel() -> None:
                     sys_config["strict_allowed_employees"] = clean_allowed_list
 
                     save_system_config(sys_config)
+                    
+                    cfg_path = os.path.join(DATA_DIR, "system_config.json")
+                    if not os.path.exists(cfg_path):
+                        cfg_path = "system_config.json"
+                    if os.path.exists(cfg_path):
+                        try:
+                            with open(cfg_path, "r", encoding="utf-8") as f:
+                                cfg_content = f.read()
+                            rel_cfg_path = os.path.relpath(cfg_path, start=BASE_DIR).replace("\\", "/")
+                            sync_file_to_github(
+                                file_path_in_repo=rel_cfg_path,
+                                content_data=cfg_content,
+                                commit_msg="Auto-update system_config.json via Admin Panel"
+                            )
+                        except Exception as e:
+                            print(f"system_config.json GitHub 同步失敗: {e}")
+
                     log_activity("系統授權碼變更", "管理員更新全域系統設定與 GitHub 同步憑證")
 
                     st.cache_data.clear()
@@ -1496,6 +1834,7 @@ def render_admin_panel() -> None:
                             t["狀態"] = new_status
                             t["管理員回覆"] = new_reply
                             save_feedback_ticket(t)
+                            auto_git_push_data(f"Update feedback ticket {ticket_id}")
                             log_activity("問題工單維護", f"管理員更新工單 [{ticket_id}] 狀態為：{new_status}")
                             st.success(f"工單 `{ticket_id}` 狀態已成功更新！")
                             st.rerun()
@@ -1508,11 +1847,12 @@ def render_admin_panel() -> None:
                             img_p = t.get("_img_path")
                             if img_p and os.path.exists(img_p):
                                 os.remove(img_p)
+                            auto_git_push_data(f"Delete feedback ticket {ticket_id}")
                             log_activity("問題工單刪除", f"管理員刪除工單 [{ticket_id}]")
                             st.success(f"已成功刪除工單 `{ticket_id}`！")
                             st.rerun()
 
-    # 渲染 Modal/截圖預覽 (獨立外層判定)
+    # 渲染 Modal / 截圖預覽
     if "active_feedback_img" in st.session_state and st.session_state["active_feedback_img"]:
         img_info = st.session_state["active_feedback_img"]
         if callable(view_feedback_img_modal):
@@ -1524,5 +1864,5 @@ def render_admin_panel() -> None:
                     st.session_state.pop("active_feedback_img", None)
                     st.rerun()
 
-
+# 導出別名相容性
 render_admin_home = render_admin_panel

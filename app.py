@@ -73,6 +73,29 @@ if "CURRENT_AUTH_SESSION" not in st.session_state:
         "unit": "TTN",
     }
 
+# ---------------------------------------------------------
+# 管理員登入狀態持久化恢復 (防止重整或切換單位時重複要求登入)
+# ---------------------------------------------------------
+if st.query_params.get("admin_session") == "active":
+    st.session_state["authenticated"] = True
+    st.session_state["admin_logged_in"] = True
+    st.session_state["show_admin_login"] = False
+    if st.session_state.get("page") != "user":
+        st.session_state["nav_mode"] = "admin_panel"
+        st.session_state["page"] = "admin"
+    saved_uid = st.query_params.get("admin_uid", "ADMIN")
+    if st.session_state.get("login_user_id") in [DEFAULT_EMP_ID, ""]:
+        st.session_state["login_user_id"] = saved_uid
+        st.session_state["current_user_id"] = f"ADMIN ({saved_uid})"
+    if not st.session_state["CURRENT_AUTH_SESSION"].get("authenticated"):
+        st.session_state["CURRENT_AUTH_SESSION"] = {
+            "authenticated": True,
+            "emp_id": saved_uid,
+            "emp_name": "系統管理員",
+            "role": "ADMIN",
+            "unit": st.session_state.get("current_unit", "TTN"),
+        }
+
 
 # =========================================================
 # 前置授權碼門戶檢查（航太行控中心風格登入介面）
@@ -222,9 +245,9 @@ div[data-testid="stContainer"]:has(.login-card-marker) {
     <div style="color: #38BDF8; font-weight: 800; margin-bottom: 6px;">INTERNAL TEST NOTICE</div>
     本系統目前為正式環境第一階段特定人員內部測試。<br><br>
     <div style="color: #FBBF24; font-weight: 800; margin-bottom: 4px;">IMPORTANT GUIDELINES:</div>
-    1. <b>排班依據</b>：本系統班表僅供個人調假與換班快篩參考，<b>即時班表務必以公司官方公告為準</b>。<br>
-    2. <b>資訊安全</b>：班表相關資料屬內部營運資訊，<b>請勿外流授權碼與班表截圖</b>。<br>
-    3. <b>權限與回報</b>：登入後若發現資料有誤，請透過頁尾功能提出。
+1. <b>排班依據</b>：本系統班表僅供個人調假與換班快篩參考，<b>即時班表務必以公司官方公告為準</b>。<br>
+2. <b>資訊安全</b>：班表相關資料屬內部營運資訊，<b>請勿外流授權碼與班表截圖</b>。<br>
+3. <b>權限與回報</b>：登入後若發現資料有誤，請透過頁尾功能提出。
 </div>
                 """,
                 unsafe_allow_html=True,
@@ -275,6 +298,8 @@ div[data-testid="stContainer"]:has(.login-card-marker) {
                 
                 if is_adm:
                     st.session_state["current_user_id"] = f"ADMIN ({emp_id})"
+                    st.query_params["admin_session"] = "active"
+                    st.query_params["admin_uid"] = emp_id
                 else:
                     st.session_state["current_user_id"] = f"{emp_name} ({emp_id})" if emp_name else emp_id
 
@@ -314,7 +339,13 @@ if st.session_state.get("inspect_emp_target") is not None:
         st.rerun()
 
     try:
-        start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
+        try:
+            start_dt, dates, emp_id, emp_name, cells = process_file_data(
+                target_emp, unit_code=current_unit
+            )
+        except TypeError:
+            start_dt, dates, emp_id, emp_name, cells = process_file_data(target_emp)
+
         with st.spinner(f"正在載入【{emp_name}】的完整月班表資料..."):
             buf = render_schedule_figure(
                 start_dt,
@@ -391,6 +422,8 @@ if st.session_state.get("show_admin_login", False) and not st.session_state.get(
                     st.session_state["show_admin_login"] = False
                     st.session_state["current_user_id"] = f"ADMIN ({curr_op})"
                     st.session_state["login_user_id"] = admin_uid
+                    st.query_params["admin_session"] = "active"
+                    st.query_params["admin_uid"] = admin_uid
                     
                     st.session_state["CURRENT_AUTH_SESSION"] = {
                         "authenticated": True,
@@ -429,7 +462,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-col_f1, col_f2 = st.columns(2)
+col_f1, col_f2, col_f3 = st.columns(3)
 
 with col_f1:
     render_feedback_hub_popover(
@@ -456,4 +489,48 @@ with col_f2:
                 st.session_state["page"] = "admin"
         else:
             st.session_state["show_admin_login"] = True
+        st.rerun()
+
+with col_f3:
+    if st.button(
+        "LOGOUT // 登出切換",
+        key="btn_logout_footer",
+        use_container_width=True,
+        help="登出目前帳號並返回登入畫面以切換單位或員編",
+    ):
+        curr_uid = st.session_state.get("login_user_id", "")
+        curr_unit = st.session_state.get("current_unit", "TTN")
+        log_activity(
+            action="使用者登出",
+            detail=f"使用者主動登出系統 ({curr_uid})",
+            user=curr_uid,
+            unit=curr_unit,
+        )
+        st.session_state["CURRENT_AUTH_SESSION"] = {
+            "authenticated": False,
+            "emp_id": "",
+            "emp_name": "",
+            "role": "GUEST",
+            "unit": "TTN",
+        }
+        for k in [
+            "authenticated",
+            "admin_logged_in",
+            "show_admin_login",
+            "emp_id",
+            "emp_name",
+            "user_id",
+            "user_name",
+            "draw_input_key",
+            "inspect_emp_target",
+            "win_raw_candidates",
+            "ex_raw_candidates",
+        ]:
+            st.session_state.pop(k, None)
+        st.session_state["ex_search_performed"] = False
+        st.session_state["nav_mode"] = "home"
+        st.session_state["page"] = "user"
+        st.session_state["current_user_id"] = DEFAULT_EMP_ID
+        st.session_state["login_user_id"] = DEFAULT_EMP_ID
+        st.query_params.clear()
         st.rerun()

@@ -1,0 +1,114 @@
+{
+  "latest_by_role": {
+    "駕駛": {
+      "unit": "TTS",
+      "role_name": "駕駛",
+      "role_code": "TD",
+      "original_filename": "公告TTS TD 2026年12月份(20261206-20270109)勤務輪值表(Ver.0).xlsx",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTS/最新版班表/TTS_TD.xlsx",
+      "archive_path": "data/TTS/最新版班表/TTS_TD_20261120_035834_公告TTS TD 2026年12月份(20261206-20270109)勤務輪值表(Ver.0).xlsx",
+      "size_kb": 31.5,
+      "uploaded_at": "2026-11-20 03:58:34",
+      "operator": "ADMIN"
+    },
+    "列車長": {
+      "unit": "TTS",
+      "role_name": "列車長",
+      "role_code": "TM",
+      "original_filename": "公告2026年12月份（20261206-20270109）TTS列車長勤務輪值表(Ver.0).xlsx",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTS/最新版班表/TTS_TM.xlsx",
+      "archive_path": "data/TTS/最新版班表/TTS_TM_20261120_042701_公告2026年12月份（20261206-20270109）TTS列車長勤務輪值表(Ver.0).xlsx",
+      "size_kb": 26.7,
+      "uploaded_at": "2026-11-20 04:27:01",
+      "operator": "ADMIN"
+    },
+    "服勤員": {
+      "unit": "TTS",
+      "role_name": "服勤員",
+      "role_code": "TA",
+      "original_filename": "公告2026年12月份（20261206-20270109）TTS服勤員勤務輪值表(Ver.0).xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTS/最新版班表/TTS_TA.xlsx",
+      "archive_path": "data/TTS/最新版班表/TTS_TA_20261120_042713_公告2026年12月份（20261206-20270109）TTS服勤員勤務輪值表(Ver.0).xls",
+      "size_kb": 138.5,
+      "uploaded_at": "2026-11-20 04:27:13",
+      "operator": "ADMIN"
+    }
+  },
+  "records": [
+    {
+      "unit": "TTS",
+      "role_name": "服勤員",
+      "role_code": "TA",
+      "original_filename": "公告2026年12月份（20261206-20270109）TTS服勤員勤務輪值表(Ver.0).xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTS/最新版班表/TTS_TA.xlsx",
+      "archive_path": "data/TTS/最新版班表/TTS_TA_20261120_042713_公告2026年12月份（20261206-20270109）TTS服勤員勤務輪值表(Ver.0).xls",
+      "size_kb": 138.5,
+      "uploaded_at": "2026-11-20 04:27:13",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTS",
+      "role_name": "列車長",
+      "role_code": "TM",
+      "original_filename": "公告2026年12月份（20261206-20270109）TTS列車長勤務輪值表(Ver.0).xlsx",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTS/最新版班表/TTS_TM.xlsx",
+      "archive_path": "data/TTS/最新版班表/TTS_TM_20261120_042701_公告2026年12月份（20261206-20270109）TTS列車長勤務輪值表(Ver.0).xlsx",
+      "size_kb": 26.7,
+      "uploaded_at": "2026-11-20 04:27:01",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTS",
+      "role_name": "列車長",
+      "role_code": "TM",
+      "original_filename": "公告2026年12月份（20261206-20270109）TTS列車長勤務輪值表(Ver.0).xlsx",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTS/最新版班表/TTS_TM.xlsx",
+      "archive_path": "data/TTS/最新版班表/TTS_TM_20261120_042656_公告2026年12月份（20261206-20270109）TTS列車長勤務輪值表(Ver.0).xlsx",
+      "size_kb": 26.7,
+      "uploaded_at": "2026-11-20 04:26:56",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTS",
+      "role_name": "駕駛",
+      "role_code": "TD",
+      "original_filename": "公告TTS TD 2026年12月份(20261206-20270109)勤務輪值表(Ver.0).xlsx",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTS/最新版班表/TTS_TD.xlsx",
+      "archive_path": "data/TTS/最新版班表/TTS_TD_20261120_035834_公告TTS TD 2026年12月份(20261206-20270109)勤務輪值表(Ver.0).xlsx",
+      "size_kb": 31.5,
+      "uploaded_at": "2026-11-20 03:58:34",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTS",
+      "role_name": "駕駛",
+      "role_code": "TD",
+      "original_filename": "公告TTS TD 2026年12月份(20261206-20270109)勤務輪值表(Ver.0).xlsx",
+      "folder_label": "每月20號大表/2026-12",
+      "saved_path": "data/TTS/每月20號大表/2026-12/TTS_TD.xlsx",
+      "archive_path": "data/TTS/每月20號大表/2026-12/TTS_TD_20261120_031225_公告TTS TD 2026年12月份(20261206-20270109)勤務輪值表(Ver.0).xlsx",
+      "size_kb": 31.5,
+      "uploaded_at": "2026-11-20 03:12:25",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTS",
+      "role_name": "駕駛",
+      "role_code": "TD",
+      "original_filename": "公告TTS TD 2026年12月份(20261206-20270109)勤務輪值表(Ver.0).xlsx",
+      "folder_label": "每月20號大表/2026-12",
+      "saved_path": "data/TTS/每月20號大表/2026-12/TTS_TD.xlsx",
+      "archive_path": "data/TTS/每月20號大表/2026-12/TTS_TD_20261120_031137_公告TTS TD 2026年12月份(20261206-20270109)勤務輪值表(Ver.0).xlsx",
+      "size_kb": 31.5,
+      "uploaded_at": "2026-11-20 03:11:37",
+      "operator": "ADMIN"
+    }
+  ]
+}

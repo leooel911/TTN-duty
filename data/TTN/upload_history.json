@@ -1,0 +1,114 @@
+{
+  "latest_by_role": {
+    "駕駛": {
+      "unit": "TTN",
+      "role_name": "駕駛",
+      "role_code": "TD",
+      "original_filename": "TTN Train Driver Roster_2026_1206_2027_0109_V00.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TD.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TD_20261120_043007_TTN Train Driver Roster_2026_1206_2027_0109_V00.xls",
+      "size_kb": 83.5,
+      "uploaded_at": "2026-11-20 04:30:07",
+      "operator": "ADMIN"
+    },
+    "列車長": {
+      "unit": "TTN",
+      "role_name": "列車長",
+      "role_code": "TM",
+      "original_filename": "公告2026年12月06日～2027年01月09日TTN列車長勤務輪值表(Ver.0).xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TM.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TM_20261120_060611_公告2026年12月06日～2027年01月09日TTN列車長勤務輪值表(Ver.0).xls",
+      "size_kb": 83.0,
+      "uploaded_at": "2026-11-20 06:06:11",
+      "operator": "ADMIN"
+    },
+    "服勤員": {
+      "unit": "TTN",
+      "role_name": "服勤員",
+      "role_code": "TA",
+      "original_filename": "公告2026年12月06日～2027年01月09日TTN服勤員勤務輪值表V0.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TA.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TA_20261120_060648_公告2026年12月06日～2027年01月09日TTN服勤員勤務輪值表V0.xls",
+      "size_kb": 151.0,
+      "uploaded_at": "2026-11-20 06:06:48",
+      "operator": "ADMIN"
+    }
+  },
+  "records": [
+    {
+      "unit": "TTN",
+      "role_name": "服勤員",
+      "role_code": "TA",
+      "original_filename": "公告2026年12月06日～2027年01月09日TTN服勤員勤務輪值表V0.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TA.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TA_20261120_060648_公告2026年12月06日～2027年01月09日TTN服勤員勤務輪值表V0.xls",
+      "size_kb": 151.0,
+      "uploaded_at": "2026-11-20 06:06:48",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTN",
+      "role_name": "服勤員",
+      "role_code": "TA",
+      "original_filename": "公告2026年12月06日～2027年01月09日TTN服勤員勤務輪值表V0.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TA.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TA_20261120_060639_公告2026年12月06日～2027年01月09日TTN服勤員勤務輪值表V0.xls",
+      "size_kb": 151.0,
+      "uploaded_at": "2026-11-20 06:06:39",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTN",
+      "role_name": "服勤員",
+      "role_code": "TA",
+      "original_filename": "公告2026年12月06日～2027年01月09日TTN服勤員勤務輪值表V0.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TA.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TA_20261120_060635_公告2026年12月06日～2027年01月09日TTN服勤員勤務輪值表V0.xls",
+      "size_kb": 151.0,
+      "uploaded_at": "2026-11-20 06:06:35",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTN",
+      "role_name": "服勤員",
+      "role_code": "TA",
+      "original_filename": "公告2026年12月06日～2027年01月09日TTN服勤員勤務輪值表V0.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TA.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TA_20261120_060630_公告2026年12月06日～2027年01月09日TTN服勤員勤務輪值表V0.xls",
+      "size_kb": 151.0,
+      "uploaded_at": "2026-11-20 06:06:30",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTN",
+      "role_name": "列車長",
+      "role_code": "TM",
+      "original_filename": "公告2026年12月06日～2027年01月09日TTN列車長勤務輪值表(Ver.0).xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TM.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TM_20261120_060611_公告2026年12月06日～2027年01月09日TTN列車長勤務輪值表(Ver.0).xls",
+      "size_kb": 83.0,
+      "uploaded_at": "2026-11-20 06:06:11",
+      "operator": "ADMIN"
+    },
+    {
+      "unit": "TTN",
+      "role_name": "駕駛",
+      "role_code": "TD",
+      "original_filename": "TTN Train Driver Roster_2026_1206_2027_0109_V00.xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TD.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TD_20261120_043007_TTN Train Driver Roster_2026_1206_2027_0109_V00.xls",
+      "size_kb": 83.5,
+      "uploaded_at": "2026-11-20 04:30:07",
+      "operator": "ADMIN"
+    }
+  ]
+}
