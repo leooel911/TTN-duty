@@ -19,9 +19,9 @@
       "original_filename": "公告2026年12月06日～2027年01月09日TTN列車長勤務輪值表(Ver.0).xls",
       "folder_label": "最新版班表",
       "saved_path": "data/TTN/最新版班表/TTN_TM.xlsx",
-      "archive_path": "data/TTN/最新版班表/TTN_TM_20261120_060611_公告2026年12月06日～2027年01月09日TTN列車長勤務輪值表(Ver.0).xls",
+      "archive_path": "data/TTN/最新版班表/TTN_TM_20261122_054913_公告2026年12月06日～2027年01月09日TTN列車長勤務輪值表(Ver.0).xls",
       "size_kb": 83.0,
-      "uploaded_at": "2026-11-20 06:06:11",
+      "uploaded_at": "2026-11-22 05:49:13",
       "operator": "ADMIN"
     },
     "服勤員": {
@@ -38,6 +38,18 @@
     }
   },
   "records": [
+    {
+      "unit": "TTN",
+      "role_name": "列車長",
+      "role_code": "TM",
+      "original_filename": "公告2026年12月06日～2027年01月09日TTN列車長勤務輪值表(Ver.0).xls",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTN/最新版班表/TTN_TM.xlsx",
+      "archive_path": "data/TTN/最新版班表/TTN_TM_20261122_054913_公告2026年12月06日～2027年01月09日TTN列車長勤務輪值表(Ver.0).xls",
+      "size_kb": 83.0,
+      "uploaded_at": "2026-11-22 05:49:13",
+      "operator": "ADMIN"
+    },
     {
       "unit": "TTN",
       "role_name": "服勤員",
