@@ -31,13 +31,25 @@
       "original_filename": "TTS_TA.xlsx",
       "folder_label": "最新版班表",
       "saved_path": "data/TTS/最新版班表/TTS_TA.xlsx",
-      "archive_path": "data/TTS/最新版班表/TTS_TA_20261122_055238_TTS_TA.xlsx",
+      "archive_path": "data/TTS/最新版班表/TTS_TA_20261122_055243_TTS_TA.xlsx",
       "size_kb": 43.4,
-      "uploaded_at": "2026-11-22 05:52:38",
+      "uploaded_at": "2026-11-22 05:52:43",
       "operator": "ADMIN"
     }
   },
   "records": [
+    {
+      "unit": "TTS",
+      "role_name": "服勤員",
+      "role_code": "TA",
+      "original_filename": "TTS_TA.xlsx",
+      "folder_label": "最新版班表",
+      "saved_path": "data/TTS/最新版班表/TTS_TA.xlsx",
+      "archive_path": "data/TTS/最新版班表/TTS_TA_20261122_055243_TTS_TA.xlsx",
+      "size_kb": 43.4,
+      "uploaded_at": "2026-11-22 05:52:43",
+      "operator": "ADMIN"
+    },
     {
       "unit": "TTS",
       "role_name": "服勤員",
