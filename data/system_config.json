@@ -1,0 +1,13 @@
+{
+  "admin_password": "Lf090000",
+  "vip_password": "0",
+  "user_password": "09000",
+  "strict_streak_limit": 6,
+  "enable_beta_notice": true,
+  "announcement": "目前為內部測試階段｜本頁面末端可聯繫管理者",
+  "enable_strict_test_mode": false,
+  "strict_allowed_employees": [],
+  "enabled_td_by_unit": {
+    "TTN": true
+  }
+}
