@@ -265,6 +265,50 @@ def sync_file_to_github(file_path_in_repo: str, content_data: Union[str, bytes],
     return ok
 
 
+def _sync_system_config_to_github(commit_msg: str = "Auto-update system_config.json via Admin Panel") -> None:
+    """將持久化 system_config.json 同步至 GitHub，重啟後設定依然保留"""
+    cfg_path = os.path.join(DATA_DIR, "system_config.json")
+    if not os.path.exists(cfg_path):
+        cfg_path = "system_config.json"
+    if os.path.exists(cfg_path):
+        try:
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                cfg_content = f.read()
+            rel_cfg_path = os.path.relpath(cfg_path, start=BASE_DIR).replace("\\", "/")
+            sync_file_to_github(
+                file_path_in_repo=rel_cfg_path,
+                content_data=cfg_content,
+                commit_msg=commit_msg,
+            )
+        except Exception as e:
+            print(f"system_config.json GitHub 同步失敗: {e}")
+
+
+def is_td_enabled(unit_code: str = "TTN") -> bool:
+    """查詢指定單位是否啟用「駕駛 (TD)」職位（持久化於 system_config.json，預設關閉）"""
+    sys_cfg = load_system_config()
+    unit_clean = (unit_code or "TTN").upper().strip()
+    td_map = sys_cfg.get("enabled_td_by_unit", {})
+    if isinstance(td_map, dict) and unit_clean in td_map:
+        return bool(td_map[unit_clean])
+    return bool(sys_cfg.get("enable_td", False))
+
+
+def set_td_enabled(unit_code: str, enabled: bool) -> None:
+    """設定指定單位是否啟用「駕駛 (TD)」職位並持久化儲存"""
+    sys_cfg = load_system_config()
+    unit_clean = (unit_code or "TTN").upper().strip()
+    if unit_clean not in ["TTN", "TTC", "TTS"]:
+        unit_clean = "TTN"
+    td_map = sys_cfg.get("enabled_td_by_unit", {})
+    if not isinstance(td_map, dict):
+        td_map = {}
+    td_map[unit_clean] = bool(enabled)
+    sys_cfg["enabled_td_by_unit"] = td_map
+    save_system_config(sys_cfg)
+    _sync_system_config_to_github(f"Update TD toggle for {unit_clean}: {bool(enabled)}")
+
+
 def robust_load_whitelist(unit_code: str) -> Dict[str, Any]:
     unit_code_clean = unit_code.upper().strip()
     if unit_code_clean not in ["TTN", "TTC", "TTS"]:
@@ -345,22 +389,7 @@ def set_monthly_control(unit_code: str, month_str: str, is_enabled: bool, note: 
         "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     save_system_config(sys_cfg)
-    
-    cfg_path = os.path.join(DATA_DIR, "system_config.json")
-    if not os.path.exists(cfg_path):
-        cfg_path = "system_config.json"
-    if os.path.exists(cfg_path):
-        try:
-            with open(cfg_path, "r", encoding="utf-8") as f:
-                content_str = f.read()
-            rel_path = os.path.relpath(cfg_path, start=BASE_DIR).replace("\\", "/")
-            sync_file_to_github(
-                file_path_in_repo=rel_path,
-                content_data=content_str,
-                commit_msg=f"Auto-update monthly control for {unit_code_clean} - {month_str}"
-            )
-        except Exception as e:
-            print(f"system_config.json 同步 GitHub 失敗: {e}")
+    _sync_system_config_to_github(f"Auto-update monthly control for {unit_code_clean} - {month_str}")
 
 
 def clear_logs() -> None:
@@ -433,20 +462,17 @@ def create_backup_zip() -> io.BytesIO:
 
 
 @st.cache_data(ttl=60)
-def get_all_crew_options(unit_code: str) -> List[Dict[str, str]]:
+def get_all_crew_options(unit_code: str, include_td: Optional[bool] = None) -> List[Dict[str, str]]:
     unit_code_clean = unit_code.upper().strip()
     if unit_code_clean not in ["TTN", "TTC", "TTS"]:
         unit_code_clean = "TTN"
 
+    td_active = is_td_enabled(unit_code_clean) if include_td is None else bool(include_td)
+
     crew_options: List[Dict[str, str]] = []
     seen_uids = set()
 
-    possible_file_map = {
-        "駕駛": [
-            os.path.join(DATA_DIR, f"{unit_code_clean.lower()}_driver.xlsx"),
-            os.path.join(DATA_DIR, unit_code_clean, f"{unit_code_clean}_TD.xlsx"),
-            os.path.join(DATA_DIR, unit_code_clean, "20號大表", f"{unit_code_clean}_TD.xlsx"),
-        ],
+    possible_file_map: Dict[str, List[str]] = {
         "列車長": [
             os.path.join(DATA_DIR, f"{unit_code_clean.lower()}_conductor.xlsx"),
             os.path.join(DATA_DIR, unit_code_clean, f"{unit_code_clean}_TM.xlsx"),
@@ -458,18 +484,27 @@ def get_all_crew_options(unit_code: str) -> List[Dict[str, str]]:
             os.path.join(DATA_DIR, unit_code_clean, "20號大表", f"{unit_code_clean}_TA.xlsx"),
         ],
     }
+    if td_active:
+        possible_file_map["駕駛"] = [
+            os.path.join(DATA_DIR, f"{unit_code_clean.lower()}_driver.xlsx"),
+            os.path.join(DATA_DIR, unit_code_clean, f"{unit_code_clean}_TD.xlsx"),
+            os.path.join(DATA_DIR, unit_code_clean, "20號大表", f"{unit_code_clean}_TD.xlsx"),
+        ]
 
     latest_schedule_dir = os.path.join(DATA_DIR, unit_code_clean, "最新版班表")
     if os.path.exists(latest_schedule_dir):
         for sub_dir in os.listdir(latest_schedule_dir):
             full_sub_p = os.path.join(latest_schedule_dir, sub_dir)
             if os.path.isdir(full_sub_p):
-                possible_file_map["駕駛"].append(os.path.join(full_sub_p, f"{unit_code_clean}_TD.xlsx"))
+                if td_active and "駕駛" in possible_file_map:
+                    possible_file_map["駕駛"].append(os.path.join(full_sub_p, f"{unit_code_clean}_TD.xlsx"))
                 possible_file_map["列車長"].append(os.path.join(full_sub_p, f"{unit_code_clean}_TM.xlsx"))
                 possible_file_map["服勤員"].append(os.path.join(full_sub_p, f"{unit_code_clean}_TA.xlsx"))
 
     if isinstance(UNITS, dict) and unit_code_clean in UNITS and UNITS[unit_code_clean]:
         for role, p in UNITS[unit_code_clean].items():
+            if role == "駕駛" and not td_active:
+                continue
             if p:
                 possible_file_map[role] = [p] + possible_file_map.get(role, [])
 
@@ -845,6 +880,29 @@ def render_admin_panel() -> None:
         st.markdown(f"### [{current_unit}] 班表大表 Excel 上傳與管理")
         st.caption("上傳後自動建立選定目標資料夾與時間戳備份檔，並自動記錄原始檔名、上傳時間與同步至 GitHub。")
 
+        td_enabled_curr = is_td_enabled(current_unit)
+        col_td_sw, col_td_info = st.columns([1.4, 3.6])
+        with col_td_sw:
+            new_td_state = st.toggle(
+                f"啟用 [{current_unit}] 駕駛 (TD) 職位",
+                value=td_enabled_curr,
+                key=f"toggle_td_enable_{current_unit}",
+                help="使用率低時可保持關閉；有需求時開啟即可，設定會持久化保存，重啟網頁不會重置。",
+            )
+            if new_td_state != td_enabled_curr:
+                set_td_enabled(current_unit, new_td_state)
+                log_activity(
+                    "駕駛職位開關",
+                    f"管理員設定 [{current_unit}] 駕駛 (TD) 職位為：{'啟用' if new_td_state else '停用'}",
+                )
+                st.cache_data.clear()
+                st.rerun()
+        with col_td_info:
+            if td_enabled_curr:
+                st.success(f"[{current_unit}] 駕駛 (TD) 職位目前為【已啟用】狀態（持久化保存）。")
+            else:
+                st.info(f"[{current_unit}] 駕駛 (TD) 職位目前為【已停用】狀態，有需求時切換開關即可啟用。")
+
         if "upload_feedback_msg" in st.session_state and st.session_state["upload_feedback_msg"]:
             fb = st.session_state["upload_feedback_msg"]
             fb_type = fb.get("type", "info")
@@ -904,6 +962,8 @@ def render_admin_panel() -> None:
 
         for role_name, role_code, col in roles:
             with col:
+                is_role_active = True if role_code != "TD" else td_enabled_curr
+
                 if selected_sub_month:
                     dest_dir = os.path.join(DATA_DIR, current_unit, target_folder_type, selected_sub_month)
                 else:
@@ -917,15 +977,16 @@ def render_admin_panel() -> None:
                 orig_name_disp = role_hist.get("original_filename") or (os.path.basename(dest_path) if exists else "尚無紀錄")
                 mtime_str = role_hist.get("uploaded_at") or (get_file_mtime_str(dest_path) if exists else "檔案不存在")
 
-                status_pill = (
-                    "<span style='color:#34D399; font-weight:800;'>[檔案正常]</span>"
-                    if exists
-                    else "<span style='color:#EF4444; font-weight:800;'>[缺失 / 異常]</span>"
-                )
+                if not is_role_active:
+                    status_pill = "<span style='color:#94A3B8; font-weight:800;'>[已停用 / 需時開啟]</span>"
+                elif exists:
+                    status_pill = "<span style='color:#34D399; font-weight:800;'>[檔案正常]</span>"
+                else:
+                    status_pill = "<span style='color:#EF4444; font-weight:800;'>[缺失 / 異常]</span>"
 
                 st.markdown(
                     f"""
-                    <div class="admin-card-box">
+                    <div class="admin-card-box" style="{'opacity: 0.65;' if not is_role_active else ''}">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <span style="font-size: 16px; font-weight: 800; color: #F8FAFC;">{role_name} ({role_code})</span>
                             {status_pill}
@@ -939,6 +1000,10 @@ def render_admin_panel() -> None:
                     """,
                     unsafe_allow_html=True,
                 )
+
+                if not is_role_active:
+                    st.caption("目前處於停用狀態，開啟上方「啟用駕駛 (TD) 職位」即可上傳與管理。")
+                    continue
 
                 uploaded_file = st.file_uploader(
                     f"選擇 {role_name} 大表 (.xlsx / .xls)",
@@ -1460,6 +1525,14 @@ def render_admin_panel() -> None:
                 )
 
                 st.markdown("---")
+                st.markdown("#### 職位啟用持久化開關")
+                enable_td_cfg = st.checkbox(
+                    "啟用駕駛 (TD) 職位（預設關閉，重啟網頁/伺服器不重置）",
+                    value=is_td_enabled(current_unit),
+                    key="enable_td_cfg_input",
+                )
+
+                st.markdown("---")
                 st.markdown("#### 測試期間嚴格管制開關")
                 enable_strict_test = st.checkbox(
                     "啟用測試嚴格管制模式（暫停全面開放，僅限指定特許員編登入）",
@@ -1527,6 +1600,12 @@ def render_admin_panel() -> None:
                     sys_config["announcement"] = announce_text.strip()
                     sys_config["strict_streak_limit"] = streak_threshold
                     sys_config["enable_beta_notice"] = enable_notice
+                    td_map = sys_config.get("enabled_td_by_unit", {})
+                    if not isinstance(td_map, dict):
+                        td_map = {}
+                    td_map[current_unit] = bool(enable_td_cfg)
+                    sys_config["enabled_td_by_unit"] = td_map
+                    sys_config["enable_td"] = bool(enable_td_cfg)
                     sys_config["enable_strict_test_mode"] = enable_strict_test
                     sys_config["strict_allowed_employees_str"] = strict_allowed_str.strip()
                     sys_config["github_token"] = git_token.strip()
@@ -1541,22 +1620,7 @@ def render_admin_panel() -> None:
                     sys_config["strict_allowed_employees"] = clean_allowed_list
 
                     save_system_config(sys_config)
-                    
-                    cfg_path = os.path.join(DATA_DIR, "system_config.json")
-                    if not os.path.exists(cfg_path):
-                        cfg_path = "system_config.json"
-                    if os.path.exists(cfg_path):
-                        try:
-                            with open(cfg_path, "r", encoding="utf-8") as f:
-                                cfg_content = f.read()
-                            rel_cfg_path = os.path.relpath(cfg_path, start=BASE_DIR).replace("\\", "/")
-                            sync_file_to_github(
-                                file_path_in_repo=rel_cfg_path,
-                                content_data=cfg_content,
-                                commit_msg="Auto-update system_config.json via Admin Panel"
-                            )
-                        except Exception as e:
-                            print(f"system_config.json GitHub 同步失敗: {e}")
+                    _sync_system_config_to_github("Auto-update system_config.json via Admin Panel")
 
                     log_activity("系統授權碼變更", "管理員更新全域系統設定與 GitHub 同步憑證")
 
